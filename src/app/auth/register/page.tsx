@@ -34,7 +34,17 @@ export default function RegisterPage() {
       router.push("/dashboard");
     } catch (err: any) {
       console.error("[REGISTER] Registration failed:", err);
-      setError(err.message || "Registration failed. Please try again.");
+      
+      // Extract user-friendly error message based on error code/status
+      let userMessage = "Registration failed. Please try again.";
+      
+      if (err.status === 409 || err.code === "EMAIL_ALREADY_IN_USE") {
+        userMessage = "This email is already registered. Please try logging in or use a different email.";
+      } else if (err.message) {
+        userMessage = err.message;
+      }
+      
+      setError(userMessage);
     } finally {
       setLoading(false);
     }

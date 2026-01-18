@@ -22,10 +22,21 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      code: "UNKNOWN_ERROR",
-      message: response.statusText,
-    }));
+    let errorMessage = response.statusText;
+    let errorCode = `HTTP_${response.status}`;
+    
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorData.error || errorMessage;
+      errorCode = errorData.code || errorCode;
+    } catch {
+      // If response is not JSON, use status text
+    }
+    
+    // Create a proper error with message property
+    const error = new Error(errorMessage);
+    (error as any).status = response.status;
+    (error as any).code = errorCode;
     throw error;
   }
 
