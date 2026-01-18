@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kuinbee Marketplace - Supplier Frontend
 
-## Getting Started
+> Supplier portal for the Kuinbee Data Marketplace
 
-First, run the development server:
+---
+
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies (already done)
+npm install
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📚 Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **[SETUP_SUMMARY.md](./SETUP_SUMMARY.md)** - Complete setup details, tech stack, and methodology
+- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick patterns, templates, and code snippets
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🛠 Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Next.js 16.1.1** - React framework with App Router
+- **TypeScript** - Type safety
+- **Tailwind CSS 4** - Styling
+- **Radix UI + shadcn/ui** - Component library
+- **TanStack Query** - Server state management
+- **Zustand** - Client state management
+- **React Hook Form + Zod** - Form handling & validation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 📜 Available Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run dev              # Start development server
+npm run build            # Production build
+npm start                # Start production server
+npm run lint             # Run ESLint
+npm run lint:fix         # Fix ESLint issues
+npm run format           # Format code with Prettier
+npm run format:check     # Check formatting
+npm run type-check       # TypeScript type checking
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                # Next.js App Router pages
+├── components/         # React components
+│   ├── ui/            # shadcn/ui components
+│   ├── features/      # Feature-specific components
+│   └── shared/        # Reusable components
+├── lib/               # Utilities and helpers
+│   ├── api/          # API services
+│   ├── hooks/        # Custom hooks
+│   ├── utils/        # Utility functions
+│   └── constants/    # Constants
+├── store/             # Zustand stores
+├── types/             # TypeScript types
+└── config/            # App configuration
+```
+
+---
+
+## 🎯 Development Methodology
+
+This project follows the same development methodology as the Admin frontend:
+
+1. **Component Extraction** - Single responsibility, reusable components
+2. **Type Safety** - TypeScript throughout
+3. **API Integration** - Service layer + React Query hooks
+4. **Code Quality** - ESLint + Prettier + Type checking
+5. **Consistent Patterns** - Standardized component and file structures
+
+See [SETUP_SUMMARY.md](./SETUP_SUMMARY.md) for detailed methodology.
+
+---
+
+## 🔗 Related Projects
+
+- **Admin Frontend** - `/frontend/admin` - Reference implementation
+- **User Frontend** - `/frontend/user` - User-facing portal
+- **Backend** - `/backend` - API services
+
+---
+
+## 📝 Next Steps
+
+1. ✅ Project initialized with dependencies
+2. 🔄 Set up global styles and theme provider
+3. 🔄 Configure React Query provider
+4. 🔄 Create basic layout structure
+5. 🔄 Implement authentication flow
+6. 🔄 Build feature components
+
+---
+
+**Status**: ✅ Setup Complete - Ready for Development
+**Last Updated**: January 6, 2026
