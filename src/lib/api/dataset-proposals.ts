@@ -80,10 +80,11 @@ async function apiFetch<T>(
 export async function createDatasetProposal(
   data: CreateProposalRequest
 ): Promise<CreateProposalResponse> {
-  return apiFetch<CreateProposalResponse>(DATASET_PROPOSAL_API.CREATE, {
+  const response = await apiFetch<{ success: boolean; data: CreateProposalResponse }>(DATASET_PROPOSAL_API.CREATE, {
     method: "POST",
     body: JSON.stringify(data),
   });
+  return response.data;
 }
 
 // ===== List My Proposals =====
@@ -120,12 +121,13 @@ export async function listMyProposals(
 export async function getProposalDetails(
   datasetId: string
 ): Promise<ProposalDetailsResponse> {
-  return apiFetch<ProposalDetailsResponse>(
+  const response = await apiFetch<{ success: boolean; data: ProposalDetailsResponse }>(
     DATASET_PROPOSAL_API.GET_DETAILS(datasetId),
     {
       method: "GET",
     }
   );
+  return response.data;
 }
 
 // ===== Update Proposal Metadata =====
@@ -137,13 +139,14 @@ export async function updateProposalMetadata(
   datasetId: string,
   data: UpdateProposalRequest
 ): Promise<UpdateProposalResponse> {
-  return apiFetch<UpdateProposalResponse>(
+  const response = await apiFetch<{ success: boolean; data: UpdateProposalResponse }>(
     DATASET_PROPOSAL_API.UPDATE_METADATA(datasetId),
     {
       method: "PATCH",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Upsert About Dataset Info =====
@@ -155,13 +158,14 @@ export async function upsertAboutInfo(
   datasetId: string,
   data: UpsertAboutInfoRequest
 ): Promise<UpsertAboutInfoResponse> {
-  return apiFetch<UpsertAboutInfoResponse>(
+  const response = await apiFetch<{ success: boolean; data: UpsertAboutInfoResponse }>(
     DATASET_PROPOSAL_API.UPSERT_ABOUT(datasetId),
     {
       method: "PUT",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Upsert Data Format Info =====
@@ -173,13 +177,14 @@ export async function upsertDataFormatInfo(
   datasetId: string,
   data: UpsertDataFormatRequest
 ): Promise<UpsertDataFormatResponse> {
-  return apiFetch<UpsertDataFormatResponse>(
+  const response = await apiFetch<{ success: boolean; data: UpsertDataFormatResponse }>(
     DATASET_PROPOSAL_API.UPSERT_DATA_FORMAT(datasetId),
     {
       method: "PUT",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Replace Features =====
@@ -191,13 +196,14 @@ export async function replaceFeatures(
   datasetId: string,
   data: ReplaceFeaturesRequest
 ): Promise<ReplaceFeaturesResponse> {
-  return apiFetch<ReplaceFeaturesResponse>(
+  const response = await apiFetch<{ success: boolean; data: ReplaceFeaturesResponse }>(
     DATASET_PROPOSAL_API.REPLACE_FEATURES(datasetId),
     {
       method: "PUT",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Set Secondary Categories =====
@@ -209,13 +215,14 @@ export async function setSecondaryCategories(
   datasetId: string,
   data: SetCategoriesRequest
 ): Promise<SetCategoriesResponse> {
-  return apiFetch<SetCategoriesResponse>(
+  const response = await apiFetch<{ success: boolean; data: SetCategoriesResponse }>(
     DATASET_PROPOSAL_API.SET_CATEGORIES(datasetId),
     {
       method: "PUT",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Presign Current Upload =====
@@ -228,13 +235,14 @@ export async function presignCurrentUpload(
   datasetId: string,
   data: PresignUploadRequest = {}
 ): Promise<PresignUploadResponse> {
-  return apiFetch<PresignUploadResponse>(
+  const response = await apiFetch<{ success: boolean; data: PresignUploadResponse }>(
     DATASET_PROPOSAL_API.PRESIGN_UPLOAD(datasetId),
     {
       method: "POST",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Complete Current Upload =====
@@ -247,13 +255,14 @@ export async function completeCurrentUpload(
   datasetId: string,
   data: CompleteUploadRequest = {}
 ): Promise<CompleteUploadResponse> {
-  return apiFetch<CompleteUploadResponse>(
+  const response = await apiFetch<{ success: boolean; data: CompleteUploadResponse }>(
     DATASET_PROPOSAL_API.COMPLETE_UPLOAD(datasetId),
     {
       method: "POST",
       body: JSON.stringify(data),
     }
   );
+  return response.data;
 }
 
 // ===== Submit / Resubmit Proposal =====
@@ -272,12 +281,13 @@ export async function completeCurrentUpload(
 export async function submitProposal(
   datasetId: string
 ): Promise<SubmitProposalResponse> {
-  return apiFetch<SubmitProposalResponse>(
+  const response = await apiFetch<{ success: boolean; data: SubmitProposalResponse }>(
     DATASET_PROPOSAL_API.SUBMIT(datasetId),
     {
       method: "POST",
     }
   );
+  return response.data;
 }
 
 // ===== Utility: Upload File to S3 =====

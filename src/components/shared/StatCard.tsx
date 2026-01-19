@@ -1,8 +1,10 @@
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 
+import { ReactNode } from "react";
+
 interface StatCardProps {
   label: string;
-  value: string | number;
+  value: ReactNode;
   className?: string;
 }
 

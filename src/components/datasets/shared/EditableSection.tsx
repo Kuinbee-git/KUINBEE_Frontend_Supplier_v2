@@ -69,9 +69,9 @@ export function EditableSection({
       }}
     >
       {/* Header */}
-      <button
+      <div
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-6 py-4 border-b transition-colors duration-200"
+        className="w-full flex items-center justify-between px-6 py-4 border-b transition-colors duration-200 cursor-pointer hover:opacity-80"
         style={{ borderColor: tokens.borderSubtle }}
       >
         <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export function EditableSection({
             <ChevronDown className="w-5 h-5" style={{ color: tokens.textMuted }} />
           )}
         </div>
-      </button>
+      </div>
 
       {/* Content */}
       {isExpanded && (

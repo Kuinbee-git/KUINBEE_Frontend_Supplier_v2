@@ -71,15 +71,21 @@ export function CategoriesSelect({
         <SelectTrigger
           className="h-10 w-full rounded-lg transition-all duration-300"
           style={{
-            background: tokens?.inputBg || (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)'),
-            border: displayError ? '1px solid #ef4444' : `1px solid ${tokens?.inputBorder || (isDark ? 'rgba(255, 255, 255, 0.1)' : '#dde3f0')}`,
+            background: tokens?.inputBg || (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.9)'),
+            borderColor: displayError ? '#ef4444' : tokens?.inputBorder || (isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0'),
             color: tokens?.textPrimary || (isDark ? '#ffffff' : '#1a2240'),
+            border: displayError ? '1px solid #ef4444' : `1px solid ${tokens?.inputBorder || (isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0')}`,
           }}
         >
           <SelectValue placeholder={loading ? 'Loading categories...' : 'Select a category'} />
         </SelectTrigger>
         <SelectContent
           className="rounded-lg shadow-lg overflow-hidden"
+          style={{
+            background: tokens?.surfaceCard || (isDark ? 'rgba(26, 34, 64, 0.98)' : 'rgba(255, 255, 255, 0.98)'),
+            border: `1px solid ${tokens?.borderDefault || (isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0')}`,
+            backdropFilter: 'blur(16px)',
+          }}
         >
           <div className="py-1">
             {categories.length === 0 && !loading && !fetchError && (

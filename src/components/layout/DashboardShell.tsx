@@ -5,12 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   FileText, 
-  Upload, 
   User, 
-  Shield, 
   Settings, 
-  Bell, 
-  HelpCircle,
   LogOut,
   Moon,
   Sun,
@@ -19,7 +15,6 @@ import {
   ChevronDown,
   Database
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useThemeStore } from '@/store';
 import { useAuthStore } from '@/store';
 import { useOnboardingStatus } from '@/hooks';
@@ -72,13 +67,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
       disabled: false 
     },
     { 
-      id: 'drafts', 
-      label: 'Drafts', 
-      icon: Upload, 
-      path: '/dashboard/datasets?status=draft',
-      disabled: false 
-    },
-    { 
       id: 'my-datasets', 
       label: 'My Datasets', 
       icon: Database, 
@@ -106,7 +94,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
+    <div className="relative h-screen w-full overflow-hidden">
       {/* Background */}
       <div
         className="absolute inset-0 transition-all duration-500"
@@ -125,10 +113,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
         }}
       />
 
-      <div className="relative z-10 flex min-h-screen">
+      <div className="relative z-10 flex h-screen">
         {/* Sidebar */}
         <aside
-          className="border-r flex-shrink-0 transition-all duration-300"
+          className="border-r flex-shrink-0 transition-all duration-300 h-screen overflow-y-auto"
           style={{
             width: sidebarCollapsed ? '80px' : '256px',
             background: tokens.sidebarBg,
@@ -139,38 +127,53 @@ export function DashboardShell({ children }: DashboardShellProps) {
         >
           {/* Logo */}
           <div 
-            className="h-20 flex items-center border-b transition-all duration-300" 
+            className="h-24 flex items-center justify-center border-b transition-all duration-300" 
             style={{ 
-              borderColor: tokens.borderDefault, 
-              padding: sidebarCollapsed ? '0 16px' : '0 24px',
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start'
+              borderColor: tokens.borderDefault,
+              paddingLeft: sidebarCollapsed ? '0' : '12px',
+              paddingRight: sidebarCollapsed ? '0' : '12px',
             }}
           >
-            <div
-              className="border rounded-lg flex items-center justify-center transition-all duration-300"
-              style={{
-                height: '40px',
-                padding: sidebarCollapsed ? '8px' : '0 12px',
-                background: tokens.glassBg,
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                border: `1px solid ${tokens.glassBorder}`,
-              }}
-            >
-              <img
-                src={isDark ? '/logo-dark.png' : '/logo-light.png'}
-                alt="Kuinbee"
-                className={`transition-all duration-300 ${sidebarCollapsed ? 'h-6 w-6 object-contain' : 'h-6'}`}
-                style={{ opacity: isDark ? 0.9 : 1 }}
-              />
+            <div className="flex items-center justify-center gap-3 w-full">
+              <div
+                className="border rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  height: '48px',
+                  width: '54px',
+                  background: tokens.glassBg,
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: `1px solid ${tokens.glassBorder}`,
+                }}
+              >
+                <img
+                  src={isDark ? '/logo-dark.png' : '/logo-light.png'}
+                  alt="Kuinbee"
+                  className="h-24 w-24 object-contain"
+                  style={{ opacity: isDark ? 0.9 : 1 }}
+                />
+              </div>
+              {!sidebarCollapsed && (
+                <span 
+                  className="text-lg font-bold whitespace-nowrap transition-all duration-300 ease-out"
+                  style={{ 
+                    color: tokens.textPrimary,
+                    opacity: sidebarCollapsed ? 0 : 1,
+                    visibility: sidebarCollapsed ? 'hidden' : 'visible',
+                    transform: sidebarCollapsed ? 'translateX(-10px)' : 'translateX(0)',
+                  }}
+                >
+                  Kuinbee
+                </span>
+              )}
             </div>
           </div>
 
           {/* Collapse Toggle Button */}
-          <div className="px-4 py-3 border-b" style={{ borderColor: tokens.borderDefault }}>
+          <div className="px-4 py-3 border-b flex justify-center" style={{ borderColor: tokens.borderDefault }}>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-full rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+              className={`w-full rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105${sidebarCollapsed ? '' : ' gap-2 px-5 py-2 border'}`}
               style={{
                 height: '40px',
                 background: tokens.glassBg,
@@ -181,7 +184,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
               {sidebarCollapsed ? (
                 <ChevronRight className="w-4 h-4" />
               ) : (
-                <ChevronLeft className="w-4 h-4" />
+                <>
+                  <span className="text-xs font-semibold tracking-wide" style={{ letterSpacing: '0.02em' }}>Collapse</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </>
               )}
             </button>
           </div>
@@ -190,7 +196,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <nav className="p-4 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.path || pathname?.startsWith(item.path + '/');
+              // Only one item should be active at a time
+              const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname?.startsWith(item.path));
               const isDisabled = item.disabled;
 
               return (
@@ -198,7 +205,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   key={item.id}
                   onClick={() => handleNavClick(item.path, isDisabled)}
                   disabled={isDisabled}
-                  className="w-full rounded-lg transition-all duration-200"
+                  className={`w-full rounded-lg transition-all duration-300 ease-out flex items-center${sidebarCollapsed ? ' justify-center' : ''}`}
                   style={{
                     padding: sidebarCollapsed ? '12px' : '12px 16px',
                     background: isActive ? tokens.navItemActive : 'transparent',
@@ -206,10 +213,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     color: isDisabled ? tokens.textMuted : tokens.textPrimary,
                     opacity: isDisabled ? 0.5 : 1,
                     cursor: isDisabled ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: sidebarCollapsed ? '0' : '12px',
-                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                    minWidth: '0',
                   }}
                   onMouseEnter={(e) => {
                     if (!isDisabled && !isActive) {
@@ -222,10 +226,20 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     }
                   }}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {!sidebarCollapsed && (
-                    <span className="text-sm font-medium">{item.label}</span>
-                  )}
+                  <span className="flex items-center justify-center w-6 h-6">
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                  </span>
+                  <span 
+                    className="text-sm font-medium transition-all duration-300 ease-out overflow-hidden whitespace-nowrap"
+                    style={{
+                      opacity: sidebarCollapsed ? 0 : 1,
+                      visibility: sidebarCollapsed ? 'hidden' : 'visible',
+                      width: sidebarCollapsed ? '0' : 'auto',
+                      transform: sidebarCollapsed ? 'translateX(-10px)' : 'translateX(0)',
+                    }}
+                  >
+                    {item.label}
+                  </span>
                 </button>
               );
             })}
@@ -233,29 +247,29 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-h-screen">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden">
           {/* Top Bar */}
           <header
-            className="h-20 px-8 flex items-center justify-between border-b flex-shrink-0"
+            className="h-24 px-10 flex items-center justify-between border-b flex-shrink-0"
             style={{ borderColor: tokens.borderDefault }}
           >
             <div>
               <h1
-                className="text-lg transition-colors duration-300"
-                style={{ color: tokens.textPrimary, fontWeight: '600', lineHeight: '1.4' }}
+                className="text-2xl transition-colors duration-300"
+                style={{ color: tokens.textPrimary, fontWeight: '600', lineHeight: '1.3' }}
               >
                 Supplier Panel
               </h1>
-              <p className="text-xs mt-0.5" style={{ color: tokens.textSecondary, lineHeight: '1.4' }}>
+              <p className="text-sm mt-1" style={{ color: tokens.textSecondary, lineHeight: '1.4' }}>
                 Manage your datasets and account
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-105"
+                className="w-11 h-11 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-105"
                 style={{
                   background: tokens.glassBg,
                   backdropFilter: 'blur(16px)',
@@ -263,16 +277,17 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   border: `1px solid ${tokens.glassBorder}`,
                   color: tokens.textPrimary,
                 }}
+
                 aria-label="Toggle dark mode"
               >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
 
               {/* User Menu Dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-4 h-10 rounded-lg transition-all duration-300 hover:scale-105"
+                  className="flex items-center gap-2 px-5 h-11 rounded-lg transition-all duration-300 hover:scale-105"
                   style={{
                     background: tokens.glassBg,
                     backdropFilter: 'blur(16px)',
@@ -281,9 +296,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     color: tokens.textSecondary,
                   }}
                 >
-                  <User className="w-4 h-4" />
-                  <span className="text-sm">{user?.email || 'User'}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
+                  <User className="w-5 h-5" />
+                  <span className="text-base">{user?.email || 'User'}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Dropdown Menu */}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Upload } from 'lucide-react';
 import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures } from '@/lib/api';
 import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep } from './create-steps';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
@@ -317,257 +317,255 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   return (
     <>
-      <div className="max-w-[1100px] mx-auto px-6 py-8">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="mb-6 flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to datasets
-        </Button>
+      <div className="min-h-screen px-6 py-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Back Button */}
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="flex items-center gap-2 hover:bg-opacity-10 mb-6"
+            style={{ color: tokens.textSecondary }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to datasets
+          </Button>
 
-        {/* Title Card */}
-        <Card
-          className="border overflow-hidden mb-6"
-          style={{
-            background: tokens.surfaceCard,
-            borderColor: tokens.borderDefault,
-            boxShadow: tokens.shadowCard,
-          }}
-        >
-          <div className="p-6">
-            <div className="flex items-center justify-between gap-6 mb-5">
-              <div className="flex items-center gap-4 flex-1">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2" style={{ color: tokens.textPrimary }}>
+              Create new proposal
+            </h1>
+            <p className="text-base" style={{ color: tokens.textMuted }}>
+              Complete the steps to submit your dataset proposal for review
+            </p>
+          </div>
+
+          {/* Two Column Layout */}
+          <div className="flex gap-8 items-start">
+            {/* Left: Form Content (Wider) */}
+            <div className="flex-1 space-y-6">
+              {/* Error Message */}
+              {error && (
                 <div
-                  className="w-12 h-12 rounded-lg flex items-center justify-center"
+                  className="rounded-lg border px-4 py-3 flex items-start gap-3 animate-in fade-in duration-200"
                   style={{
-                    background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 34, 64, 0.08)',
+                    background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                    borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
                   }}
                 >
-                  <FileText className="w-6 h-6" style={{ color: tokens.textSecondary }} />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                    Create new proposal
-                  </h1>
-                  <p className="text-sm" style={{ color: tokens.textMuted }}>
-                    Step {currentStepIndex + 1} of {steps.length}: {steps[currentStepIndex].label}
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#DC2626' }} />
+                  <p className="text-sm" style={{ color: '#DC2626' }}>
+                    {error}
                   </p>
                 </div>
-              </div>
-            </div>
+              )}
 
-            {/* Progress Steps */}
-            <div className="flex items-center gap-2 mb-5">
-              {steps.map((step, idx) => (
-                <div key={step.id} className="flex items-center flex-1">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
-                      style={{
-                        background: idx <= currentStepIndex 
-                          ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 100%)'
-                          : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(26, 34, 64, 0.1)',
-                        color: idx <= currentStepIndex ? '#fff' : tokens.textMuted,
-                      }}
-                    >
-                      {idx < currentStepIndex ? '✓' : step.number}
-                    </div>
-                    <span className="text-xs font-medium" style={{ color: idx <= currentStepIndex ? tokens.textPrimary : tokens.textMuted }}>
-                      {step.label}
-                    </span>
+              {/* Success Message */}
+              {success && (
+                <div
+                  className="rounded-lg border px-4 py-3 flex items-start gap-3 animate-in fade-in duration-200"
+                  style={{
+                    background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+                    borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                  }}
+                >
+                  <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
+                  <p className="text-sm" style={{ color: '#22c55e' }}>
+                    {success}
+                  </p>
+                </div>
+              )}
+
+              {/* Form Card */}
+              <Card
+                className="border overflow-hidden"
+                style={{
+                  background: tokens.surfaceCard,
+                  borderColor: tokens.borderDefault,
+                }}
+              >
+                <div className="p-8">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold mb-1" style={{ color: tokens.textPrimary }}>
+                      {steps[currentStepIndex].label}
+                    </h2>
+                    <p className="text-sm" style={{ color: tokens.textMuted }}>
+                      Step {currentStepIndex + 1} of {steps.length}
+                    </p>
                   </div>
-                  {idx < steps.length - 1 && (
-                    <div
-                      className="h-px flex-1 mx-2"
-                      style={{
-                        background: idx < currentStepIndex ? tokens.borderDefault : tokens.borderSubtle,
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
 
-            {/* Error Message */}
-            {error && (
-              <div
-                className="rounded-lg border px-4 py-3 flex items-start gap-3 mb-4"
-                style={{
-                  background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
-                }}
-              >
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#DC2626' }} />
-                <p className="text-xs" style={{ color: '#DC2626' }}>
-                  {error}
-                </p>
-              </div>
-            )}
+                  <div className="space-y-6">
+                    {currentStep === 'basic' && (
+                      <BasicInfoStep
+                        data={basicData}
+                        onChange={handleBasicChange}
+                        onSourceCreated={handleSourceCreated}
+                        disabled={submitting}
+                        tokens={tokens}
+                        isDark={isDark}
+                      />
+                    )}
 
-            {/* Success Message */}
-            {success && (
-              <div
-                className="rounded-lg border px-4 py-3 flex items-start gap-3 mb-4"
-                style={{
-                  background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                  borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
-                }}
-              >
-                <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
-                <p className="text-xs" style={{ color: '#22c55e' }}>
-                  {success}
-                </p>
-              </div>
-            )}
-          </div>
-        </Card>
+                    {currentStep === 'about' && (
+                      <AboutStep
+                        data={aboutData}
+                        onChange={handleAboutChange}
+                        disabled={submitting}
+                        tokens={tokens}
+                      />
+                    )}
 
-        {/* Form Card */}
-        <Card
-          className="border overflow-hidden"
-          style={{
-            background: tokens.surfaceCard,
-            borderColor: tokens.borderDefault,
-          }}
-        >
-          <div className="p-6 space-y-6">
-            {currentStep === 'basic' && (
-              <BasicInfoStep
-                data={basicData}
-                onChange={handleBasicChange}
-                onSourceCreated={handleSourceCreated}
-                disabled={submitting}
-                tokens={tokens}
-                isDark={isDark}
-              />
-            )}
+                    {currentStep === 'format' && (
+                      <DataFormatStep
+                        data={formatData}
+                        onChange={handleFormatChange}
+                        disabled={submitting}
+                        tokens={tokens}
+                      />
+                    )}
 
-            {currentStep === 'about' && (
-              <AboutStep
-                data={aboutData}
-                onChange={handleAboutChange}
-                disabled={submitting}
-                tokens={tokens}
-              />
-            )}
+                    {currentStep === 'features' && (
+                      <FeaturesStep
+                        features={features}
+                        onChange={handleFeatureChange}
+                        onAdd={addFeature}
+                        onRemove={removeFeature}
+                        disabled={submitting}
+                        isDark={isDark}
+                        tokens={tokens}
+                      />
+                    )}
 
-            {currentStep === 'format' && (
-              <DataFormatStep
-                data={formatData}
-                onChange={handleFormatChange}
-                disabled={submitting}
-                tokens={tokens}
-              />
-            )}
+                    {currentStep === 'upload' && (
+                      <div className="space-y-8 py-8">
+                        <div className="text-center space-y-6">
+                          <div 
+                            className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
+                            style={{
+                              background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                              border: `2px dashed ${isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
+                            }}
+                          >
+                            <FileText className="w-10 h-10" style={{ color: tokens.textSecondary }} />
+                          </div>
 
-            {currentStep === 'features' && (
-              <FeaturesStep
-                features={features}
-                onChange={handleFeatureChange}
-                onAdd={addFeature}
-                onRemove={removeFeature}
-                disabled={submitting}
-                isDark={isDark}
-                tokens={tokens}
-              />
-            )}
+                          <div>
+                            <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
+                              {fileUploaded ? 'File uploaded successfully!' : 'Upload your dataset file'}
+                            </h3>
+                            <p className="text-sm max-w-md mx-auto" style={{ color: tokens.textMuted }}>
+                              {fileUploaded
+                                ? 'Your file has been uploaded. Click Complete below to finish creating your proposal.'
+                                : 'Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX.'}
+                            </p>
+                          </div>
 
-            {currentStep === 'upload' && (
-              <div className="space-y-6 py-8">
-                <div className="text-center">
-                  <FileText className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.textSecondary }} />
-                  <h3 className="text-lg font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-                    Upload your dataset file
-                  </h3>
-                  <p className="text-sm mb-6" style={{ color: tokens.textMuted }}>
-                    {fileUploaded
-                      ? 'File uploaded successfully! Click Complete to finish.'
-                      : 'Click the button below to upload your dataset file'}
-                  </p>
+                          {fileUploaded ? (
+                            <div
+                              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg"
+                              style={{
+                                background: 'rgba(34, 197, 94, 0.1)',
+                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                              }}
+                            >
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                              <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                Upload complete
+                              </span>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={() => setUploadDialogOpen(true)}
+                              size="lg"
+                              className="text-white gap-2 px-8 py-6 text-base"
+                              style={{
+                                background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
+                              }}
+                            >
+                              <Upload className="w-5 h-5" />
+                              Upload Dataset File
+                            </Button>
+                          )}
+                        </div>
 
-                  {fileUploaded ? (
-                    <div
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
-                      style={{
-                        background: 'rgba(34, 197, 94, 0.1)',
-                        border: '1px solid rgba(34, 197, 94, 0.3)',
-                      }}
-                    >
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                      <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                        File uploaded successfully
-                      </span>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => setUploadDialogOpen(true)}
-                      size="lg"
-                      className="text-white gap-2"
-                      style={{
-                        background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
-                      }}
-                    >
-                      <FileText className="w-5 h-5" />
-                      Upload Dataset File
-                    </Button>
-                  )}
+                        {!fileUploaded && (
+                          <div
+                            className="rounded-lg border p-5 max-w-md mx-auto"
+                            style={{
+                              background: 'rgba(59, 130, 246, 0.05)',
+                              borderColor: 'rgba(59, 130, 246, 0.2)',
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-500" />
+                              <div className="text-sm leading-relaxed" style={{ color: tokens.textSecondary }}>
+                                <p className="font-semibold mb-2" style={{ color: tokens.textPrimary }}>Upload requirements:</p>
+                                <ul className="space-y-1.5 list-none">
+                                  <li className="flex items-start gap-2">
+                                    <span className="text-blue-500">•</span>
+                                    <span>Maximum file size: 500MB</span>
+                                  </li>
+                                  <li className="flex items-start gap-2">
+                                    <span className="text-blue-500">•</span>
+                                    <span>Supported formats: CSV, JSON, Parquet, XLSX</span>
+                                  </li>
+                                  <li className="flex items-start gap-2">
+                                    <span className="text-blue-500">•</span>
+                                    <span>File upload is required to complete your proposal</span>
+                                  </li>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {!fileUploaded && (
-                  <div
-                    className="rounded-lg border p-4 flex items-start gap-3"
+                {/* Navigation Buttons */}
+                <div
+                  className="px-8 py-5 border-t flex items-center justify-between"
+                  style={{ borderColor: tokens.borderDefault }}
+                >
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={currentStepIndex === 0 || submitting}
+                    className="gap-2 px-6"
                     style={{
-                      background: 'rgba(59, 130, 246, 0.05)',
-                      borderColor: 'rgba(59, 130, 246, 0.2)',
+                      borderColor: tokens.borderDefault,
+                      color: tokens.textPrimary,
                     }}
                   >
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-500" />
-                    <div className="text-xs leading-relaxed" style={{ color: tokens.textSecondary }}>
-                      <p className="font-medium mb-1">Upload requirements:</p>
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>File upload is required to complete your proposal</li>
-                        <li>Maximum file size: 500MB</li>
-                        <li>Accepted formats: CSV, JSON, Parquet, XLSX</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
+                  </Button>
 
-          {/* Navigation Buttons */}
-          <div
-            className="px-6 py-4 border-t flex items-center justify-between"
-            style={{ borderColor: tokens.borderSubtle }}
-          >
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStepIndex === 0 || submitting}
-              className="gap-2"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </Button>
-
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext() || submitting}
-              className="gap-2 text-white"
-              style={{
-                background: canGoNext() && !submitting
-                  ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)'
-                  : 'rgba(156, 163, 175, 0.3)',
-              }}
-            >
-              {submitting ? (
-                'Saving...'
-              ) : isLastStep ? (
-                fileUploaded ? 'Complete & View Proposal' : 'Upload file to continue'
+                  <Button
+                    onClick={handleNext}
+                    disabled={!canGoNext() || submitting}
+                    className="gap-2 text-white px-8"
+                    style={{
+                      background: canGoNext() && !submitting
+                        ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)'
+                        : 'rgba(156, 163, 175, 0.3)',
+                    }}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : isLastStep ? (
+                      fileUploaded ? (
+                  <>
+                    Complete & View Proposal
+                    <CheckCircle className="w-4 h-4" />
+                  </>
+                ) : (
+                  'Upload file to continue'
+                )
               ) : (
                 <>
                   Next
@@ -578,6 +576,66 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           </div>
         </Card>
       </div>
+
+      {/* Right: Progress Stepper (Wider, Sticky) */}
+      <div className="w-96 flex-shrink-0">
+        <div className="sticky top-0 w-full flex flex-col px-6">
+          <h3 className="text-lg font-bold mb-10" style={{ color: tokens.textPrimary }}>
+            Progress
+          </h3>
+          <div className="space-y-14 w-full relative flex flex-col">
+            {steps.map((step, idx) => (
+              <div key={step.id} className="flex flex-row items-start w-full relative">
+                {/* Step Circle */}
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0 transition-all duration-300 relative z-10 shadow-md"
+                  style={{
+                    background: idx <= currentStepIndex 
+                      ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 100%)'
+                      : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(26, 34, 64, 0.05)',
+                    color: idx <= currentStepIndex ? '#fff' : tokens.textMuted,
+                    border: idx === currentStepIndex ? '2px solid rgba(59, 130, 246, 0.5)' : 'none',
+                  }}
+                >
+                  {idx < currentStepIndex ? '✓' : step.number}
+                </div>
+
+                {/* Step Label & Status */}
+                <div className="ml-4 pt-1 flex flex-col">
+                  <div 
+                    className="text-lg font-semibold"
+                    style={{ color: idx <= currentStepIndex ? tokens.textPrimary : tokens.textMuted }}
+                  >
+                    {step.label}
+                  </div>
+                  <div className="text-base" style={{ color: tokens.textMuted }}>
+                    {idx < currentStepIndex ? 'Complete' : idx === currentStepIndex ? 'In progress' : 'Pending'}
+                  </div>
+                </div>
+
+                {/* Connecting Line */}
+                {idx < steps.length - 1 && (
+                  <div
+                    className="absolute w-1 transition-all duration-300"
+                    style={{
+                      left: '1.5rem',
+                      top: '3rem',
+                      height: '3.5rem',
+                      background: idx < currentStepIndex 
+                        ? 'linear-gradient(to bottom, #1a2240, #2a3558)'
+                        : tokens.borderSubtle,
+                      zIndex: 0,
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
       {/* Upload Dialog */}
       {createdProposalId && (

@@ -303,6 +303,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     metadata: true,
     upload: true,
@@ -315,8 +316,9 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const tokens = getDatasetThemeTokens(isDark);
 
   // Can edit when status is PENDING or CHANGES_REQUESTED
-  const isEditable = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
-  const isTerminalState = proposal.verification.status === 'VERIFIED' || proposal.verification.status === 'REJECTED';
+  const verificationStatus = proposal.verification?.status;
+  const isEditable = verificationStatus === 'PENDING' || verificationStatus === 'CHANGES_REQUESTED';
+  const isTerminalState = verificationStatus === 'VERIFIED' || verificationStatus === 'REJECTED';
   
   // Can submit when status is PENDING or CHANGES_REQUESTED
   const canSubmit = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
@@ -371,7 +373,29 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     return missing;
   };
   
-  const handleSubmitForReview = async () => {
+  const getErrorMessage = (error: any): string => {
+    // Check for specific error codes from API
+    const errorCode = error?.data?.code || error?.code;
+    
+    const errorMessages: Record<string, string> = {
+      'NO_UPLOAD': 'No file has been uploaded. Please upload a dataset file before submitting.',
+      'UPLOAD_NOT_READY': 'The uploaded file is not ready. Please wait for the upload to complete.',
+      'ABOUT_INFO_REQUIRED': 'About Dataset information is missing. Please fill in the About section.',
+      'DATA_FORMAT_REQUIRED': 'Data Format information is missing. Please fill in the Data Format section.',
+      'FEATURES_REQUIRED': 'At least one feature/column is required. Please define features in the Features section.',
+      'INVALID_STATE': 'This proposal cannot be submitted in its current state. Please check the status.',
+      'NOT_FOUND': 'Proposal not found. It may have been deleted.',
+      'FORBIDDEN': 'You do not have permission to submit this proposal.',
+    };
+    
+    if (errorCode && errorMessages[errorCode]) {
+      return errorMessages[errorCode];
+    }
+    
+    return error?.message || 'Failed to submit proposal. Please try again later.';
+  };
+  
+  const handleSubmitForReview = () => {
     const missing = checkPrerequisites();
     
     if (missing.length > 0) {
@@ -382,13 +406,19 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
       return;
     }
     
+    // Show confirmation modal
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false);
     setSubmitting(true);
     try {
       await submitProposal(proposal.dataset.id);
       
       const action = proposal.verification.status === 'PENDING' ? 'submitted' : 'resubmitted';
       toast.success(`Proposal ${action} successfully`, {
-        description: 'Your proposal has been sent to the admin review queue.',
+        description: 'Your proposal has been sent to the admin review queue. You will receive a notification when the review is complete.',
       });
       
       // Refresh to get updated status
@@ -396,7 +426,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     } catch (error: any) {
       console.error('Failed to submit proposal:', error);
       toast.error('Failed to submit proposal', {
-        description: error.message || 'Please try again later.',
+        description: getErrorMessage(error),
+        duration: 6000,
       });
     } finally {
       setSubmitting(false);
@@ -877,6 +908,77 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
           onRefresh?.();
         }}
       />
+
+      {/* Submit Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card
+            className="w-full max-w-md shadow-xl"
+            style={{
+              background: tokens.surfaceCard,
+              borderColor: tokens.borderDefault,
+            }}
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertCircle className="w-5 h-5" style={{ color: '#f59e0b' }} />
+                <h3 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
+                  {proposal.verification.status === 'PENDING' ? 'Submit Proposal for Review?' : 'Resubmit Proposal?'}
+                </h3>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <p style={{ color: tokens.textSecondary }}>
+                  {proposal.verification.status === 'PENDING'
+                    ? 'Once submitted, your proposal will be sent to the admin review queue. You can make edits if the admin requests changes.'
+                    : 'You are resubmitting your proposal after addressing the admin\'s feedback.'}
+                </p>
+
+                <div
+                  className="rounded-lg p-3 space-y-2"
+                  style={{
+                    background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                    borderLeft: '3px solid #3b82f6',
+                  }}
+                >
+                  <p className="text-sm font-medium" style={{ color: tokens.textSecondary }}>
+                    Your submission includes:
+                  </p>
+                  <ul className="text-xs space-y-1" style={{ color: tokens.textMuted }}>
+                    <li>• Dataset Title: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.dataset.title}</span></li>
+                    <li>• File: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.currentUpload?.originalFileName || 'Uploaded'}</span></li>
+                    <li>• Format: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.dataFormat?.fileFormat || 'Defined'}</span></li>
+                    <li>• Features: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.features?.length || 0} column{proposal.features?.length !== 1 ? 's' : ''}</span></li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={submitting}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmSubmit}
+                  disabled={submitting}
+                  className="flex-1 text-white"
+                  style={{
+                    background: submitting
+                      ? 'rgba(156, 163, 175, 0.3)'
+                      : 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #3b82f6 100%)',
+                  }}
+                >
+                  {submitting ? 'Submitting...' : 'Confirm & Submit'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </PageBackground>
   );
 }

@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Show loading while checking onboarding status
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center h-screen bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Checking account status...</p>
@@ -26,7 +26,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Show error if API call failed
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+      <div className="flex items-center justify-center h-screen bg-background p-6">
         <div className="text-center max-w-md">
           <div className="mb-4 text-destructive">
             <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">

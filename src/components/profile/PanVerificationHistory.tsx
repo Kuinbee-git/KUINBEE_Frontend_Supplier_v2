@@ -1,32 +1,30 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Clock, Shield, AlertCircle, ChevronRight } from 'lucide-react';
 import { getPanAttempts } from '@/lib/api/supplier';
+import { useSupplierTokens } from '@/hooks/useSupplierTokens';
 import type { PanAttemptListItem } from '@/types/onboarding.types';
 
 interface PanVerificationHistoryProps {
   isDark?: boolean;
 }
 
-export function PanVerificationHistory({ isDark = false }: PanVerificationHistoryProps) {
+export function PanVerificationHistory({ isDark }: PanVerificationHistoryProps) {
   const [attempts, setAttempts] = useState<PanAttemptListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalAttempts, setTotalAttempts] = useState(0);
-
+  
+  const tokens = useSupplierTokens();
   const pageSize = 10;
 
-  const tokens = {
-    textPrimary: isDark ? '#ffffff' : '#1a2240',
-    textSecondary: isDark ? '#94a3b8' : '#64748b',
-    textMuted: isDark ? '#64748b' : '#94a3b8',
-    surface: isDark ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
-    borderDefault: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-    borderSubtle: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+  const colorTokens = {
+    textPrimary: tokens.textPrimary,
+    textSecondary: tokens.textSecondary,
+    textMuted: tokens.textMuted,
   };
 
   useEffect(() => {
@@ -38,8 +36,8 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
     setError(null);
     try {
       const response = await getPanAttempts({ page, pageSize });
-      setAttempts(response.items);
-      setTotalAttempts(response.total);
+      setAttempts(response.items || []);
+      setTotalAttempts(response.total || 0);
     } catch (err: any) {
       console.error('Failed to fetch PAN attempts:', err);
       setError(err.message || 'Failed to load verification history');
@@ -65,26 +63,26 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
     switch (status) {
       case 'VERIFIED':
         return {
-          bg: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-          border: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+          bg: 'rgba(34, 197, 94, 0.1)',
+          border: 'rgba(34, 197, 94, 0.3)',
           text: '#22c55e',
         };
       case 'FAILED':
         return {
-          bg: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-          border: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+          bg: 'rgba(239, 68, 68, 0.1)',
+          border: 'rgba(239, 68, 68, 0.3)',
           text: '#ef4444',
         };
       case 'PENDING':
         return {
-          bg: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)',
-          border: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.2)',
+          bg: 'rgba(234, 179, 8, 0.1)',
+          border: 'rgba(234, 179, 8, 0.3)',
           text: '#eab308',
         };
       default:
         return {
-          bg: isDark ? 'rgba(156, 163, 175, 0.1)' : 'rgba(156, 163, 175, 0.05)',
-          border: isDark ? 'rgba(156, 163, 175, 0.3)' : 'rgba(156, 163, 175, 0.2)',
+          bg: 'rgba(156, 163, 175, 0.1)',
+          border: 'rgba(156, 163, 175, 0.3)',
           text: '#9ca3af',
         };
     }
@@ -103,28 +101,38 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
   const totalPages = Math.ceil(totalAttempts / pageSize);
 
   return (
-    <Card
-      className="border overflow-hidden"
+    <div
+      className="rounded-xl border overflow-hidden"
       style={{
-        background: tokens.surface,
-        borderColor: tokens.borderDefault,
+        background: tokens.glassBg,
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderColor: tokens.glassBorder,
       }}
     >
-      <div className="p-6 border-b" style={{ borderColor: tokens.borderSubtle }}>
+      {/* Header */}
+      <div
+        className="px-6 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: tokens.borderDefault }}
+      >
         <div className="flex items-center gap-3">
-          <Shield className="w-6 h-6" style={{ color: tokens.textSecondary }} />
+          <Shield className="w-5 h-5" style={{ color: tokens.textSecondary }} />
           <div>
-            <h3 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
+            <h3
+              className="text-base"
+              style={{ color: tokens.textPrimary, fontWeight: '600' }}
+            >
               PAN Verification History
             </h3>
-            <p className="text-sm" style={{ color: tokens.textMuted }}>
+            <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
               {totalAttempts} {totalAttempts === 1 ? 'attempt' : 'attempts'} recorded
             </p>
           </div>
         </div>
       </div>
 
-      <div className="p-6">
+      {/* Content */}
+      <div className="p-6 overflow-hidden" style={{ scrollbarWidth: 'none' }}>
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
@@ -139,8 +147,8 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
           <div
             className="p-4 rounded-lg border text-center"
             style={{
-              background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-              borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+              background: 'rgba(239, 68, 68, 0.1)',
+              borderColor: 'rgba(239, 68, 68, 0.3)',
             }}
           >
             <XCircle className="w-8 h-8 mx-auto mb-2" style={{ color: '#ef4444' }} />
@@ -158,8 +166,8 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
           </div>
         ) : attempts.length === 0 ? (
           <div className="text-center py-8">
-            <Shield className="w-12 h-12 mx-auto mb-3" style={{ color: tokens.textMuted }} />
-            <p className="text-sm" style={{ color: tokens.textMuted }}>
+            <Shield className="w-12 h-12 mx-auto mb-3" style={{ color: colorTokens.textMuted }} />
+            <p className="text-sm" style={{ color: colorTokens.textMuted }}>
               No verification attempts yet
             </p>
           </div>
@@ -171,9 +179,9 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
                 return (
                   <div
                     key={attempt.id}
-                    className="p-4 rounded-lg border"
+                    className="p-4 rounded-lg border transition-all duration-200 hover:shadow-sm"
                     style={{
-                      background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+                      background: tokens.inputBg,
                       borderColor: tokens.borderSubtle,
                     }}
                   >
@@ -192,14 +200,14 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
                             >
                               {attempt.status}
                             </span>
-                            <span className="text-xs font-mono" style={{ color: tokens.textMuted }}>
+                            <span className="text-xs font-mono" style={{ color: colorTokens.textMuted }}>
                               {attempt.id.slice(0, 8)}
                             </span>
                           </div>
-                          <p className="text-xs mb-1" style={{ color: tokens.textSecondary }}>
+                          <p className="text-xs mb-1" style={{ color: colorTokens.textSecondary }}>
                             Provider: {attempt.provider}
                           </p>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>
+                          <p className="text-xs" style={{ color: colorTokens.textMuted }}>
                             {formatDate(attempt.createdAt)}
                           </p>
                           {attempt.errorCode && (
@@ -209,7 +217,7 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: tokens.textMuted }} />
+                      <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: colorTokens.textMuted }} />
                     </div>
                   </div>
                 );
@@ -219,7 +227,7 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-t" style={{ borderColor: tokens.borderSubtle }}>
-                <p className="text-sm" style={{ color: tokens.textMuted }}>
+                <p className="text-sm" style={{ color: colorTokens.textMuted }}>
                   Page {page} of {totalPages}
                 </p>
                 <div className="flex gap-2">
@@ -245,6 +253,6 @@ export function PanVerificationHistory({ isDark = false }: PanVerificationHistor
           </>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

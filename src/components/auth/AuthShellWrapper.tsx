@@ -53,7 +53,7 @@ function AuthShellWrapperComponent({
       {/* Optional navigation */}
       {showNav}
 
-      <div className="relative z-0 flex min-h-screen">
+      <div className="relative z-0 flex h-screen">
         {/* Theme toggle - fixed position */}
         <ThemeToggle 
           isDark={isDark} 

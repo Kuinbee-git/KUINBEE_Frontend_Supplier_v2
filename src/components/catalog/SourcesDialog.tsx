@@ -149,15 +149,17 @@ export function SourcesDialog({
   }, [resetForm, onClose]);
 
   const isEditing = !!existingSource;
-  const bgColor = isDark ? '#1e293b' : '#ffffff';
-  const borderColor = isDark ? '#334155' : '#e2e8f0';
+  const bgColor = tokens?.surfaceCard || (isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255,255,255,0.95)');
+  const borderColor = tokens?.borderDefault || (isDark ? 'rgba(255,255,255,0.08)' : '#e6eef8');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent
+        className="backdrop-blur-sm rounded-lg border shadow-xl p-6 max-w-xl"
         style={{
           background: bgColor,
           borderColor,
+          boxShadow: tokens?.shadow || undefined,
         }}
       >
         <DialogHeader>
@@ -237,9 +239,12 @@ export function SourcesDialog({
 
           {/* Error Message */}
           {error && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950">
+            <div
+              className="flex items-start gap-2 p-3 rounded-lg"
+              style={{ background: tokens?.dangerBg || (isDark ? 'rgba(254, 202, 202, 0.06)' : '#fff5f5') }}
+            >
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <p className="text-sm" style={{ color: tokens?.dangerText || (isDark ? '#fecaca' : '#c53030') }}>{error}</p>
             </div>
           )}
 
@@ -252,6 +257,7 @@ export function SourcesDialog({
               style={{
                 borderColor: tokens?.inputBorder,
                 color: tokens?.textPrimary,
+                background: tokens?.buttonBg || 'transparent',
               }}
             >
               Cancel
@@ -259,7 +265,11 @@ export function SourcesDialog({
             <Button
               onClick={handleSubmit}
               disabled={loading}
-              className="bg-primary text-white"
+              style={{
+                background: tokens?.primary || (isDark ? '#0f172a' : '#1f2937'),
+                color: tokens?.buttonText || '#ffffff',
+                borderColor: tokens?.primary || undefined,
+              }}
             >
               {loading ? (
                 <>

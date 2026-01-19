@@ -3,7 +3,7 @@
 import { useOnboardingStatus } from "@/hooks";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import { useRouter } from "next/navigation";
-import { Database, Upload, AlertCircle } from "lucide-react";
+import { Database, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard, StatCard } from "@/components/shared";
 
@@ -11,11 +11,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const tokens = useSupplierTokens();
   const { isComplete } = useOnboardingStatus();
-  
-  const isRestricted = !isComplete;
 
   return (
-    <div className="max-w-[1400px] mx-auto p-8">
+    <div className="max-w-[1400px] mx-auto px-8 py-7 h-full">
       {/* Header */}
       <h1 
         className="text-3xl font-semibold mb-2"
@@ -24,79 +22,55 @@ export default function DashboardPage() {
         Dashboard Overview
       </h1>
       <p 
-        className="mb-6"
+        className="mb-6 text-sm"
         style={{ color: tokens.textSecondary }}
       >
-        Welcome back! Here's an overview of your marketplace activity.
+        Welcome back! Here's an overview of your activity.
       </p>
 
-      {/* Restricted Mode Banner */}
-      {isRestricted && (
-        <div 
-          className="mb-6 p-4 rounded-xl flex items-center gap-4"
-          style={{ 
-            background: tokens.warningBg,
-            border: `1px solid ${tokens.warningBorder}`
-          }}
-        >
-          <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: tokens.warningText }} />
-          <div className="flex-1">
-            <p className="font-medium" style={{ color: tokens.warningText }}>
-              Complete your profile setup
-            </p>
-            <p className="text-sm" style={{ color: tokens.textSecondary }}>
-              You're in restricted mode. Complete verification to unlock all features.
-            </p>
-          </div>
-          <Button 
-            variant="outline"
-            size="sm"
-            onClick={() => router.push('/dashboard/blocked')}
-            style={{ 
-              borderColor: tokens.warningBorder,
-              color: tokens.warningText,
-            }}
-          >
-            Complete Setup
-          </Button>
-        </div>
-      )}
-
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-7">
         <StatCard 
           label="TOTAL PROPOSALS" 
           value="0" 
+          className="p-5"
         />
         <StatCard 
           label="ONBOARDING STATUS" 
-          value={isComplete ? 'Complete' : 'Pending'} 
+          value={
+            isComplete ? (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-base font-semibold" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#10b981"/><path d="M7.5 10.5L9.5 12.5L13 9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Complete
+              </span>
+            ) : (
+              'Pending'
+            )
+          }
+          className="p-5"
         />
       </div>
 
       {/* Create Proposal Section */}
-      <GlassCard className="mb-8">
-        <div className="p-6">
+      <GlassCard className="mb-7">
+        <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
             <Upload className="w-5 h-5" style={{ color: tokens.textPrimary }} />
             <h2 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
               Create Dataset Proposal
             </h2>
           </div>
-          <p className="mb-4" style={{ color: tokens.textSecondary }}>
-            {isRestricted 
-              ? 'Complete your onboarding to submit dataset proposals.'
-              : 'Start sharing your data with the marketplace by creating a proposal.'
-            }
+          <p className="mb-4 text-sm" style={{ color: tokens.textSecondary }}>
+            Start sharing your data with the marketplace by creating a proposal.
           </p>
           <Button
-            disabled={isRestricted}
             onClick={() => router.push('/dashboard/datasets/create')}
+            variant="default"
+            className="bg-primary text-primary-foreground shadow hover:bg-primary/90"
             style={{
-              background: isRestricted 
-                ? tokens.inputBg 
-                : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              opacity: isRestricted ? 0.5 : 1,
+              background: tokens.surfaceUnified,
+              color: tokens.textPrimary,
+              border: `1px solid ${tokens.borderDefault}`,
             }}
           >
             <Upload className="w-4 h-4 mr-2" />
@@ -107,8 +81,8 @@ export default function DashboardPage() {
 
       {/* Your Proposals Section */}
       <GlassCard>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <Database className="w-5 h-5" style={{ color: tokens.textPrimary }} />
               <h2 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
@@ -116,12 +90,14 @@ export default function DashboardPage() {
               </h2>
             </div>
             <Button 
-              variant="outline" 
+              variant="outline"
               size="sm"
               onClick={() => router.push('/dashboard/datasets')}
+              className="border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground"
               style={{
                 borderColor: tokens.borderDefault,
                 color: tokens.textPrimary,
+                background: tokens.glassBg,
               }}
             >
               View All
@@ -130,24 +106,21 @@ export default function DashboardPage() {
           
           {/* Empty State */}
           <div 
-            className="text-center py-12 rounded-xl"
+            className="text-center py-8 rounded-lg"
             style={{ 
               background: tokens.inputBg,
               border: `1px solid ${tokens.borderDefault}`
             }}
           >
             <Database 
-              className="w-12 h-12 mx-auto mb-4" 
+              className="w-10 h-10 mx-auto mb-3" 
               style={{ color: tokens.textMuted }} 
             />
-            <p className="font-medium mb-1" style={{ color: tokens.textPrimary }}>
+            <p className="text-sm font-medium mb-1" style={{ color: tokens.textPrimary }}>
               No proposals yet
             </p>
-            <p className="text-sm" style={{ color: tokens.textSecondary }}>
-              {isRestricted 
-                ? 'Complete onboarding to start creating proposals'
-                : 'Create your first proposal to get started'
-              }
+            <p className="text-xs" style={{ color: tokens.textSecondary }}>
+              Create your first proposal to get started
             </p>
           </div>
         </div>

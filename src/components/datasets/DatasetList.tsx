@@ -16,6 +16,7 @@ interface ProposalListItem {
   status: string;
   verificationStatus: VerificationStatus | null;
   updatedAt: string;
+  currentUploadId?: string | null;
 }
 
 interface DatasetListProps {
@@ -135,24 +136,24 @@ export function DatasetList({
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-[1400px] mx-auto p-8">
+    <div className="w-full h-full overflow-auto flex flex-col">
+      <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Page Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6">
           <div>
             <h1
               className="mb-1"
               style={{
                 color: tokens.textPrimary,
                 fontWeight: '600',
-                fontSize: '24px',
+                fontSize: 'clamp(20px, 5vw, 28px)',
                 lineHeight: '1.3',
               }}
             >
               {statusFilter === 'draft' ? 'Drafts' : 'My Proposals'}
             </h1>
             <p
-              className="text-sm"
+              className="text-xs sm:text-sm"
               style={{
                 color: tokens.textMuted,
                 lineHeight: '1.5',
@@ -167,11 +168,10 @@ export function DatasetList({
 
           <Button
             onClick={handleCreateDataset}
-            className="h-10 px-5 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
+            className="w-full sm:w-auto h-9 sm:h-10 px-4 sm:px-5 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center sm:justify-start gap-2 text-sm flex-shrink-0"
             style={{
               background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
               fontWeight: '600',
-              fontSize: '14px',
             }}
           >
             <Plus className="w-4 h-4" />
@@ -180,17 +180,18 @@ export function DatasetList({
         </div>
 
         {/* Main Content */}
-        {!proposals || proposals.length === 0 ? (
+        <div className="flex-1 min-h-0">
+          {!proposals || proposals.length === 0 ? (
           // Empty State
           <div
-            className="rounded-xl border p-16 text-center"
+            className="rounded-lg sm:rounded-xl border p-8 sm:p-16 text-center h-full flex flex-col items-center justify-center"
             style={{
               background: tokens.surfaceCard,
               borderColor: tokens.borderDefault,
             }}
           >
             <div
-              className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full mx-auto mb-4 sm:mb-6 flex items-center justify-center flex-shrink-0"
               style={{
                 background: isDark
                   ? 'rgba(255, 255, 255, 0.05)'
@@ -198,7 +199,7 @@ export function DatasetList({
               }}
             >
               <FileText
-                className="w-8 h-8"
+                className="w-6 h-6 sm:w-8 sm:h-8"
                 style={{ color: tokens.textMuted }}
               />
             </div>
@@ -208,7 +209,7 @@ export function DatasetList({
               style={{
                 color: tokens.textPrimary,
                 fontWeight: '600',
-                fontSize: '18px',
+                fontSize: 'clamp(16px, 4vw, 20px)',
                 lineHeight: '1.4',
               }}
             >
@@ -216,7 +217,7 @@ export function DatasetList({
             </h3>
 
             <p
-              className="text-sm mb-6 max-w-md mx-auto"
+              className="text-xs sm:text-sm mb-6 sm:mb-8 max-w-sm mx-auto"
               style={{
                 color: tokens.textMuted,
                 lineHeight: '1.6',
@@ -227,11 +228,10 @@ export function DatasetList({
 
             <Button
               onClick={handleCreateDataset}
-              className="h-12 px-8 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] flex items-center gap-2 mx-auto"
+              className="h-10 sm:h-12 px-6 sm:px-8 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] flex items-center gap-2 text-sm"
               style={{
                 background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
                 fontWeight: '600',
-                fontSize: '14px',
               }}
             >
               <Plus className="w-4 h-4" />
@@ -241,13 +241,13 @@ export function DatasetList({
         ) : (
           // Dataset Table
           <div
-            className="rounded-xl border overflow-hidden"
+            className="rounded-lg sm:rounded-xl border overflow-hidden flex flex-col h-full"
             style={{
               background: tokens.surfaceCard,
               borderColor: tokens.borderDefault,
             }}
           >
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto flex-1">
               <table className="w-full">
                 <thead
                   style={{
@@ -259,11 +259,24 @@ export function DatasetList({
                 >
                   <tr>
                     <th
-                      className="px-6 py-4 text-left"
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-center"
                       style={{
                         color: tokens.textSecondary,
                         fontWeight: '600',
-                        fontSize: '12px',
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        minWidth: 'clamp(40px, 5vw, 60px)',
+                      }}
+                    >
+                      No.
+                    </th>
+                    <th
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-left"
+                      style={{
+                        color: tokens.textSecondary,
+                        fontWeight: '600',
+                        fontSize: '11px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
                       }}
@@ -271,53 +284,66 @@ export function DatasetList({
                       Proposal
                     </th>
                     <th
-                      className="px-6 py-4 text-left"
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden sm:table-cell"
                       style={{
                         color: tokens.textSecondary,
                         fontWeight: '600',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        width: '140px',
+                        minWidth: 'clamp(100px, 12vw, 140px)',
                       }}
                     >
                       ID
                     </th>
                     <th
-                      className="px-6 py-4 text-left"
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden md:table-cell"
                       style={{
                         color: tokens.textSecondary,
                         fontWeight: '600',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        width: '180px',
+                        minWidth: 'clamp(80px, 10vw, 120px)',
                       }}
                     >
-                      Status
+                      Submission
                     </th>
                     <th
-                      className="px-6 py-4 text-left"
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-left"
                       style={{
                         color: tokens.textSecondary,
                         fontWeight: '600',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        width: '200px',
+                        minWidth: 'clamp(100px, 12vw, 160px)',
+                      }}
+                    >
+                      Verification
+                    </th>
+                    <th
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden lg:table-cell"
+                      style={{
+                        color: tokens.textSecondary,
+                        fontWeight: '600',
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        minWidth: 'clamp(140px, 18vw, 220px)',
                       }}
                     >
                       Last Updated
                     </th>
                     <th
-                      className="px-6 py-4 text-right"
+                      className="px-3 sm:px-6 py-3 sm:py-4 text-right"
                       style={{
                         color: tokens.textSecondary,
                         fontWeight: '600',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        width: '100px',
+                        minWidth: 'clamp(70px, 10vw, 110px)',
                       }}
                     >
                       Actions
@@ -337,7 +363,7 @@ export function DatasetList({
                       <tr
                         key={proposal.id}
                         onClick={() => handleRowClick(proposal.id)}
-                        className="cursor-pointer transition-colors duration-150"
+                        className="cursor-pointer transition-colors duration-150 text-sm"
                         style={{
                           borderBottom: isLastRow
                             ? 'none'
@@ -350,15 +376,20 @@ export function DatasetList({
                           e.currentTarget.style.background = 'transparent';
                         }}
                       >
+                        {/* Serial Number */}
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-center font-medium" style={{ color: tokens.textMuted }}>
+                          {index + 1}
+                        </td>
+
                         {/* Proposal Title */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          <div className="flex items-center gap-2 min-w-0">
                             <FileText
                               className="w-4 h-4 flex-shrink-0"
                               style={{ color: tokens.textMuted }}
                             />
                             <span
-                              className="text-sm"
+                              className="text-xs sm:text-sm truncate"
                               style={{
                                 color: tokens.textPrimary,
                                 fontWeight: '500',
@@ -371,9 +402,9 @@ export function DatasetList({
                         </td>
 
                         {/* ID */}
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
                           <span
-                            className="text-xs font-mono"
+                            className="text-xs font-mono truncate"
                             style={{
                               color: tokens.textSecondary,
                               lineHeight: '1.4',
@@ -383,15 +414,28 @@ export function DatasetList({
                           </span>
                         </td>
 
-                        {/* Status */}
-                        <td className="px-6 py-4">
+                        {/* Submission Status */}
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
+                          <span
+                            className="inline-block px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap"
+                            style={{
+                              background: proposal.status === 'SUBMITTED' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(148, 163, 176, 0.1)',
+                              color: proposal.status === 'SUBMITTED' ? '#4a90e2' : '#949fa0',
+                            }}
+                          >
+                            {proposal.status}
+                          </span>
+                        </td>
+
+                        {/* Verification Status */}
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <DatasetStatusBadge status={proposal.verificationStatus} isDark={isDark} />
                         </td>
 
                         {/* Last Updated */}
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 hidden lg:table-cell">
                           <span
-                            className="text-sm"
+                            className="text-xs sm:text-sm"
                             style={{
                               color: tokens.textSecondary,
                               lineHeight: '1.4',
@@ -402,9 +446,9 @@ export function DatasetList({
                         </td>
 
                         {/* Actions */}
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
                           <button
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md transition-all duration-150 text-xs"
+                            className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs transition-all duration-150"
                             style={{
                               color: tokens.textSecondary,
                               fontWeight: '500',
@@ -424,7 +468,7 @@ export function DatasetList({
                             }}
                           >
                             View
-                            <ChevronRight className="w-3.5 h-3.5" />
+                            <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                           </button>
                         </td>
                       </tr>
@@ -435,6 +479,7 @@ export function DatasetList({
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -241,3 +241,12 @@
 html {
   font-size: var(--font-size);
 }
+/* Hide scrollbars globally while maintaining scroll functionality */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}

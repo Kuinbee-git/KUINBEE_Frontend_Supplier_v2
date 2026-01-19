@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, Lock, Shield, LogOut, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
+import { useThemeStore } from '@/store/theme.store';
 import { SectionHeader, StatusMessage, InfoCard } from '@/components/shared';
 import { ProfileSection, FormField, StatusBadge } from './shared';
 import { PanVerificationHistory } from './PanVerificationHistory';
@@ -39,6 +40,8 @@ export function SupplierAccount({
   onLogout,
 }: SupplierAccountProps) {
   const tokens = useSupplierTokens();
+  const { theme } = useThemeStore();
+  const isDark = theme === 'dark';
   
   // Onboarding Status
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
@@ -221,7 +224,7 @@ export function SupplierAccount({
         {onboardingStatus?.onboarding.supplierType === 'INDIVIDUAL' && 
          onboardingStatus.onboarding.steps.individualPan.required && (
           <div className="mb-8">
-            <PanVerificationHistory isDark={false} />
+            <PanVerificationHistory isDark={isDark} />
           </div>
         )}
 
