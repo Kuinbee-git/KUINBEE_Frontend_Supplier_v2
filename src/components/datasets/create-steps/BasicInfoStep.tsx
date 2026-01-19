@@ -3,8 +3,10 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DATASET_TYPES, DATASET_CATEGORIES } from '@/constants/dataset.constants';
+import { CategoriesSelect, SourcesSelect } from '@/components/catalog';
+import { DATASET_TYPES } from '@/constants/dataset.constants';
 import type { DatasetSuperType } from '@/types/dataset-proposal.types';
+import type { Source } from '@/types/catalog.types';
 
 interface BasicInfoStepProps {
   data: {
@@ -15,11 +17,20 @@ interface BasicInfoStepProps {
     license: string;
   };
   onChange: (field: string, value: any) => void;
+  onSourceCreated?: (source: Source) => void;
   disabled?: boolean;
   tokens: any;
+  isDark?: boolean;
 }
 
-export function BasicInfoStep({ data, onChange, disabled, tokens }: BasicInfoStepProps) {
+export function BasicInfoStep({ 
+  data, 
+  onChange, 
+  onSourceCreated,
+  disabled, 
+  tokens,
+  isDark = false,
+}: BasicInfoStepProps) {
   return (
     <>
       <div className="space-y-2">
@@ -68,41 +79,25 @@ export function BasicInfoStep({ data, onChange, disabled, tokens }: BasicInfoSte
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="primaryCategoryId" style={{ color: tokens.textPrimary }}>
-          Primary Category ID <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          id="primaryCategoryId"
-          value={data.primaryCategoryId}
-          onChange={(e) => onChange('primaryCategoryId', e.target.value)}
-          placeholder="Enter category ID"
-          disabled={disabled}
-          style={{
-            background: tokens.inputBg,
-            borderColor: tokens.inputBorder,
-            color: tokens.textPrimary,
-          }}
-        />
-      </div>
+      {/* Primary Category - Dynamic Dropdown */}
+      <CategoriesSelect
+        value={data.primaryCategoryId}
+        onValueChange={(value) => onChange('primaryCategoryId', value)}
+        disabled={disabled}
+        tokens={tokens}
+        isDark={isDark}
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="sourceId" style={{ color: tokens.textPrimary }}>
-          Source ID <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          id="sourceId"
-          value={data.sourceId}
-          onChange={(e) => onChange('sourceId', e.target.value)}
-          placeholder="Enter source ID"
-          disabled={disabled}
-          style={{
-            background: tokens.inputBg,
-            borderColor: tokens.inputBorder,
-            color: tokens.textPrimary,
-          }}
-        />
-      </div>
+      {/* Source - Dynamic Dropdown with Create New */}
+      <SourcesSelect
+        value={data.sourceId}
+        onValueChange={(value) => onChange('sourceId', value)}
+        onSourceCreated={onSourceCreated}
+        disabled={disabled}
+        tokens={tokens}
+        isDark={isDark}
+        allowCreate={true}
+      />
 
       <div className="space-y-2">
         <Label htmlFor="license" style={{ color: tokens.textPrimary }}>

@@ -8,9 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { updateProposalMetadata } from '@/lib/api';
+import { CategoriesSelect, SourcesSelect } from '@/components/catalog';
 
 interface MetadataFormData {
   title: string;
+  primaryCategoryId: string;
+  sourceId: string;
   license: string;
   isPaid: boolean;
   price: string;
@@ -21,6 +24,8 @@ interface MetadataEditFormProps {
   datasetId: string;
   initialData: {
     title: string;
+    primaryCategoryId: string;
+    sourceId: string;
     license: string;
     isPaid?: boolean;
     price?: string;
@@ -45,6 +50,8 @@ export function MetadataEditForm({
 
   const [formData, setFormData] = useState<MetadataFormData>({
     title: initialData.title,
+    primaryCategoryId: initialData.primaryCategoryId,
+    sourceId: initialData.sourceId,
     license: initialData.license,
     isPaid: initialData.isPaid || false,
     price: initialData.price || '',
@@ -58,7 +65,7 @@ export function MetadataEditForm({
   };
 
   const isFormValid = () => {
-    if (!formData.title?.trim() || !formData.license?.trim()) {
+    if (!formData.title?.trim() || !formData.license?.trim() || !formData.primaryCategoryId || !formData.sourceId) {
       return false;
     }
     // If paid, price must be provided and valid
@@ -86,6 +93,12 @@ export function MetadataEditForm({
       
       if (formData.title !== initialData.title) {
         payload.title = formData.title;
+      }
+      if (formData.primaryCategoryId !== initialData.primaryCategoryId) {
+        payload.primaryCategoryId = formData.primaryCategoryId;
+      }
+      if (formData.sourceId !== initialData.sourceId) {
+        payload.sourceId = formData.sourceId;
       }
       if (formData.license !== initialData.license) {
         payload.license = formData.license;
@@ -163,6 +176,36 @@ export function MetadataEditForm({
             background: tokens.inputBg,
             borderColor: tokens.inputBorder,
             color: tokens.textPrimary,
+          }}
+        />
+      </div>
+
+      {/* Primary Category Select */}
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textPrimary }}>
+          Primary Category <span className="text-red-500">*</span>
+        </Label>
+        <CategoriesSelect
+          value={formData.primaryCategoryId}
+          onValueChange={(value) => handleFieldChange('primaryCategoryId', value)}
+          disabled={submitting}
+          isDark={isDark}
+        />
+      </div>
+
+      {/* Source Select */}
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textPrimary }}>
+          Source <span className="text-red-500">*</span>
+        </Label>
+        <SourcesSelect
+          value={formData.sourceId}
+          onValueChange={(value) => handleFieldChange('sourceId', value)}
+          disabled={submitting}
+          isDark={isDark}
+          allowCreate={true}
+          onSourceCreated={(source) => {
+            handleFieldChange('sourceId', source.id);
           }}
         />
       </div>

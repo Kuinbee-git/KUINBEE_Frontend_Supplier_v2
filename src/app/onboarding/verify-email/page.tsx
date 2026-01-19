@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { OTPVerification } from "@/components/auth";
 import { sendEmailOtp, verifyEmailOtp, getOnboardingStatus } from "@/lib/api";
@@ -26,6 +26,12 @@ export default function VerifyEmailPage() {
       throw err;
     }
   }, []);
+
+  // Send OTP automatically when page mounts
+  useEffect(() => {
+    // call and ignore errors here (handled by handler)
+    handleSendOtp().catch(() => {});
+  }, [handleSendOtp]);
 
   const handleVerifyOtp = useCallback(async (otp: string) => {
     try {

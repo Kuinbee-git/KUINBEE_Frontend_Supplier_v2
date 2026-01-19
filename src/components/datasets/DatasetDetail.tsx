@@ -12,6 +12,8 @@ import { DatasetStatusBadge, EditableSection } from './shared';
 import { AboutDatasetForm, DataFormatForm, FeaturesForm, MetadataEditForm, SecondaryCategoriesForm } from './forms';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
+import { submitProposal } from '@/lib/api/dataset-proposals';
+import { toast } from 'sonner';
 import { 
   FileText, 
   Upload, 
@@ -300,6 +302,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     metadata: true,
     upload: true,
@@ -314,6 +317,9 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   // Can edit when status is PENDING or CHANGES_REQUESTED
   const isEditable = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
   const isTerminalState = proposal.verification.status === 'VERIFIED' || proposal.verification.status === 'REJECTED';
+  
+  // Can submit when status is PENDING or CHANGES_REQUESTED
+  const canSubmit = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -336,6 +342,65 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
     if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(2)} MB`;
     return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+  
+  // Check if proposal meets all prerequisites for submission
+  const checkPrerequisites = () => {
+    const missing = [];
+    
+    // Must have uploaded file
+    if (!proposal.currentUpload || proposal.currentUpload.status !== 'UPLOADED') {
+      missing.push('File upload');
+    }
+    
+    // Must have About info
+    if (!proposal.about) {
+      missing.push('About Dataset information');
+    }
+    
+    // Must have Data Format info
+    if (!proposal.dataFormat) {
+      missing.push('Data Format information');
+    }
+    
+    // Must have at least 1 feature
+    if (!proposal.features || proposal.features.length === 0) {
+      missing.push('At least one feature/column');
+    }
+    
+    return missing;
+  };
+  
+  const handleSubmitForReview = async () => {
+    const missing = checkPrerequisites();
+    
+    if (missing.length > 0) {
+      toast.error('Cannot submit', {
+        description: `Please complete: ${missing.join(', ')}`,
+        duration: 5000,
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      await submitProposal(proposal.dataset.id);
+      
+      const action = proposal.verification.status === 'PENDING' ? 'submitted' : 'resubmitted';
+      toast.success(`Proposal ${action} successfully`, {
+        description: 'Your proposal has been sent to the admin review queue.',
+      });
+      
+      // Refresh to get updated status
+      onRefresh?.();
+    } catch (error: any) {
+      console.error('Failed to submit proposal:', error);
+      toast.error('Failed to submit proposal', {
+        description: error.message || 'Please try again later.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -421,6 +486,98 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
           </div>
         </Card>
 
+        {/* Submit for Review Section */}
+        {canSubmit && (
+          <Card
+            className="border overflow-hidden"
+            style={{
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)'
+                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(16, 185, 129, 0.03) 100%)',
+              borderColor: tokens.borderDefault,
+            }}
+          >
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: tokens.textPrimary }}>
+                    {proposal.verification.status === 'PENDING' ? 'Submit for Review' : 'Resubmit for Review'}
+                  </h3>
+                  <p className="text-sm mb-4" style={{ color: tokens.textSecondary }}>
+                    {proposal.verification.status === 'PENDING'
+                      ? 'Once submitted, your proposal will be reviewed by an admin. Make sure all required sections are complete.'
+                      : 'Admin has requested changes. Review the feedback and resubmit when ready.'}
+                  </p>
+                  
+                  {(() => {
+                    const missing = checkPrerequisites();
+                    if (missing.length > 0) {
+                      return (
+                        <div
+                          className="p-3 rounded-lg border mb-4"
+                          style={{
+                            background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)',
+                            borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.2)',
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#eab308' }} />
+                            <div>
+                              <p className="text-sm font-medium mb-1" style={{ color: '#eab308' }}>
+                                Missing Required Information
+                              </p>
+                              <ul className="text-xs space-y-1" style={{ color: tokens.textSecondary }}>
+                                {missing.map((item, i) => (
+                                  <li key={i}>• {item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        className="p-3 rounded-lg border mb-4"
+                        style={{
+                          background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+                          borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
+                          <p className="text-sm" style={{ color: '#22c55e' }}>
+                            All requirements met. Ready to submit!
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  
+                  <Button
+                    onClick={handleSubmitForReview}
+                    disabled={submitting || checkPrerequisites().length > 0}
+                    className="gap-2"
+                    style={{
+                      background: submitting || checkPrerequisites().length > 0
+                        ? 'rgba(156, 163, 175, 0.3)'
+                        : 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #3b82f6 100%)',
+                      color: '#fff',
+                    }}
+                  >
+                    <Upload className="w-4 h-4" />
+                    {submitting
+                      ? 'Submitting...'
+                      : proposal.verification.status === 'PENDING'
+                      ? 'Submit for Review'
+                      : 'Resubmit for Review'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <div className="space-y-6">
           {/* Section 1: Basic Metadata */}
           <EditableSection
@@ -439,6 +596,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                 datasetId={proposal.dataset.id}
                 initialData={{
                   title: proposal.dataset.title,
+                  primaryCategoryId: proposal.dataset.primaryCategoryId,
+                  sourceId: proposal.dataset.sourceId,
                   license: proposal.dataset.license,
                   isPaid: proposal.dataset.isPaid || false,
                   price: proposal.dataset.price || '',

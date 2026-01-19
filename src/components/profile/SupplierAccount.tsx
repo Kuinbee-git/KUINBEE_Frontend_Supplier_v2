@@ -6,6 +6,7 @@ import { Mail, Lock, Shield, LogOut, CheckCircle2, AlertCircle, Clock } from 'lu
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
 import { SectionHeader, StatusMessage, InfoCard } from '@/components/shared';
 import { ProfileSection, FormField, StatusBadge } from './shared';
+import { PanVerificationHistory } from './PanVerificationHistory';
 
 import { getOnboardingStatus } from '@/lib/api';
 import type { OnboardingStatusResponse } from '@/types/onboarding.types';
@@ -214,6 +215,14 @@ export function SupplierAccount({
         
         {statusError && (
           <StatusMessage variant="error" message={statusError} className="mb-8" />
+        )}
+        
+        {/* PAN Verification History - Only for Individual suppliers */}
+        {onboardingStatus?.onboarding.supplierType === 'INDIVIDUAL' && 
+         onboardingStatus.onboarding.steps.individualPan.required && (
+          <div className="mb-8">
+            <PanVerificationHistory isDark={false} />
+          </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

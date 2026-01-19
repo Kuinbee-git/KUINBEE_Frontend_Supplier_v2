@@ -48,6 +48,9 @@ export type {
   CompleteOnboardingResponse,
   BusinessDomain,
 } from "./onboarding.types";
+
+// Catalog types (sources & categories)
+export * from "./catalog.types";
 export { BUSINESS_DOMAINS } from "./onboarding.types";
 
 // Dashboard types
