@@ -94,7 +94,10 @@ function BrandIllustrationComponent({ isDark = false }: BrandIllustrationProps) 
             textShadow: isDark ? "0 2px 8px rgba(0, 0, 0, 0.4)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
           }}
         >
-          Powering Trusted Data Distribution
+                       <div>
+                         Kuinbee
+                       </div>
+           Powering Trusted Data Distribution
         </p>
       </div>
 

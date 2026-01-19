@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PageBackground } from '@/components/shared';
 import { DatasetStatusBadge } from './shared';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { listMyProposals } from '@/lib/api';
@@ -101,40 +100,35 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
 
   if (loading) {
     return (
-      <PageBackground>
-        <div className="max-w-[1400px] mx-auto p-8">
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: tokens.textPrimary }}></div>
-          </div>
+      <div className="max-w-[1400px] mx-auto p-8">
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: tokens.textPrimary }}></div>
         </div>
-      </PageBackground>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <PageBackground>
-        <div className="max-w-[1400px] mx-auto p-8">
-          <div className="text-center py-20">
-            <AlertCircle className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.warningText }} />
-            <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-              Failed to load datasets
-            </h3>
-            <p className="mb-6" style={{ color: tokens.textSecondary }}>
-              {error}
-            </p>
-            <Button onClick={fetchDatasets}>Retry</Button>
-          </div>
+      <div className="max-w-[1400px] mx-auto p-8">
+        <div className="text-center py-20">
+          <AlertCircle className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.warningText }} />
+          <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
+            Failed to load datasets
+          </h3>
+          <p className="mb-6" style={{ color: tokens.textSecondary }}>
+            {error}
+          </p>
+          <Button onClick={fetchDatasets}>Retry</Button>
         </div>
-      </PageBackground>
+      </div>
     );
   }
 
   return (
-    <PageBackground>
-      <div className="max-w-[1400px] mx-auto p-8">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="max-w-[1400px] mx-auto p-8">
+      {/* Header */}
+      <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
@@ -350,7 +344,6 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
             })}
           </div>
         )}
-      </div>
-    </PageBackground>
+    </div>
   );
 }

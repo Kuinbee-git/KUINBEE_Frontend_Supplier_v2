@@ -63,6 +63,18 @@ export const DATASET_PROPOSAL_API = {
   SUBMIT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/submit`,
 } as const;
 
+// ===== Catalog (Sources & Categories) API Endpoints =====
+export const CATALOG_API = {
+  // Sources
+  LIST_SOURCES: `${API_BASE_PATH}/supplier/sources`,
+  CREATE_SOURCE: `${API_BASE_PATH}/supplier/sources`,
+  UPDATE_SOURCE: (sourceId: string) => `${API_BASE_PATH}/supplier/sources/${sourceId}`,
+  DELETE_SOURCE: (sourceId: string) => `${API_BASE_PATH}/supplier/sources/${sourceId}`,
+  
+  // Categories
+  LIST_CATEGORIES: `${API_BASE_PATH}/supplier/categories`,
+} as const;
+
 // ===== HTTP Methods =====
 export const HTTP_METHODS = {
   GET: "GET",

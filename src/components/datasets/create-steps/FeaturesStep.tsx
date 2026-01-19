@@ -63,7 +63,7 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label style={{ color: tokens.textPrimary }}>
                   Feature Name <span className="text-red-500">*</span>

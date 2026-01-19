@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PageBackground } from '@/components/shared';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures } from '@/lib/api';
@@ -17,6 +16,7 @@ import type {
   Feature,
   FileFormat
 } from '@/types/dataset-proposal.types';
+import type { Source } from '@/types/catalog.types';
 
 interface CreateDatasetProps {
   isDark?: boolean;
@@ -116,6 +116,13 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     setBasicData((prev) => ({ ...prev, [field]: value }));
     setError(null);
   };
+
+  const handleSourceCreated = useCallback((source: Source) => {
+    // Source was created and auto-selected in SourcesSelect
+    // We can show a success message or handle additional logic
+    setSuccess(`Source "${source.name}" created successfully`);
+    setTimeout(() => setSuccess(null), 3000);
+  }, []);
 
   const handleAboutChange = (field: keyof UpsertAboutInfoRequest, value: string) => {
     setAboutData((prev) => ({ ...prev, [field]: value || null }));
@@ -309,8 +316,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   };
 
   return (
-    <PageBackground withGrid>
-      <div className="relative z-10 max-w-[1100px] mx-auto px-6 py-8">
+    <>
+      <div className="max-w-[1100px] mx-auto px-6 py-8">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -431,8 +438,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
               <BasicInfoStep
                 data={basicData}
                 onChange={handleBasicChange}
+                onSourceCreated={handleSourceCreated}
                 disabled={submitting}
                 tokens={tokens}
+                isDark={isDark}
               />
             )}
 
@@ -585,6 +594,6 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           }}
         />
       )}
-    </PageBackground>
+    </>
   );
 }

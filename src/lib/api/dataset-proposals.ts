@@ -105,9 +105,11 @@ export async function listMyProposals(
     ? `${DATASET_PROPOSAL_API.LIST}?${queryParams.toString()}`
     : DATASET_PROPOSAL_API.LIST;
   
-  return apiFetch<ListProposalsResponse>(url, {
+  const response = await apiFetch<{ success: boolean; data: ListProposalsResponse }>(url, {
     method: "GET",
   });
+  
+  return response.data;
 }
 
 // ===== Get Proposal Details =====
