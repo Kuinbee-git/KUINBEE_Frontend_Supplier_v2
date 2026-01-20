@@ -63,6 +63,10 @@ export function useSupplierTokens() {
         ? "linear-gradient(135deg, rgba(26, 34, 64, 0.4), rgba(42, 50, 80, 0.3))"
         : "linear-gradient(135deg, rgba(26, 34, 64, 0.08), rgba(26, 34, 64, 0.04))",
 
+      // Grid pattern (used by layouts and backgrounds)
+      gridPattern: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(26, 34, 64, 0.15)',
+      gridOpacity: isDark ? 0.6 : 0.4,
+
       // Theme flag
       isDark,
     }),

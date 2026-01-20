@@ -69,8 +69,8 @@ export const DESIGN_TOKENS = {
     borderFocus: '#1a2240',
 
     // Grid Pattern
-    gridPattern: 'rgba(26, 34, 64, 0.06)',
-    gridOpacity: 0.4,
+    gridPattern: 'rgba(26, 34, 64, 0.35)',
+    gridOpacity: 0.8,
   },
 
   // ===== SEMANTIC COLORS =====

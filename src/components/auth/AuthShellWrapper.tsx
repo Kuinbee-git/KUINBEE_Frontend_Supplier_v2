@@ -41,7 +41,7 @@ function AuthShellWrapperComponent({
       textPrimary: "#1a2240",
       textSecondary: "#525d6f",
       borderSubtle: "rgba(26, 34, 64, 0.06)",
-      gridPattern: "rgba(26, 34, 64, 0.06)",
+      gridPattern: "rgba(26, 34, 64, 0.35)",
       rimLight: "linear-gradient(90deg, transparent 0%, rgba(26, 34, 64, 0.12) 50%, transparent 100%)",
     },
   }), []);

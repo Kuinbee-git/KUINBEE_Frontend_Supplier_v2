@@ -31,7 +31,7 @@ export function PageBackground({ children, withGrid = true, className = "" }: Pa
           style={{
             backgroundImage: tokens.isDark
               ? `linear-gradient(${tokens.borderSubtle} 1px, transparent 1px), linear-gradient(90deg, ${tokens.borderSubtle} 1px, transparent 1px)`
-              : `linear-gradient(rgba(26, 34, 64, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 34, 64, 0.06) 1px, transparent 1px)`,
+              : `linear-gradient(rgba(26, 34, 64, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 34, 64, 0.15) 1px, transparent 1px)`,
             backgroundSize: "32px 32px",
             opacity: tokens.isDark ? 0.6 : 0.4,
           }}

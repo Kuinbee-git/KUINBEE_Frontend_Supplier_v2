@@ -49,6 +49,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
     navItemActive: isDark
       ? 'linear-gradient(135deg, rgba(26, 34, 64, 0.4), rgba(42, 50, 80, 0.3))'
       : 'linear-gradient(135deg, rgba(26, 34, 64, 0.08), rgba(26, 34, 64, 0.04))',
+    // Grid tokens
+    gridPattern: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(26, 34, 64, 0.15)',
+    gridOpacity: isDark ? 0.6 : 0.4,
   };
 
   const navItems = [
@@ -107,9 +110,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
         style={{
           backgroundImage: isDark
             ? `linear-gradient(${tokens.borderSubtle} 1px, transparent 1px), linear-gradient(90deg, ${tokens.borderSubtle} 1px, transparent 1px)`
-            : `linear-gradient(rgba(26, 34, 64, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 34, 64, 0.06) 1px, transparent 1px)`,
+            : `linear-gradient(${tokens.gridPattern} 1px, transparent 1px), linear-gradient(90deg, ${tokens.gridPattern} 1px, transparent 1px)`,
           backgroundSize: '32px 32px',
-          opacity: isDark ? 0.6 : 0.4,
+          opacity: tokens.gridOpacity,
         }}
       />
 
