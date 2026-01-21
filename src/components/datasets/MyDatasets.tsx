@@ -302,111 +302,129 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
               <div className="text-xs" style={{ color: tokens.textSecondary }}>Archived</div>
             </Card>
           </div>
+        </div>
 
-{/* Search & Filter Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-              <div className="flex-1 relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200" style={{ color: tokens.textMuted }} />
-                <Input
-                  placeholder="Search datasets..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 transition-all duration-200"
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="gap-2 transition-all duration-200 ease-out whitespace-nowrap"
+        {/* Search & Filter Controls */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200" style={{ color: tokens.textMuted }} />
+              <Input
+                placeholder="Search datasets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 transition-all duration-200"
                 style={{
-                  borderColor: showFilters ? '#3b82f6' : tokens.borderDefault,
-                  color: showFilters ? '#3b82f6' : tokens.textPrimary,
-                  background: showFilters ? 'rgba(59, 130, 246, 0.05)' : tokens.inputBg,
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
                 }}
-              >
-                <Filter className="w-4 h-4" />
-                Filters
-                {(statusFilter !== 'ALL' || visibilityFilter !== 'ALL') && (
-                  <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-blue-500 text-white font-medium">
-                    {[statusFilter !== 'ALL' ? 1 : 0, visibilityFilter !== 'ALL' ? 1 : 0].reduce((a, b) => a + b)}
-                  </span>
-                )}
-              </Button>
+              />
             </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-2 transition-all duration-200 ease-out whitespace-nowrap"
+              style={{
+                borderColor: showFilters ? '#3b82f6' : tokens.borderDefault,
+                color: showFilters ? '#3b82f6' : tokens.textPrimary,
+                background: showFilters ? 'rgba(59, 130, 246, 0.05)' : tokens.inputBg,
+              }}
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {(statusFilter !== 'ALL' || visibilityFilter !== 'ALL') && (
+                <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-blue-500 text-white font-medium">
+                  {[statusFilter !== 'ALL' ? 1 : 0, visibilityFilter !== 'ALL' ? 1 : 0].reduce((a, b) => a + b)}
+                </span>
+              )}
+            </Button>
+          </div>
 
-            {/* Filter Panel */}
-            {showFilters && (
+          {/* Filter Panel */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateRows: showFilters ? '1fr' : '0fr',
+              transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            <div style={{ overflow: 'hidden' }}>
               <Card
-                className="p-4 animate-in fade-in slide-in-from-top-2 duration-300"
                 style={{
                   background: tokens.surfaceCard,
                   borderColor: tokens.borderDefault,
+                  opacity: showFilters ? 1 : 0,
+                  transform: showFilters ? 'translateY(0)' : 'translateY(-8px)',
+                  transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Status Filter */}
-                  <StyledSelect
-                    value={statusFilter}
-                    onValueChange={(value) => setStatusFilter(value as FilterStatus)}
-                    label="Dataset Status"
-                    options={[
-                      { label: 'All Statuses', value: 'ALL' },
-                      { label: 'Submitted', value: 'SUBMITTED' },
-                      { label: 'Under Review', value: 'UNDER_REVIEW' },
-                      { label: 'Verified', value: 'VERIFIED' },
-                      { label: 'Published', value: 'PUBLISHED' },
-                      { label: 'Archived', value: 'ARCHIVED' },
-                      { label: 'Rejected', value: 'REJECTED' },
-                    ]}
-                    isDark={isDark}
-                    tokens={tokens}
-                  />
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Status Filter */}
+                    <div className="space-y-2">
+                      <StyledSelect
+                        value={statusFilter}
+                        onValueChange={(value) => setStatusFilter(value as FilterStatus)}
+                        label="Dataset Status"
+                        options={[
+                          { label: 'All Statuses', value: 'ALL' },
+                          { label: 'Submitted', value: 'SUBMITTED' },
+                          { label: 'Under Review', value: 'UNDER_REVIEW' },
+                          { label: 'Verified', value: 'VERIFIED' },
+                          { label: 'Published', value: 'PUBLISHED' },
+                          { label: 'Archived', value: 'ARCHIVED' },
+                          { label: 'Rejected', value: 'REJECTED' },
+                        ]}
+                        isDark={isDark}
+                        tokens={tokens}
+                      />
+                    </div>
 
-                  {/* Visibility Filter */}
-                  <StyledSelect
-                    value={visibilityFilter}
-                    onValueChange={(value) => setVisibilityFilter(value as FilterVisibility)}
-                    label={`Visibility (Published only)`}
-                    options={[
-                      { label: 'All Visibility', value: 'ALL' },
-                      { label: 'Public', value: 'PUBLIC' },
-                      { label: 'Private', value: 'PRIVATE' },
-                      { label: 'Unlisted', value: 'UNLISTED' },
-                    ]}
-                    isDark={isDark}
-                    tokens={tokens}
-                  />
-                </div>
-
-                {/* Clear Filters */}
-                {(statusFilter !== 'ALL' || visibilityFilter !== 'ALL') && (
-                  <div className="mt-4 pt-4 border-t" style={{ borderColor: tokens.borderDefault }}>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setStatusFilter('ALL');
-                        setVisibilityFilter('ALL');
-                      }}
-                      className="text-sm transition-colors duration-200"
-                      style={{ 
-                        color: tokens.textSecondary,
-                      }}
-                    >
-                      Clear all filters
-                    </Button>
+                    {/* Visibility Filter */}
+                    <div className="space-y-2">
+                      <StyledSelect
+                        value={visibilityFilter}
+                        onValueChange={(value) => setVisibilityFilter(value as FilterVisibility)}
+                        label="Visibility (Published only)"
+                        options={[
+                          { label: 'All Visibility', value: 'ALL' },
+                          { label: 'Public', value: 'PUBLIC' },
+                          { label: 'Private', value: 'PRIVATE' },
+                          { label: 'Unlisted', value: 'UNLISTED' },
+                        ]}
+                        isDark={isDark}
+                        tokens={tokens}
+                      />
+                    </div>
                   </div>
-                )}
+
+                  {/* Clear Filters */}
+                  {(statusFilter !== 'ALL' || visibilityFilter !== 'ALL') && (
+                    <div className="mt-6 pt-4 border-t" style={{ borderColor: tokens.borderDefault }}>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setStatusFilter('ALL');
+                          setVisibilityFilter('ALL');
+                        }}
+                        className="text-sm transition-colors duration-200 hover:bg-opacity-10"
+                        style={{ 
+                          color: tokens.textSecondary,
+                        }}
+                      >
+                        Clear all filters
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </Card>
-            )}
+            </div>
           </div>
+        </div>
 
       {/* Datasets List */}
-      <div className="space-y-4">
+      <div className="space-y-4 pt-2">
         {filteredDatasets.length === 0 ? (
           <Card
             className="p-12"
