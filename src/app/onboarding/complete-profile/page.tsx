@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { UserCircle, Building2 } from "lucide-react";
 import { getSupplierProfile, updateSupplierProfile, completeOnboarding, getOnboardingStatus } from "@/lib/api";
 import { LogoHeader, GlassCard, PageBackground, StatusMessage } from "@/components/shared";
+import { StyledSelect } from "@/components/datasets/shared/StyledSelect";
 import { BUSINESS_DOMAINS } from "@/types/onboarding.types";
 import { ProgressStepper } from "@/components/onboarding";
 import type { SupplierProfile, UpdateProfileRequest, SupplierType } from "@/types";
@@ -332,19 +333,27 @@ export default function CompleteProfilePage() {
                     <Label htmlFor="primaryDomain">
                       Primary Domain (Optional)
                     </Label>
-                    <select
-                      id="primaryDomain"
+                    <StyledSelect
                       value={primaryDomain}
-                      onChange={(e) => setPrimaryDomain(e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                    >
-                      <option value="">Select primary domain</option>
-                      {businessDomains.map((domain) => (
-                        <option key={domain} value={domain}>
-                          {domain}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={(value) => setPrimaryDomain(value)}
+                      options={[
+                        { label: "Select primary domain", value: "" },
+                        ...businessDomains.map((domain) => ({
+                          label: domain,
+                          value: domain,
+                        })),
+                      ]}
+                      placeholder="Select primary domain"
+                      tokens={{
+                        inputBg: '#f8f9fa',
+                        inputBorder: '#e0e0e0',
+                        textPrimary: '#000000',
+                        textSecondary: '#6b7280',
+                        textMuted: '#9ca3af',
+                        surfaceCard: '#ffffff',
+                        borderDefault: '#e5e7eb',
+                      }}
+                    />
                   </div>
                 )}
 
