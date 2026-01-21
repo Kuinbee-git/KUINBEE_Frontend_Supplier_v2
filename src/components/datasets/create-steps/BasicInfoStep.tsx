@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StyledSelect } from '@/components/datasets/shared';
 import { CategoriesSelect, SourcesSelect } from '@/components/catalog';
 import { DATASET_TYPES } from '@/constants/dataset.constants';
 import type { DatasetSuperType } from '@/types/dataset-proposal.types';
@@ -55,28 +55,14 @@ export function BasicInfoStep({
         <Label htmlFor="superType" style={{ color: tokens.textPrimary }}>
           Dataset Type <span className="text-red-500">*</span>
         </Label>
-        <Select
+        <StyledSelect
           value={data.superType}
           onValueChange={(value) => onChange('superType', value)}
-          disabled={disabled}
-        >
-          <SelectTrigger
-            style={{
-              background: tokens.inputBg,
-              borderColor: tokens.inputBorder,
-              color: tokens.textPrimary,
-            }}
-          >
-            <SelectValue placeholder="Select dataset type" />
-          </SelectTrigger>
-          <SelectContent>
-            {DATASET_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={[...DATASET_TYPES]}
+          placeholder="Select dataset type"
+          isDark={isDark}
+          tokens={tokens}
+        />
       </div>
 
       {/* Primary Category - Dynamic Dropdown */}

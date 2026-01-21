@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import { changeDatasetVisibility } from '@/lib/api/datasets';
@@ -107,24 +107,21 @@ export function ChangeVisibilityDialog({
         <div className="space-y-4">
           <div>
             <Label className="mb-2 block">Visibility Setting</Label>
-            <Select value={visibility} onValueChange={(value) => setVisibility(value as DatasetVisibility)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {VISIBILITY_OPTIONS.map((option) => {
-                  const OptionIcon = option.icon;
-                  return (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <OptionIcon className="w-4 h-4" style={{ color: option.color }} />
-                        <span>{option.label}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+            <StyledSelect
+              options={VISIBILITY_OPTIONS.map(option => ({ label: option.label, value: option.value }))}
+              value={visibility}
+              onValueChange={(value) => setVisibility(value as DatasetVisibility)}
+              isDark={isDark}
+              tokens={{
+                inputBg: isDark ? 'rgba(26, 34, 64, 0.6)' : '#ffffff',
+                inputBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(26, 34, 64, 0.15)',
+                textPrimary: isDark ? '#ffffff' : '#1a2240',
+                textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
+                textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
+                surfaceCard: isDark ? 'rgba(26, 34, 64, 0.95)' : '#ffffff',
+                borderDefault: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e5e7eb',
+              }}
+            />
           </div>
 
           {/* Selected Option Description */}

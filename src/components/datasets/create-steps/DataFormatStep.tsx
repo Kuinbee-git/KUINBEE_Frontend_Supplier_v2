@@ -2,7 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import type { FileFormat, CompressionType } from '@/types/dataset-proposal.types';
 
 const FILE_FORMATS: FileFormat[] = ["CSV", "JSON", "EXCEL", "PARQUET", "SQL", "XML", "TSV", "AVRO", "HDF5", "PICKLE", "FEATHER", "OTHER"];
@@ -29,28 +29,14 @@ export function DataFormatStep({ data, onChange, disabled, tokens }: DataFormatS
         <Label htmlFor="fileFormat" style={{ color: tokens.textPrimary }}>
           File Format <span className="text-red-500">*</span>
         </Label>
-        <Select
+        <StyledSelect
+          options={[...FILE_FORMATS].map(format => ({ label: format, value: format }))}
           value={data.fileFormat}
           onValueChange={(value) => onChange('fileFormat', value)}
+          placeholder="Select file format"
           disabled={disabled}
-        >
-          <SelectTrigger
-            style={{
-              background: tokens.inputBg,
-              borderColor: tokens.inputBorder,
-              color: tokens.textPrimary,
-            }}
-          >
-            <SelectValue placeholder="Select file format" />
-          </SelectTrigger>
-          <SelectContent>
-            {FILE_FORMATS.map((format) => (
-              <SelectItem key={format} value={format}>
-                {format}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          tokens={tokens}
+        />
       </div>
 
       <div className="space-y-2">
@@ -113,28 +99,14 @@ export function DataFormatStep({ data, onChange, disabled, tokens }: DataFormatS
         <Label htmlFor="compressionType" style={{ color: tokens.textPrimary }}>
           Compression Type
         </Label>
-        <Select
+        <StyledSelect
+          options={[...COMPRESSION_TYPES].map(type => ({ label: type, value: type }))}
           value={data.compressionType || 'NONE'}
           onValueChange={(value) => onChange('compressionType', value === 'NONE' ? undefined : value)}
+          placeholder="Select compression"
           disabled={disabled}
-        >
-          <SelectTrigger
-            style={{
-              background: tokens.inputBg,
-              borderColor: tokens.inputBorder,
-              color: tokens.textPrimary,
-            }}
-          >
-            <SelectValue placeholder="Select compression" />
-          </SelectTrigger>
-          <SelectContent>
-            {COMPRESSION_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          tokens={tokens}
+        />
       </div>
 
       <div className="space-y-2">

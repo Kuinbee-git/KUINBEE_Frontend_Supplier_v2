@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { DollarSign, AlertCircle } from 'lucide-react';
 import { requestPricingChange } from '@/lib/api/datasets';
 import { toast } from 'sonner';
@@ -133,18 +133,24 @@ export function PricingChangeRequestDialog({
           {/* Requested Pricing Type */}
           <div>
             <Label className="mb-2 block">Pricing Type</Label>
-            <Select
+            <StyledSelect
+              options={[
+                { label: 'Free', value: 'free' },
+                { label: 'Paid', value: 'paid' },
+              ]}
               value={requestedIsPaid ? 'paid' : 'free'}
               onValueChange={(value) => setRequestedIsPaid(value === 'paid')}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="free">Free</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-              </SelectContent>
-            </Select>
+              isDark={isDark}
+              tokens={{
+                inputBg: isDark ? 'rgba(26, 34, 64, 0.6)' : '#ffffff',
+                inputBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(26, 34, 64, 0.15)',
+                textPrimary: isDark ? '#ffffff' : '#1a2240',
+                textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
+                textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
+                surfaceCard: isDark ? 'rgba(26, 34, 64, 0.95)' : '#ffffff',
+                borderDefault: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e5e7eb',
+              }}
+            />
           </div>
 
           {/* Price & Currency (if paid) */}
@@ -163,20 +169,26 @@ export function PricingChangeRequestDialog({
 
               <div>
                 <Label className="mb-2 block">Currency</Label>
-                <Select
+                <StyledSelect
+                  options={[
+                    { label: 'INR (₹)', value: 'INR' },
+                    { label: 'USD ($)', value: 'USD' },
+                    { label: 'EUR (€)', value: 'EUR' },
+                    { label: 'GBP (£)', value: 'GBP' },
+                  ]}
                   value={requestedCurrency}
                   onValueChange={(value) => setRequestedCurrency(value as Currency)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INR">INR (₹)</SelectItem>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                    <SelectItem value="EUR">EUR (€)</SelectItem>
-                    <SelectItem value="GBP">GBP (£)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  isDark={isDark}
+                  tokens={{
+                    inputBg: isDark ? 'rgba(26, 34, 64, 0.6)' : '#ffffff',
+                    inputBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(26, 34, 64, 0.15)',
+                    textPrimary: isDark ? '#ffffff' : '#1a2240',
+                    textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
+                    textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
+                    surfaceCard: isDark ? 'rgba(26, 34, 64, 0.95)' : '#ffffff',
+                    borderDefault: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e5e7eb',
+                  }}
+                />
               </div>
             </>
           )}

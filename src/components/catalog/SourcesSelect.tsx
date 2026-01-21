@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StyledSelect } from '@/components/datasets/shared';
 import { Button } from '@/components/ui/button';
 import { listMySources } from '@/lib/api/catalog';
 import { SourcesDialog } from './SourcesDialog';
@@ -79,64 +79,14 @@ export function SourcesSelect({
 
       {/* Show dropdown */}
       <>
-        <Select
+        <StyledSelect
           value={value}
           onValueChange={onValueChange}
-          disabled={disabled || loading || !!fetchError}
-        >
-          <SelectTrigger
-              className="h-10 w-full rounded-lg transition-all duration-300"
-              style={{
-                background: tokens?.inputBg || (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.9)'),
-                borderColor: displayError ? '#ef4444' : tokens?.inputBorder || (isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0'),
-                color: tokens?.textPrimary || (isDark ? '#ffffff' : '#1a2240'),
-                border: displayError ? '1px solid #ef4444' : `1px solid ${tokens?.inputBorder || (isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0')}`,
-              }}
-            >
-            <SelectValue placeholder={loading ? 'Loading sources...' : 'Select a source'} />
-          </SelectTrigger>
-            <SelectContent
-              className="rounded-lg shadow-lg overflow-hidden"
-              style={{
-                background: tokens?.surfaceCard || (isDark ? 'rgba(26, 34, 64, 0.98)' : 'rgba(255, 255, 255, 0.98)'),
-                border: `1px solid ${tokens?.borderDefault || (isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0')}`,
-                backdropFilter: 'blur(16px)',
-              }}
-            >
-              <div className="py-1">
-                {sources.length === 0 && !loading && !fetchError && (
-                  <div className="px-4 py-2.5 text-sm" style={{ color: tokens?.textMuted }}>
-                    No sources available
-                  </div>
-                )}
-                {sources.length > 0 && sources.map((source) => (
-                  <SelectItem 
-                    key={source.id} 
-                    value={source.id}
-                    className="cursor-pointer px-4 py-2.5 transition-colors duration-200"
-                    style={{
-                      color: tokens?.textPrimary || (isDark ? '#ffffff' : '#1a2240'),
-                      background: 'transparent',
-                      borderRadius: '0.5rem',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = tokens?.navItemHover || (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 34, 64, 0.06)');
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    {source.name}
-                  </SelectItem>
-                ))}
-                {loading && (
-                  <div className="px-4 py-2.5 text-sm" style={{ color: tokens?.textMuted }}>
-                    Loading...
-                  </div>
-                )}
-              </div>
-            </SelectContent>
-        </Select>
+          options={sources.map(source => ({ label: source.name, value: source.id }))}
+          placeholder={loading ? 'Loading sources...' : 'Select a source'}
+          isDark={isDark}
+          tokens={tokens}
+        />
 
         {/* Create New Button */}
         {allowCreate && (

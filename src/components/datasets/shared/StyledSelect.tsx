@@ -15,6 +15,7 @@ interface StyledSelectProps {
   options: { label: string; value: string }[];
   label?: string;
   placeholder?: string;
+  disabled?: boolean;
   isDark?: boolean;
   tokens?: {
     inputBg: string;
@@ -33,17 +34,18 @@ export function StyledSelect({
   options,
   label,
   placeholder = 'Select an option',
+  disabled = false,
   isDark = false,
   tokens,
 }: StyledSelectProps) {
   const defaultTokens = {
-    inputBg: isDark ? '#1a1a2e' : '#f8f9fa',
-    inputBorder: isDark ? '#2d2d4d' : '#e0e0e0',
+    inputBg: isDark ? 'rgba(255, 255, 255, 0.08)' : '#f8f9fa',
+    inputBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e0e0e0',
     textPrimary: isDark ? '#ffffff' : '#000000',
-    textSecondary: isDark ? '#b0b0c0' : '#6b7280',
-    textMuted: isDark ? '#808092' : '#9ca3af',
-    surfaceCard: isDark ? '#0f0f1e' : '#ffffff',
-    borderDefault: isDark ? '#2d2d4d' : '#e5e7eb',
+    textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
+    textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
+    surfaceCard: isDark ? 'rgba(26, 34, 64, 0.95)' : '#ffffff',
+    borderDefault: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e5e7eb',
   };
 
   const finalTokens = tokens || defaultTokens;
@@ -55,7 +57,7 @@ export function StyledSelect({
           {label}
         </label>
       )}
-      <Select value={value} onValueChange={onValueChange}>
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger
           className="transition-all duration-200 ease-out"
           style={{
@@ -70,8 +72,13 @@ export function StyledSelect({
         <SelectContent
           className="transition-all duration-200 ease-out"
           style={{
-            background: finalTokens.surfaceCard,
-            borderColor: finalTokens.borderDefault,
+            background: isDark ? 'rgba(26, 34, 64, 0.95)' : finalTokens.surfaceCard,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : finalTokens.borderDefault,
+            backdropFilter: isDark ? 'blur(12px)' : 'none',
+            WebkitBackdropFilter: isDark ? 'blur(12px)' : 'none',
+            boxShadow: isDark 
+              ? '0 8px 32px rgba(0, 0, 0, 0.4), 0 16px 64px rgba(0, 0, 0, 0.3)'
+              : '0 4px 12px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.08)',
           }}
         >
           {options.map((option) => (
@@ -81,6 +88,15 @@ export function StyledSelect({
               className="transition-colors duration-150"
               style={{
                 color: finalTokens.textPrimary,
+                background: 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark 
+                  ? 'rgba(255, 255, 255, 0.1)'
+                  : 'rgba(26, 34, 64, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
               }}
             >
               {option.label}

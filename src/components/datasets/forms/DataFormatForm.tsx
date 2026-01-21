@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { upsertDataFormatInfo } from '@/lib/api';
@@ -168,28 +168,13 @@ export function DataFormatForm({
               <Label htmlFor="fileFormat" style={{ color: tokens.textPrimary }}>
                 File Format <span className="text-red-500">*</span>
               </Label>
-              <Select
+              <StyledSelect
+                options={FILE_FORMATS.map(format => ({ label: format, value: format }))}
                 value={formData.fileFormat}
                 onValueChange={(value) => handleFieldChange('fileFormat', value as FileFormat)}
                 disabled={submitting}
-              >
-                <SelectTrigger
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FILE_FORMATS.map((format) => (
-                    <SelectItem key={format} value={format}>
-                      {format}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tokens={tokens}
+              />
             </div>
 
             {/* File Size */}
@@ -261,28 +246,13 @@ export function DataFormatForm({
               <Label htmlFor="compressionType" style={{ color: tokens.textPrimary }}>
                 Compression Type
               </Label>
-              <Select
-                value={formData.compressionType}
+              <StyledSelect
+                options={COMPRESSION_TYPES.map(type => ({ label: type, value: type }))}
+                value={formData.compressionType || 'NONE'}
                 onValueChange={(value) => handleFieldChange('compressionType', value as CompressionType)}
                 disabled={submitting}
-              >
-                <SelectTrigger
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {COMPRESSION_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tokens={tokens}
+              />
             </div>
 
             {/* Encoding */}
