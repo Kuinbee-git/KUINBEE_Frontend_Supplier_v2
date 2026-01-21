@@ -7,19 +7,19 @@ import { BaseEntity } from "./common.types";
 // ===== Dataset Status =====
 
 export type DatasetStatus = 
-  | 'draft'                // Initial creation, editable
-  | 'submitted'            // Submitted for review, awaiting file
-  | 'under_review'         // Admin actively reviewing
-  | 'changes_requested'    // Admin requested changes
-  | 'verified'             // Approved and locked (terminal state)
-  | 'rejected';            // Rejected (terminal state)
+  | 'SUBMITTED'            // Submitted for verification
+  | 'UNDER_REVIEW'         // Under admin review
+  | 'VERIFIED'             // Approved, ready to publish
+  | 'PUBLISHED'            // Published on marketplace
+  | 'ARCHIVED'             // Removed from marketplace
+  | 'REJECTED';            // Rejected by admin
 
 // ===== Dataset Visibility =====
 
 export type DatasetVisibility = 
-  | 'public'      // Available to all
-  | 'private'     // Available to specific buyers
-  | 'unlisted';   // Not shown in marketplace
+  | 'PUBLIC'      // Available to all
+  | 'PRIVATE'     // Available to specific buyers
+  | 'UNLISTED';   // Not shown in marketplace browse
 
 // ===== Dataset Entity =====
 
@@ -156,4 +156,130 @@ export interface DatasetListItem {
   updatedAt: string;
   uploadCount: number;
   hasActiveUpload: boolean;
+}
+
+// ===== Published Dataset Types (Stage 4) =====
+
+import type { DatasetStatus as ProposalDatasetStatus, DatasetVisibility as ProposalDatasetVisibility, Currency } from './dataset-proposal.types';
+
+// List My Datasets
+export interface ListDatasetsQuery {
+  status?: "VERIFIED" | "PUBLISHED" | "ARCHIVED" | "REJECTED";
+  visibility?: "PUBLIC" | "PRIVATE" | "UNLISTED";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PublishedDatasetListItem {
+  id: string;
+  datasetUniqueId: string;
+  title: string;
+  status: ProposalDatasetStatus;
+  visibility: ProposalDatasetVisibility;
+  publishedUploadId: string | null;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export interface ListDatasetsResponse {
+  items: PublishedDatasetListItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+// Get Dataset Details
+export interface DatasetDetailsResponse {
+  dataset: {
+    id: string;
+    datasetUniqueId: string;
+    title: string;
+    status: ProposalDatasetStatus;
+    visibility: ProposalDatasetVisibility;
+    isPaid: boolean;
+    price: string | null;
+    currency: Currency;
+    license: string;
+    publishedUploadId: string | null;
+    publishedAt: string | null;
+    archivedAt: string | null;
+    updatedAt: string;
+  };
+  verification: {
+    id: string;
+    status: "PENDING" | "SUBMITTED" | "CHANGES_REQUESTED" | "RESUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
+    notes: string | null;
+    rejectionReason: string | null;
+    updatedAt: string;
+  } | null;
+  publishedUpload: {
+    id: string;
+    status: "UPLOADING" | "UPLOADED" | "FAILED" | "PROMOTED";
+    scope: "FINAL";
+    originalFileName: string | null;
+    contentType: string | null;
+    sizeBytes: string | null;
+    updatedAt: string;
+  } | null;
+}
+
+// Publish Dataset
+export interface PublishDatasetResponse {
+  dataset: {
+    id: string;
+    status: "PUBLISHED";
+    publishedUploadId: string;
+    publishedAt: string;
+    updatedAt: string;
+  };
+  publishedUpload: {
+    id: string;
+    scope: "FINAL";
+    status: "PROMOTED";
+    s3Key: string;
+    updatedAt: string;
+  };
+}
+
+// Change Visibility
+export interface ChangeVisibilityRequest {
+  visibility: "PUBLIC" | "PRIVATE" | "UNLISTED";
+}
+
+export interface ChangeVisibilityResponse {
+  dataset: {
+    id: string;
+    visibility: ProposalDatasetVisibility;
+    updatedAt: string;
+  };
+}
+
+// Request Pricing Change
+export interface PricingChangeRequest {
+  requestedIsPaid: boolean;
+  requestedPrice?: string | null;
+  requestedCurrency?: "INR" | "USD" | "EUR" | "GBP";
+  reason: string;
+}
+
+// Archive Dataset
+export interface ArchiveDatasetResponse {
+  dataset: {
+    id: string;
+    status: "ARCHIVED";
+    archivedAt: string;
+    updatedAt: string;
+  };
+}
+
+// Download Published File
+export interface DownloadUrlResponse {
+  url: string;
+  expiresAt: string;
+  upload: {
+    id: string;
+    originalFileName: string | null;
+    contentType: string | null;
+    sizeBytes: string | null;
+  };
 }

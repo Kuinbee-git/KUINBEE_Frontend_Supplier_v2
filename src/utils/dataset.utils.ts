@@ -27,6 +27,9 @@ export function formatDate(dateString: string): string {
  * Get status configuration for dataset status badges
  */
 export function getStatusConfig(status: DatasetStatus, isDark: boolean = false) {
+  // Normalize status to lowercase for lookup
+  const statusKey = status.toLowerCase() as keyof typeof configs;
+  
   const configs = {
     draft: {
       label: 'Draft',
@@ -70,8 +73,22 @@ export function getStatusConfig(status: DatasetStatus, isDark: boolean = false) 
       border: 'rgba(239, 68, 68, 0.3)',
       text: '#ef4444',
     },
+    published: {
+      label: 'Published',
+      color: '#22c55e',
+      bg: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+      border: 'rgba(34, 197, 94, 0.3)',
+      text: isDark ? '#22c55e' : '#10b981',
+    },
+    archived: {
+      label: 'Archived',
+      color: '#6b7280',
+      bg: isDark ? 'rgba(107, 114, 128, 0.1)' : 'rgba(107, 114, 128, 0.08)',
+      border: 'rgba(107, 114, 128, 0.3)',
+      text: isDark ? '#9ca3af' : '#6b7280',
+    },
   };
-  return configs[status];
+  return configs[statusKey];
 }
 
 /**

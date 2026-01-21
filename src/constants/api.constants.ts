@@ -63,6 +63,20 @@ export const DATASET_PROPOSAL_API = {
   SUBMIT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/submit`,
 } as const;
 
+// ===== Dataset API Endpoints (Published/Verified Datasets) =====
+export const DATASET_API = {
+  // List & Details
+  LIST: `${API_BASE_PATH}/supplier/datasets`,
+  GET_DETAILS: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}`,
+  
+  // Actions
+  PUBLISH: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/publish`,
+  CHANGE_VISIBILITY: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/visibility`,
+  REQUEST_PRICING_CHANGE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/pricing-change-request`,
+  ARCHIVE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/archive`,
+  DOWNLOAD_PUBLISHED: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/published-upload/download-url`,
+} as const;
+
 // ===== Catalog (Sources & Categories) API Endpoints =====
 export const CATALOG_API = {
   // Sources

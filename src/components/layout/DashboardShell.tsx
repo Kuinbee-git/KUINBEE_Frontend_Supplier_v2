@@ -45,10 +45,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
     borderDefault: isDark ? 'rgba(255, 255, 255, 0.1)' : '#dde3f0',
     borderSubtle: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(26, 34, 64, 0.06)',
     sidebarBg: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)',
-    navItemHover: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 34, 64, 0.06)',
+    navItemHover: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 34, 64, 0.08)',
     navItemActive: isDark
       ? 'linear-gradient(135deg, rgba(26, 34, 64, 0.4), rgba(42, 50, 80, 0.3))'
-      : 'linear-gradient(135deg, rgba(26, 34, 64, 0.08), rgba(26, 34, 64, 0.04))',
+      : 'linear-gradient(135deg, rgba(26, 34, 64, 0.12), rgba(26, 34, 64, 0.06))',
+    navItemShadow: isDark
+      ? 'none'
+      : '0 2px 8px rgba(26, 34, 64, 0.08), 0 4px 16px rgba(26, 34, 64, 0.06)',
+    navItemActiveBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(26, 34, 64, 0.15)',
     // Grid tokens
     gridPattern: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(26, 34, 64, 0.15)',
     gridOpacity: isDark ? 0.6 : 0.4,
@@ -133,20 +137,22 @@ export function DashboardShell({ children }: DashboardShellProps) {
             className="h-24 flex items-center justify-center border-b transition-all duration-300" 
             style={{ 
               borderColor: tokens.borderDefault,
-              paddingLeft: sidebarCollapsed ? '0' : '12px',
-              paddingRight: sidebarCollapsed ? '0' : '12px',
+              paddingLeft: sidebarCollapsed ? '0' : '16px',
+              paddingRight: sidebarCollapsed ? '0' : '16px',
+              background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.4)',
             }}
           >
             <div className="flex items-center justify-center gap-3 w-full">
               <div
-                className="border rounded-lg flex items-center justify-center flex-shrink-0"
+                className="border rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-105 cursor-pointer"
                 style={{
                   height: '48px',
                   width: '54px',
-                  background: tokens.glassBg,
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  border: `1px solid ${tokens.glassBorder}`,
+                  background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: `1.5px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(26, 34, 64, 0.12)'}`,
+                  boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(26, 34, 64, 0.08), 0 4px 16px rgba(26, 34, 64, 0.06)',
                 }}
               >
                 <img
@@ -176,12 +182,28 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <div className="px-4 py-3 border-b flex justify-center" style={{ borderColor: tokens.borderDefault }}>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`w-full rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105${sidebarCollapsed ? '' : ' gap-2 px-5 py-2 border'}`}
+              className={`w-full rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-[1.02] active:scale-95${sidebarCollapsed ? '' : ' gap-2 px-5 py-2 border'}`}
               style={{
                 height: '40px',
-                background: tokens.glassBg,
-                border: `1px solid ${tokens.glassBorder}`,
+                background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.9)',
+                border: `1.5px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(26, 34, 64, 0.12)'}`,
                 color: tokens.textSecondary,
+                boxShadow: isDark ? 'none' : '0 2px 6px rgba(26, 34, 64, 0.08), 0 4px 12px rgba(26, 34, 64, 0.05)',
+                fontWeight: '600',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 1)';
+                e.currentTarget.style.color = tokens.textPrimary;
+                if (!isDark) {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(26, 34, 64, 0.1), 0 8px 24px rgba(26, 34, 64, 0.08)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.9)';
+                e.currentTarget.style.color = tokens.textSecondary;
+                if (!isDark) {
+                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(26, 34, 64, 0.08), 0 4px 12px rgba(26, 34, 64, 0.05)';
+                }
               }}
             >
               {sidebarCollapsed ? (
@@ -212,20 +234,26 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   style={{
                     padding: sidebarCollapsed ? '12px' : '12px 16px',
                     background: isActive ? tokens.navItemActive : 'transparent',
-                    border: `1px solid ${isActive ? tokens.borderDefault : 'transparent'}`,
+                    border: `1px solid ${isActive ? tokens.navItemActiveBorder : 'transparent'}`,
+                    boxShadow: isActive && !isDark ? tokens.navItemShadow : 'none',
                     color: isDisabled ? tokens.textMuted : tokens.textPrimary,
                     opacity: isDisabled ? 0.5 : 1,
                     cursor: isDisabled ? 'not-allowed' : 'pointer',
                     minWidth: '0',
+                    fontWeight: isActive ? '600' : '500',
                   }}
                   onMouseEnter={(e) => {
                     if (!isDisabled && !isActive) {
                       e.currentTarget.style.background = tokens.navItemHover;
+                      if (!isDark) {
+                        e.currentTarget.style.boxShadow = '0 1px 4px rgba(26, 34, 64, 0.06)';
+                      }
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.boxShadow = 'none';
                     }
                   }}
                 >
@@ -272,15 +300,27 @@ export function DashboardShell({ children }: DashboardShellProps) {
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleTheme}
-                className="w-11 h-11 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-105"
+                className="w-11 h-11 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95"
                 style={{
-                  background: tokens.glassBg,
+                  background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)',
                   backdropFilter: 'blur(16px)',
                   WebkitBackdropFilter: 'blur(16px)',
-                  border: `1px solid ${tokens.glassBorder}`,
+                  border: `1.5px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(26, 34, 64, 0.15)'}`,
                   color: tokens.textPrimary,
+                  boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)',
                 }}
-
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 1)';
+                  if (!isDark) {
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(26, 34, 64, 0.12), 0 8px 32px rgba(26, 34, 64, 0.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)';
+                  if (!isDark) {
+                    e.currentTarget.style.boxShadow = '0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)';
+                  }
+                }}
                 aria-label="Toggle dark mode"
               >
                 {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -290,13 +330,28 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-5 h-11 rounded-lg transition-all duration-300 hover:scale-105"
+                  className="flex items-center gap-2 px-5 h-11 rounded-lg transition-all duration-300 hover:scale-105 active:scale-95"
                   style={{
-                    background: tokens.glassBg,
+                    background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)',
                     backdropFilter: 'blur(16px)',
                     WebkitBackdropFilter: 'blur(16px)',
-                    border: `1px solid ${tokens.glassBorder}`,
+                    border: `1.5px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(26, 34, 64, 0.15)'}`,
                     color: tokens.textSecondary,
+                    boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.3)' : '0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 1)';
+                    e.currentTarget.style.color = tokens.textPrimary;
+                    if (!isDark) {
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(26, 34, 64, 0.12), 0 8px 32px rgba(26, 34, 64, 0.1)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)';
+                    e.currentTarget.style.color = tokens.textSecondary;
+                    if (!isDark) {
+                      e.currentTarget.style.boxShadow = '0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)';
+                    }
                   }}
                 >
                   <User className="w-5 h-5" />
@@ -321,6 +376,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                         backdropFilter: 'blur(16px)',
                         WebkitBackdropFilter: 'blur(16px)',
                         border: `1px solid ${tokens.glassBorder}`,
+                        boxShadow: isDark ? '0 8px 24px rgba(0, 0, 0, 0.4)' : '0 4px 16px rgba(26, 34, 64, 0.12), 0 8px 32px rgba(26, 34, 64, 0.08)',
                       }}
                     >
                       <div className="py-1">

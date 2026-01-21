@@ -6,6 +6,7 @@
 export * from "./auth";
 export * from "./supplier";
 export * from "./dataset-proposals";
+export * from "./datasets";
 export * from "./catalog";
 
 // Explicit re-exports for profile functions

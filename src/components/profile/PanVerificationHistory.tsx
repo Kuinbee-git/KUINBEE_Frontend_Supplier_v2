@@ -108,6 +108,7 @@ export function PanVerificationHistory({ isDark }: PanVerificationHistoryProps) 
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderColor: tokens.glassBorder,
+        boxShadow: tokens.isDark ? undefined : tokens.glassShadow,
       }}
     >
       {/* Header */}

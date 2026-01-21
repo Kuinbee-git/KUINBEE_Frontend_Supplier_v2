@@ -7,3 +7,6 @@ export { MyDatasetDetail } from './MyDatasetDetail';
 
 // Shared components
 export * from './shared';
+
+// Action components
+export * from './actions';

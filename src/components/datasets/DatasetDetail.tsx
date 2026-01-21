@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { PageBackground } from '@/components/shared';
 import { DatasetStatusBadge, EditableSection } from './shared';
 import { AboutDatasetForm, DataFormatForm, FeaturesForm, MetadataEditForm, SecondaryCategoriesForm } from './forms';
@@ -20,12 +18,7 @@ import {
   CheckCircle, 
   XCircle,
   AlertCircle,
-  Calendar,
   ArrowLeft,
-  Edit,
-  Edit2,
-  Save,
-  X,
   ChevronUp,
   ChevronDown,
   Database,

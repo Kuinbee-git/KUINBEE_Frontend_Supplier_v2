@@ -13,7 +13,6 @@ interface ProposalListItem {
   id: string;
   datasetUniqueId: string;
   title: string;
-  status: string;
   verificationStatus: VerificationStatus | null;
   updatedAt: string;
   currentUploadId?: string | null;
@@ -297,19 +296,6 @@ export function DatasetList({
                       ID
                     </th>
                     <th
-                      className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden md:table-cell"
-                      style={{
-                        color: tokens.textSecondary,
-                        fontWeight: '600',
-                        fontSize: '11px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        minWidth: 'clamp(80px, 10vw, 120px)',
-                      }}
-                    >
-                      Submission
-                    </th>
-                    <th
                       className="px-3 sm:px-6 py-3 sm:py-4 text-left"
                       style={{
                         color: tokens.textSecondary,
@@ -320,7 +306,7 @@ export function DatasetList({
                         minWidth: 'clamp(100px, 12vw, 160px)',
                       }}
                     >
-                      Verification
+                      Submission Status
                     </th>
                     <th
                       className="px-3 sm:px-6 py-3 sm:py-4 text-left hidden lg:table-cell"
@@ -411,19 +397,6 @@ export function DatasetList({
                             }}
                           >
                             {proposal.datasetUniqueId}
-                          </span>
-                        </td>
-
-                        {/* Submission Status */}
-                        <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
-                          <span
-                            className="inline-block px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap"
-                            style={{
-                              background: proposal.status === 'SUBMITTED' ? 'rgba(74, 144, 226, 0.1)' : 'rgba(148, 163, 176, 0.1)',
-                              color: proposal.status === 'SUBMITTED' ? '#4a90e2' : '#949fa0',
-                            }}
-                          >
-                            {proposal.status}
                           </span>
                         </td>
 

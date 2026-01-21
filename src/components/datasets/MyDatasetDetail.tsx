@@ -5,10 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PageBackground } from '@/components/shared';
-import { DatasetStatusBadge } from './shared';
+import { DatasetStatusBadge, PublishStatusBadge } from './shared';
 import { DatasetDetail } from './DatasetDetail';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { getProposalDetails } from '@/lib/api';
+import { 
+  PublishConfirmDialog,
+  ChangeVisibilityDialog,
+  PricingChangeRequestDialog,
+  ArchiveConfirmDialog,
+  DownloadButton,
+} from './actions';
 import { 
   ArrowLeft, 
   AlertCircle, 
@@ -17,7 +24,10 @@ import {
   XCircle,
   FileText,
   Calendar,
-  User
+  Upload,
+  Eye,
+  DollarSign,
+  Archive
 } from 'lucide-react';
 import type { ProposalDetailsResponse, VerificationStatus } from '@/types/dataset-proposal.types';
 
@@ -91,6 +101,12 @@ export function MyDatasetDetail({ datasetId, isDark = false }: MyDatasetDetailPr
   const [proposal, setProposal] = useState<ProposalDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Dialog states
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
+  const [showPricingDialog, setShowPricingDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   const fetchProposal = async () => {
     try {
@@ -149,6 +165,11 @@ export function MyDatasetDetail({ datasetId, isDark = false }: MyDatasetDetailPr
   // Check if dataset is editable (only PENDING or CHANGES_REQUESTED)
   const isEditable = proposal.verification.status === 'PENDING' || 
                      proposal.verification.status === 'CHANGES_REQUESTED';
+  
+  // Check if dataset is verified and ready to publish
+  const isVerified = proposal.verification.status === 'VERIFIED';
+  const isPublished = proposal.dataset.status === 'PUBLISHED';
+  const isArchived = proposal.dataset.status === 'ARCHIVED';
 
   return (
     <PageBackground>
@@ -188,6 +209,9 @@ export function MyDatasetDetail({ datasetId, isDark = false }: MyDatasetDetailPr
                   {verificationInfo.label}
                 </h3>
                 <DatasetStatusBadge status={proposal.verification.status} isDark={isDark} />
+                {proposal.dataset?.status && (
+                  <PublishStatusBadge status={proposal.dataset.status} isDark={isDark} />
+                )}
               </div>
               <p className="text-sm mb-3" style={{ color: tokens.textSecondary }}>
                 {verificationInfo.description}
@@ -230,8 +254,112 @@ export function MyDatasetDetail({ datasetId, isDark = false }: MyDatasetDetailPr
           </div>
         </Card>
 
+        {/* Action Buttons Section - Show when VERIFIED */}
+        {isVerified && !isPublished && (
+          <Card
+            className="p-6 mb-6"
+            style={{
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)'
+                : 'linear-gradient(135deg, rgba(34, 197, 94, 0.03) 0%, rgba(16, 185, 129, 0.03) 100%)',
+              borderColor: tokens.borderDefault,
+              borderLeft: '4px solid #22c55e',
+            }}
+          >
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-5 h-5" style={{ color: '#22c55e' }} />
+                  <h3 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
+                    Ready to Publish
+                  </h3>
+                </div>
+                <p className="text-sm mb-4" style={{ color: tokens.textSecondary }}>
+                  Your dataset has been verified and approved. You can now publish it to make it available on the marketplace.
+                </p>
+                
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={() => setShowPublishDialog(true)}
+                    className="gap-2 text-white"
+                    style={{
+                      background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #22c55e 100%)',
+                    }}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Publish Dataset
+                  </Button>
+                  
+                  <DownloadButton
+                    datasetId={proposal.dataset.id}
+                    fileName={proposal.currentUpload?.originalFileName}
+                    variant="outline"
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Published Dataset Actions */}
+        {isPublished && !isArchived && (
+          <Card
+            className="p-6 mb-6"
+            style={{
+              background: tokens.surfaceCard,
+              borderColor: tokens.borderDefault,
+            }}
+          >
+            <div className="flex items-start justify-between gap-6 mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-2" style={{ color: tokens.textPrimary }}>
+                  Dataset Actions
+                </h3>
+                <p className="text-sm" style={{ color: tokens.textSecondary }}>
+                  Manage your published dataset settings and availability.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => setShowVisibilityDialog(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                Change Visibility
+              </Button>
+              
+              <Button
+                onClick={() => setShowPricingDialog(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <DollarSign className="w-4 h-4" />
+                Request Pricing Change
+              </Button>
+              
+              <Button
+                onClick={() => setShowArchiveDialog(true)}
+                variant="outline"
+                className="gap-2 text-red-600"
+              >
+                <Archive className="w-4 h-4" />
+                Archive Dataset
+              </Button>
+              
+              <DownloadButton
+                datasetId={proposal.dataset.id}
+                fileName={proposal.currentUpload?.originalFileName}
+                variant="outline"
+              />
+            </div>
+          </Card>
+        )}
+
         {/* Edit Restriction Notice */}
-        {!isEditable && (
+        {!isEditable && !isVerified && (
           <Card
             className="p-4 mb-6"
             style={{
@@ -243,7 +371,6 @@ export function MyDatasetDetail({ datasetId, isDark = false }: MyDatasetDetailPr
               <AlertCircle className="w-5 h-5" style={{ color: tokens.infoText }} />
               <p className="text-sm" style={{ color: tokens.textSecondary }}>
                 This dataset is currently {proposal.verification.status.toLowerCase().replace('_', ' ')} and cannot be edited.
-                {proposal.verification.status === 'VERIFIED' && ' You can view all details below.'}
                 {proposal.verification.status === 'REJECTED' && ' Please contact support if you believe this is an error.'}
               </p>
             </div>
@@ -257,6 +384,53 @@ export function MyDatasetDetail({ datasetId, isDark = false }: MyDatasetDetailPr
           onRefresh={fetchProposal}
         />
       </div>
+
+      {/* Action Dialogs */}
+      {isVerified && (
+        <PublishConfirmDialog
+          isOpen={showPublishDialog}
+          onClose={() => setShowPublishDialog(false)}
+          datasetId={proposal.dataset.id}
+          datasetTitle={proposal.dataset.title}
+          uploadFileName={proposal.currentUpload?.originalFileName}
+          onSuccess={fetchProposal}
+          isDark={isDark}
+        />
+      )}
+
+      {isPublished && (
+        <>
+          <ChangeVisibilityDialog
+            isOpen={showVisibilityDialog}
+            onClose={() => setShowVisibilityDialog(false)}
+            datasetId={proposal.dataset.id}
+            currentVisibility={proposal.dataset.visibility || 'PUBLIC'}
+            onSuccess={fetchProposal}
+            isDark={isDark}
+          />
+
+          <PricingChangeRequestDialog
+            isOpen={showPricingDialog}
+            onClose={() => setShowPricingDialog(false)}
+            datasetId={proposal.dataset.id}
+            datasetTitle={proposal.dataset.title}
+            currentIsPaid={proposal.dataset.isPaid || false}
+            currentPrice={proposal.dataset.price}
+            currentCurrency={proposal.dataset.currency}
+            onSuccess={fetchProposal}
+            isDark={isDark}
+          />
+
+          <ArchiveConfirmDialog
+            isOpen={showArchiveDialog}
+            onClose={() => setShowArchiveDialog(false)}
+            datasetId={proposal.dataset.id}
+            datasetTitle={proposal.dataset.title}
+            onSuccess={fetchProposal}
+            isDark={isDark}
+          />
+        </>
+      )}
     </PageBackground>
   );
 }

@@ -325,7 +325,7 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
                     Supplier Type
                   </label>
                   {profile && (
-                    <span className="text-xs px-2 py-1 rounded bg-amber-500/20 text-amber-600" style={{ color: 'rgb(180, 83, 9)' }}>
+                    <span className="text-xs px-2 py-1 rounded font-medium" style={{ background: tokens.isDark ? 'rgba(217, 119, 6, 0.35)' : 'rgba(217, 119, 6, 0.15)', color: tokens.isDark ? '#fcd34d' : '#b45309' }}>
                       Cannot change
                     </span>
                   )}
@@ -486,7 +486,7 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
           </Button>
           
           {isOnboardingComplete && (
-            <span className="text-sm px-3 py-1 rounded bg-purple-500/20 text-purple-600">
+            <span className="text-sm px-3 py-1 rounded font-medium" style={{ background: tokens.isDark ? 'rgba(168, 85, 247, 0.4)' : 'rgba(168, 85, 247, 0.15)', color: tokens.isDark ? '#e9d5ff' : '#9333ea' }}>
               Profile is locked - onboarding complete
             </span>
           )}
