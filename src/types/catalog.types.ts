@@ -36,7 +36,10 @@ export interface CreateSourceRequest {
 }
 
 export interface CreateSourceResponse {
-  source: Source;
+  success: boolean;
+  data: {
+    source: Source;
+  };
 }
 
 export interface UpdateSourceRequest {
@@ -46,7 +49,10 @@ export interface UpdateSourceRequest {
 }
 
 export interface UpdateSourceResponse {
-  source: Source;
+  success: boolean;
+  data: {
+    source: Source;
+  };
 }
 
 export interface DeleteSourceResponse {

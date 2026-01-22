@@ -91,10 +91,12 @@ export async function listMySources(
 export async function createSource(
   data: CreateSourceRequest
 ): Promise<CreateSourceResponse> {
-  return apiFetch<CreateSourceResponse>(CATALOG_API.CREATE_SOURCE, {
+  const response = await apiFetch<CreateSourceResponse>(CATALOG_API.CREATE_SOURCE, {
     method: "POST",
     body: JSON.stringify(data),
   });
+  
+  return response;
 }
 
 /**

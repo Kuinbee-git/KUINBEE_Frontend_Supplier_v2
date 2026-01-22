@@ -126,9 +126,16 @@ export function SourcesDialog({
         result = await createSource(createData);
       }
 
-      onSuccess?.(result.source);
-      resetForm();
-      onClose();
+      // Extract source from nested response structure
+      const sourceObj = result?.data?.source;
+      if (sourceObj && sourceObj.id) {
+        onSuccess?.(sourceObj);
+        resetForm();
+        onClose();
+      } else {
+        console.error('API did not return a valid source object:', result);
+        setError('Failed to create source: invalid response from server.');
+      }
     } catch (err: any) {
       console.error('Failed to save source:', err);
 

@@ -349,12 +349,12 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     }
     
     // Must have About info
-    if (!proposal.about) {
+    if (!proposal.aboutDatasetInfo) {
       missing.push('About Dataset information');
     }
     
     // Must have Data Format info
-    if (!proposal.dataFormat) {
+    if (!proposal.dataFormatInfo) {
       missing.push('Data Format information');
     }
     
@@ -776,14 +776,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             isEditable={isEditable}
             isEditing={editingSection === 'about'}
             onEditClick={() => setEditingSection('about')}
-            isEmpty={!proposal.about}
+            isEmpty={!proposal.aboutDatasetInfo}
             emptyIcon={<AlertCircle className="w-12 h-12" />}
             emptyMessage="About information not provided yet"
             emptyActionLabel="Add About Information"
             editContent={
               <AboutDatasetForm
                 datasetId={proposal.dataset.id}
-                initialData={proposal.about || undefined}
+                initialData={proposal.aboutDatasetInfo || undefined}
                 isDark={isDark}
                 onSuccess={() => {
                   setEditingSection(null);
@@ -792,7 +792,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                 onCancel={() => setEditingSection(null)}
               />
             }
-            displayContent={proposal.about ? renderAboutDisplay(proposal.about, tokens, formatDate) : null}
+            displayContent={proposal.aboutDatasetInfo ? renderAboutDisplay(proposal.aboutDatasetInfo, tokens, formatDate) : null}
             isDark={isDark}
             tokens={tokens}
           />
@@ -806,14 +806,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             isEditable={isEditable}
             isEditing={editingSection === 'format'}
             onEditClick={() => setEditingSection('format')}
-            isEmpty={!proposal.dataFormat}
+            isEmpty={!proposal.dataFormatInfo}
             emptyIcon={<FileCode className="w-12 h-12" />}
             emptyMessage="Data format information not provided yet"
             emptyActionLabel="Add Format Information"
             editContent={
               <DataFormatForm
                 datasetId={proposal.dataset.id}
-                initialData={proposal.dataFormat || undefined}
+                initialData={proposal.dataFormatInfo || undefined}
                 isDark={isDark}
                 onSuccess={() => {
                   setEditingSection(null);
@@ -822,7 +822,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                 onCancel={() => setEditingSection(null)}
               />
             }
-            displayContent={proposal.dataFormat ? renderDataFormatDisplay(proposal.dataFormat, tokens, formatDate) : null}
+            displayContent={proposal.dataFormatInfo ? renderDataFormatDisplay(proposal.dataFormatInfo, tokens, formatDate) : null}
             isDark={isDark}
             tokens={tokens}
           />
@@ -867,14 +867,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             isEditable={isEditable}
             isEditing={editingSection === 'categories'}
             onEditClick={() => setEditingSection('categories')}
-            isEmpty={!proposal.secondaryCategoryIds || proposal.secondaryCategoryIds.length === 0}
+            isEmpty={!proposal.secondaryCategories || proposal.secondaryCategories.length === 0}
             emptyIcon={<Settings className="w-12 h-12" />}
             emptyMessage="No secondary categories defined yet"
             emptyActionLabel="Add Categories"
             editContent={
               <SecondaryCategoriesForm
                 datasetId={proposal.dataset.id}
-                initialCategories={proposal.secondaryCategoryIds || []}
+                initialCategories={(proposal.secondaryCategories?.map(c => c.id)) || []}
                 isDark={isDark}
                 onSuccess={() => {
                   setEditingSection(null);
@@ -883,7 +883,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                 onCancel={() => setEditingSection(null)}
               />
             }
-            displayContent={proposal.secondaryCategoryIds && proposal.secondaryCategoryIds.length > 0 ? renderCategoriesDisplay(proposal.secondaryCategoryIds, tokens, isDark) : null}
+            displayContent={proposal.secondaryCategories && proposal.secondaryCategories.length > 0 ? renderCategoriesDisplay(proposal.secondaryCategories.map(c => c.id), tokens, isDark) : null}
             isDark={isDark}
             tokens={tokens}
           />
@@ -940,7 +940,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   <ul className="text-xs space-y-1" style={{ color: tokens.textMuted }}>
                     <li>• Dataset Title: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.dataset.title}</span></li>
                     <li>• File: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.currentUpload?.originalFileName || 'Uploaded'}</span></li>
-                    <li>• Format: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.dataFormat?.fileFormat || 'Defined'}</span></li>
+                    <li>• Format: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.dataFormatInfo?.fileFormat || 'Defined'}</span></li>
                     <li>• Features: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.features?.length || 0} column{proposal.features?.length !== 1 ? 's' : ''}</span></li>
                   </ul>
                 </div>

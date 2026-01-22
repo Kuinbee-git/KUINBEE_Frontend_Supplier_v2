@@ -122,7 +122,7 @@ export interface ProposalDetailsResponse {
     license: string;
     visibility?: DatasetVisibility;
     isPaid?: boolean;
-    price?: string;
+    price?: string | null;
     currency?: Currency;
     updatedAt: string;
   };
@@ -142,10 +142,32 @@ export interface ProposalDetailsResponse {
     sizeBytes: string | null;
     updatedAt: string;
   } | null;
-  about?: AboutDatasetInfo;
-  dataFormat?: DataFormatInfo;
+  aboutDatasetInfo?: AboutDatasetInfo;
+  dataFormatInfo?: DataFormatInfo;
   features?: Feature[];
-  secondaryCategoryIds?: string[];
+  primaryCategory?: {
+    id: string;
+    name: string;
+    createdAt: string;
+    createdBy?: string;
+  };
+  secondaryCategories?: Array<{
+    id: string;
+    name: string;
+    createdAt: string;
+    createdBy?: string;
+  }>;
+  source?: {
+    id: string;
+    name: string;
+    description: string | null;
+    websiteUrl: string | null;
+    createdBy?: string;
+    createdByType?: string;
+    isVerified?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+  };
 }
 
 // Update Proposal Metadata
@@ -223,6 +245,7 @@ export interface UpsertDataFormatResponse {
 
 // Features
 export interface Feature {
+  id?: string;
   name: string;
   dataType: string;
   description?: string | null;

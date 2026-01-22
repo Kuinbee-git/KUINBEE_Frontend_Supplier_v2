@@ -68,9 +68,16 @@ export function DashboardShell({ children }: DashboardShellProps) {
     },
     { 
       id: 'proposals', 
-      label: 'My Proposals', 
+      label: 'My Drafts', 
       icon: FileText, 
       path: '/dashboard/datasets',
+      disabled: false 
+    },
+    { 
+      id: 'submitted-proposals', 
+      label: 'Submitted Proposals', 
+      icon: FileText, 
+      path: '/dashboard/proposals',
       disabled: false 
     },
     { 

@@ -4,100 +4,95 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { listMyDatasets } from '@/lib/api';
+import { listMyProposals } from '@/lib/api';
 import { StatsCards } from './shared/StatsCards';
 import { SearchAndFilterBar } from './shared/SearchAndFilterBar';
 import { DatasetsTable, TableColumn } from './shared/DatasetsTable';
-import { PublishStatusBadge } from './shared';
+import { DatasetStatusBadge } from './shared';
 import { 
-  Database, 
   AlertCircle,
-  Eye,
-  ChevronRight
+  Database,
+  ChevronRight,
 } from 'lucide-react';
-import type { DatasetStatus, DatasetVisibility } from '@/types/dataset.types';
+import type { VerificationStatus } from '@/types/dataset-proposal.types';
 
-interface MyDatasetsProps {
+interface SubmittedProposalsProps {
   isDark?: boolean;
 }
 
-type FilterStatus = 'ALL' | 'VERIFIED' | 'PUBLISHED' | 'ARCHIVED';
-type FilterVisibility = 'ALL' | 'PUBLIC' | 'PRIVATE' | 'UNLISTED';
+type FilterStatus = 'ALL' | 'SUBMITTED' | 'UNDER_REVIEW' | 'CHANGES_REQUESTED' | 'RESUBMITTED' | 'REJECTED';
 
-interface DatasetItem {
+interface ProposalItem {
   id: string;
   datasetUniqueId: string;
   title: string;
-  status: DatasetStatus;
-  visibility: DatasetVisibility;
-  publishedAt: string | null;
+  verificationStatus: VerificationStatus;
   updatedAt: string;
   _index?: number;
 }
 
-export function MyDatasets({ isDark = false }: MyDatasetsProps) {
+export function SubmittedProposals({ isDark = false }: SubmittedProposalsProps) {
   const router = useRouter();
   const tokens = getDatasetThemeTokens(isDark);
 
-  const [datasets, setDatasets] = useState<DatasetItem[]>([]);
+  const [proposals, setProposals] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
-  const [visibilityFilter, setVisibilityFilter] = useState<FilterVisibility>('ALL');
 
-  const fetchDatasets = async () => {
+  const fetchProposals = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      let apiStatus: 'VERIFIED' | 'PUBLISHED' | 'ARCHIVED' | undefined = undefined;
-      
-      if (statusFilter === 'VERIFIED' || statusFilter === 'PUBLISHED' || statusFilter === 'ARCHIVED') {
-        apiStatus = statusFilter;
-      }
-      
-      const response = await listMyDatasets({
-        status: apiStatus,
-        visibility: visibilityFilter !== 'ALL' ? visibilityFilter : undefined,
+      const response = await listMyProposals({
+        verificationStatus: statusFilter !== 'ALL' ? statusFilter : undefined,
         page: 1,
         pageSize: 100,
       });
 
-      setDatasets(response.items);
+      // Filter to only show submitted proposals (exclude PENDING and VERIFIED)
+      const submittedOnly = response.items.filter(item => 
+        item.verificationStatus && 
+        item.verificationStatus !== 'PENDING' &&
+        item.verificationStatus !== 'VERIFIED'
+      ) as ProposalItem[];
+
+      setProposals(submittedOnly);
     } catch (err: any) {
-      console.error('Failed to fetch datasets:', err);
-      setError(err.message || 'Failed to load datasets');
+      console.error('Failed to fetch proposals:', err);
+      setError(err.message || 'Failed to load proposals');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDatasets();
-  }, [statusFilter, visibilityFilter]);
+    fetchProposals();
+  }, [statusFilter]);
 
-  // Filter datasets based on search
-  const filteredDatasets = datasets.filter(dataset =>
-    dataset.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter proposals based on search
+  const filteredProposals = proposals.filter(proposal =>
+    proposal.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Stats for quick overview
   const stats = [
-    { value: filteredDatasets.length, label: 'Total Datasets', color: tokens.textPrimary },
-    { value: datasets.filter(d => d.status === 'VERIFIED').length, label: 'Verified', color: '#22c55e' },
-    { value: datasets.filter(d => d.status === 'PUBLISHED').length, label: 'Published', color: '#10b981' },
-    { value: datasets.filter(d => d.status === 'ARCHIVED').length, label: 'Archived', color: '#94a3b0' },
-    { value: datasets.filter(d => d.visibility === 'PUBLIC').length, label: 'Public', color: '#3b82f6' },
-    { value: datasets.filter(d => d.visibility === 'PRIVATE').length, label: 'Private', color: '#ef4444' },
+    { value: filteredProposals.length, label: 'Total Proposals', color: tokens.textPrimary },
+    { value: proposals.filter(p => p.verificationStatus === 'SUBMITTED').length, label: 'Submitted', color: '#3b82f6' },
+    { value: proposals.filter(p => p.verificationStatus === 'UNDER_REVIEW').length, label: 'Under Review', color: '#f59e0b' },
+    { value: proposals.filter(p => p.verificationStatus === 'CHANGES_REQUESTED').length, label: 'Changes Requested', color: '#ef4444' },
+    { value: proposals.filter(p => p.verificationStatus === 'RESUBMITTED').length, label: 'Resubmitted', color: '#8b5cf6' },
+    { value: proposals.filter(p => p.verificationStatus === 'REJECTED').length, label: 'Rejected', color: '#94a3b0' },
   ];
 
-  const handleViewDataset = (dataset: DatasetItem) => {
-    router.push(`/dashboard/my-datasets/${dataset.id}`);
+  const handleViewProposal = (proposal: ProposalItem) => {
+    router.push(`/dashboard/datasets/${proposal.id}`);
   };
 
   // Table columns configuration
-  const columns: TableColumn<DatasetItem>[] = [
+  const columns: TableColumn<ProposalItem>[] = [
     {
       header: 'No.',
       accessor: (item) => (
@@ -110,7 +105,7 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
       minWidth: 'clamp(40px, 5vw, 60px)',
     },
     {
-      header: 'Dataset',
+      header: 'Proposal',
       accessor: (item) => (
         <div className="flex items-center gap-2 min-w-0">
           <Database className="w-4 h-4 flex-shrink-0" style={{ color: tokens.textMuted }} />
@@ -146,31 +141,10 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
     {
       header: 'Status',
       accessor: (item) => (
-        <PublishStatusBadge status={item.status} isDark={isDark} />
+        <DatasetStatusBadge status={item.verificationStatus} isDark={isDark} />
       ),
       hidden: 'md',
       minWidth: 'clamp(100px, 12vw, 160px)',
-    },
-    {
-      header: 'Visibility',
-      accessor: (item) => (
-        <span
-          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded"
-          style={{
-            background: item.visibility === 'PUBLIC' ? 'rgba(16, 185, 129, 0.1)' :
-                       item.visibility === 'PRIVATE' ? 'rgba(239, 68, 68, 0.1)' :
-                       'rgba(148, 163, 176, 0.1)',
-            color: item.visibility === 'PUBLIC' ? '#10b981' :
-                   item.visibility === 'PRIVATE' ? '#ef4444' :
-                   '#94a3b0',
-          }}
-        >
-          <Eye className="w-3 h-3" />
-          {item.visibility}
-        </span>
-      ),
-      hidden: 'lg',
-      minWidth: 'clamp(80px, 10vw, 120px)',
     },
     {
       header: 'Last Updated',
@@ -212,7 +186,7 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            handleViewDataset(item);
+            handleViewProposal(item);
           }}
         >
           View
@@ -241,12 +215,12 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
         <div className="text-center py-20">
           <AlertCircle className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.warningText }} />
           <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-            Failed to load datasets
+            Failed to load proposals
           </h3>
           <p className="mb-6" style={{ color: tokens.textSecondary }}>
             {error}
           </p>
-          <Button onClick={fetchDatasets}>Retry</Button>
+          <Button onClick={fetchProposals}>Retry</Button>
         </div>
       </div>
     );
@@ -259,10 +233,10 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-              My Datasets
+              Submitted Proposals
             </h1>
             <p style={{ color: tokens.textSecondary }}>
-              View and manage your published and verified datasets
+              Track your proposals that are under review or awaiting action
             </p>
           </div>
         </div>
@@ -277,45 +251,36 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
         onSearchChange={setSearchQuery}
         filters={[
           {
-            label: 'Dataset Status',
+            label: 'Proposal Status',
             value: statusFilter,
             options: [
               { label: 'All Statuses', value: 'ALL' },
-              { label: 'Verified', value: 'VERIFIED' },
-              { label: 'Published', value: 'PUBLISHED' },
-              { label: 'Archived', value: 'ARCHIVED' },
+              { label: 'Submitted', value: 'SUBMITTED' },
+              { label: 'Under Review', value: 'UNDER_REVIEW' },
+              { label: 'Changes Requested', value: 'CHANGES_REQUESTED' },
+              { label: 'Resubmitted', value: 'RESUBMITTED' },
+              { label: 'Rejected', value: 'REJECTED' },
             ],
             onChange: (value) => setStatusFilter(value as FilterStatus),
           },
-          {
-            label: 'Visibility',
-            value: visibilityFilter,
-            options: [
-              { label: 'All Visibility', value: 'ALL' },
-              { label: 'Public', value: 'PUBLIC' },
-              { label: 'Private', value: 'PRIVATE' },
-              { label: 'Unlisted', value: 'UNLISTED' },
-            ],
-            onChange: (value) => setVisibilityFilter(value as FilterVisibility),
-          },
         ]}
-        activeFilterCount={(statusFilter !== 'ALL' ? 1 : 0) + (visibilityFilter !== 'ALL' ? 1 : 0)}
+        activeFilterCount={statusFilter !== 'ALL' ? 1 : 0}
         tokens={tokens}
         isDark={isDark}
       />
 
-      {/* Datasets Table */}
+      {/* Proposals Table */}
       <div className="space-y-4 pt-2">
         <DatasetsTable
-          data={filteredDatasets.map((d, i) => ({ ...d, _index: i }))}
+          data={filteredProposals.map((p, i) => ({ ...p, _index: i }))}
           columns={columns}
-          onRowClick={handleViewDataset}
+          onRowClick={handleViewProposal}
           emptyIcon={<Database className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.textMuted }} />}
-          emptyTitle={searchQuery || statusFilter !== 'ALL' || visibilityFilter !== 'ALL' ? 'No datasets found' : 'No datasets yet'}
+          emptyTitle={searchQuery || statusFilter !== 'ALL' ? 'No proposals found' : 'No submitted proposals yet'}
           emptyDescription={
-            searchQuery || statusFilter !== 'ALL' || visibilityFilter !== 'ALL'
+            searchQuery || statusFilter !== 'ALL'
               ? 'Try adjusting your search or filters'
-              : 'Your verified and published datasets will appear here'
+              : 'Submit a draft proposal to see it here'
           }
           tokens={tokens}
           isDark={isDark}

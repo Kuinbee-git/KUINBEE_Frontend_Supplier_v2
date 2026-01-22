@@ -5,3 +5,6 @@ export { CollapsibleSection } from './CollapsibleSection';
 export { UploadStatusIcon } from './UploadStatusIcon';
 export { EditableSection } from './EditableSection';
 export { StyledSelect } from './StyledSelect';
+export { StatsCards } from './StatsCards';
+export { SearchAndFilterBar } from './SearchAndFilterBar';
+export { DatasetsTable } from './DatasetsTable';

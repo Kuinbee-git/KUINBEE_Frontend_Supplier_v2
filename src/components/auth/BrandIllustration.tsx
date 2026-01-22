@@ -87,17 +87,15 @@ function BrandIllustrationComponent({ isDark = false }: BrandIllustrationProps) 
     <div className="relative w-full h-full overflow-hidden">
       {/* Brand statement */}
       <div className="absolute top-10 left-0 right-0 flex flex-col items-center justify-center px-8">
-        <p 
+        <p
           className="text-sm tracking-[0.1em] uppercase text-center font-medium transition-colors duration-500"
-          style={{ 
+          style={{
             color: colors.textBrand,
             textShadow: isDark ? "0 2px 8px rgba(0, 0, 0, 0.4)" : "0 1px 3px rgba(0, 0, 0, 0.1)",
           }}
         >
-                       <div>
-                         Kuinbee
-                       </div>
-           Powering Trusted Data Distribution
+          <span className="block font-semibold">Kuinbee</span>
+          Powering Trusted Data Distribution
         </p>
       </div>
 
