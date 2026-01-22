@@ -9,6 +9,7 @@ import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { updateProposalMetadata } from '@/lib/api';
 import { CategoriesSelect, SourcesSelect } from '@/components/catalog';
+import { StyledSelect } from '@/components/datasets/shared';
 
 interface MetadataFormData {
   title: string;
@@ -266,26 +267,20 @@ export function MetadataEditForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currency" style={{ color: tokens.textPrimary }}>
-                Currency
-              </Label>
-              <select
-                id="currency"
+              <StyledSelect
+                label="Currency"
                 value={formData.currency}
-                onChange={(e) => handleFieldChange('currency', e.target.value)}
+                onValueChange={(value) => handleFieldChange('currency', value)}
+                options={[
+                  { label: 'USD', value: 'USD' },
+                  { label: 'EUR', value: 'EUR' },
+                  { label: 'GBP', value: 'GBP' },
+                  { label: 'INR', value: 'INR' },
+                ]}
                 disabled={submitting}
-                className="w-full h-10 px-3 rounded-md border text-sm"
-                style={{
-                  background: tokens.inputBg,
-                  borderColor: tokens.inputBorder,
-                  color: tokens.textPrimary,
-                }}
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="INR">INR</option>
-              </select>
+                isDark={isDark}
+                tokens={tokens}
+              />
             </div>
           </div>
         )}
