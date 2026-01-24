@@ -429,16 +429,22 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
 
   return (
     <PageBackground withGrid>
-      <div className="relative z-10 max-w-[1100px] mx-auto px-6 py-8">
+      <div className="relative z-10 max-w-[1100px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Back Button */}
         <Button
           variant="ghost"
           onClick={() => router.push('/dashboard/datasets')}
-          className="mb-6 flex items-center gap-2"
+          className="mb-6 flex items-center gap-2 -ml-2 transition-all duration-200 hover:translate-x-[-2px]"
+          style={{
+            background: tokens.glassBg || 'transparent',
+            border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+            color: tokens.textPrimary,
+          }}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to proposals
         </Button>
+
 
         {/* Terminal State Banner */}
         {isTerminalState && (
@@ -479,8 +485,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             background: tokens.surfaceCard,
             borderColor: tokens.borderDefault,
             boxShadow: isDark
-              ? '0 8px 24px rgba(0, 0, 0, 0.4)'
-              : '0 8px 24px rgba(26, 34, 64, 0.12)',
+              ? '0 8px 24px rgba(0, 0, 0, 0.2)'
+              : '0 8px 24px rgba(26, 34, 64, 0.06)',
           }}
         >
           <div className="p-6">
@@ -513,7 +519,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
         {/* Submit for Review Section */}
         {canSubmit && (
           <Card
-            className="border overflow-hidden"
+            className="border overflow-hidden mb-6 transition-shadow duration-200 hover:shadow-md"
             style={{
               background: isDark
                 ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)'
@@ -521,13 +527,13 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
               borderColor: tokens.borderDefault,
             }}
           >
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-6">
+            <div className="p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-                    {proposal.verification.status === 'PENDING' ? 'Submit for Review' : 'Resubmit for Review'}
+                    {proposal.verification.status === 'PENDING' ? 'Ready to Submit?' : 'Resubmit for Review'}
                   </h3>
-                  <p className="text-sm mb-4" style={{ color: tokens.textSecondary }}>
+                  <p className="text-sm mb-4 leading-relaxed" style={{ color: tokens.textSecondary }}>
                     {proposal.verification.status === 'PENDING'
                       ? 'Once submitted, your proposal will be reviewed by an admin. Make sure all required sections are complete.'
                       : 'Admin has requested changes. Review the feedback and resubmit when ready.'}
@@ -538,16 +544,18 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     if (missing.length > 0) {
                       return (
                         <div
-                          className="p-3 rounded-lg border mb-4"
+                          className="p-4 rounded-xl border mb-4"
                           style={{
                             background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)',
                             borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.2)',
                           }}
                         >
-                          <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#eab308' }} />
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(234, 179, 8, 0.15)' }}>
+                              <AlertCircle className="w-4 h-4" style={{ color: '#eab308' }} />
+                            </div>
                             <div>
-                              <p className="text-sm font-medium mb-1" style={{ color: '#eab308' }}>
+                              <p className="text-sm font-medium mb-2" style={{ color: '#eab308' }}>
                                 Missing Required Information
                               </p>
                               <ul className="text-xs space-y-1" style={{ color: tokens.textSecondary }}>
@@ -562,15 +570,17 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     }
                     return (
                       <div
-                        className="p-3 rounded-lg border mb-4"
+                        className="p-4 rounded-xl border mb-4"
                         style={{
                           background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
                           borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
                         }}
                       >
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
-                          <p className="text-sm" style={{ color: '#22c55e' }}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
+                            <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                          </div>
+                          <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
                             All requirements met. Ready to submit!
                           </p>
                         </div>
@@ -581,7 +591,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   <Button
                     onClick={handleSubmitForReview}
                     disabled={submitting || checkPrerequisites().length > 0}
-                    className="gap-2"
+                    className="h-11 px-6 font-medium transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
                     style={{
                       background: submitting || checkPrerequisites().length > 0
                         ? 'rgba(156, 163, 175, 0.3)'
@@ -589,7 +599,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       color: '#fff',
                     }}
                   >
-                    <Upload className="w-4 h-4" />
+                    <Upload className="w-4 h-4 mr-2" />
                     {submitting
                       ? 'Submitting...'
                       : proposal.verification.status === 'PENDING'
@@ -754,6 +764,11 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                             variant="outline"
                             onClick={() => setUploadDialogOpen(true)}
                             className="w-full"
+                            style={{
+                              background: tokens.glassBg || 'transparent',
+                              border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+                              color: tokens.textPrimary,
+                            }}
                           >
                             <Upload className="w-4 h-4 mr-2" />
                             Replace file
@@ -949,9 +964,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => setShowConfirmModal(false)}
-                  disabled={submitting}
-                  className="flex-1"
+                    onClick={() => setShowConfirmModal(false)}
+                    disabled={submitting}
+                    className="flex-1"
+                    style={{
+                      background: tokens.glassBg || 'transparent',
+                      border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+                      color: tokens.textPrimary,
+                    }}
                 >
                   Cancel
                 </Button>

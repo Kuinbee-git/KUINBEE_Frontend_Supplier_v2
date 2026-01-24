@@ -48,6 +48,16 @@ async function apiFetch<T>(
       // Try to parse error from response
       const errorData = await response.json().catch(() => null);
       
+      // Global auth failure handler
+      if (response.status === 401 || response.status === 403) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("auth-storage");
+          localStorage.removeItem("kuinbee-supplier-storage");
+          localStorage.removeItem("onboarding-storage");
+          window.location.href = "/auth/login";
+        }
+      }
+      
       const error: any = new Error(
         errorData?.message || `HTTP ${response.status}: ${response.statusText}`
       );

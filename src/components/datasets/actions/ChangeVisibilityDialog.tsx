@@ -5,9 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Lock } from 'lucide-react';
+import { Eye, EyeOff, Lock, Loader2, Info } from 'lucide-react';
 import { changeDatasetVisibility } from '@/lib/api/datasets';
 import { toast } from 'sonner';
+import { useSupplierTokens } from '@/hooks/useSupplierTokens';
 import type { DatasetVisibility } from '@/types/dataset-proposal.types';
 
 interface ChangeVisibilityDialogProps {
@@ -49,10 +50,10 @@ export function ChangeVisibilityDialog({
   datasetId,
   currentVisibility,
   onSuccess,
-  isDark = false,
 }: ChangeVisibilityDialogProps) {
   const [visibility, setVisibility] = useState<DatasetVisibility>(currentVisibility);
   const [saving, setSaving] = useState(false);
+  const tokens = useSupplierTokens();
 
   const handleSave = async () => {
     if (visibility === currentVisibility) {
@@ -86,40 +87,51 @@ export function ChangeVisibilityDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent 
+        className="max-w-md border backdrop-blur-sm rounded-lg"
+        style={{
+          background: tokens.isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: tokens.borderDefault,
+          boxShadow: tokens.glassShadow,
+        }}
+      >
         <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-start gap-3 mb-4">
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{
-                background: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-              }}
+              className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${selectedOption?.color || '#3b82f6'}15` }}
             >
-              <Icon className="w-5 h-5" style={{ color: selectedOption?.color || '#3b82f6' }} />
+              <Icon className="w-6 h-6" style={{ color: selectedOption?.color || '#3b82f6' }} />
             </div>
-            <DialogTitle>Change Visibility</DialogTitle>
+            <div>
+              <DialogTitle className="text-lg mb-1" style={{ color: tokens.textPrimary }}>
+                Change Visibility
+              </DialogTitle>
+              <DialogDescription style={{ color: tokens.textSecondary }}>
+                Control who can discover your dataset
+              </DialogDescription>
+            </div>
           </div>
-          <DialogDescription>
-            Control who can discover and view your dataset on the marketplace.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-5 py-2">
           <div>
-            <Label className="mb-2 block">Visibility Setting</Label>
+            <Label className="mb-3 block text-sm font-medium" style={{ color: tokens.textPrimary }}>
+              Visibility Setting
+            </Label>
             <StyledSelect
               options={VISIBILITY_OPTIONS.map(option => ({ label: option.label, value: option.value }))}
               value={visibility}
               onValueChange={(value) => setVisibility(value as DatasetVisibility)}
-              isDark={isDark}
+              isDark={tokens.isDark}
               tokens={{
-                inputBg: isDark ? 'rgba(26, 34, 64, 0.6)' : '#ffffff',
-                inputBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(26, 34, 64, 0.15)',
-                textPrimary: isDark ? '#ffffff' : '#1a2240',
-                textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#6b7280',
-                textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#9ca3af',
-                surfaceCard: isDark ? 'rgba(26, 34, 64, 0.95)' : '#ffffff',
-                borderDefault: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e5e7eb',
+                inputBg: tokens.inputBg,
+                inputBorder: tokens.inputBorder,
+                textPrimary: tokens.textPrimary,
+                textSecondary: tokens.textSecondary,
+                textMuted: tokens.textMuted,
+                surfaceCard: tokens.glassBg,
+                borderDefault: tokens.borderDefault,
               }}
             />
           </div>
@@ -127,41 +139,76 @@ export function ChangeVisibilityDialog({
           {/* Selected Option Description */}
           {selectedOption && (
             <div
-              className="rounded-lg p-3"
+              className="rounded-xl p-4 flex items-start gap-3"
               style={{
-                background: isDark ? `${selectedOption.color}15` : `${selectedOption.color}10`,
-                border: `1px solid ${selectedOption.color}40`,
+                background: `${selectedOption.color}10`,
+                border: `1px solid ${selectedOption.color}30`,
               }}
             >
-              <p className="text-sm" style={{ color: selectedOption.color }}>
-                <strong>{selectedOption.label}:</strong> {selectedOption.description}
-              </p>
+              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: selectedOption.color }} />
+              <div className="text-sm" style={{ color: tokens.textPrimary }}>
+                <span className="font-medium">{selectedOption.label}:</span>{' '}
+                <span style={{ color: tokens.textSecondary }}>{selectedOption.description}</span>
+              </div>
             </div>
           )}
 
-          {/* Current vs New */}
+          {/* Change indicator */}
           {visibility !== currentVisibility && (
-            <div className="pt-2 border-t text-xs opacity-70">
-              <p>
-                Changing from <strong>{currentVisibility}</strong> to <strong>{visibility}</strong>
-              </p>
+            <div 
+              className="pt-3 border-t text-xs flex items-center gap-2"
+              style={{ borderColor: tokens.borderSubtle, color: tokens.textMuted }}
+            >
+              <span>Change:</span>
+              <span 
+                className="px-2 py-0.5 rounded"
+                style={{ background: tokens.errorBg, color: tokens.errorText }}
+              >
+                {currentVisibility}
+              </span>
+              <span>→</span>
+              <span 
+                className="px-2 py-0.5 rounded"
+                style={{ background: tokens.successBg, color: tokens.successText }}
+              >
+                {visibility}
+              </span>
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-3 pt-2">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={saving}
+            className="transition-all duration-300 hover:shadow-md"
+            style={{ 
+              borderColor: tokens.borderDefault,
+              color: tokens.textPrimary,
+              background: tokens.glassBg,
+            }}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving || visibility === currentVisibility}
+            className="gap-2 text-white transition-all duration-300 hover:shadow-lg disabled:opacity-60"
+            style={{
+              background: (saving || visibility === currentVisibility)
+                ? tokens.textMuted
+                : '#2a3558',
+            }}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

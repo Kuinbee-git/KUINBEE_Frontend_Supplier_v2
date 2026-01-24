@@ -62,6 +62,14 @@ export function DownloadButton({
       onClick={handleDownload}
       disabled={downloading}
       className={`gap-2 ${className}`}
+      style={{
+        ...(variant === 'default' ? {
+          background: downloading 
+            ? '#6b7280' 
+            : 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #3b82f6 100%)',
+          color: '#ffffff',
+        } : {})
+      }}
     >
       {downloading ? (
         <Loader2 className="w-4 h-4 animate-spin" />

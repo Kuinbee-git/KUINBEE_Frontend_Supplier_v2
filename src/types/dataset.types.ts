@@ -205,6 +205,54 @@ export interface DatasetDetailsResponse {
     archivedAt: string | null;
     updatedAt: string;
   };
+  aboutDatasetInfo: {
+    overview: string | null;
+    description: string | null;
+    dataQuality: string | null;
+    useCases: string | null;
+    limitations: string | null;
+    methodology: string | null;
+    updatedAt: string;
+  } | null;
+  dataFormatInfo: {
+    fileFormat: string;
+    rows: number | null;
+    cols: number | null;
+    fileSize: string | null;
+    compressionType: string;
+    encoding: string;
+    updatedAt: string;
+  } | null;
+  features: Array<{
+    id: string;
+    name: string;
+    dataType: string;
+    description: string | null;
+    isNullable: boolean;
+  }>;
+  primaryCategory: {
+    id: string;
+    name: string;
+    createdAt: string;
+    createdBy: string;
+  } | null;
+  secondaryCategories: Array<{
+    id: string;
+    name: string;
+    createdAt: string;
+    createdBy: string;
+  }>;
+  source: {
+    id: string;
+    name: string;
+    description: string | null;
+    websiteUrl: string | null;
+    createdBy: string;
+    createdByType: string;
+    isVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
   verification: {
     id: string;
     status: "PENDING" | "SUBMITTED" | "CHANGES_REQUESTED" | "RESUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";

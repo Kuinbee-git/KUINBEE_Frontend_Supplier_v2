@@ -66,11 +66,20 @@ export default function DashboardPage() {
           <Button
             onClick={() => router.push('/dashboard/datasets/create')}
             variant="default"
-            className="bg-primary text-primary-foreground shadow hover:bg-primary/90"
+            className="bg-primary text-primary-foreground shadow transition-all duration-300"
             style={{
               background: tokens.surfaceUnified,
               color: tokens.textPrimary,
               border: `1px solid ${tokens.borderDefault}`,
+              boxShadow: '0 4px 12px rgba(42,53,88,0.12)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(42,53,88,0.24)';
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(42,53,88,0.12)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
             }}
           >
             <Upload className="w-4 h-4 mr-2" />

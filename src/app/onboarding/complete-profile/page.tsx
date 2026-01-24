@@ -336,13 +336,10 @@ export default function CompleteProfilePage() {
                     <StyledSelect
                       value={primaryDomain}
                       onValueChange={(value) => setPrimaryDomain(value)}
-                      options={[
-                        { label: "Select primary domain", value: "" },
-                        ...businessDomains.map((domain) => ({
-                          label: domain,
-                          value: domain,
-                        })),
-                      ]}
+                      options={businessDomains.map((domain) => ({
+                        label: domain,
+                        value: domain,
+                      }))}
                       placeholder="Select primary domain"
                       tokens={{
                         inputBg: '#f8f9fa',

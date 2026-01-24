@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronUp, ChevronDown, Edit2 } from 'lucide-react';
+import { ChevronDown, Edit2 } from 'lucide-react';
 
 interface EditableSectionProps {
   // Section metadata
@@ -62,7 +62,7 @@ export function EditableSection({
 }: EditableSectionProps) {
   return (
     <Card
-      className="border overflow-hidden"
+      className="border overflow-hidden transition-shadow duration-200 hover:shadow-sm"
       style={{
         background: tokens.surfaceCard,
         borderColor: tokens.borderDefault,
@@ -71,63 +71,93 @@ export function EditableSection({
       {/* Header */}
       <div
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-6 py-4 border-b transition-colors duration-200 cursor-pointer hover:opacity-80"
-        style={{ borderColor: tokens.borderSubtle }}
+        className="w-full flex items-center justify-between px-6 py-4 border-b transition-all duration-200 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+        style={{ borderColor: isExpanded ? tokens.borderSubtle : 'transparent' }}
       >
-        <div className="flex items-center gap-2">
-          <span style={{ color: tokens.textSecondary }}>{icon}</span>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+            style={{
+              background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(26, 34, 64, 0.05)',
+            }}
+          >
+            <span style={{ color: tokens.textSecondary }}>{icon}</span>
+          </div>
           <div className="text-left">
             <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
               {title}
             </h3>
             {subtitle && (
-              <p className="text-xs" style={{ color: tokens.textMuted }}>
+              <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
                 {subtitle}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {isEditable && isExpanded && !isEditing && !isEmpty && (
             <Button
               size="sm"
-              variant="ghost"
+              variant="outline"
               onClick={(e) => {
                 e.stopPropagation();
                 onEditClick();
               }}
-              className="h-8 px-3"
+              className="h-9 px-4 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: (tokens as any).glassBg || 'transparent',
+                border: `1px solid ${(tokens as any).glassBorder || tokens.borderSubtle}`,
+                color: tokens.textPrimary,
+                minWidth: 'fit-content',
+              }}
             >
-              <Edit2 className="w-4 h-4 mr-1" />
+              <Edit2 className="w-4 h-4 mr-2" />
               Edit
             </Button>
           )}
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5" style={{ color: tokens.textMuted }} />
-          ) : (
-            <ChevronDown className="w-5 h-5" style={{ color: tokens.textMuted }} />
-          )}
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-200"
+            style={{
+              background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(26, 34, 64, 0.03)',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          >
+            <ChevronDown className="w-4 h-4" style={{ color: tokens.textMuted }} />
+          </div>
         </div>
       </div>
 
       {/* Content */}
       {isExpanded && (
-        <div className="p-6">
+        <div className="p-6 animate-in fade-in slide-in-from-top-1 duration-200">
           {isEditing ? (
             editContent
           ) : isEmpty ? (
-            <div className="text-center py-8">
-              <div className="w-12 h-12 mx-auto mb-3" style={{ color: tokens.textMuted }}>
+            <div className="text-center py-10">
+              <div
+                className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+                style={{
+                  background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(26, 34, 64, 0.03)',
+                  color: tokens.textMuted,
+                }}
+              >
                 {emptyIcon}
               </div>
-              <p className="text-sm mb-4" style={{ color: tokens.textMuted }}>
+              <p className="text-sm mb-5 font-medium" style={{ color: tokens.textMuted }}>
                 {emptyMessage}
               </p>
               {isEditable && emptyActionLabel && (
                 <Button
                   size="sm"
                   onClick={onEditClick}
-                  className="gap-2"
+                  className="h-10 px-5 gap-2 font-medium transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                  variant="outline"
+                  style={{
+                    background: (tokens as any).glassBg || 'transparent',
+                    border: `1px solid ${(tokens as any).glassBorder || tokens.borderSubtle}`,
+                    color: tokens.textPrimary,
+                    minWidth: 'fit-content',
+                  }}
                 >
                   <Edit2 className="w-4 h-4" />
                   {emptyActionLabel}

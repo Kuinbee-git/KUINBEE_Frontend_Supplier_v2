@@ -15,7 +15,6 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
   
   // Actions
   login: (user: User) => void;
@@ -27,19 +26,16 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      isAuthenticated: false,
 
       login: (user) =>
         set({
           user,
-          isAuthenticated: true,
         }),
 
       logout: () => {
         // Clear auth state
         set({
           user: null,
-          isAuthenticated: false,
         });
         
         // Clear all persisted storage
@@ -62,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage",
+      skipHydration: false,
     }
   )
 );

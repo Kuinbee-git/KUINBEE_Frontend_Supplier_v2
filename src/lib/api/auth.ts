@@ -33,6 +33,26 @@ async function apiFetch<T>(
       // If response is not JSON, use status text
     }
     
+    // CRITICAL: Global 401/403 handler - Force logout and redirect
+    if (response.status === 401 || response.status === 403) {
+      if (typeof window !== 'undefined') {
+        // Clear auth state immediately
+        try {
+          localStorage.removeItem('auth-storage');
+          localStorage.removeItem('kuinbee-supplier-storage');
+          localStorage.removeItem('onboarding-storage');
+        } catch {
+          // Ignore localStorage errors
+        }
+        
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/auth/login')) {
+          console.log('[API Client] Auth failure detected, forcing logout');
+          window.location.href = '/auth/login';
+        }
+      }
+    }
+    
     // Create a proper error with message property
     const error = new Error(errorMessage);
     (error as any).status = response.status;

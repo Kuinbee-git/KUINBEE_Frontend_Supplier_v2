@@ -50,6 +50,9 @@ export function getDatasetThemeTokens(isDark: boolean) {
     shadowCard: isDark
       ? '0 8px 24px rgba(0, 0, 0, 0.4)'
       : '0 8px 24px rgba(26, 34, 64, 0.12)',
+    // Glass morphism (align with supplier tokens)
+    glassBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)',
+    glassBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
   };
 }
 

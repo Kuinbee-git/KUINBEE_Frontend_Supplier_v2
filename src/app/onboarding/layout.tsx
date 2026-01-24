@@ -1,37 +1,30 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getOnboardingStatus } from "@/lib/api/supplier";
 
 // Onboarding layout - ensures user is authenticated
+// Note: Global 401/403 handler in API client will automatically redirect to login
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Verify authentication by attempting to fetch onboarding status
-    // If this fails (401/403), user is not authenticated
+    // Verify authentication by fetching onboarding status
+    // If 401/403, global handler redirects to login automatically
     async function checkAuth() {
       try {
         await getOnboardingStatus();
-        setIsAuthenticated(true);
       } catch (error: any) {
-        // If unauthorized or forbidden, redirect to login
-        if (error.status === 401 || error.status === 403 || error.code === "UNAUTHORIZED") {
-          router.replace("/auth/login");
-          return;
-        }
-        // For other errors, still allow access (could be network issue)
-        setIsAuthenticated(true);
+        // Auth errors (401/403) are handled by global interceptor
+        // For other errors (network, etc), we still allow access
+        console.error("[OnboardingLayout] Auth check error:", error);
       } finally {
         setIsChecking(false);
       }
     }
 
     checkAuth();
-  }, [router]);
+  }, []);
 
   // Show loading while checking authentication
   if (isChecking) {
@@ -42,10 +35,6 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
         </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (

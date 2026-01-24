@@ -37,6 +37,26 @@ async function apiFetch<T>(
       // Try to parse error from response
       const errorData = await response.json().catch(() => null);
       
+      // Global auth failure handler - only redirect for 401, not specific 403 errors
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("auth-storage");
+          localStorage.removeItem("kuinbee-supplier-storage");
+          localStorage.removeItem("onboarding-storage");
+          window.location.href = "/auth/login";
+        }
+      }
+      
+      // Handle 403 - only redirect if it's not a specific business error
+      if (response.status === 403 && !errorData?.code) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("auth-storage");
+          localStorage.removeItem("kuinbee-supplier-storage");
+          localStorage.removeItem("onboarding-storage");
+          window.location.href = "/auth/login";
+        }
+      }
+      
       const error: any = new Error(
         errorData?.message || `HTTP ${response.status}: ${response.statusText}`
       );

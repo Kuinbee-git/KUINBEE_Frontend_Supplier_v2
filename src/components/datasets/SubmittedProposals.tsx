@@ -52,11 +52,10 @@ export function SubmittedProposals({ isDark = false }: SubmittedProposalsProps) 
         pageSize: 100,
       });
 
-      // Filter to only show submitted proposals (exclude PENDING and VERIFIED)
+      // Filter to only show submitted proposals (exclude PENDING)
       const submittedOnly = response.items.filter(item => 
         item.verificationStatus && 
-        item.verificationStatus !== 'PENDING' &&
-        item.verificationStatus !== 'VERIFIED'
+        item.verificationStatus !== 'PENDING'
       ) as ProposalItem[];
 
       setProposals(submittedOnly);

@@ -42,13 +42,22 @@ export function DatasetList({
         setLoading(true);
         setError(null);
         
-        const query: any = {};
-        if (statusFilter === 'draft') {
-          query.verificationStatus = 'PENDING';
+        const response = await listMyProposals({});
+        let filteredProposals = response.items || [];
+        
+        // Filter based on verification status
+        // Default to 'draft' if no status is specified (this is the /dashboard/datasets page)
+        const currentStatus = statusFilter || 'draft';
+        
+        if (currentStatus === 'draft') {
+          // Drafts: only show PENDING verification status
+          filteredProposals = filteredProposals.filter(p => p.verificationStatus === 'PENDING');
+        } else {
+          // My Proposals: show everything except PENDING
+          filteredProposals = filteredProposals.filter(p => p.verificationStatus !== 'PENDING');
         }
         
-        const response = await listMyProposals(query);
-        setProposals(response.items || []);
+        setProposals(filteredProposals);
       } catch (err: any) {
         console.error('Failed to fetch proposals:', err);
         setError(err.message || 'Failed to load proposals');
@@ -167,10 +176,20 @@ export function DatasetList({
 
           <Button
             onClick={handleCreateDataset}
-            className="w-full sm:w-auto h-9 sm:h-10 px-4 sm:px-5 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center sm:justify-start gap-2 text-sm flex-shrink-0"
+            className="w-full sm:w-auto h-9 sm:h-10 px-4 sm:px-5 text-white transition-all duration-300 active:scale-[0.98] flex items-center justify-center sm:justify-start gap-2 text-sm flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
+              background: '#1a2240',
               fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(42,53,88,0.12)',
+              transform: 'translateZ(0)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(42,53,88,0.24)';
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(42,53,88,0.12)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
             }}
           >
             <Plus className="w-4 h-4" />
@@ -227,10 +246,20 @@ export function DatasetList({
 
             <Button
               onClick={handleCreateDataset}
-              className="h-10 sm:h-12 px-6 sm:px-8 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] flex items-center gap-2 text-sm"
+              className="h-10 sm:h-12 px-6 sm:px-8 text-white transition-all duration-300 flex items-center gap-2 text-sm"
               style={{
-                background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
+                background: '#2a3558',
                 fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(42,53,88,0.12)',
+                transform: 'translateZ(0)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(42,53,88,0.24)';
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(42,53,88,0.12)';
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
               }}
             >
               <Plus className="w-4 h-4" />
@@ -421,19 +450,22 @@ export function DatasetList({
                         {/* Actions */}
                         <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
                           <button
-                            className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs transition-all duration-150"
+                            className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs transition-all duration-150 hover:shadow-md"
                             style={{
-                              color: tokens.textSecondary,
+                              color: tokens.textPrimary,
                               fontWeight: '500',
-                              background: 'transparent',
+                              background: tokens.glassBg,
+                              border: `1px solid ${tokens.glassBorder || tokens.borderDefault}`,
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.background = isDark
-                                ? 'rgba(255, 255, 255, 0.08)'
-                                : 'rgba(26, 34, 64, 0.06)';
+                                ? 'rgba(255, 255, 255, 0.12)'
+                                : 'rgba(26, 34, 64, 0.08)';
+                              e.currentTarget.style.borderColor = tokens.inputBorder;
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.background = tokens.glassBg;
+                              e.currentTarget.style.borderColor = tokens.glassBorder || tokens.borderDefault;
                             }}
                             onClick={(e) => {
                               e.stopPropagation();

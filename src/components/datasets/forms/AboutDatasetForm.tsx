@@ -110,198 +110,232 @@ export function AboutDatasetForm({
       }}
     >
       <div className="p-6">
-        <div className="mb-6">
+        {/* Header */}
+        <div className="mb-6 pb-4 border-b" style={{ borderColor: tokens.borderSubtle }}>
           <h2 className="text-lg font-semibold mb-1" style={{ color: tokens.textPrimary }}>
             About Dataset
           </h2>
           <p className="text-sm" style={{ color: tokens.textMuted }}>
-            Provide comprehensive information about your dataset
+            Provide comprehensive information about your dataset to help users understand its value
           </p>
         </div>
 
-        {/* Success Message */}
-        {success && (
-          <div
-            className="mb-4 rounded-lg border px-4 py-3 flex items-center gap-3"
-            style={{
-              background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-              borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
-            }}
-          >
-            <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#22c55e' }} />
-            <p className="text-sm" style={{ color: '#22c55e' }}>
-              Information saved successfully!
-            </p>
-          </div>
-        )}
+        {/* Status Messages */}
+        {(success || error) && (
+          <div className="mb-6 space-y-3">
+            {/* Success Message */}
+            {success && (
+              <div
+                className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
+                style={{
+                  background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+                  borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                }}
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
+                  <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                </div>
+                <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
+                  Information saved successfully!
+                </p>
+              </div>
+            )}
 
-        {/* Error Message */}
-        {error && (
-          <div
-            className="mb-4 rounded-lg border px-4 py-3 flex items-center gap-3"
-            style={{
-              background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-              borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
-            }}
-          >
-            <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#ef4444' }} />
-            <p className="text-sm" style={{ color: '#ef4444' }}>
-              {error}
-            </p>
+            {/* Error Message */}
+            {error && (
+              <div
+                className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
+                style={{
+                  background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                  borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                }}
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+                  <AlertCircle className="w-4 h-4" style={{ color: '#ef4444' }} />
+                </div>
+                <p className="text-sm font-medium" style={{ color: '#ef4444' }}>
+                  {error}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Overview */}
-          <div className="space-y-2">
-            <Label htmlFor="overview" style={{ color: tokens.textPrimary }}>
-              Overview <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="overview"
-              value={formData.overview}
-              onChange={(e) => handleFieldChange('overview', e.target.value)}
-              placeholder="Provide a concise overview of the dataset (2-3 sentences)"
-              rows={3}
-              disabled={submitting}
-              required
-              style={{
-                background: tokens.inputBg,
-                borderColor: tokens.inputBorder,
-                color: tokens.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
-              A brief summary of what this dataset contains
-            </p>
+          {/* Required Fields Section */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
+              <span className="text-xs font-medium px-2" style={{ color: tokens.textMuted }}>REQUIRED INFORMATION</span>
+              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
+            </div>
+            
+            {/* Overview */}
+            <div className="space-y-2">
+              <Label htmlFor="overview" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                Overview <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="overview"
+                value={formData.overview}
+                onChange={(e) => handleFieldChange('overview', e.target.value)}
+                placeholder="Provide a concise overview of the dataset (2-3 sentences)"
+                rows={3}
+                disabled={submitting}
+                required
+                className="transition-colors focus-visible:ring-2 resize-none"
+                style={{
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
+                }}
+              />
+              <p className="text-xs" style={{ color: tokens.textMuted }}>
+                A brief summary of what this dataset contains
+              </p>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                Description <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleFieldChange('description', e.target.value)}
+                placeholder="Provide a detailed description of the dataset, its contents, and structure"
+                rows={5}
+                disabled={submitting}
+                required
+                className="transition-colors focus-visible:ring-2 resize-none"
+                style={{
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
+                }}
+              />
+              <p className="text-xs" style={{ color: tokens.textMuted }}>
+                Detailed information about the dataset's content and structure
+              </p>
+            </div>
+
+            {/* Data Quality */}
+            <div className="space-y-2">
+              <Label htmlFor="dataQuality" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                Data Quality <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="dataQuality"
+                value={formData.dataQuality}
+                onChange={(e) => handleFieldChange('dataQuality', e.target.value)}
+                placeholder="Describe the quality of the data, including completeness, accuracy, and any quality assurance processes"
+                rows={4}
+                disabled={submitting}
+                required
+                className="transition-colors focus-visible:ring-2 resize-none"
+                style={{
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
+                }}
+              />
+              <p className="text-xs" style={{ color: tokens.textMuted }}>
+                Information about data quality, completeness, and validation
+              </p>
+            </div>
           </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" style={{ color: tokens.textPrimary }}>
-              Description <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleFieldChange('description', e.target.value)}
-              placeholder="Provide a detailed description of the dataset, its contents, and structure"
-              rows={5}
-              disabled={submitting}
-              required
-              style={{
-                background: tokens.inputBg,
-                borderColor: tokens.inputBorder,
-                color: tokens.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
-              Detailed information about the dataset's content and structure
-            </p>
-          </div>
+          {/* Optional Fields Section */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
+              <span className="text-xs font-medium px-2" style={{ color: tokens.textMuted }}>OPTIONAL INFORMATION</span>
+              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
+            </div>
 
-          {/* Data Quality */}
-          <div className="space-y-2">
-            <Label htmlFor="dataQuality" style={{ color: tokens.textPrimary }}>
-              Data Quality <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="dataQuality"
-              value={formData.dataQuality}
-              onChange={(e) => handleFieldChange('dataQuality', e.target.value)}
-              placeholder="Describe the quality of the data, including completeness, accuracy, and any quality assurance processes"
-              rows={4}
-              disabled={submitting}
-              required
-              style={{
-                background: tokens.inputBg,
-                borderColor: tokens.inputBorder,
-                color: tokens.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
-              Information about data quality, completeness, and validation
-            </p>
-          </div>
+            {/* Use Cases */}
+            <div className="space-y-2">
+              <Label htmlFor="useCases" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                Use Cases
+              </Label>
+              <Textarea
+                id="useCases"
+                value={formData.useCases || ''}
+                onChange={(e) => handleFieldChange('useCases', e.target.value)}
+                placeholder="Describe potential use cases and applications for this dataset"
+                rows={4}
+                disabled={submitting}
+                className="transition-colors focus-visible:ring-2 resize-none"
+                style={{
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
+                }}
+              />
+              <p className="text-xs" style={{ color: tokens.textMuted }}>
+                Examples of how this dataset can be used
+              </p>
+            </div>
 
-          {/* Use Cases */}
-          <div className="space-y-2">
-            <Label htmlFor="useCases" style={{ color: tokens.textPrimary }}>
-              Use Cases
-            </Label>
-            <Textarea
-              id="useCases"
-              value={formData.useCases || ''}
-              onChange={(e) => handleFieldChange('useCases', e.target.value)}
-              placeholder="Describe potential use cases and applications for this dataset"
-              rows={4}
-              disabled={submitting}
-              style={{
-                background: tokens.inputBg,
-                borderColor: tokens.inputBorder,
-                color: tokens.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
-              Examples of how this dataset can be used
-            </p>
-          </div>
+            {/* Limitations */}
+            <div className="space-y-2">
+              <Label htmlFor="limitations" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                Limitations
+              </Label>
+              <Textarea
+                id="limitations"
+                value={formData.limitations || ''}
+                onChange={(e) => handleFieldChange('limitations', e.target.value)}
+                placeholder="Describe any known limitations, biases, or constraints of this dataset"
+                rows={4}
+                disabled={submitting}
+                className="transition-colors focus-visible:ring-2 resize-none"
+                style={{
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
+                }}
+              />
+              <p className="text-xs" style={{ color: tokens.textMuted }}>
+                Known limitations, biases, or constraints
+              </p>
+            </div>
 
-          {/* Limitations */}
-          <div className="space-y-2">
-            <Label htmlFor="limitations" style={{ color: tokens.textPrimary }}>
-              Limitations
-            </Label>
-            <Textarea
-              id="limitations"
-              value={formData.limitations || ''}
-              onChange={(e) => handleFieldChange('limitations', e.target.value)}
-              placeholder="Describe any known limitations, biases, or constraints of this dataset"
-              rows={4}
-              disabled={submitting}
-              style={{
-                background: tokens.inputBg,
-                borderColor: tokens.inputBorder,
-                color: tokens.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
-              Known limitations, biases, or constraints
-            </p>
-          </div>
-
-          {/* Methodology */}
-          <div className="space-y-2">
-            <Label htmlFor="methodology" style={{ color: tokens.textPrimary }}>
-              Methodology
-            </Label>
-            <Textarea
-              id="methodology"
-              value={formData.methodology || ''}
-              onChange={(e) => handleFieldChange('methodology', e.target.value)}
-              placeholder="Describe the methodology used to collect or generate this data"
-              rows={4}
-              disabled={submitting}
-              style={{
-                background: tokens.inputBg,
-                borderColor: tokens.inputBorder,
-                color: tokens.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
-              Data collection or generation methodology
-            </p>
+            {/* Methodology */}
+            <div className="space-y-2">
+              <Label htmlFor="methodology" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                Methodology
+              </Label>
+              <Textarea
+                id="methodology"
+                value={formData.methodology || ''}
+                onChange={(e) => handleFieldChange('methodology', e.target.value)}
+                placeholder="Describe the methodology used to collect or generate this data"
+                rows={4}
+                disabled={submitting}
+                className="transition-colors focus-visible:ring-2 resize-none"
+                style={{
+                  background: tokens.inputBg,
+                  borderColor: tokens.inputBorder,
+                  color: tokens.textPrimary,
+                }}
+              />
+              <p className="text-xs" style={{ color: tokens.textMuted }}>
+                Data collection or generation methodology
+              </p>
+            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-4">
+          <div className="flex items-center gap-3 pt-6 border-t" style={{ borderColor: tokens.borderSubtle }}>
             <Button
               type="submit"
               disabled={!isFormValid() || submitting}
-              className="text-white"
+              className="h-11 px-6 font-medium transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] text-white"
               style={{
                 background: isFormValid() && !submitting
-                  ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)'
+                  ? '#2a3558'
                   : 'rgba(156, 163, 175, 0.3)',
               }}
             >
@@ -315,6 +349,12 @@ export function AboutDatasetForm({
                 variant="outline"
                 onClick={handleCancel}
                 disabled={submitting}
+                className="h-11 px-5 font-medium transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                style={{
+                  background: tokens.glassBg || 'transparent',
+                  border: `1px solid ${tokens.glassBorder || tokens.inputBorder}`,
+                  color: tokens.textPrimary,
+                }}
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
