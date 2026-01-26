@@ -7,8 +7,8 @@ export function getDatasetThemeTokens(isDark: boolean) {
     surfaceCard: isDark ? 'rgba(26, 34, 64, 0.4)' : '#ffffff',
     
     // Input colors
-    inputBg: isDark ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
-    inputBorder: isDark ? 'rgba(255, 255, 255, 0.12)' : '#dde3f0',
+    inputBg: isDark ? 'rgba(26, 34, 64, 0.6)' : '#f3f5fb',
+    inputBorder: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e3e6f3',
     
     // Border colors
     borderDefault: isDark ? 'rgba(255, 255, 255, 0.1)' : '#dde3f0',
@@ -53,6 +53,9 @@ export function getDatasetThemeTokens(isDark: boolean) {
     // Glass morphism (align with supplier tokens)
     glassBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)',
     glassBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+    glassShadow: isDark
+      ? '0 8px 24px rgba(0, 0, 0, 0.3)'
+      : '0 8px 24px rgba(26, 34, 64, 0.08)',
   };
 }
 

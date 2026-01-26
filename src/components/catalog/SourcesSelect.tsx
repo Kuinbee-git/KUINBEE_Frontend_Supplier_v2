@@ -94,10 +94,13 @@ export function SourcesSelect({
             size="sm"
             variant="outline"
             onClick={() => setDialogOpen(true)}
-            className="w-full justify-center gap-2 h-10 rounded-lg transition-all duration-300"
+            className="w-full justify-center gap-2 h-10 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95"
             style={{
-              background: tokens?.inputBg || (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)'),
-              border: `1px solid ${tokens?.inputBorder || (isDark ? 'rgba(255, 255, 255, 0.1)' : '#dde3f0')}`,
+              background: tokens?.glassBg || (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)'),
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: `1.5px solid ${tokens?.glassBorder || (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)')}`,
+              boxShadow: tokens?.glassShadow || (isDark ? '0 8px 24px rgba(0, 0, 0, 0.3)' : '0 8px 24px rgba(26, 34, 64, 0.08)'),
               color: tokens?.textPrimary || (isDark ? '#ffffff' : '#1a2240'),
             }}
           >

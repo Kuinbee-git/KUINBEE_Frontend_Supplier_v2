@@ -323,10 +323,18 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           <Button
             variant="ghost"
             onClick={() => router.back()}
-            className="flex items-center gap-2 hover:bg-opacity-10 mb-6"
-            style={{ color: tokens.textSecondary }}
+            className="flex items-center gap-2 mb-6 transition-all duration-200 hover:translate-x-[-4px] rounded-lg"
+            style={{
+              color: tokens.textSecondary,
+              padding: '0.625rem 1.25rem',
+              background: tokens.glassBg,
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: `1.5px solid ${tokens.glassBorder}`,
+              boxShadow: tokens.glassShadow,
+            }}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 transition-transform duration-200" />
             Back to datasets
           </Button>
 
@@ -477,9 +485,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             <Button
                               onClick={() => setUploadDialogOpen(true)}
                               size="lg"
-                              className="text-white gap-2 px-8 py-6 text-base"
+                              className="text-white gap-2 px-8 py-6 text-base rounded-lg transition-all duration-200 hover:shadow-lg active:scale-95"
                               style={{
-                                background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
+                                background: '#1a2240',
+                                color: '#ffffff',
                               }}
                             >
                               <Upload className="w-5 h-5" />
@@ -525,31 +534,36 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
                 {/* Navigation Buttons */}
                 <div
-                  className="px-8 py-5 border-t flex items-center justify-between"
+                  className="px-8 py-6 border-t flex items-center justify-between gap-4"
                   style={{ borderColor: tokens.borderDefault }}
                 >
-                  <Button
-                    variant="outline"
-                    onClick={handleBack}
-                    disabled={currentStepIndex === 0 || submitting}
-                    className="gap-2 px-6"
-                    style={{
-                      borderColor: tokens.borderDefault,
-                      color: tokens.textPrimary,
-                    }}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back
-                  </Button>
+                  {currentStepIndex > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleBack}
+                      disabled={submitting}
+                      className="gap-2 px-6 h-11 font-medium transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                      style={{
+                        background: tokens.glassBg,
+                        backdropFilter: "blur(16px)",
+                        WebkitBackdropFilter: "blur(16px)",
+                        border: `1.5px solid ${tokens.glassBorder}`,
+                        boxShadow: tokens.glassShadow,
+                        color: tokens.textPrimary,
+                      }}
+                    >
+                      <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
+                      Back
+                    </Button>
+                  )}
 
                   <Button
                     onClick={handleNext}
                     disabled={!canGoNext() || submitting}
-                    className="gap-2 text-white px-8"
+                    className="gap-2 text-white px-8 h-11 font-medium transition-all duration-200 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
                     style={{
-                      background: canGoNext() && !submitting
-                        ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)'
-                        : 'rgba(156, 163, 175, 0.3)',
+                      background: canGoNext() && !submitting ? '#1a2240' : '#9ca3af',
+                      color: '#ffffff',
                     }}
                   >
                     {submitting ? (
@@ -569,7 +583,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
               ) : (
                 <>
                   Next
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 transition-transform duration-200" />
                 </>
               )}
             </Button>

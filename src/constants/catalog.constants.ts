@@ -30,5 +30,7 @@ export const CATALOG_ERROR_MESSAGES = {
   SOURCE_NOT_FOUND: "Source not found. It may have been deleted.",
   CATEGORY_NOT_FOUND: "Category not found.",
   VALIDATION_ERROR: "Please check your input and try again.",
-  NETWORK_ERROR: "Network error. Please try again.",
+  NETWORK_ERROR: "Unable to connect to the server. Please check your internet connection and try again.",
+  CONNECTION_TIMEOUT: "The request took too long to complete. Please check your internet connection and try again.",
+  OFFLINE: "You appear to be offline. Please check your internet connection.",
 } as const;

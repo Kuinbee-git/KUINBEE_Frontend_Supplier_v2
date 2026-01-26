@@ -379,13 +379,21 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
       'INVALID_STATE': 'This proposal cannot be submitted in its current state. Please check the status.',
       'NOT_FOUND': 'Proposal not found. It may have been deleted.',
       'FORBIDDEN': 'You do not have permission to submit this proposal.',
+      'NETWORK_ERROR': 'Unable to connect to the server. Please check your internet connection and try again.',
+      'TIMEOUT': 'The request took too long. Please check your internet connection and try again.',
+      'OFFLINE': 'You appear to be offline. Please check your internet connection.',
     };
     
     if (errorCode && errorMessages[errorCode]) {
       return errorMessages[errorCode];
     }
     
-    return error?.message || 'Failed to submit proposal. Please try again later.';
+    // Check if it's a network error by message
+    if (error?.message?.includes('Failed to fetch') || error?.message?.includes('Network')) {
+      return 'Unable to connect to the server. Please verify your internet connection is working and try again.';
+    }
+    
+    return error?.message || 'Failed to submit proposal. Please check your connection and try again.';
   };
   
   const handleSubmitForReview = () => {
@@ -546,19 +554,19 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                         <div
                           className="p-4 rounded-xl border mb-4"
                           style={{
-                            background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)',
-                            borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.2)',
+                            background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.15)',
+                            borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)',
                           }}
                         >
                           <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(234, 179, 8, 0.15)' }}>
-                              <AlertCircle className="w-4 h-4" style={{ color: '#eab308' }} />
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isDark ? 'rgba(234, 179, 8, 0.15)' : 'rgba(234, 179, 8, 0.25)' }}>
+                              <AlertCircle className="w-4 h-4" style={{ color: '#d97706' }} />
                             </div>
                             <div>
-                              <p className="text-sm font-medium mb-2" style={{ color: '#eab308' }}>
+                              <p className="text-sm font-semibold mb-2" style={{ color: isDark ? '#eab308' : '#b45309' }}>
                                 Missing Required Information
                               </p>
-                              <ul className="text-xs space-y-1" style={{ color: tokens.textSecondary }}>
+                              <ul className="text-xs space-y-1" style={{ color: isDark ? tokens.textSecondary : tokens.textPrimary }}>
                                 {missing.map((item, i) => (
                                   <li key={i}>• {item}</li>
                                 ))}
@@ -572,15 +580,15 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       <div
                         className="p-4 rounded-xl border mb-4"
                         style={{
-                          background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                          borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                          background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)',
+                          borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)',
                         }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
-                            <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.25)' }}>
+                            <CheckCircle className="w-4 h-4" style={{ color: isDark ? '#22c55e' : '#15803d' }} />
                           </div>
-                          <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
+                          <p className="text-sm font-semibold" style={{ color: isDark ? '#22c55e' : '#15803d' }}>
                             All requirements met. Ready to submit!
                           </p>
                         </div>

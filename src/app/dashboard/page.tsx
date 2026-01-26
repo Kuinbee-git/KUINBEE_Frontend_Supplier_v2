@@ -1,19 +1,60 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useOnboardingStatus } from "@/hooks";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import { useRouter } from "next/navigation";
 import { Database, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard, StatCard } from "@/components/shared";
+import { listMyProposals } from "@/lib/api/dataset-proposals";
+import { listMyDatasets } from "@/lib/api/datasets";
 
 export default function DashboardPage() {
   const router = useRouter();
   const tokens = useSupplierTokens();
   const { isComplete } = useOnboardingStatus();
+  const [proposalCount, setProposalCount] = useState(0);
+  const [datasetCount, setDatasetCount] = useState(0);
+  const [proposals, setProposals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        // Fetch proposals and datasets in parallel for faster loading
+        const [proposalsData, datasetsData] = await Promise.all([
+          listMyProposals({ pageSize: 4, page: 1 }),
+          listMyDatasets({ pageSize: 1, page: 1 }),
+        ]);
+
+        setProposalCount(proposalsData.total || 0);
+        setProposals(proposalsData.items || []);
+        setDatasetCount(datasetsData.total || 0);
+      } catch (error) {
+        console.error("Failed to fetch counts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCounts();
+  }, []);
 
   return (
     <div className="max-w-[1400px] mx-auto px-8 py-7 h-full">
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
       {/* Header */}
       <h1 
         className="text-3xl font-semibold mb-2"
@@ -29,10 +70,16 @@ export default function DashboardPage() {
       </p>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-7">
+      <div style={{ animation: 'fadeIn 0.6s ease-out' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-7">
         <StatCard 
           label="TOTAL PROPOSALS" 
-          value="0" 
+          value={loading ? "-" : proposalCount} 
+          className="p-5"
+        />
+        <StatCard 
+          label="TOTAL DATASETS" 
+          value={loading ? "-" : datasetCount} 
           className="p-5"
         />
         <StatCard 
@@ -50,8 +97,10 @@ export default function DashboardPage() {
           className="p-5"
         />
       </div>
+      </div>
 
       {/* Create Proposal Section */}
+      <div style={{ animation: 'fadeIn 0.6s ease-out 0.2s backwards' }}>
       <GlassCard className="mb-7">
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
@@ -87,8 +136,10 @@ export default function DashboardPage() {
           </Button>
         </div>
       </GlassCard>
+      </div>
 
       {/* Your Proposals Section */}
+      <div style={{ animation: 'fadeIn 0.6s ease-out 0.4s backwards' }}>
       <GlassCard>
         <div className="p-5">
           <div className="flex items-center justify-between mb-5">
@@ -113,27 +164,69 @@ export default function DashboardPage() {
             </Button>
           </div>
           
-          {/* Empty State */}
-          <div 
-            className="text-center py-8 rounded-lg"
-            style={{ 
-              background: tokens.inputBg,
-              border: `1px solid ${tokens.borderDefault}`
-            }}
-          >
-            <Database 
-              className="w-10 h-10 mx-auto mb-3" 
-              style={{ color: tokens.textMuted }} 
-            />
-            <p className="text-sm font-medium mb-1" style={{ color: tokens.textPrimary }}>
-              No proposals yet
-            </p>
-            <p className="text-xs" style={{ color: tokens.textSecondary }}>
-              Create your first proposal to get started
-            </p>
-          </div>
+          {/* Proposals List or Empty State */}
+          {loading ? (
+            <div className="text-center py-8">
+              <p style={{ color: tokens.textSecondary }}>Loading proposals...</p>
+            </div>
+          ) : proposals.length > 0 ? (
+            <div>
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
+                {proposals.map((proposal) => (
+                  <div
+                    key={proposal.id}
+                    className="p-4 rounded-lg border flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
+                    style={{
+                      background: tokens.inputBg,
+                      borderColor: tokens.borderDefault,
+                    }}
+                    onClick={() => router.push(`/dashboard/proposals`)}
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium" style={{ color: tokens.textPrimary }}>
+                        {proposal.title}
+                      </p>
+                      <p className="text-xs mt-1" style={{ color: tokens.textSecondary }}>
+                        Status: <span className="font-semibold">{proposal.status}</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs" style={{ color: tokens.textSecondary }}>
+                        {new Date(proposal.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-center mt-3 pt-2" style={{ borderTop: `1px solid ${tokens.borderDefault}` }}>
+                <svg className="w-5 h-5 animate-bounce" style={{ color: tokens.textSecondary }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="text-center py-8 rounded-lg"
+              style={{ 
+                background: tokens.inputBg,
+                border: `1px solid ${tokens.borderDefault}`
+              }}
+            >
+              <Database 
+                className="w-10 h-10 mx-auto mb-3" 
+                style={{ color: tokens.textMuted }} 
+              />
+              <p className="text-sm font-medium mb-1" style={{ color: tokens.textPrimary }}>
+                No proposals yet
+              </p>
+              <p className="text-xs" style={{ color: tokens.textSecondary }}>
+                Create your first proposal to get started
+              </p>
+            </div>
+          )}
         </div>
       </GlassCard>
+      </div>
     </div>
   );
 }

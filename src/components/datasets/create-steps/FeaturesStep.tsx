@@ -30,7 +30,15 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
           variant="outline"
           onClick={onAdd}
           disabled={disabled}
-          className="gap-2"
+          className="gap-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95"
+          style={{
+            background: tokens.glassBg,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: `1.5px solid ${tokens.glassBorder}`,
+            boxShadow: tokens.glassShadow,
+            color: tokens.textPrimary,
+          }}
         >
           <Plus className="w-4 h-4" />
           Add Feature
@@ -57,6 +65,14 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
                   variant="ghost"
                   onClick={() => onRemove(index)}
                   disabled={disabled}
+                  className="rounded-lg transition-all duration-200 hover:shadow-md active:scale-95"
+                  style={{
+                    background: tokens.glassBg,
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    border: `1.5px solid ${tokens.glassBorder}`,
+                    color: tokens.textPrimary,
+                  }}
                 >
                   <XIcon className="w-4 h-4" />
                 </Button>
