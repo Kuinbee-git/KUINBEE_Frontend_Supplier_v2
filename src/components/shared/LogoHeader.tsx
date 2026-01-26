@@ -1,6 +1,7 @@
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
+import { useThemeStore } from "@/store";
 import { DarkModeToggle } from "./DarkModeToggle";
 import logoDark from "@/assets/logo-dark.png";
 import logoLight from "@/assets/logo-light.png";
@@ -23,6 +24,8 @@ export function LogoHeader({
   showDarkModeToggle = true,
 }: LogoHeaderProps) {
   const tokens = useSupplierTokens();
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
 
   return (
     <div className="relative z-10 border-b" style={{ borderColor: tokens.borderDefault }}>
@@ -39,10 +42,10 @@ export function LogoHeader({
             }}
           >
             <img
-              src={tokens.isDark ? logoDark.src : logoLight.src}
+              src={isDark ? logoDark.src : logoLight.src}
               alt="Kuinbee"
               className="h-16 transition-opacity duration-300"
-              style={{ opacity: tokens.isDark ? 0.9 : 1 }}
+              style={{ opacity: isDark ? 0.9 : 1 }}
             />
           </div>
           <div>
@@ -73,11 +76,29 @@ export function LogoHeader({
             <Button
               variant="ghost"
               onClick={onLogout}
-              className="gap-2 transition-colors h-10 px-4"
-              style={{ color: tokens.textSecondary }}
+              className="gap-2 transition-all duration-300 h-10 px-4 rounded-lg hover:scale-105 active:scale-95"
+              style={{
+                color: tokens.textPrimary,
+                background: tokens.glassBg,
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: `1px solid ${tokens.glassBorder}`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark 
+                  ? 'rgba(255, 255, 255, 0.12)' 
+                  : 'rgba(255, 255, 255, 0.95)';
+                e.currentTarget.style.boxShadow = isDark
+                  ? '0 2px 8px rgba(0, 0, 0, 0.3)'
+                  : '0 2px 8px rgba(26, 34, 64, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = tokens.glassBg;
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-sm">Logout</span>
+              <span className="text-sm font-medium">Logout</span>
             </Button>
           )}
         </div>

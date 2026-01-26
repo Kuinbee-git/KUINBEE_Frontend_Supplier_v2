@@ -120,8 +120,13 @@ function NewSupplierFormComponent({
       <div className="space-y-2">
         <Label 
           htmlFor="email"
-          className="text-sm transition-colors duration-300"
-          style={{ color: tokens.textPrimary, fontWeight: 500 }}
+          className="transition-colors duration-300 block"
+          style={{ 
+            '--label-color': tokens.textPrimary,
+            color: tokens.textPrimary,
+            fontWeight: 500, 
+            fontSize: '0.875rem' 
+          } as React.CSSProperties & { '--label-color': string }}
         >
           Email
         </Label>
@@ -139,7 +144,8 @@ function NewSupplierFormComponent({
             color: tokens.textPrimary,
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-          }}
+            "--placeholder-color": tokens.textMuted,
+          } as React.CSSProperties & { "--placeholder-color": string }}
           autoFocus
           autoComplete="email"
           disabled={loading}
@@ -152,8 +158,13 @@ function NewSupplierFormComponent({
           <div className="space-y-2">
             <Label 
               htmlFor="password"
-              className="text-sm transition-colors duration-300"
-              style={{ color: tokens.textPrimary, fontWeight: 500 }}
+              className="transition-colors duration-300 block"
+              style={{ 
+                '--label-color': tokens.textPrimary,
+                color: tokens.textPrimary,
+                fontWeight: 500, 
+                fontSize: '0.875rem' 
+              } as React.CSSProperties & { '--label-color': string }}
             >
               Password
             </Label>
@@ -172,7 +183,8 @@ function NewSupplierFormComponent({
                   color: tokens.textPrimary,
                   backdropFilter: "blur(16px)",
                   WebkitBackdropFilter: "blur(16px)",
-                }}
+                  "--placeholder-color": tokens.textMuted,
+                } as React.CSSProperties & { "--placeholder-color": string }}
                 autoComplete="new-password"
                 disabled={loading}
               />
@@ -186,7 +198,7 @@ function NewSupplierFormComponent({
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            <p className="text-xs" style={{ color: tokens.textMuted }}>
+            <p className="text-xs transition-colors duration-300" style={{ color: tokens.textMuted }}>
               Must be 8-128 characters
             </p>
           </div>
@@ -194,8 +206,13 @@ function NewSupplierFormComponent({
           <div className="space-y-2">
             <Label 
               htmlFor="confirmPassword"
-              className="text-sm transition-colors duration-300"
-              style={{ color: tokens.textPrimary, fontWeight: 500 }}
+              className="transition-colors duration-300 block"
+              style={{ 
+                '--label-color': tokens.textPrimary,
+                color: tokens.textPrimary,
+                fontWeight: 500, 
+                fontSize: '0.875rem' 
+              } as React.CSSProperties & { '--label-color': string }}
             >
               Confirm Password
             </Label>
@@ -214,7 +231,8 @@ function NewSupplierFormComponent({
                   color: tokens.textPrimary,
                   backdropFilter: "blur(16px)",
                   WebkitBackdropFilter: "blur(16px)",
-                }}
+                  "--placeholder-color": tokens.textMuted,
+                } as React.CSSProperties & { "--placeholder-color": string }}
                 autoComplete="new-password"
                 disabled={loading}
               />

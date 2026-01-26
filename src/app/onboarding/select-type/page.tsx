@@ -9,10 +9,12 @@ import { Building2, User } from "lucide-react";
 import { selectSupplierType, getOnboardingStatus } from "@/lib/api";
 import { ONBOARDING_STEP_ROUTES, SUPPLIER_TYPE_LABELS } from "@/constants";
 import { LogoHeader, GlassCard, PageBackground } from "@/components/shared";
+import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import type { SupplierType } from "@/types";
 
 export default function SelectTypePage() {
   const router = useRouter();
+  const tokens = useSupplierTokens();
   const [selectedType, setSelectedType] = useState<SupplierType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,10 +72,13 @@ export default function SelectTypePage() {
             <div className="p-8">
               {/* Header */}
               <div className="mb-8">
-                <h2 className="text-2xl font-semibold mb-2">
+                <h2 
+                  className="text-2xl font-semibold mb-2"
+                  style={{ color: tokens.textPrimary }}
+                >
                   Select Supplier Type
                 </h2>
-                <p className="text-muted-foreground">
+                <p style={{ color: tokens.textSecondary }}>
                   Choose the type that best describes your business
                 </p>
               </div>
@@ -86,11 +91,17 @@ export default function SelectTypePage() {
               >
                 {/* Individual Option */}
                 <div
-                  className={`relative flex items-center space-x-4 p-6 rounded-lg border-2 transition-all cursor-pointer ${
+                  className={`relative flex items-center space-x-4 p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer ${
                     selectedType === "INDIVIDUAL"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                      ? "border-white/40"
+                      : "border-white/15 hover:border-white/25"
                   }`}
+                  style={{
+                    background: selectedType === "INDIVIDUAL" 
+                      ? "rgba(255, 255, 255, 0.12)"
+                      : "transparent",
+                    backdropFilter: selectedType === "INDIVIDUAL" ? "blur(16px)" : "none",
+                  }}
                   onClick={() => setSelectedType("INDIVIDUAL")}
                 >
                   <RadioGroupItem value="INDIVIDUAL" id="individual" />
@@ -99,12 +110,21 @@ export default function SelectTypePage() {
                       htmlFor="individual"
                       className="flex items-center gap-3 cursor-pointer"
                     >
-                      <User className="w-6 h-6 text-primary" />
+                      <User 
+                        className="w-6 h-6" 
+                        style={{ color: tokens.textPrimary }}
+                      />
                       <div>
-                        <div className="font-semibold">
+                        <div 
+                          className="font-semibold"
+                          style={{ color: tokens.textPrimary }}
+                        >
                           {SUPPLIER_TYPE_LABELS.INDIVIDUAL}
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div 
+                          className="text-sm"
+                          style={{ color: tokens.textSecondary }}
+                        >
                           For individual suppliers and freelancers
                         </div>
                       </div>
@@ -114,11 +134,17 @@ export default function SelectTypePage() {
 
                 {/* Company Option */}
                 <div
-                  className={`relative flex items-center space-x-4 p-6 rounded-lg border-2 transition-all cursor-pointer ${
+                  className={`relative flex items-center space-x-4 p-6 rounded-lg border-2 transition-all duration-300 cursor-pointer ${
                     selectedType === "COMPANY"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                      ? "border-white/40"
+                      : "border-white/15 hover:border-white/25"
                   }`}
+                  style={{
+                    background: selectedType === "COMPANY" 
+                      ? "rgba(255, 255, 255, 0.12)"
+                      : "transparent",
+                    backdropFilter: selectedType === "COMPANY" ? "blur(16px)" : "none",
+                  }}
                   onClick={() => setSelectedType("COMPANY")}
                 >
                   <RadioGroupItem value="COMPANY" id="company" />
@@ -127,12 +153,21 @@ export default function SelectTypePage() {
                       htmlFor="company"
                       className="flex items-center gap-3 cursor-pointer"
                     >
-                      <Building2 className="w-6 h-6 text-primary" />
+                      <Building2 
+                        className="w-6 h-6"
+                        style={{ color: tokens.textPrimary }}
+                      />
                       <div>
-                        <div className="font-semibold">
+                        <div 
+                          className="font-semibold"
+                          style={{ color: tokens.textPrimary }}
+                        >
                           {SUPPLIER_TYPE_LABELS.COMPANY}
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div 
+                          className="text-sm"
+                          style={{ color: tokens.textSecondary }}
+                        >
                           For registered companies and organizations
                         </div>
                       </div>
@@ -143,7 +178,14 @@ export default function SelectTypePage() {
 
               {/* Error Message */}
               {error && (
-                <div className="mt-4 p-4 bg-destructive/10 border border-destructive rounded-lg text-sm text-destructive">
+                <div 
+                  className="mt-4 p-4 border rounded-lg text-sm"
+                  style={{
+                    background: tokens.errorBg,
+                    borderColor: tokens.errorBorder,
+                    color: tokens.errorText,
+                  }}
+                >
                   {error}
                 </div>
               )}

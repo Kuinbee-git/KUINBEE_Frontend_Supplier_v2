@@ -13,10 +13,16 @@ import { LogoHeader, GlassCard, PageBackground, StatusMessage } from "@/componen
 import { StyledSelect } from "@/components/datasets/shared/StyledSelect";
 import { BUSINESS_DOMAINS } from "@/types/onboarding.types";
 import { ProgressStepper } from "@/components/onboarding";
+import { useSupplierTokens } from "@/hooks";
+import { useThemeStore } from "@/store";
 import type { SupplierProfile, UpdateProfileRequest, SupplierType } from "@/types";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
+  const tokens = useSupplierTokens();
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -212,15 +218,18 @@ export default function CompleteProfilePage() {
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-3">
                   {supplierType === "INDIVIDUAL" ? (
-                    <UserCircle className="w-6 h-6 text-primary" />
+                    <UserCircle className="w-6 h-6" style={{ color: tokens.textPrimary }} />
                   ) : (
-                    <Building2 className="w-6 h-6 text-primary" />
+                    <Building2 className="w-6 h-6" style={{ color: tokens.textPrimary }} />
                   )}
-                  <h2 className="text-2xl font-semibold">
+                  <h2 
+                    className="text-2xl font-semibold"
+                    style={{ color: tokens.textPrimary }}
+                  >
                     {supplierType === "INDIVIDUAL" ? "Individual Profile" : "Company Profile"}
                   </h2>
                 </div>
-                <p className="text-muted-foreground">
+                <p style={{ color: tokens.textSecondary }} className="text-sm">
                   Provide your business details
                 </p>
               </div>
@@ -229,12 +238,25 @@ export default function CompleteProfilePage() {
               <div className="space-y-6">
                 {/* Identity Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Identity</h3>
+                  <h3 
+                    className="text-lg font-semibold"
+                    style={{ color: tokens.textPrimary }}
+                  >
+                    Identity
+                  </h3>
                   
                   {supplierType === "INDIVIDUAL" ? (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="individualName">
+                        <Label 
+                          htmlFor="individualName"
+                          style={{ 
+                            color: tokens.textPrimary,
+                            '--label-color': tokens.textPrimary,
+                            fontWeight: 500,
+                            fontSize: '0.875rem'
+                          } as React.CSSProperties & { '--label-color': string }}
+                        >
                           Full Name <span className="text-destructive">*</span>
                         </Label>
                         <Input
@@ -242,10 +264,28 @@ export default function CompleteProfilePage() {
                           value={individualName}
                           onChange={(e) => setIndividualName(e.target.value)}
                           placeholder="John Doe"
+                          className="h-11 transition-all duration-300 autofill-fix"
+                          style={{
+                            borderColor: tokens.inputBorder,
+                            backgroundColor: tokens.inputBg,
+                            backdropFilter: "blur(16px)",
+                            WebkitBackdropFilter: "blur(16px)",
+                            "--placeholder-color": tokens.textMuted,
+                            "--input-text-color": tokens.textPrimary,
+                          } as React.CSSProperties & { "--placeholder-color": string; "--input-text-color": string }}
+                          autoComplete="off"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="contactPersonName">
+                        <Label 
+                          htmlFor="contactPersonName"
+                          style={{ 
+                            color: tokens.textPrimary,
+                            '--label-color': tokens.textPrimary,
+                            fontWeight: 500,
+                            fontSize: '0.875rem'
+                          } as React.CSSProperties & { '--label-color': string }}
+                        >
                           Contact Person Name (Optional)
                         </Label>
                         <Input
@@ -253,13 +293,31 @@ export default function CompleteProfilePage() {
                           value={contactPersonName}
                           onChange={(e) => setContactPersonName(e.target.value)}
                           placeholder={individualName || "Same as above"}
+                          className="h-11 transition-all duration-300 autofill-fix"
+                          style={{
+                            borderColor: tokens.inputBorder,
+                            backgroundColor: tokens.inputBg,
+                            backdropFilter: "blur(16px)",
+                            WebkitBackdropFilter: "blur(16px)",
+                            "--placeholder-color": tokens.textMuted,
+                            "--input-text-color": tokens.textPrimary,
+                          } as React.CSSProperties & { "--placeholder-color": string; "--input-text-color": string }}
+                          autoComplete="off"
                         />
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="companyName">
+                        <Label 
+                          htmlFor="companyName"
+                          style={{ 
+                            color: tokens.textPrimary,
+                            '--label-color': tokens.textPrimary,
+                            fontWeight: 500,
+                            fontSize: '0.875rem'
+                          } as React.CSSProperties & { '--label-color': string }}
+                        >
                           Company Name <span className="text-destructive">*</span>
                         </Label>
                         <Input
@@ -267,10 +325,28 @@ export default function CompleteProfilePage() {
                           value={companyName}
                           onChange={(e) => setCompanyName(e.target.value)}
                           placeholder="Acme Data Corp"
+                          className="h-11 transition-all duration-300 autofill-fix"
+                          style={{
+                            borderColor: tokens.inputBorder,
+                            backgroundColor: tokens.inputBg,
+                            backdropFilter: "blur(16px)",
+                            WebkitBackdropFilter: "blur(16px)",
+                            "--placeholder-color": tokens.textMuted,
+                            "--input-text-color": tokens.textPrimary,
+                          } as React.CSSProperties & { "--placeholder-color": string; "--input-text-color": string }}
+                          autoComplete="off"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="websiteUrl">
+                        <Label 
+                          htmlFor="websiteUrl"
+                          style={{ 
+                            color: tokens.textPrimary,
+                            '--label-color': tokens.textPrimary,
+                            fontWeight: 500,
+                            fontSize: '0.875rem'
+                          } as React.CSSProperties & { '--label-color': string }}
+                        >
                           Website URL (Optional)
                         </Label>
                         <Input
@@ -279,10 +355,28 @@ export default function CompleteProfilePage() {
                           value={websiteUrl}
                           onChange={(e) => setWebsiteUrl(e.target.value)}
                           placeholder="https://example.com"
+                          className="h-11 transition-all duration-300 autofill-fix"
+                          style={{
+                            borderColor: tokens.inputBorder,
+                            backgroundColor: tokens.inputBg,
+                            backdropFilter: "blur(16px)",
+                            WebkitBackdropFilter: "blur(16px)",
+                            "--placeholder-color": tokens.textMuted,
+                            "--input-text-color": tokens.textPrimary,
+                          } as React.CSSProperties & { "--placeholder-color": string; "--input-text-color": string }}
+                          autoComplete="off"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="contactPersonName">
+                        <Label 
+                          htmlFor="contactPersonName"
+                          style={{ 
+                            color: tokens.textPrimary,
+                            '--label-color': tokens.textPrimary,
+                            fontWeight: 500,
+                            fontSize: '0.875rem'
+                          } as React.CSSProperties & { '--label-color': string }}
+                        >
                           Contact Person Name <span className="text-destructive">*</span>
                         </Label>
                         <Input
@@ -290,6 +384,16 @@ export default function CompleteProfilePage() {
                           value={contactPersonName}
                           onChange={(e) => setContactPersonName(e.target.value)}
                           placeholder="John Doe"
+                          className="h-11 transition-all duration-300 autofill-fix"
+                          style={{
+                            borderColor: tokens.inputBorder,
+                            backgroundColor: tokens.inputBg,
+                            backdropFilter: "blur(16px)",
+                            WebkitBackdropFilter: "blur(16px)",
+                            "--placeholder-color": tokens.textMuted,
+                            "--input-text-color": tokens.textPrimary,
+                          } as React.CSSProperties & { "--placeholder-color": string; "--input-text-color": string }}
+                          autoComplete="off"
                         />
                       </div>
                     </>
@@ -299,8 +403,13 @@ export default function CompleteProfilePage() {
                 {/* Business Domains Section */}
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold mb-1">Business Domains</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 
+                      className="text-lg font-semibold mb-1"
+                      style={{ color: tokens.textPrimary }}
+                    >
+                      Business Domains
+                    </h3>
+                    <p style={{ color: tokens.textSecondary }} className="text-sm">
                       Select all domains relevant to your business <span className="text-destructive">*</span>
                     </p>
                   </div>
@@ -309,16 +418,42 @@ export default function CompleteProfilePage() {
                     {BUSINESS_DOMAINS.map((domain) => (
                       <div
                         key={domain}
-                        className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-lg border transition-all duration-200"
+                        style={{
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.6)',
+                          borderColor: businessDomains.includes(domain) 
+                            ? tokens.borderDefault
+                            : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 34, 64, 0.1)'),
+                          borderWidth: '1px'
+                        }}
                       >
                         <Checkbox
                           id={`domain-${domain}`}
                           checked={businessDomains.includes(domain)}
                           onCheckedChange={() => handleDomainToggle(domain)}
+                          style={{
+                            borderColor: businessDomains.includes(domain) ? (isDark ? '#ffffff' : '#1a2240') : (isDark ? 'rgba(255, 255, 255, 0.2)' : '#cbd5e1'),
+                            backgroundColor: businessDomains.includes(domain)
+                              ? (isDark ? '#ffffff' : '#1a2240')
+                              : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#ffffff'),
+                            color: businessDomains.includes(domain) ? (isDark ? '#1a2240' : '#ffffff') : 'transparent',
+                            borderWidth: '2px',
+                            width: '18px',
+                            height: '18px',
+                            minWidth: '18px',
+                            minHeight: '18px',
+                          }}
                         />
                         <Label
                           htmlFor={`domain-${domain}`}
-                          className="text-sm cursor-pointer flex-1"
+                          style={{ 
+                            color: tokens.textPrimary,
+                            '--label-color': tokens.textPrimary,
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
+                            letterSpacing: '0.5px'
+                          } as React.CSSProperties & { '--label-color': string }}
+                          className="cursor-pointer flex-1 uppercase"
                         >
                           {domain}
                         </Label>
@@ -330,7 +465,15 @@ export default function CompleteProfilePage() {
                 {/* Primary Domain */}
                 {businessDomains.length > 1 && (
                   <div className="space-y-2">
-                    <Label htmlFor="primaryDomain">
+                    <Label 
+                      htmlFor="primaryDomain"
+                      style={{ 
+                        color: tokens.textPrimary,
+                        '--label-color': tokens.textPrimary,
+                        fontWeight: 500,
+                        fontSize: '0.875rem'
+                      } as React.CSSProperties & { '--label-color': string }}
+                    >
                       Primary Domain (Optional)
                     </Label>
                     <StyledSelect
@@ -341,14 +484,15 @@ export default function CompleteProfilePage() {
                         value: domain,
                       }))}
                       placeholder="Select primary domain"
+                      isDark={isDark}
                       tokens={{
-                        inputBg: '#f8f9fa',
-                        inputBorder: '#e0e0e0',
-                        textPrimary: '#000000',
-                        textSecondary: '#6b7280',
-                        textMuted: '#9ca3af',
-                        surfaceCard: '#ffffff',
-                        borderDefault: '#e5e7eb',
+                        inputBg: tokens.inputBg,
+                        inputBorder: tokens.inputBorder,
+                        textPrimary: tokens.textPrimary,
+                        textSecondary: tokens.textSecondary,
+                        textMuted: tokens.textMuted,
+                        surfaceCard: isDark ? 'rgba(26, 34, 64, 0.95)' : '#ffffff',
+                        borderDefault: tokens.borderDefault,
                       }}
                     />
                   </div>
@@ -356,7 +500,15 @@ export default function CompleteProfilePage() {
 
                 {/* Nature of Data */}
                 <div className="space-y-2">
-                  <Label htmlFor="naturesOfDataProvided">
+                  <Label 
+                    htmlFor="naturesOfDataProvided"
+                    style={{ 
+                      color: tokens.textPrimary,
+                      '--label-color': tokens.textPrimary,
+                      fontWeight: 500,
+                      fontSize: '0.875rem'
+                    } as React.CSSProperties & { '--label-color': string }}
+                  >
                     Nature of Data Provided (Optional)
                   </Label>
                   <Textarea
@@ -364,9 +516,16 @@ export default function CompleteProfilePage() {
                     value={naturesOfDataProvided}
                     onChange={(e) => setNaturesOfDataProvided(e.target.value)}
                     placeholder="Describe the types of data you provide..."
-                    rows={4}
+                    className="h-28 resize-none transition-all duration-300"
+                    style={{
+                      borderColor: tokens.inputBorder,
+                      backgroundColor: tokens.inputBg,
+                      color: tokens.textPrimary,
+                      backdropFilter: "blur(16px)",
+                      WebkitBackdropFilter: "blur(16px)",
+                    }}
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p style={{ color: tokens.textMuted }} className="text-xs">
                     Help buyers understand what kind of data you offer
                   </p>
                 </div>
@@ -374,7 +533,15 @@ export default function CompleteProfilePage() {
 
               {/* Error Message */}
               {error && (
-                <div className="mt-6 p-4 bg-destructive/10 border border-destructive rounded-lg text-sm text-destructive">
+                <div 
+                  className="mt-6 p-4 rounded-lg text-sm"
+                  style={{
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2',
+                    borderColor: tokens.errorBorder,
+                    border: `1px solid ${tokens.errorBorder}`,
+                    color: tokens.errorText
+                  }}
+                >
                   {error}
                 </div>
               )}
@@ -385,6 +552,11 @@ export default function CompleteProfilePage() {
                   onClick={handleSubmit}
                   disabled={!isFormValid() || submitting}
                   className="flex-1"
+                  style={{
+                    background: !isFormValid() || submitting 
+                      ? 'rgba(26, 34, 64, 0.5)'
+                      : 'linear-gradient(135deg, #1a2240 0%, #2a3250 100%)',
+                  }}
                 >
                   {submitting ? "Completing..." : "Complete Onboarding"}
                 </Button>

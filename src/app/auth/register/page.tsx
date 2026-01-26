@@ -62,6 +62,7 @@ export default function RegisterPage() {
       <NewSupplierForm
         onSubmit={handleRegister}
         onBackToLogin={handleBackToLogin}
+        isDark={isDark}
         loading={loading}
         error={error}
       />

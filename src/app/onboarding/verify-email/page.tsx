@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { OTPVerification } from "@/components/auth";
 import { sendEmailOtp, verifyEmailOtp, getOnboardingStatus } from "@/lib/api";
@@ -14,31 +14,67 @@ export default function VerifyEmailPage() {
   const [email] = useState(""); // Will be fetched from session
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const hasAttemptedSendRef = useRef(false);
+  const resendAttemptCountRef = useRef(0);
 
   const handleSendOtp = useCallback(async () => {
     try {
       setError(null);
+      setResendError(null);
       await sendEmailOtp({ reason: "SUPPLIER_ONBOARDING" });
+      resendAttemptCountRef.current = 0;
+      console.log('[OTP] OTP sent successfully');
       // OTP sent successfully
     } catch (err: any) {
-      // Failed to send OTP (logged silently)
-      setError(err.message || "Failed to send OTP");
+      const errorMsg = err.message || "Failed to send OTP";
+      console.error('[OTP] Failed to send OTP:', errorMsg, err.status);
+      
+      // Detect rate limiting
+      if (err.status === 429) {
+        const rateLimitMsg = "Too many requests. Please wait before trying again.";
+        setResendError(rateLimitMsg);
+        if (!hasAttemptedSendRef.current) {
+          setError(rateLimitMsg);
+        }
+      } else {
+        setResendError(errorMsg);
+        if (!hasAttemptedSendRef.current) {
+          setError(errorMsg);
+        }
+      }
+      
       throw err;
     }
   }, []);
 
-  // Send OTP automatically when page mounts
+  // Send OTP automatically when page mounts (only once)
   useEffect(() => {
-    // call and ignore errors here (handled by handler)
-    handleSendOtp().catch(() => {});
+    const sendOtpOnMount = async () => {
+      if (hasAttemptedSendRef.current) {
+        console.log('[OTP] Already attempted to send OTP');
+        return;
+      }
+      
+      hasAttemptedSendRef.current = true;
+      console.log('[OTP] Sending OTP on page mount');
+      
+      try {
+        await handleSendOtp();
+      } catch (err) {
+        console.error('[OTP] Error sending OTP on mount:', err);
+        // Error is already set in handleSendOtp
+      }
+    };
+
+    // Call immediately without delay to ensure it sends on mount
+    sendOtpOnMount();
   }, [handleSendOtp]);
 
   const handleVerifyOtp = useCallback(async (otp: string) => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Verifying OTP
       
       // Verify OTP
       await verifyEmailOtp({ 
@@ -55,13 +91,24 @@ export default function VerifyEmailPage() {
       // Navigating to next route
       router.push(nextRoute);
     } catch (err: any) {
-      // Verification failed (logged silently)
-      setError(err.message || "Invalid or expired OTP");
+      // Verification failed
+      const errorMsg = err.message || "Invalid or expired OTP";
+      
+      if (err.status === 429) {
+        setError("Too many verification attempts. Please try again in a few minutes.");
+      } else {
+        setError(errorMsg);
+      }
       throw err;
     } finally {
       setLoading(false);
     }
   }, [router]);
+
+  const handleResendClick = useCallback(async () => {
+    resendAttemptCountRef.current += 1;
+    await handleSendOtp();
+  }, [handleSendOtp]);
 
   const handleBackToLogin = useCallback(() => {
     router.push("/auth/login");
@@ -75,9 +122,11 @@ export default function VerifyEmailPage() {
       <OTPVerification
         email={email || "your email"}
         onVerify={handleVerifyOtp}
-        onResend={handleSendOtp}
+        onResend={handleResendClick}
         onChangeEmail={handleBackToLogin}
         isDark={isDark}
+        error={error}
+        resendError={resendError}
       />
     </AuthShellWrapper>
   );
