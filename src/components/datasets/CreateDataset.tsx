@@ -155,13 +155,25 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     setError(null);
     setSuccess(null);
 
-    // Step 1: Create the basic proposal
+    // Step 1: Create the basic proposal (or navigate if already created)
     if (currentStep === 'basic') {
       if (!isBasicValid()) {
         setError('Please fill in all required fields');
         return;
       }
 
+      // Smart check: If proposal already exists, just navigate forward
+      // This prevents duplicate proposals when user navigates back and clicks Next again
+      if (createdProposalId) {
+        setSuccess('Continuing with existing proposal');
+        setTimeout(() => {
+          setSuccess(null);
+          setCurrentStep('about');
+        }, 500);
+        return;
+      }
+
+      // Only create new proposal if one doesn't exist yet
       setSubmitting(true);
       try {
         const response = await createDatasetProposal({
