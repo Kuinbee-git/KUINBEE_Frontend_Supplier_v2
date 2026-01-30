@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { publishDataset } from '@/lib/api/datasets';
 import { toast } from 'sonner';
-import { useSupplierTokens } from '@/hooks/useSupplierTokens';
+import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 
 interface PublishConfirmDialogProps {
   isOpen: boolean;
@@ -25,9 +25,10 @@ export function PublishConfirmDialog({
   datasetTitle,
   uploadFileName,
   onSuccess,
+  isDark = false,
 }: PublishConfirmDialogProps) {
   const [publishing, setPublishing] = useState(false);
-  const tokens = useSupplierTokens();
+  const tokens = getDatasetThemeTokens(isDark);
 
   const handleConfirm = async () => {
     setPublishing(true);
@@ -41,8 +42,6 @@ export function PublishConfirmDialog({
       onClose();
       onSuccess();
     } catch (error: any) {
-      console.error('Failed to publish dataset:', error);
-      
       const errorMessages: Record<string, string> = {
         'INVALID_STATE': 'Dataset is not in VERIFIED state.',
         'NOT_VERIFIED': 'Dataset verification is not complete.',
@@ -50,11 +49,14 @@ export function PublishConfirmDialog({
         'UPLOAD_NOT_READY': 'Upload is not ready for publishing.',
         'NOT_FOUND': 'Dataset not found.',
         'FORBIDDEN': 'You do not have permission to publish this dataset.',
+        'OFFLINE_CONTRACT_REQUIRED': 'Offline contracting is required before publishing. Please contact support to complete your offline contract.',
         'OFFLINE_CONTRACT_NOT_DONE': 'Offline contracting is required before publishing. Please contact support to complete your offline contract.',
         'HTTP_403': 'Offline contracting is required before publishing. Please contact support to complete your offline contract.',
       };
       
-      const message = errorMessages[error.code] || error.message || 'Failed to publish dataset';
+      // Get error code - prefer the code from the error object
+      const errorCode = error.code || (error.status === 403 ? 'HTTP_403' : null);
+      const message = errorMessages[errorCode] || error.message || 'Failed to publish dataset';
       
       toast.error('Failed to publish dataset', {
         description: message,
@@ -70,9 +72,9 @@ export function PublishConfirmDialog({
       <DialogContent 
         className="max-w-md border backdrop-blur-sm rounded-lg"
         style={{
-          background: tokens.isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255,255,255,0.95)',
+          background: isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255,255,255,0.95)',
           borderColor: tokens.borderDefault,
-          boxShadow: tokens.glassShadow,
+          boxShadow: tokens.shadowCard,
         }}
       >
         <DialogHeader>

@@ -399,13 +399,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 {isVerified && !isPublished && !isArchived && (
                   <Button
                     onClick={() => setShowPublishDialog(true)}
-                    className="flex-1 min-w-[100px] gap-2 text-white transition-all duration-300 hover:shadow-lg hover:scale-[1.01] active:scale-[0.98] h-10 text-sm font-medium"
+                    variant="outline"
+                    className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
                     style={{
-                      background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 100%)',
+                      background: tokens.glassBg,
+                      border: `1px solid ${tokens.glassBorder}`,
+                      color: tokens.textPrimary,
                     }}
                   >
                     <Upload className="w-4 h-4" />
-                    Publish Dataset
+                    <span className="hidden sm:inline">Publish Dataset</span>
                   </Button>
                 )}
 

@@ -429,6 +429,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                         onChange={handleFormatChange}
                         disabled={submitting}
                         tokens={tokens}
+                        isDark={isDark}
                       />
                     )}
 

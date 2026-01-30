@@ -603,7 +603,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     style={{
                       background: submitting || checkPrerequisites().length > 0
                         ? 'rgba(156, 163, 175, 0.3)'
-                        : 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #3b82f6 100%)',
+                        : '#2a3558',
                       color: '#fff',
                     }}
                   >
@@ -927,12 +927,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
 
       {/* Submit Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <Card
-            className="w-full max-w-md shadow-xl"
+            className="w-full max-w-md shadow-xl border rounded-lg"
             style={{
-              background: tokens.surfaceCard,
+              background: isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255, 255, 255, 0.95)',
               borderColor: tokens.borderDefault,
+              backdropFilter: isDark ? 'blur(12px)' : 'none',
+              WebkitBackdropFilter: isDark ? 'blur(12px)' : 'none',
             }}
           >
             <div className="p-6">
@@ -977,7 +979,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     className="flex-1"
                     style={{
                       background: tokens.glassBg || 'transparent',
-                      border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+                      border: `1px solid ${tokens.inputBorder}`,
                       color: tokens.textPrimary,
                     }}
                 >
@@ -990,7 +992,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   style={{
                     background: submitting
                       ? 'rgba(156, 163, 175, 0.3)'
-                      : 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #3b82f6 100%)',
+                      : '#1a2240',
+                      border: `1px solid ${tokens.inputBorder}`,
                   }}
                 >
                   {submitting ? 'Submitting...' : 'Confirm & Submit'}
