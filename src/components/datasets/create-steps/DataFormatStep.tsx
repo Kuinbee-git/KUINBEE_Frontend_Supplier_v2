@@ -20,9 +20,10 @@ interface DataFormatStepProps {
   onChange: (field: string, value: any) => void;
   disabled?: boolean;
   tokens: any;
+  isDark?: boolean;
 }
 
-export function DataFormatStep({ data, onChange, disabled, tokens }: DataFormatStepProps) {
+export function DataFormatStep({ data, onChange, disabled, tokens, isDark = false }: DataFormatStepProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
@@ -36,6 +37,7 @@ export function DataFormatStep({ data, onChange, disabled, tokens }: DataFormatS
           placeholder="Select file format"
           disabled={disabled}
           tokens={tokens}
+          isDark={isDark}
         />
       </div>
 
@@ -106,6 +108,7 @@ export function DataFormatStep({ data, onChange, disabled, tokens }: DataFormatS
           placeholder="Select compression"
           disabled={disabled}
           tokens={tokens}
+          isDark={isDark}
         />
       </div>
 

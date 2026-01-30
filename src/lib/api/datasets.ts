@@ -37,18 +37,10 @@ async function apiFetch<T>(
       // Try to parse error from response
       const errorData = await response.json().catch(() => null);
       
-      // Global auth failure handler - only redirect for 401, not specific 403 errors
+      // Global auth failure handler - ONLY redirect for 401
+      // 403 is NOT an auth error - it's a permission/business logic error
+      // Let the component handle 403 appropriately
       if (response.status === 401) {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("auth-storage");
-          localStorage.removeItem("kuinbee-supplier-storage");
-          localStorage.removeItem("onboarding-storage");
-          window.location.href = "/auth/login";
-        }
-      }
-      
-      // Handle 403 - only redirect if it's not a specific business error
-      if (response.status === 403 && !errorData?.code) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("auth-storage");
           localStorage.removeItem("kuinbee-supplier-storage");
@@ -64,17 +56,17 @@ async function apiFetch<T>(
       error.code = errorData?.code || `HTTP_${response.status}`;
       error.data = errorData;
       
-      console.error(`[API] ${options.method || 'GET'} ${endpoint} failed:`, error);
       throw error;
     }
 
     return response.json();
   } catch (err: any) {
     // If error already has status, rethrow
-    if (err.status) throw err;
+    if (err.status) {
+      throw err;
+    }
     
     // Network error or other fetch error
-    console.error(`[API] Network error for ${endpoint}:`, err);
     const error: any = new Error(err.message || "Network error");
     error.code = "NETWORK_ERROR";
     throw error;

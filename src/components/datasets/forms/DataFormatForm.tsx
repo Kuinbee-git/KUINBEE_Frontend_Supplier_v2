@@ -196,6 +196,7 @@ export function DataFormatForm({
                   onValueChange={(value) => handleFieldChange('fileFormat', value as FileFormat)}
                   disabled={submitting}
                   tokens={tokens}
+                  isDark={isDark}
                 />
               </div>
 
@@ -309,6 +310,7 @@ export function DataFormatForm({
                   onValueChange={(value) => handleFieldChange('compressionType', value as CompressionType)}
                   disabled={submitting}
                   tokens={tokens}
+                  isDark={isDark}
                 />
               </div>
 
