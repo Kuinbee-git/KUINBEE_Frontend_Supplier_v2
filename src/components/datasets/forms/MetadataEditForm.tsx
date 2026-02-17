@@ -4,21 +4,16 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { updateProposalMetadata } from '@/lib/api';
 import { CategoriesSelect, SourcesSelect } from '@/components/catalog';
-import { StyledSelect } from '@/components/datasets/shared';
 
 interface MetadataFormData {
   title: string;
   primaryCategoryId: string;
   sourceId: string;
   license: string;
-  isPaid: boolean;
-  price: string;
-  currency: string;
 }
 
 interface MetadataEditFormProps {
@@ -28,9 +23,6 @@ interface MetadataEditFormProps {
     primaryCategoryId: string;
     sourceId: string;
     license: string;
-    isPaid?: boolean;
-    price?: string;
-    currency?: string;
   };
   isDark?: boolean;
   onSuccess?: () => void;
@@ -54,9 +46,6 @@ export function MetadataEditForm({
     primaryCategoryId: initialData.primaryCategoryId,
     sourceId: initialData.sourceId,
     license: initialData.license,
-    isPaid: initialData.isPaid || false,
-    price: initialData.price || '',
-    currency: initialData.currency || 'USD',
   });
 
   const handleFieldChange = (field: keyof MetadataFormData, value: any) => {
@@ -67,10 +56,6 @@ export function MetadataEditForm({
 
   const isFormValid = () => {
     if (!formData.title?.trim() || !formData.license?.trim() || !formData.primaryCategoryId || !formData.sourceId) {
-      return false;
-    }
-    // If paid, price must be provided and valid
-    if (formData.isPaid && (!formData.price || parseFloat(formData.price) <= 0)) {
       return false;
     }
     return true;
@@ -103,15 +88,6 @@ export function MetadataEditForm({
       }
       if (formData.license !== initialData.license) {
         payload.license = formData.license;
-      }
-      if (formData.isPaid !== initialData.isPaid) {
-        payload.isPaid = formData.isPaid;
-      }
-      if (formData.isPaid && formData.price !== initialData.price) {
-        payload.price = formData.price;
-      }
-      if (formData.isPaid && formData.currency !== initialData.currency) {
-        payload.currency = formData.currency;
       }
 
       await updateProposalMetadata(datasetId, payload);
@@ -240,76 +216,6 @@ export function MetadataEditForm({
               color: tokens.textPrimary,
             }}
           />
-        </div>
-
-        {/* Pricing Section */}
-        <div
-          className="rounded-xl border p-4 space-y-4 transition-colors"
-          style={{
-            background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
-            borderColor: tokens.borderSubtle || tokens.inputBorder,
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="isPaid"
-              checked={formData.isPaid}
-              onCheckedChange={(checked) => handleFieldChange('isPaid', checked === true)}
-              disabled={submitting}
-              className="h-5 w-5"
-            />
-            <div>
-              <Label htmlFor="isPaid" className="text-sm font-medium cursor-pointer" style={{ color: tokens.textPrimary }}>
-                This is a paid dataset
-              </Label>
-              <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
-                Enable to set a price for this dataset
-              </p>
-            </div>
-          </div>
-
-          {formData.isPaid && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t" style={{ borderColor: tokens.borderSubtle || tokens.inputBorder }}>
-              <div className="space-y-2">
-                <Label htmlFor="price" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                  Price <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.price}
-                  onChange={(e) => handleFieldChange('price', e.target.value)}
-                  placeholder="0.00"
-                  disabled={submitting}
-                  className="h-11 transition-colors focus-visible:ring-2"
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <StyledSelect
-                  label="Currency"
-                  value={formData.currency}
-                  onValueChange={(value) => handleFieldChange('currency', value)}
-                  options={[
-                    { label: 'USD ($)', value: 'USD' },
-                    { label: 'EUR (€)', value: 'EUR' },
-                    { label: 'GBP (£)', value: 'GBP' },
-                    { label: 'INR (₹)', value: 'INR' },
-                  ]}
-                  disabled={submitting}
-                  isDark={isDark}
-                  tokens={tokens}
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

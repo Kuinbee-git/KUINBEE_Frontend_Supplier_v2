@@ -124,3 +124,67 @@ export const PRICING_MODELS = [
   { value: 'usage_based', label: 'Usage-based' },
   { value: 'contact', label: 'Contact for Pricing' },
 ] as const;
+
+/**
+ * Pricing status configuration
+ */
+export const PRICING_STATUS_CONFIG = {
+  DRAFT: {
+    label: 'Draft',
+    color: '#6b7280',
+    bgColor: 'rgba(107, 114, 128, 0.1)',
+    icon: '📝',
+  },
+  SUBMITTED: {
+    label: 'Submitted',
+    color: '#3b82f6',
+    bgColor: 'rgba(59, 130, 246, 0.1)',
+    icon: '⏳',
+  },
+  CHANGES_REQUESTED: {
+    label: 'Changes Requested',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.1)',
+    icon: '🔄',
+  },
+  RESUBMITTED: {
+    label: 'Resubmitted',
+    color: '#8b5cf6',
+    bgColor: 'rgba(139, 92, 246, 0.1)',
+    icon: '📤',
+  },
+  UNDER_REVIEW: {
+    label: 'Under Review',
+    color: '#f59e0b',
+    bgColor: 'rgba(245, 158, 11, 0.1)',
+    icon: '👀',
+  },
+  ACTIVE: {
+    label: 'Active',
+    color: '#22c55e',
+    bgColor: 'rgba(34, 197, 94, 0.1)',
+    icon: '✓',
+  },
+  REJECTED: {
+    label: 'Rejected',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.1)',
+    icon: '✕',
+  },
+  INACTIVE: {
+    label: 'Inactive',
+    color: '#9ca3af',
+    bgColor: 'rgba(156, 163, 175, 0.1)',
+    icon: '🔒',
+  },
+} as const;
+
+/**
+ * Currency options
+ */
+export const CURRENCY_OPTIONS = [
+  { value: 'USD', label: 'USD ($)', symbol: '$' },
+  { value: 'INR', label: 'INR (₹)', symbol: '₹' },
+  { value: 'EUR', label: 'EUR (€)', symbol: '€' },
+  { value: 'GBP', label: 'GBP (£)', symbol: '£' },
+] as const;

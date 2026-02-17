@@ -6,15 +6,17 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Upload } from 'lucide-react';
-import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures } from '@/lib/api';
-import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep } from './create-steps';
+import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing } from '@/lib/api';
+import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep, PricingStep } from './create-steps';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import type { 
   DatasetSuperType, 
   UpsertAboutInfoRequest, 
   UpsertDataFormatRequest,
   Feature,
-  FileFormat
+  FileFormat,
+  UpsertPricingRequest,
+  DatasetPricingVersion,
 } from '@/types/dataset-proposal.types';
 import type { Source } from '@/types/catalog.types';
 
@@ -22,7 +24,7 @@ interface CreateDatasetProps {
   isDark?: boolean;
 }
 
-type Step = 'basic' | 'about' | 'format' | 'features' | 'upload';
+type Step = 'basic' | 'about' | 'format' | 'features' | 'pricing' | 'upload';
 
 export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const router = useRouter();
@@ -68,6 +70,14 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     { name: '', dataType: '', description: null, isNullable: false }
   ]);
 
+  // Step 5: Pricing
+  const [pricingData, setPricingData] = useState<UpsertPricingRequest>({
+    isPaid: false,
+    price: null,
+    currency: 'USD',
+  });
+  const [pricingLoaded, setPricingLoaded] = useState(false);
+
   const tokens = getDatasetThemeTokens(isDark);
 
   const steps = [
@@ -75,7 +85,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     { id: 'about' as Step, label: 'About Dataset', number: 2 },
     { id: 'format' as Step, label: 'Data Format', number: 3 },
     { id: 'features' as Step, label: 'Features', number: 4 },
-    { id: 'upload' as Step, label: 'Upload File', number: 5 },
+    { id: 'pricing' as Step, label: 'Pricing', number: 5 },
+    { id: 'upload' as Step, label: 'Upload File', number: 6 },
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
@@ -110,6 +121,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   const isFeaturesValid = () => {
     return features.length > 0 && features.every(f => f.name.trim() !== '' && f.dataType.trim() !== '');
+  };
+
+  const isPricingValid = () => {
+    if (!pricingData.isPaid) return true; // Free datasets don't need a price
+    return !!(pricingData.price && pricingData.price.trim() !== '');
   };
 
   const handleBasicChange = (field: string, value: any) => {
@@ -149,6 +165,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     if (features.length > 1) {
       setFeatures(features.filter((_, i) => i !== index));
     }
+  };
+
+  const handlePricingChange = (field: keyof UpsertPricingRequest, value: any) => {
+    setPricingData((prev) => ({ ...prev, [field]: value }));
+    setError(null);
   };
 
   const handleNext = async () => {
@@ -278,7 +299,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         setSuccess('Features saved!');
         setTimeout(() => {
           setSuccess(null);
-          setCurrentStep('upload');
+          setCurrentStep('pricing');
         }, 1000);
       } catch (err: any) {
         console.error('Failed to save features:', err);
@@ -289,7 +310,36 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       return;
     }
 
-    // Step 5: Upload file and complete
+    // Step 5: Configure Pricing
+    if (currentStep === 'pricing') {
+      if (!isPricingValid()) {
+        setError('Please enter a valid price for paid datasets');
+        return;
+      }
+
+      if (!createdProposalId) {
+        setError('No proposal ID found');
+        return;
+      }
+
+      setSubmitting(true);
+      try {
+        await upsertProposalPricing(createdProposalId, pricingData);
+        setSuccess('Pricing saved!');
+        setTimeout(() => {
+          setSuccess(null);
+          setCurrentStep('upload');
+        }, 1000);
+      } catch (err: any) {
+        console.error('Failed to save pricing:', err);
+        setError(err.message || 'Failed to save pricing');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Step 6: Upload file and complete
     if (currentStep === 'upload') {
       if (!fileUploaded) {
         setError('Please upload a file before completing');
@@ -323,6 +373,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     if (currentStep === 'about') return isAboutValid();
     if (currentStep === 'format') return isFormatValid();
     if (currentStep === 'features') return isFeaturesValid();
+    if (currentStep === 'pricing') return isPricingValid();
     if (currentStep === 'upload') return fileUploaded;
     return false;
   };
@@ -454,6 +505,16 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                         disabled={submitting}
                         isDark={isDark}
                         tokens={tokens}
+                      />
+                    )}
+
+                    {currentStep === 'pricing' && (
+                      <PricingStep
+                        data={pricingData}
+                        onChange={handlePricingChange}
+                        disabled={submitting}
+                        tokens={tokens}
+                        isDark={isDark}
                       />
                     )}
 

@@ -25,6 +25,10 @@ import type {
   CompleteUploadRequest,
   CompleteUploadResponse,
   SubmitProposalResponse,
+  DatasetPricingVersion,
+  UpsertPricingRequest,
+  GetPricingResponse,
+  SubmitPricingResponse,
 } from "@/types/dataset-proposal.types";
 
 // ===== Helper: API Fetch =====
@@ -293,6 +297,55 @@ export async function submitProposal(
 ): Promise<SubmitProposalResponse> {
   const response = await apiFetch<{ success: boolean; data: SubmitProposalResponse }>(
     DATASET_PROPOSAL_API.SUBMIT(datasetId),
+    {
+      method: "POST",
+    }
+  );
+  return response.data;
+}
+
+// ===== Pricing =====
+
+/**
+ * Get the latest pricing version for a proposal
+ */
+export async function getProposalPricing(
+  datasetId: string
+): Promise<GetPricingResponse> {
+  const response = await apiFetch<{ success: boolean; data: GetPricingResponse }>(
+    `${DATASET_PROPOSAL_API.GET_DETAILS(datasetId)}/pricing`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Upsert (create or update) pricing for a proposal
+ */
+export async function upsertProposalPricing(
+  datasetId: string,
+  data: UpsertPricingRequest
+): Promise<DatasetPricingVersion> {
+  const response = await apiFetch<{ success: boolean; data: { pricing: DatasetPricingVersion } }>(
+    `${DATASET_PROPOSAL_API.GET_DETAILS(datasetId)}/pricing`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data.pricing;
+}
+
+/**
+ * Submit proposal pricing for admin review
+ */
+export async function submitProposalPricing(
+  datasetId: string
+): Promise<SubmitPricingResponse> {
+  const response = await apiFetch<{ success: boolean; data: SubmitPricingResponse }>(
+    `${DATASET_PROPOSAL_API.GET_DETAILS(datasetId)}/pricing/submit`,
     {
       method: "POST",
     }

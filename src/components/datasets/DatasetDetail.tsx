@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,9 @@ import { PageBackground } from '@/components/shared';
 import { DatasetStatusBadge, EditableSection } from './shared';
 import { AboutDatasetForm, DataFormatForm, FeaturesForm, MetadataEditForm, SecondaryCategoriesForm } from './forms';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { submitProposal } from '@/lib/api/dataset-proposals';
+import { PricingEditDialog } from './actions';
+import { getDatasetThemeTokens, PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
+import { submitProposal, getProposalPricing } from '@/lib/api/dataset-proposals';
 import { toast } from 'sonner';
 import { 
   FileText, 
@@ -23,9 +24,10 @@ import {
   ChevronDown,
   Database,
   FileCode,
-  Settings
+  Settings,
+  DollarSign
 } from 'lucide-react';
-import type { ProposalDetailsResponse, AboutDatasetInfo, DataFormatInfo } from '@/types/dataset-proposal.types';
+import type { ProposalDetailsResponse, AboutDatasetInfo, DataFormatInfo, DatasetPricingVersion } from '@/types/dataset-proposal.types';
 
 interface DatasetDetailProps {
   proposal: ProposalDetailsResponse;
@@ -66,16 +68,6 @@ const renderMetadataDisplay = (proposal: ProposalDetailsResponse, tokens: any) =
           <Label style={{ color: tokens.textSecondary }}>Visibility</Label>
           <p className="text-sm" style={{ color: tokens.textPrimary }}>
             {proposal.dataset.visibility}
-          </p>
-        </div>
-      )}
-      {proposal.dataset.isPaid !== undefined && (
-        <div className="space-y-2">
-          <Label style={{ color: tokens.textSecondary }}>Pricing</Label>
-          <p className="text-sm" style={{ color: tokens.textPrimary }}>
-            {proposal.dataset.isPaid 
-              ? `${proposal.dataset.price} ${proposal.dataset.currency}`
-              : 'Free'}
           </p>
         </div>
       )}
@@ -297,6 +289,9 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showPricingDialog, setShowPricingDialog] = useState(false);
+  const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     metadata: true,
     upload: true,
@@ -307,6 +302,24 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   });
 
   const tokens = getDatasetThemeTokens(isDark);
+
+  // Fetch pricing data
+  const fetchPricing = async () => {
+    try {
+      setPricingLoading(true);
+      const response = await getProposalPricing(proposal.dataset.id);
+      setPricingData(response.pricing);
+    } catch (err) {
+      console.error('Failed to fetch pricing', err);
+    } finally {
+      setPricingLoading(false);
+    }
+  };
+
+  // Fetch pricing when component mounts or proposal changes
+  useEffect(() => {
+    fetchPricing();
+  }, [proposal.dataset.id]);
 
   // Can edit when status is PENDING or CHANGES_REQUESTED
   const verificationStatus = proposal.verification?.status;
@@ -641,9 +654,6 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   primaryCategoryId: proposal.dataset.primaryCategoryId,
                   sourceId: proposal.dataset.sourceId,
                   license: proposal.dataset.license,
-                  isPaid: proposal.dataset.isPaid || false,
-                  price: proposal.dataset.price || '',
-                  currency: proposal.dataset.currency || 'USD',
                 }}
                 isDark={isDark}
                 onSuccess={() => {
@@ -789,6 +799,112 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
               </div>
             )}
           </Card>
+
+          {/* Section: Pricing */}
+          {pricingData && (
+            <Card
+              className="border overflow-hidden"
+              style={{
+                background: tokens.surfaceCard,
+                borderColor: tokens.borderDefault,
+              }}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                      }}
+                    >
+                      <DollarSign className="w-5 h-5" style={{ color: '#22c55e' }} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>Pricing</h3>
+                      <p className="text-xs" style={{ color: tokens.textMuted }}>
+                        Status: {PRICING_STATUS_CONFIG[pricingData.status]?.label || pricingData.status}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className="px-3 py-1 rounded-full text-xs font-semibold"
+                    style={{
+                      background: PRICING_STATUS_CONFIG[pricingData.status]?.bgColor || '#f3f4f6',
+                      color: PRICING_STATUS_CONFIG[pricingData.status]?.color || '#6b7280',
+                    }}
+                  >
+                    {PRICING_STATUS_CONFIG[pricingData.status]?.icon} {PRICING_STATUS_CONFIG[pricingData.status]?.label || pricingData.status}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label style={{ color: tokens.textSecondary }}>Price Type</Label>
+                    <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                      {pricingData.isPaid ? `${pricingData.price} ${pricingData.currency}` : 'Free'}
+                    </p>
+                  </div>
+
+                  {pricingData.isPaid && (
+                    <div className="pt-3 border-t" style={{ borderColor: tokens.borderSubtle }}>
+                      <div className="flex items-center justify-between">
+                        <span style={{ color: tokens.textMuted }} className="text-sm">Price Preview</span>
+                        <span style={{ color: tokens.textPrimary }} className="text-lg font-semibold">
+                          {pricingData.currency === 'USD' && '$'}
+                          {pricingData.currency === 'INR' && '₹'}
+                          {pricingData.currency === 'EUR' && '€'}
+                          {pricingData.currency === 'GBP' && '£'}
+                          {pricingData.price}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {pricingData.status === 'CHANGES_REQUESTED' && (
+                    <div
+                      className="p-3 rounded-lg border"
+                      style={{
+                        background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+                      }}
+                    >
+                      <p className="text-xs font-semibold mb-1" style={{ color: '#ef4444' }}>
+                        Admin Feedback:
+                      </p>
+                      <p className="text-xs" style={{ color: tokens.textSecondary }}>
+                        {pricingData.rejectionReason || 'Please review the pricing and make necessary changes.'}
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-xs leading-relaxed" style={{ color: tokens.textMuted }}>
+                    {pricingData.status === 'DRAFT' && '💡 Your pricing is saved as draft. You can edit and submit it for admin review.'}
+                    {pricingData.status === 'SUBMITTED' && '⏳ Your pricing is under review. Admin will make a decision soon.'}
+                    {pricingData.status === 'CHANGES_REQUESTED' && '✏️ Admin has requested changes to your pricing. Edit and resubmit.'}
+                    {pricingData.status === 'RESUBMITTED' && '⏳ Your updated pricing is under review.'}
+                    {pricingData.status === 'UNDER_REVIEW' && '⏳ Your pricing is under review by admin.'}
+                    {pricingData.status === 'ACTIVE' && '✓ Your pricing is active.'}
+                    {pricingData.status === 'REJECTED' && '✕ Your pricing was rejected. Edit and resubmit.'}
+                    {pricingData.status === 'INACTIVE' && '⊘ Your pricing is inactive.'}
+                  </p>
+
+                  {(pricingData.status === 'DRAFT' || pricingData.status === 'CHANGES_REQUESTED' || pricingData.status === 'REJECTED') && (
+                    <div className="pt-3 border-t" style={{ borderColor: tokens.borderSubtle }}>
+                      <Button
+                        onClick={() => setShowPricingDialog(true)}
+                        size="sm"
+                        className="w-full text-white"
+                        style={{ background: '#3b82f6' }}
+                      >
+                        Edit Pricing
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Section 3: About Dataset */}
           <EditableSection
@@ -1002,6 +1118,24 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             </div>
           </Card>
         </div>
+      )}
+
+      {/* Pricing Edit Dialog */}
+      {pricingData && (
+        <PricingEditDialog
+          isOpen={showPricingDialog}
+          onClose={() => setShowPricingDialog(false)}
+          datasetId={proposal.dataset.id}
+          currentPricing={pricingData}
+          onSuccess={() => {
+            setShowPricingDialog(false);
+            fetchPricing();
+            onRefresh?.();
+          }}
+          isDark={isDark}
+          feedbackMessage={pricingData.rejectionReason || undefined}
+          pricingStatus={pricingData.status}
+        />
       )}
     </PageBackground>
   );

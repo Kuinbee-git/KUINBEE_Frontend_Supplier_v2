@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared';
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
-import { getDatasetDetails } from '@/lib/api/datasets';
+import { getDatasetDetails, getDatasetPricing } from '@/lib/api/datasets';
 import { 
   PublishConfirmDialog,
   ChangeVisibilityDialog,
-  PricingChangeRequestDialog,
+  PricingEditDialog,
   ArchiveConfirmDialog,
   DownloadButton,
 } from './actions';
+import { PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
+import type { DatasetPricingVersion } from '@/types/dataset-proposal.types';
 import { 
   ArrowLeft, 
   AlertCircle, 
@@ -182,6 +184,10 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Pricing state
+  const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  
   // Dialog states
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
@@ -194,11 +200,29 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
       setError(null);
       const data = await getDatasetDetails(datasetId);
       setDatasetData(data);
+      
+      // Also fetch pricing
+      await fetchPricing();
     } catch (err: any) {
       console.error('Failed to fetch dataset:', err);
       setError(err.message || 'Failed to load dataset');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPricing = async () => {
+    try {
+      setPricingLoading(true);
+      const response = await getDatasetPricing(datasetId);
+      if (response.pricing) {
+        setPricingData(response.pricing);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch pricing:', err);
+      // Don't set error here - it's non-critical
+    } finally {
+      setPricingLoading(false);
     }
   };
 
@@ -806,6 +830,104 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               </div>
             </GlassCard>
 
+            {/* Pricing Card */}
+            {pricingData && (
+              <GlassCard className="p-4">
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" style={{ color: tokens.textSecondary }} />
+                    <h3 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>Pricing</h3>
+                  </div>
+                  <div
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{
+                      background: PRICING_STATUS_CONFIG[pricingData.status].bgColor,
+                      color: PRICING_STATUS_CONFIG[pricingData.status].color,
+                      border: `1px solid ${PRICING_STATUS_CONFIG[pricingData.status].color}33`,
+                    }}
+                  >
+                    {PRICING_STATUS_CONFIG[pricingData.status].label}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Pricing Details */}
+                  <div
+                    className="rounded-lg p-3"
+                    style={{ background: tokens.infoBg }}
+                  >
+                    <p className="text-xs" style={{ color: tokens.textMuted }}>Current Price</p>
+                    <p className="text-lg font-bold mt-1" style={{ color: tokens.textPrimary }}>
+                      {pricingData.isPaid
+                        ? `${pricingData.currency === 'USD' ? '$' : pricingData.currency === 'EUR' ? '€' : pricingData.currency === 'GBP' ? '£' : '₹'}${pricingData.price}`
+                        : 'Free'}
+                    </p>
+                  </div>
+
+                  {/* Feedback if changes requested */}
+                  {pricingData.status === 'CHANGES_REQUESTED' && pricingData.rejectionReason && (
+                    <div
+                      className="rounded-lg p-3 flex items-start gap-2"
+                      style={{
+                        background: tokens.warningBg,
+                        border: `1px solid ${tokens.warningBorder}`,
+                      }}
+                    >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: tokens.warningText }} />
+                      <div>
+                        <p className="text-xs font-medium" style={{ color: tokens.textPrimary }}>Admin Feedback</p>
+                        <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
+                          {pricingData.rejectionReason}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Messages */}
+                  {pricingData.status === 'DRAFT' && (
+                    <p className="text-xs" style={{ color: tokens.textMuted }}>
+                      💡 Your pricing is saved as draft. Submit it for admin review.
+                    </p>
+                  )}
+                  {pricingData.status === 'SUBMITTED' && (
+                    <p className="text-xs" style={{ color: tokens.textMuted }}>
+                      ⏳ Your pricing is under review. Admin will make a decision soon.
+                    </p>
+                  )}
+                  {pricingData.status === 'ACTIVE' && (
+                    <p className="text-xs" style={{ color: tokens.successText }}>
+                      ✓ Your pricing is active and applied to the marketplace.
+                    </p>
+                  )}
+                  {pricingData.status === 'REJECTED' && (
+                    <p className="text-xs" style={{ color: tokens.warningText }}>
+                      ✕ Your pricing was rejected. Edit and resubmit.
+                    </p>
+                  )}
+
+                  {/* Edit Button */}
+                  {(pricingData.status === 'DRAFT' || pricingData.status === 'CHANGES_REQUESTED' || pricingData.status === 'REJECTED') && (
+                    <Button
+                      onClick={() => setShowPricingDialog(true)}
+                      className="w-full text-sm"
+                      style={{ background: '#3b82f6', color: 'white' }}
+                    >
+                      Edit Pricing
+                    </Button>
+                  )}
+                  {(pricingData.status === 'ACTIVE' && isPublished) && (
+                    <Button
+                      onClick={() => setShowPricingDialog(true)}
+                      variant="outline"
+                      className="w-full text-sm"
+                    >
+                      Draft Price Change
+                    </Button>
+                  )}
+                </div>
+              </GlassCard>
+            )}
+
             {/* Categories Card */}
             {(primaryCategory || secondaryCategories.length > 0) && (
               <GlassCard className="p-4">
@@ -1031,17 +1153,18 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               isDark={tokens.isDark}
             />
 
-            <PricingChangeRequestDialog
-              isOpen={showPricingDialog}
-              onClose={() => setShowPricingDialog(false)}
-              datasetId={dataset.id}
-              datasetTitle={dataset.title}
-              currentIsPaid={dataset.isPaid || false}
-              currentPrice={dataset.price}
-              currentCurrency={dataset.currency}
-              onSuccess={fetchDataset}
-              isDark={tokens.isDark}
-            />
+            {pricingData && (
+              <PricingEditDialog
+                isOpen={showPricingDialog}
+                onClose={() => setShowPricingDialog(false)}
+                datasetId={dataset.id}
+                currentPricing={pricingData}
+                onSuccess={fetchPricing}
+                isDark={tokens.isDark}
+                feedbackMessage={pricingData.rejectionReason || undefined}
+                pricingStatus={pricingData.status}
+              />
+            )}
           </>
         )}
 

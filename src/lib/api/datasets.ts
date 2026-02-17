@@ -15,6 +15,12 @@ import type {
   ArchiveDatasetResponse,
   DownloadUrlResponse,
 } from "@/types/dataset.types";
+import type {
+  DatasetPricingVersion,
+  UpsertPricingRequest,
+  GetPricingResponse,
+  SubmitPricingResponse,
+} from "@/types/dataset-proposal.types";
 
 // ===== Helper: API Fetch =====
 async function apiFetch<T>(
@@ -211,3 +217,56 @@ export async function getPublishedFileDownloadUrl(
   );
   return response.data;
 }
+
+// ===== Pricing (Published Datasets) =====
+
+/**
+ * Get the latest pricing version for a published dataset
+ * GET /api/v1/supplier/datasets/:datasetId/pricing
+ */
+export async function getDatasetPricing(
+  datasetId: string
+): Promise<GetPricingResponse> {
+  const response = await apiFetch<{ success: boolean; data: GetPricingResponse }>(
+    `${DATASET_API.GET_DETAILS(datasetId)}/pricing`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Upsert (create or update) pricing for a published dataset
+ * PUT /api/v1/supplier/datasets/:datasetId/pricing
+ */
+export async function upsertDatasetPricing(
+  datasetId: string,
+  data: UpsertPricingRequest
+): Promise<DatasetPricingVersion> {
+  const response = await apiFetch<{ success: boolean; data: { pricing: DatasetPricingVersion } }>(
+    `${DATASET_API.GET_DETAILS(datasetId)}/pricing`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data.pricing;
+}
+
+/**
+ * Submit dataset pricing for admin review
+ * POST /api/v1/supplier/datasets/:datasetId/pricing/submit
+ */
+export async function submitDatasetPricing(
+  datasetId: string
+): Promise<SubmitPricingResponse> {
+  const response = await apiFetch<{ success: boolean; data: SubmitPricingResponse }>(
+    `${DATASET_API.GET_DETAILS(datasetId)}/pricing/submit`,
+    {
+      method: "POST",
+    }
+  );
+  return response.data;
+}
+

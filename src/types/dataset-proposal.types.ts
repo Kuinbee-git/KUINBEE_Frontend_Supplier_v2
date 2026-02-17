@@ -52,6 +52,16 @@ export type VerificationStatus =
   | "VERIFIED"
   | "REJECTED";
 
+export type DatasetPricingStatus =
+  | "DRAFT"
+  | "SUBMITTED"
+  | "CHANGES_REQUESTED"
+  | "RESUBMITTED"
+  | "UNDER_REVIEW"
+  | "ACTIVE"
+  | "REJECTED"
+  | "INACTIVE";
+
 // ===== Request/Response Types =====
 
 // Create Draft Proposal
@@ -313,5 +323,38 @@ export interface SubmitProposalResponse {
     currentUploadId: string;
     submittedAt: string;
     updatedAt: string;
+  };
+}
+
+// Pricing Version
+export interface DatasetPricingVersion {
+  id: string;
+  datasetId: string;
+  status: DatasetPricingStatus;
+  isPaid: boolean;
+  price: string | null;
+  currency: "INR" | "USD" | "EUR" | "GBP";
+  notes: string | null;
+  changeRationale: string | null;
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  updatedAt: string;
+}
+
+export interface UpsertPricingRequest {
+  isPaid: boolean;
+  price?: string | null;
+  currency?: "INR" | "USD" | "EUR" | "GBP";
+}
+
+export interface GetPricingResponse {
+  pricing: DatasetPricingVersion | null;
+}
+
+export interface SubmitPricingResponse {
+  pricing: DatasetPricingVersion & {
+    status: "SUBMITTED" | "RESUBMITTED";
+    submittedAt: string;
   };
 }
