@@ -11,7 +11,7 @@ import { AboutDatasetForm, DataFormatForm, FeaturesForm, MetadataEditForm, Secon
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { PricingEditDialog } from './actions';
 import { getDatasetThemeTokens, PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
-import { submitProposal, getProposalPricing } from '@/lib/api/dataset-proposals';
+import { submitProposal, getProposalPricing, submitProposalPricing } from '@/lib/api/dataset-proposals';
 import { toast } from 'sonner';
 import { 
   FileText, 
@@ -428,10 +428,23 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     setShowConfirmModal(false);
     setSubmitting(true);
     try {
+      // Check if pricing needs to be submitted first (DRAFT = first submission)
+      const pricingNeedsSubmission = pricingData && pricingData.status === 'DRAFT';
+      
+      // If pricing is in DRAFT status, submit it first
+      if (pricingNeedsSubmission) {
+        await submitProposalPricing(proposal.dataset.id);
+      }
+      
+      // Submit the proposal
       await submitProposal(proposal.dataset.id);
       
       const action = proposal.verification.status === 'PENDING' ? 'submitted' : 'resubmitted';
-      toast.success(`Proposal ${action} successfully`, {
+      const pricingMessage = pricingNeedsSubmission 
+        ? ' along with your pricing' 
+        : '';
+      
+      toast.success(`Proposal ${action} successfully${pricingMessage}`, {
         description: 'Your proposal has been sent to the admin review queue. You will receive a notification when the review is complete.',
       });
       
@@ -455,14 +468,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
         <Button
           variant="ghost"
           onClick={() => router.push('/dashboard/datasets')}
-          className="mb-6 flex items-center gap-2 -ml-2 transition-all duration-200 hover:translate-x-[-2px]"
+          className="mb-6 flex items-center gap-2 -ml-2 transition-all duration-200 hover:translate-x-[-2px] group"
           style={{
             background: tokens.glassBg || 'transparent',
             border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
             color: tokens.textPrimary,
           }}
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
           Back to proposals
         </Button>
 
@@ -612,15 +625,20 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   <Button
                     onClick={handleSubmitForReview}
                     disabled={submitting || checkPrerequisites().length > 0}
-                    className="h-11 px-6 font-medium transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+                    className="h-11 px-7 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed group"
                     style={{
                       background: submitting || checkPrerequisites().length > 0
-                        ? 'rgba(156, 163, 175, 0.3)'
-                        : '#2a3558',
-                      color: '#fff',
+                        ? 'rgba(156, 163, 175, 0.2)'
+                        : tokens.glassBg || 'transparent',
+                      border: `1.5px solid ${
+                        submitting || checkPrerequisites().length > 0
+                          ? 'rgba(156, 163, 175, 0.3)'
+                          : tokens.glassBorder || tokens.borderSubtle
+                      }`,
+                      color: tokens.textPrimary,
                     }}
                   >
-                    <Upload className="w-4 h-4 mr-2" />
+                    <Upload className="w-4 h-4 mr-2 transition-transform duration-200 group-hover:translate-y-[-2px] group-active:translate-y-0" />
                     {submitting
                       ? 'Submitting...'
                       : proposal.verification.status === 'PENDING'
@@ -709,7 +727,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     </p>
                     <Button
                       onClick={() => setUploadDialogOpen(true)}
-                      className="text-white"
+                      className="text-white font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
                       style={{
                         background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
                       }}
@@ -781,10 +799,10 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                             size="sm"
                             variant="outline"
                             onClick={() => setUploadDialogOpen(true)}
-                            className="w-full"
+                            className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
                             style={{
                               background: tokens.glassBg || 'transparent',
-                              border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+                              border: `1.5px solid ${tokens.glassBorder || tokens.borderSubtle}`,
                               color: tokens.textPrimary,
                             }}
                           >
@@ -803,101 +821,164 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
           {/* Section: Pricing */}
           {pricingData && (
             <Card
-              className="border overflow-hidden"
+              className="border overflow-hidden transition-shadow duration-200 hover:shadow-md"
               style={{
-                background: tokens.surfaceCard,
+                background: isDark
+                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.04) 0%, rgba(16, 185, 129, 0.04) 100%)'
+                  : 'linear-gradient(135deg, rgba(34, 197, 94, 0.02) 0%, rgba(16, 185, 129, 0.02) 100%)',
                 borderColor: tokens.borderDefault,
               }}
             >
               <div className="p-6">
+                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      className="w-12 h-12 rounded-lg flex items-center justify-center transition-transform duration-200"
                       style={{
-                        background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                        background: isDark 
+                          ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)'
+                          : 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%)',
+                        border: `2px solid rgba(34, 197, 94, 0.2)`,
                       }}
                     >
-                      <DollarSign className="w-5 h-5" style={{ color: '#22c55e' }} />
+                      <DollarSign className="w-6 h-6" style={{ color: '#22c55e' }} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>Pricing</h3>
-                      <p className="text-xs" style={{ color: tokens.textMuted }}>
-                        Status: {PRICING_STATUS_CONFIG[pricingData.status]?.label || pricingData.status}
+                      <h3 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
+                        Pricing Management
+                      </h3>
+                      <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
+                        {pricingData.isPaid ? `${pricingData.price} ${pricingData.currency}` : 'Free Dataset'}
                       </p>
                     </div>
                   </div>
                   <span
-                    className="px-3 py-1 rounded-full text-xs font-semibold"
+                    className="px-4 py-2 rounded-full text-xs font-semibold transition-transform duration-200 hover:scale-105"
                     style={{
                       background: PRICING_STATUS_CONFIG[pricingData.status]?.bgColor || '#f3f4f6',
                       color: PRICING_STATUS_CONFIG[pricingData.status]?.color || '#6b7280',
+                      border: `1.5px solid ${
+                        PRICING_STATUS_CONFIG[pricingData.status]?.color 
+                          ? PRICING_STATUS_CONFIG[pricingData.status]?.color + '4d'
+                          : 'rgba(107, 114, 128, 0.3)'
+                      }`,
                     }}
                   >
-                    {PRICING_STATUS_CONFIG[pricingData.status]?.icon} {PRICING_STATUS_CONFIG[pricingData.status]?.label || pricingData.status}
+                    <span className="mr-1.5">{PRICING_STATUS_CONFIG[pricingData.status]?.icon}</span>
+                    {PRICING_STATUS_CONFIG[pricingData.status]?.label || pricingData.status}
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <Label style={{ color: tokens.textSecondary }}>Price Type</Label>
-                    <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                      {pricingData.isPaid ? `${pricingData.price} ${pricingData.currency}` : 'Free'}
-                    </p>
+                {/* Content */}
+                <div className="space-y-4 sm:space-y-5">
+                  {/* Price Information */}
+                  <div
+                    className="p-4 sm:p-5 rounded-xl border transition-all duration-200"
+                    style={{
+                      background: isDark 
+                        ? 'rgba(255, 255, 255, 0.03)'
+                        : 'rgba(26, 34, 64, 0.02)',
+                      borderColor: tokens.borderSubtle,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Label style={{ color: tokens.textSecondary }} className="text-xs">
+                          Price Type
+                        </Label>
+                        <p className="text-sm font-medium mt-2" style={{ color: tokens.textPrimary }}>
+                          {pricingData.isPaid ? 'Paid Dataset' : 'Free Dataset'}
+                        </p>
+                      </div>
+                      {pricingData.isPaid && (
+                        <div className="text-right">
+                          <Label style={{ color: tokens.textSecondary }} className="text-xs">
+                            Amount
+                          </Label>
+                          <p 
+                            className="text-2xl font-bold mt-2 tracking-tight"
+                            style={{ color: '#22c55e' }}
+                          >
+                            {pricingData.currency === 'USD' && '$'}
+                            {pricingData.currency === 'INR' && '₹'}
+                            {pricingData.currency === 'EUR' && '€'}
+                            {pricingData.currency === 'GBP' && '£'}
+                            {pricingData.price}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {pricingData.isPaid && (
-                    <div className="pt-3 border-t" style={{ borderColor: tokens.borderSubtle }}>
-                      <div className="flex items-center justify-between">
-                        <span style={{ color: tokens.textMuted }} className="text-sm">Price Preview</span>
-                        <span style={{ color: tokens.textPrimary }} className="text-lg font-semibold">
-                          {pricingData.currency === 'USD' && '$'}
-                          {pricingData.currency === 'INR' && '₹'}
-                          {pricingData.currency === 'EUR' && '€'}
-                          {pricingData.currency === 'GBP' && '£'}
-                          {pricingData.price}
-                        </span>
+                  {/* Admin Feedback */}
+                  {pricingData.status === 'CHANGES_REQUESTED' && (
+                    <div
+                      className="p-4 sm:p-5 rounded-xl border-l-4 transition-all duration-200"
+                      style={{
+                        background: isDark 
+                          ? 'rgba(239, 68, 68, 0.08)'
+                          : 'rgba(239, 68, 68, 0.12)',
+                        borderColor: '#ef4444',
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <AlertCircle 
+                          className="w-5 h-5 flex-shrink-0 mt-0.5" 
+                          style={{ color: '#ef4444' }} 
+                        />
+                        <div>
+                          <p className="text-sm font-semibold mb-1" style={{ color: '#ef4444' }}>
+                            Admin Feedback Required
+                          </p>
+                          <p className="text-sm leading-relaxed" style={{ color: tokens.textSecondary }}>
+                            {pricingData.rejectionReason || 'Please review and adjust the pricing based on admin feedback.'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {pricingData.status === 'CHANGES_REQUESTED' && (
-                    <div
-                      className="p-3 rounded-lg border"
-                      style={{
-                        background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-                      }}
-                    >
-                      <p className="text-xs font-semibold mb-1" style={{ color: '#ef4444' }}>
-                        Admin Feedback:
-                      </p>
-                      <p className="text-xs" style={{ color: tokens.textSecondary }}>
-                        {pricingData.rejectionReason || 'Please review the pricing and make necessary changes.'}
-                      </p>
-                    </div>
-                  )}
+                  {/* Status Message */}
+                  <div
+                    className="p-3 sm:p-4 rounded-lg border-l-4 transition-all duration-200"
+                    style={{
+                      background: isDark
+                        ? 'rgba(59, 130, 246, 0.08)'
+                        : 'rgba(59, 130, 246, 0.12)',
+                      borderColor: '#3b82f6',
+                    }}
+                  >
+                    <p className="text-xs sm:text-sm leading-relaxed" style={{ color: tokens.textSecondary }}>
+                      {pricingData.status === 'DRAFT' && '💾 Your pricing is saved as draft. Review and submit it when ready.'}
+                      {pricingData.status === 'SUBMITTED' && '📤 Your pricing is submitted and under admin review.'}
+                      {pricingData.status === 'CHANGES_REQUESTED' && '✏️ Admin has requested changes. Make edits and resubmit.'}
+                      {pricingData.status === 'RESUBMITTED' && '📤 Your updated pricing is under review.'}
+                      {pricingData.status === 'UNDER_REVIEW' && '👀 Your pricing is being reviewed by admin.'}
+                      {pricingData.status === 'ACTIVE' && '✅ Your pricing is active and live.'}
+                      {pricingData.status === 'REJECTED' && '❌ Your pricing was rejected. Edit and resubmit.'}
+                      {pricingData.status === 'INACTIVE' && '🔒 Your pricing is currently inactive.'}
+                    </p>
+                  </div>
 
-                  <p className="text-xs leading-relaxed" style={{ color: tokens.textMuted }}>
-                    {pricingData.status === 'DRAFT' && '💡 Your pricing is saved as draft. You can edit and submit it for admin review.'}
-                    {pricingData.status === 'SUBMITTED' && '⏳ Your pricing is under review. Admin will make a decision soon.'}
-                    {pricingData.status === 'CHANGES_REQUESTED' && '✏️ Admin has requested changes to your pricing. Edit and resubmit.'}
-                    {pricingData.status === 'RESUBMITTED' && '⏳ Your updated pricing is under review.'}
-                    {pricingData.status === 'UNDER_REVIEW' && '⏳ Your pricing is under review by admin.'}
-                    {pricingData.status === 'ACTIVE' && '✓ Your pricing is active.'}
-                    {pricingData.status === 'REJECTED' && '✕ Your pricing was rejected. Edit and resubmit.'}
-                    {pricingData.status === 'INACTIVE' && '⊘ Your pricing is inactive.'}
-                  </p>
-
+                  {/* Action Button */}
                   {(pricingData.status === 'DRAFT' || pricingData.status === 'CHANGES_REQUESTED' || pricingData.status === 'REJECTED') && (
-                    <div className="pt-3 border-t" style={{ borderColor: tokens.borderSubtle }}>
+                    <div className="pt-2">
                       <Button
                         onClick={() => setShowPricingDialog(true)}
-                        size="sm"
-                        className="w-full text-white"
-                        style={{ background: '#3b82f6' }}
+                        className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
+                        style={{ 
+                          background: tokens.glassBg || 'transparent',
+                          border: `1.5px solid ${
+                            pricingData.status === 'CHANGES_REQUESTED'
+                              ? 'rgba(239, 68, 68, 0.5)'
+                              : tokens.glassBorder || tokens.borderSubtle
+                          }`,
+                          color: tokens.textPrimary,
+                        }}
                       >
-                        Edit Pricing
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        {pricingData.status === 'CHANGES_REQUESTED' ? 'Update & Resubmit Pricing' : 'Edit Pricing'}
                       </Button>
                     </div>
                   )}
@@ -1083,8 +1164,28 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     <li>• File: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.currentUpload?.originalFileName || 'Uploaded'}</span></li>
                     <li>• Format: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.dataFormatInfo?.fileFormat || 'Defined'}</span></li>
                     <li>• Features: <span style={{ color: tokens.textPrimary }} className="font-medium">{proposal.features?.length || 0} column{proposal.features?.length !== 1 ? 's' : ''}</span></li>
+                    {pricingData && pricingData.status === 'DRAFT' && (
+                      <li>• Pricing: <span style={{ color: tokens.textPrimary }} className="font-medium">{pricingData.isPaid ? `${pricingData.price} ${pricingData.currency}` : 'Free'}</span></li>
+                    )}
                   </ul>
                 </div>
+
+                {pricingData && pricingData.status === 'DRAFT' && (
+                  <div
+                    className="rounded-lg p-3 border-l-4"
+                    style={{
+                      background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+                      borderColor: '#22c55e',
+                    }}
+                  >
+                    <p className="text-xs font-semibold mb-1" style={{ color: '#22c55e' }}>
+                      ✓ Pricing will also be submitted
+                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: tokens.textMuted }}>
+                      Your pricing is in draft status. It will be submitted together with your proposal for admin review.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">
@@ -1092,10 +1193,10 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   variant="outline"
                     onClick={() => setShowConfirmModal(false)}
                     disabled={submitting}
-                    className="flex-1"
+                    className="flex-1 h-10 font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
                     style={{
                       background: tokens.glassBg || 'transparent',
-                      border: `1px solid ${tokens.inputBorder}`,
+                      border: `1.5px solid ${tokens.inputBorder}`,
                       color: tokens.textPrimary,
                     }}
                 >
@@ -1104,12 +1205,17 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                 <Button
                   onClick={handleConfirmSubmit}
                   disabled={submitting}
-                  className="flex-1 text-white"
+                  className="flex-1 h-10 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                   style={{
                     background: submitting
-                      ? 'rgba(156, 163, 175, 0.3)'
-                      : '#1a2240',
-                      border: `1px solid ${tokens.inputBorder}`,
+                      ? 'rgba(156, 163, 175, 0.2)'
+                      : tokens.glassBg || 'transparent',
+                    border: `1.5px solid ${
+                      submitting
+                        ? 'rgba(156, 163, 175, 0.3)'
+                        : tokens.glassBorder || tokens.borderSubtle
+                    }`,
+                    color: tokens.textPrimary,
                   }}
                 >
                   {submitting ? 'Submitting...' : 'Confirm & Submit'}

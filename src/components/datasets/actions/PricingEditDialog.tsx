@@ -327,6 +327,12 @@ export function PricingEditDialog({
             variant="outline"
             onClick={onClose}
             disabled={submitting || saving}
+            className="h-10 font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              background: tokens.glassBg || 'transparent',
+              border: `1.5px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+              color: tokens.textPrimary,
+            }}
           >
             Cancel
           </Button>
@@ -334,6 +340,12 @@ export function PricingEditDialog({
             variant="outline"
             onClick={handleSaveDraft}
             disabled={submitting || saving}
+            className="h-10 font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              background: tokens.glassBg || 'transparent',
+              border: `1.5px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+              color: tokens.textPrimary,
+            }}
           >
             {saving ? (
               <>
@@ -347,7 +359,14 @@ export function PricingEditDialog({
           <Button
             onClick={handleSaveAndSubmit}
             disabled={submitting || saving}
-            style={{ background: '#3b82f6' }}
+            className="h-10 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+            style={{
+              background: submitting || saving
+                ? 'rgba(156, 163, 175, 0.2)'
+                : tokens.glassBg || 'transparent',
+              border: `1.5px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+              color: tokens.textPrimary,
+            }}
           >
             {submitting ? (
               <>
