@@ -27,8 +27,15 @@ async function apiFetch<T>(
     
     try {
       const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || errorMessage;
-      errorCode = errorData.code || errorCode;
+      // Handle nested error structure: { error: { code, message } }
+      if (errorData.error && typeof errorData.error === 'object') {
+        errorMessage = errorData.error.message || errorMessage;
+        errorCode = errorData.error.code || errorCode;
+      } else {
+        // Handle flat error structure: { message, code }
+        errorMessage = errorData.message || errorData.error || errorMessage;
+        errorCode = errorData.code || errorCode;
+      }
     } catch {
       // If response is not JSON, use status text
     }
