@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
-import { DollarSign, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { DollarSign, AlertCircle, Loader2, CheckCircle, Euro, PoundSterling, IndianRupee } from 'lucide-react';
 import { upsertProposalPricing, submitProposalPricing } from '@/lib/api';
 import { toast } from 'sonner';
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
@@ -29,6 +29,35 @@ const CURRENCY_OPTIONS = [
   { value: 'EUR', label: 'EUR (€)' },
   { value: 'GBP', label: 'GBP (£)' },
 ];
+
+const getCurrencyIcon = (currency: string) => {
+  switch (currency) {
+    case 'INR':
+      return <IndianRupee className="w-4 h-4" />;
+    case 'EUR':
+      return <Euro className="w-4 h-4" />;
+    case 'GBP':
+      return <PoundSterling className="w-4 h-4" />;
+    case 'USD':
+    default:
+      return <DollarSign className="w-4 h-4" />;
+  }
+};
+
+const getCurrencySymbol = (currency: string) => {
+  switch (currency) {
+    case 'USD':
+      return '$';
+    case 'EUR':
+      return '€';
+    case 'GBP':
+      return '£';
+    case 'INR':
+      return '₹';
+    default:
+      return '$';
+  }
+};
 
 export function PricingEditDialog({
   isOpen,
@@ -245,10 +274,12 @@ export function PricingEditDialog({
                     Price <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
-                    <DollarSign
+                    <div
                       className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
                       style={{ color: tokens.textMuted }}
-                    />
+                    >
+                      {getCurrencyIcon(currency)}
+                    </div>
                     <Input
                       id="price"
                       type="text"
@@ -295,11 +326,7 @@ export function PricingEditDialog({
                   >
                     <p className="text-xs" style={{ color: tokens.textMuted }}>Preview</p>
                     <p className="text-lg font-bold mt-1" style={{ color: tokens.textPrimary }}>
-                      {currency === 'USD' && '$'}
-                      {currency === 'EUR' && '€'}
-                      {currency === 'GBP' && '£'}
-                      {currency === 'INR' && '₹'}
-                      {price}
+                      {getCurrencySymbol(currency)}{price}
                     </p>
                   </div>
                 )}

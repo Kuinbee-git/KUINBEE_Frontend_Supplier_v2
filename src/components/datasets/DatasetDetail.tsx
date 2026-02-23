@@ -90,21 +90,7 @@ const renderMetadataDisplay = (proposal: ProposalDetailsResponse, tokens: any) =
         })}
       </p>
     </div>
-    {proposal.verification.notes && (
-      <div className="space-y-2">
-        <Label style={{ color: tokens.textSecondary }}>Verification Notes</Label>
-        <div
-          className="p-3 rounded-lg text-sm"
-          style={{
-            background: 'rgba(59, 130, 246, 0.1)',
-            borderLeft: '3px solid #3b82f6',
-            color: tokens.textPrimary,
-          }}
-        >
-          {proposal.verification.notes}
-        </div>
-      </div>
-    )}
+
   </div>
 );
 
@@ -550,6 +536,49 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
           </div>
         </Card>
 
+        {/* Verification Notes Banner */}
+        {proposal.verification.notes && (
+          <div
+            className="mb-6 rounded-lg border px-6 py-4 flex items-start gap-4"
+            style={{
+              background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.15)',
+              borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.4)',
+            }}
+          >
+            <div className="flex-shrink-0 mt-0.5">
+              <AlertCircle className="w-6 h-6" style={{ color: isDark ? '#fbbf24' : '#d97706' }} />
+            </div>
+            <div className="flex-1">
+              <p className="text-base font-semibold mb-4" style={{ color: isDark ? '#eab308' : '#b45309' }}>
+                Changes Requested by the Admin
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: tokens.textSecondary }}>
+                    Feedback Notes
+                  </p>
+                  <div
+                    className="p-3 rounded-lg border"
+                    style={{
+                      background: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.5)',
+                      borderColor: isDark ? 'rgba(234, 179, 8, 0.2)' : 'rgba(234, 179, 8, 0.3)',
+                    }}
+                  >
+                    <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      {proposal.verification.notes}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs pt-2" style={{ color: tokens.textSecondary }}>
+                  Please review the feedback above and make the necessary updates before resubmitting your proposal.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Submit for Review Section */}
         {canSubmit && (
           <Card
@@ -917,23 +946,44 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       className="p-4 sm:p-5 rounded-xl border-l-4 transition-all duration-200"
                       style={{
                         background: isDark 
-                          ? 'rgba(239, 68, 68, 0.08)'
-                          : 'rgba(239, 68, 68, 0.12)',
-                        borderColor: '#ef4444',
+                          ? 'rgba(234, 179, 8, 0.1)'
+                          : 'rgba(234, 179, 8, 0.15)',
+                        borderLeftColor: isDark ? '#fbbf24' : '#d97706',
                       }}
                     >
                       <div className="flex items-start gap-3">
                         <AlertCircle 
                           className="w-5 h-5 flex-shrink-0 mt-0.5" 
-                          style={{ color: '#ef4444' }} 
+                          style={{ color: isDark ? '#fbbf24' : '#d97706' }} 
                         />
-                        <div>
-                          <p className="text-sm font-semibold mb-1" style={{ color: '#ef4444' }}>
-                            Admin Feedback Required
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold mb-3" style={{ color: isDark ? '#eab308' : '#b45309' }}>
+                            Pricing Changes Requested
                           </p>
-                          <p className="text-sm leading-relaxed" style={{ color: tokens.textSecondary }}>
-                            {pricingData.rejectionReason || 'Please review and adjust the pricing based on admin feedback.'}
-                          </p>
+                          
+                          <div className="space-y-3">
+                            {pricingData.notes && (
+                              <div>
+                                <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: tokens.textSecondary }}>
+                                  Feedback Notes
+                                </p>
+                                <div
+                                  className="p-3 rounded-lg border text-sm leading-relaxed"
+                                  style={{
+                                    background: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.5)',
+                                    borderColor: isDark ? 'rgba(234, 179, 8, 0.2)' : 'rgba(234, 179, 8, 0.3)',
+                                    color: tokens.textPrimary,
+                                  }}
+                                >
+                                  {pricingData.notes}
+                                </div>
+                              </div>
+                            )}
+                            
+                            <p className="text-xs pt-2" style={{ color: tokens.textSecondary }}>
+                              Please review the feedback above and update your pricing before resubmitting.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
