@@ -49,7 +49,7 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
           id="fileSize"
           value={data.fileSize}
           onChange={(e) => onChange('fileSize', e.target.value)}
-          placeholder="e.g., 150 MB"
+          placeholder="e.g., 150"
           disabled={disabled}
           style={{
             background: tokens.inputBg,

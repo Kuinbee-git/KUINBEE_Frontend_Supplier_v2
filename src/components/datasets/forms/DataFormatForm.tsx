@@ -160,7 +160,7 @@ export function DataFormatForm({
                   borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
                 }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-cente150 r justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
                   <AlertCircle className="w-4 h-4" style={{ color: '#ef4444' }} />
                 </div>
                 <p className="text-sm font-medium" style={{ color: '#ef4444' }}>
@@ -209,7 +209,7 @@ export function DataFormatForm({
                   id="fileSize"
                   value={formData.fileSize}
                   onChange={(e) => handleFieldChange('fileSize', e.target.value)}
-                  placeholder="e.g., 10.5 MB, 2.3 GB"
+                  placeholder="e.g., 10.5, 2.3"
                   disabled={submitting}
                   required
                   className="h-11 transition-colors focus-visible:ring-2"

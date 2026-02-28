@@ -5,3 +5,4 @@ export { useDashboardNav } from './useDashboardNav';
 
 export { useOnboardingStatus } from './useOnboardingStatus';
 export { useOnboardingRouter } from './useOnboardingRouter';
+export { useDraftProposal } from './useDraftProposal';

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
@@ -9,6 +10,7 @@ import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLef
 import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing } from '@/lib/api';
 import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep, PricingStep } from './create-steps';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
+import { useDraftProposal } from '@/hooks/useDraftProposal';
 import type { 
   DatasetSuperType, 
   UpsertAboutInfoRequest, 
@@ -78,7 +80,52 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   });
   const [pricingLoaded, setPricingLoaded] = useState(false);
 
+  // Draft management
+  const { loadDraft, saveDraft, clearDraft, hasDraft } = useDraftProposal();
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   const tokens = getDatasetThemeTokens(isDark);
+
+  // Load draft on mount
+  useEffect(() => {
+    if (draftLoaded) return;
+    
+    const draft = loadDraft();
+    if (draft) {
+      // Restore all form data from draft
+     if (draft.basicData) setBasicData(draft.basicData as any);
+      if (draft.aboutData) setAboutData(draft.aboutData as any);
+      if (draft.formatData) setFormatData(draft.formatData as any);
+      if (draft.features && draft.features.length > 0) setFeatures(draft.features as any);
+      if (draft.pricingData) setPricingData(draft.pricingData as any);
+      if (draft.createdProposalId) setCreatedProposalId(draft.createdProposalId);
+      if (draft.currentStep) setCurrentStep(draft.currentStep as Step);
+      if (draft.fileUploaded) setFileUploaded(draft.fileUploaded);
+      
+      toast.success('Draft proposal restored!');
+      setDraftLoaded(true);
+    } else {
+      setDraftLoaded(true);
+    }
+  }, []);
+
+  // Auto-save draft whenever form data changes
+  useEffect(() => {
+    if (!draftLoaded) return;
+    
+    const draftData = {
+      basicData,
+      aboutData,
+      formatData,
+      features,
+      pricingData,
+      createdProposalId,
+      currentStep,
+      fileUploaded,
+    };
+    
+    saveDraft(draftData);
+  }, [draftLoaded, basicData, aboutData, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, saveDraft]);
 
   const steps = [
     { id: 'basic' as Step, label: 'Basic Info', number: 1 },
@@ -353,6 +400,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
       // Navigate to detail page
       setSuccess('Proposal created successfully! Redirecting...');
+      clearDraft(); // Clear draft on successful completion
       setTimeout(() => {
         router.push(`/dashboard/datasets/${createdProposalId}`);
       }, 1500);
