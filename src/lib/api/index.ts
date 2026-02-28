@@ -11,3 +11,6 @@ export * from "./catalog";
 
 // Explicit re-exports for profile functions
 export { getSupplierProfile, updateSupplierProfile } from "./supplier";
+
+// Stats
+export * from "./stats";
