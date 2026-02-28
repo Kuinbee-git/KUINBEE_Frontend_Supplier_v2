@@ -226,9 +226,14 @@ export default function VerifyPanPage() {
                     disabled={loading || result?.attempt.status === "VERIFIED"}
                     autoComplete="off"
                   />
-                  <p style={{ color: tokens.textMuted }} className="text-xs">
-                    Enter your name exactly as it appears on your PAN card
-                  </p>
+                  <div className="space-y-1.5 mt-3">
+                    <p style={{ color: tokens.textMuted }} className="text-xs font-medium">
+                      ⓘ Important: Enter your full name exactly as shown on your PAN card
+                    </p>
+                    <p style={{ color: tokens.textMuted }} className="text-xs leading-relaxed">
+                      Include your complete legal name with parent's name if it appears on your PAN card. Example: "John Kumar Singh" or "Mary Rakesh Sharma "
+                    </p>
+                  </div>
                 </div>
 
                 {/* Consent */}
