@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  User, 
-  Settings, 
+import {
+  LayoutDashboard,
+  BarChart3,
+  FileText,
+  User,
+  Settings,
   LogOut,
   Moon,
   Sun,
@@ -59,40 +60,47 @@ export function DashboardShell({ children }: DashboardShellProps) {
   };
 
   const navItems = [
-    { 
-      id: 'overview', 
-      label: 'Overview', 
-      icon: LayoutDashboard, 
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: LayoutDashboard,
       path: '/dashboard',
-      disabled: false 
+      disabled: false
     },
-    { 
-      id: 'proposals', 
-      label: 'My Drafts', 
-      icon: FileText, 
+    {
+      id: 'stats',
+      label: 'Stats',
+      icon: BarChart3,
+      path: '/dashboard/stats',
+      disabled: false
+    },
+    {
+      id: 'proposals',
+      label: 'My Drafts',
+      icon: FileText,
       path: '/dashboard/datasets',
-      disabled: false 
+      disabled: false
     },
-    { 
-      id: 'submitted-proposals', 
-      label: 'Submitted Proposals', 
-      icon: FileText, 
+    {
+      id: 'submitted-proposals',
+      label: 'Submitted Proposals',
+      icon: FileText,
       path: '/dashboard/proposals',
-      disabled: false 
+      disabled: false
     },
-    { 
-      id: 'my-datasets', 
-      label: 'My Datasets', 
-      icon: Database, 
+    {
+      id: 'my-datasets',
+      label: 'My Datasets',
+      icon: Database,
       path: '/dashboard/my-datasets',
-      disabled: false 
+      disabled: false
     },
-    { 
-      id: 'account', 
-      label: 'Account', 
-      icon: Settings, 
+    {
+      id: 'account',
+      label: 'Account',
+      icon: Settings,
       path: '/dashboard/account',
-      disabled: false 
+      disabled: false
     },
   ];
 
@@ -140,9 +148,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
           }}
         >
           {/* Logo */}
-          <div 
-            className="h-24 flex items-center justify-center border-b transition-all duration-300" 
-            style={{ 
+          <div
+            className="h-24 flex items-center justify-center border-b transition-all duration-300"
+            style={{
               borderColor: tokens.borderDefault,
               paddingLeft: sidebarCollapsed ? '0' : '16px',
               paddingRight: sidebarCollapsed ? '0' : '16px',
@@ -170,9 +178,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 />
               </div>
               {!sidebarCollapsed && (
-                <span 
+                <span
                   className="text-lg font-bold whitespace-nowrap transition-all duration-300 ease-out"
-                  style={{ 
+                  style={{
                     color: tokens.textPrimary,
                     opacity: sidebarCollapsed ? 0 : 1,
                     visibility: sidebarCollapsed ? 'hidden' : 'visible',
@@ -267,7 +275,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   <span className="flex items-center justify-center w-6 h-6">
                     <Icon className="w-5 h-5 flex-shrink-0" />
                   </span>
-                  <span 
+                  <span
                     className="text-sm font-medium transition-all duration-300 ease-out overflow-hidden whitespace-nowrap"
                     style={{
                       opacity: sidebarCollapsed ? 0 : 1,
@@ -374,7 +382,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                       className="fixed inset-0 z-40"
                       onClick={() => setUserMenuOpen(false)}
                     />
-                    
+
                     {/* Menu Items */}
                     <div
                       className="absolute right-0 mt-2 w-56 rounded-lg shadow-lg z-50 overflow-hidden"
