@@ -85,3 +85,6 @@ export * from "./support.types";
 
 // Common types
 export * from "./common.types";
+
+// Supplier stats types
+export * from "./supplier-stats.types";
