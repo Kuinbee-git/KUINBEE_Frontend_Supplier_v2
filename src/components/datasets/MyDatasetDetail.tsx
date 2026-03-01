@@ -14,6 +14,7 @@ import {
   DownloadButton,
 } from './actions';
 import { PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
+import { KdtsScoreCard } from './shared/KdtsScoreCard';
 import type { DatasetPricingVersion } from '@/types/dataset-proposal.types';
 import { 
   ArrowLeft, 
@@ -1058,6 +1059,9 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 </div>
               </GlassCard>
             )}
+
+            {/* KDTS Score Card */}
+            <KdtsScoreCard datasetId={datasetId} />
 
             {/* Published File Card */}
             {publishedUpload && (
