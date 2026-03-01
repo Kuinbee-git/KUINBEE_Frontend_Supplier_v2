@@ -12,7 +12,7 @@ export interface StatsOverview {
     totalSales: number;
     activeDatasets: number;
     totalViews: number;
-    averageQualityScore: number;
+    averageQualityScore: number | null;
     pendingValidationCount: number;
     conversionRate: number;
 }

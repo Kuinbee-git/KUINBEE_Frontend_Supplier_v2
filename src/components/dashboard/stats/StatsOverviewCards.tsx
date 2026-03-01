@@ -109,7 +109,7 @@ export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProp
         {
             icon: <Star className="w-5 h-5" />,
             label: "Avg Quality Score",
-            value: `${overview.averageQualityScore.toFixed(1)}`,
+            value: overview.averageQualityScore !== null ? `${overview.averageQualityScore.toFixed(1)}` : "N/A",
             accentColor: "#ec4899",
         },
         {
