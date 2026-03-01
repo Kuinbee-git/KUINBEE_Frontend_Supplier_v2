@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import { getMockSupplierStats } from "@/lib/api/stats";
+import { getSupplierStats } from "@/lib/api/stats";
 import { GlassCard } from "@/components/shared";
 import { StatsOverviewCards } from "@/components/dashboard/stats/StatsOverviewCards";
 import { RevenueTrendChart } from "@/components/dashboard/stats/RevenueTrendChart";
@@ -17,15 +17,17 @@ function StatsOverviewContent() {
     const range = (searchParams.get("range") as StatsTimeRange) || "30d";
     const [stats, setStats] = useState<SupplierStatsResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchStats = useCallback(async (selectedRange: StatsTimeRange) => {
         setLoading(true);
+        setError(null);
         try {
-            const data = getMockSupplierStats(selectedRange);
-            await new Promise((resolve) => setTimeout(resolve, 400));
+            const data = await getSupplierStats(selectedRange);
             setStats(data);
         } catch (error) {
             console.error("Failed to fetch stats:", error);
+            setError(error instanceof Error ? error.message : "Failed to fetch statistics");
         } finally {
             setLoading(false);
         }
@@ -37,6 +39,12 @@ function StatsOverviewContent() {
 
     return (
         <>
+            {/* Error State */}
+            {error && (
+                <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "rgb(239, 68, 68)" }}>
+                    <p className="text-sm font-medium">{error}</p>
+                </div>
+            )}
             {/* Overview Cards */}
             <div style={{ animation: "fadeIn 0.5s ease-out" }}>
                 <StatsOverviewCards
