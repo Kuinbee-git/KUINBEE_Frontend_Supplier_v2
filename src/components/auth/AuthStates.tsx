@@ -7,11 +7,11 @@ import { LoadingState } from "./LoadingState";
 import { OTPVerification } from "./OTPVerification";
 import { login } from "@/lib/api/auth";
 
-export type AuthStateType = 
-  | "initial" 
-  | "checking" 
-  | "password" 
-  | "otp" 
+export type AuthStateType =
+  | "initial"
+  | "checking"
+  | "password"
+  | "otp"
   | "new_supplier";
 
 interface AuthStatesProps {
@@ -41,7 +41,7 @@ function AuthStatesComponent({
   const handleLogin = useCallback(async (submittedEmail: string, password: string) => {
     console.log("[AUTH] Login attempt:", submittedEmail);
     setLoginError("");
-    
+
     // Show loading state
     onStateChange("checking");
 
@@ -52,8 +52,15 @@ function AuthStatesComponent({
         password: password,
       });
 
+      // Verify this is a supplier account
+      if (response.user?.userType !== 'SUPPLIER') {
+        setLoginError("Access denied. This portal is for suppliers only.");
+        onStateChange("initial");
+        return;
+      }
+
       console.log("[AUTH] Login successful:", response);
-      
+
       // On success, trigger parent success handler which will:
       // 1. Navigate to dashboard
       // 2. Dashboard layout will check onboarding status
@@ -61,7 +68,7 @@ function AuthStatesComponent({
       onSuccess?.();
     } catch (error: any) {
       console.error("[AUTH] Login failed:", error);
-      
+
       // Show error and return to login form
       setLoginError(error.message || "Login failed. Please check your credentials.");
       onStateChange("initial");
@@ -88,10 +95,10 @@ function AuthStatesComponent({
   // Handle new supplier form submission (sends OTP)
   const handleNewSupplierSubmit = useCallback((submittedEmail: string) => {
     console.log("[AUTH] Sending OTP to:", submittedEmail);
-    
+
     // Show loading state briefly
     onStateChange("checking");
-    
+
     // Simulate OTP send
     setTimeout(() => {
       console.log("[AUTH] OTP sent, navigating to OTP screen");
