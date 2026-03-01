@@ -8,6 +8,7 @@ export * from "./supplier";
 export * from "./dataset-proposals";
 export * from "./datasets";
 export * from "./catalog";
+export * from "./kdts";
 
 // Explicit re-exports for profile functions
 export { getSupplierProfile, updateSupplierProfile } from "./supplier";

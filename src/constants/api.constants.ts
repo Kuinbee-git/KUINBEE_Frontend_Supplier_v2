@@ -78,6 +78,8 @@ export const DATASET_API = {
   REQUEST_PRICING_CHANGE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/pricing-change-request`,
   ARCHIVE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/archive`,
   DOWNLOAD_PUBLISHED: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/published-upload/download-url`,
+  // KDTS Score (public route)
+  KDTS_SCORE: (datasetId: string) => `${API_BASE_PATH}/datasets/${datasetId}/kdts`,
 } as const;
 
 // ===== Catalog (Sources & Categories) API Endpoints =====
