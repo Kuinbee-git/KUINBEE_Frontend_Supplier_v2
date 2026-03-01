@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { GlassCard } from '@/components/shared';
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
 import { getDatasetDetails, getDatasetPricing } from '@/lib/api/datasets';
-import { 
+import {
   PublishConfirmDialog,
   ChangeVisibilityDialog,
   PricingEditDialog,
@@ -16,11 +16,11 @@ import {
 import { PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
 import { KdtsScoreCard } from './shared/KdtsScoreCard';
 import type { DatasetPricingVersion } from '@/types/dataset-proposal.types';
-import { 
-  ArrowLeft, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
+import {
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle,
+  Clock,
   XCircle,
   FileText,
   Calendar,
@@ -123,22 +123,22 @@ const VISIBILITY_CONFIG: Record<string, { label: string; icon: any; color: strin
 };
 
 // Helper component for info items
-function InfoItem({ 
-  icon: Icon, 
-  label, 
-  value, 
+function InfoItem({
+  icon: Icon,
+  label,
+  value,
   tokens,
   valueColor,
-}: { 
-  icon: any; 
-  label: string; 
-  value: React.ReactNode; 
+}: {
+  icon: any;
+  label: string;
+  value: React.ReactNode;
   tokens: ReturnType<typeof useSupplierTokens>;
   valueColor?: string;
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div 
+      <div
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
         style={{ background: tokens.infoBg }}
       >
@@ -155,14 +155,14 @@ function InfoItem({
 }
 
 // Helper component for section headers
-function SectionTitle({ 
-  icon: Icon, 
-  title, 
+function SectionTitle({
+  icon: Icon,
+  title,
   badge,
   tokens,
-}: { 
-  icon: any; 
-  title: string; 
+}: {
+  icon: any;
+  title: string;
   badge?: React.ReactNode;
   tokens: ReturnType<typeof useSupplierTokens>;
 }) {
@@ -184,11 +184,11 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Pricing state
   const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
-  
+
   // Dialog states
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
@@ -201,7 +201,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
       setError(null);
       const data = await getDatasetDetails(datasetId);
       setDatasetData(data);
-      
+
       // Also fetch pricing
       await fetchPricing();
     } catch (err: any) {
@@ -238,9 +238,9 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
         <div className="max-w-[1200px] mx-auto px-8 py-7">
           <div className="flex items-center justify-center py-32">
             <div className="flex flex-col items-center gap-4">
-              <Loader2 
-                className="w-10 h-10 animate-spin" 
-                style={{ color: tokens.textSecondary }} 
+              <Loader2
+                className="w-10 h-10 animate-spin"
+                style={{ color: tokens.textSecondary }}
               />
               <p className="text-sm" style={{ color: tokens.textMuted }}>
                 Loading dataset details...
@@ -258,7 +258,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
       <div className="h-full overflow-auto">
         <div className="max-w-[1200px] mx-auto px-8 py-7">
           <div className="flex flex-col items-center justify-center py-32">
-            <div 
+            <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
               style={{ background: tokens.errorBg }}
             >
@@ -271,8 +271,8 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               {error || 'Dataset not found or you may not have permission to view it.'}
             </p>
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => fetchDataset()}
                 className="gap-2"
               >
@@ -289,24 +289,24 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
     );
   }
 
-  const { 
-    dataset, 
-    verification, 
-    publishedUpload, 
-    aboutDatasetInfo, 
-    dataFormatInfo, 
-    features, 
-    primaryCategory, 
-    secondaryCategories, 
-    source 
+  const {
+    dataset,
+    verification,
+    publishedUpload,
+    aboutDatasetInfo,
+    dataFormatInfo,
+    features,
+    primaryCategory,
+    secondaryCategories,
+    source
   } = datasetData;
-  
+
   // Status determination
   const verificationStatus = (verification?.status || 'VERIFIED') as VerificationStatusType;
   const verificationConfig = VERIFICATION_STATUS_CONFIG[verificationStatus];
   const datasetStatusConfig = DATASET_STATUS_CONFIG[dataset.status] || DATASET_STATUS_CONFIG.VERIFIED;
   const visibilityConfig = VISIBILITY_CONFIG[dataset.visibility || 'PUBLIC'];
-  
+
   if (!verificationConfig) {
     return (
       <div className="h-full overflow-auto">
@@ -318,7 +318,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
       </div>
     );
   }
-  
+
   const VerificationIcon = verificationConfig.icon;
   const VisibilityIcon = visibilityConfig?.icon || Eye;
 
@@ -365,15 +365,15 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             <ArrowLeft className="w-4 h-4" />
             Back to My Datasets
           </Button>
-          
+
           {/* Page Title & Status Row */}
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 mb-3">
-                <span 
+                <span
                   className="text-xs font-mono px-2.5 py-1.5 rounded-md"
-                  style={{ 
-                    background: tokens.infoBg, 
+                  style={{
+                    background: tokens.infoBg,
                     color: tokens.textSecondary,
                     fontWeight: '500',
                   }}
@@ -381,9 +381,9 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   {dataset.datasetUniqueId}
                 </span>
                 {/* Status Badges */}
-                <span 
+                <span
                   className="text-xs font-medium px-3 py-1.5 rounded-full"
-                  style={{ 
+                  style={{
                     background: datasetStatusConfig.bgColor,
                     color: datasetStatusConfig.color,
                   }}
@@ -391,7 +391,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   {datasetStatusConfig.label}
                 </span>
               </div>
-              <h1 
+              <h1
                 className="text-3xl font-bold mb-2 leading-tight"
                 style={{ color: tokens.textPrimary }}
               >
@@ -401,18 +401,6 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 Last updated {formatDateTime(dataset.updatedAt)}
               </p>
             </div>
-            
-            {/* Quick Actions */}
-            {publishedUpload && (
-              <div className="flex-shrink-0">
-                <DownloadButton
-                  datasetId={dataset.id}
-                  fileName={publishedUpload.originalFileName}
-                  variant="outline"
-                  size="sm"
-                />
-              </div>
-            )}
           </div>
 
           {/* Quick Actions Bar */}
@@ -477,7 +465,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   disabled={!isPublished}
                   variant="outline"
                   className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                  style={{ 
+                  style={{
                     background: tokens.glassBg,
                     border: `1px solid ${isArchived ? tokens.successBorder : tokens.errorBorder}`,
                     color: isArchived ? '#22c55e' : tokens.errorText,
@@ -495,7 +483,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   <DownloadButton
                     datasetId={dataset.id}
                     fileName={publishedUpload.originalFileName}
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     className="flex-1 min-w-[100px] gap-2 justify-center h-10 text-sm font-medium"
                   />
@@ -554,7 +542,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {aboutDatasetInfo && (
               <GlassCard className="p-5">
                 <SectionTitle icon={Info} title="About Dataset" tokens={tokens} />
-                
+
                 <div className="space-y-5">
                   {aboutDatasetInfo.overview && (
                     <div>
@@ -636,53 +624,53 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {dataFormatInfo && (
               <GlassCard className="p-5">
                 <SectionTitle icon={FileCode} title="Data Format" tokens={tokens} />
-                
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <InfoItem 
-                    icon={FileType2} 
-                    label="File Format" 
-                    value={dataFormatInfo.fileFormat} 
+                  <InfoItem
+                    icon={FileType2}
+                    label="File Format"
+                    value={dataFormatInfo.fileFormat}
                     tokens={tokens}
                   />
-                  
+
                   {dataFormatInfo.rows !== null && (
-                    <InfoItem 
-                      icon={Rows3} 
-                      label="Rows" 
-                      value={dataFormatInfo.rows.toLocaleString()} 
+                    <InfoItem
+                      icon={Rows3}
+                      label="Rows"
+                      value={dataFormatInfo.rows.toLocaleString()}
                       tokens={tokens}
                     />
                   )}
-                  
+
                   {dataFormatInfo.cols !== null && (
-                    <InfoItem 
-                      icon={Columns3} 
-                      label="Columns" 
-                      value={dataFormatInfo.cols.toLocaleString()} 
+                    <InfoItem
+                      icon={Columns3}
+                      label="Columns"
+                      value={dataFormatInfo.cols.toLocaleString()}
                       tokens={tokens}
                     />
                   )}
-                  
+
                   {dataFormatInfo.fileSize && (
-                    <InfoItem 
-                      icon={HardDrive} 
-                      label="File Size" 
-                      value={dataFormatInfo.fileSize} 
+                    <InfoItem
+                      icon={HardDrive}
+                      label="File Size"
+                      value={dataFormatInfo.fileSize}
                       tokens={tokens}
                     />
                   )}
-                  
-                  <InfoItem 
-                    icon={FileArchive} 
-                    label="Compression" 
-                    value={dataFormatInfo.compressionType || 'None'} 
+
+                  <InfoItem
+                    icon={FileArchive}
+                    label="Compression"
+                    value={dataFormatInfo.compressionType || 'None'}
                     tokens={tokens}
                   />
-                  
-                  <InfoItem 
-                    icon={FileText} 
-                    label="Encoding" 
-                    value={dataFormatInfo.encoding} 
+
+                  <InfoItem
+                    icon={FileText}
+                    label="Encoding"
+                    value={dataFormatInfo.encoding}
                     tokens={tokens}
                   />
                 </div>
@@ -692,44 +680,44 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {/* Features / Schema */}
             {features && features.length > 0 && (
               <GlassCard className="p-5">
-                <SectionTitle 
-                  icon={Table2} 
-                  title="Features / Schema" 
+                <SectionTitle
+                  icon={Table2}
+                  title="Features / Schema"
                   badge={
-                    <span 
+                    <span
                       className="text-xs px-2 py-1 rounded-full"
                       style={{ background: tokens.infoBg, color: tokens.textSecondary }}
                     >
                       {features.length} columns
                     </span>
                   }
-                  tokens={tokens} 
+                  tokens={tokens}
                 />
-                
+
                 <div className="overflow-x-auto -mx-5 px-5">
                   <table className="w-full min-w-[500px]">
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${tokens.borderDefault}` }}>
-                        <th 
-                          className="text-left text-xs font-medium py-3 px-3 first:pl-0" 
+                        <th
+                          className="text-left text-xs font-medium py-3 px-3 first:pl-0"
                           style={{ color: tokens.textMuted }}
                         >
                           Name
                         </th>
-                        <th 
-                          className="text-left text-xs font-medium py-3 px-3" 
+                        <th
+                          className="text-left text-xs font-medium py-3 px-3"
                           style={{ color: tokens.textMuted }}
                         >
                           Type
                         </th>
-                        <th 
-                          className="text-left text-xs font-medium py-3 px-3" 
+                        <th
+                          className="text-left text-xs font-medium py-3 px-3"
                           style={{ color: tokens.textMuted }}
                         >
                           Description
                         </th>
-                        <th 
-                          className="text-center text-xs font-medium py-3 px-3 last:pr-0" 
+                        <th
+                          className="text-center text-xs font-medium py-3 px-3 last:pr-0"
                           style={{ color: tokens.textMuted }}
                         >
                           Nullable
@@ -745,39 +733,39 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                             borderBottom: index < features.length - 1 ? `1px solid ${tokens.borderSubtle}` : 'none',
                           }}
                         >
-                          <td 
-                            className="text-sm py-3 px-3 first:pl-0 font-mono" 
+                          <td
+                            className="text-sm py-3 px-3 first:pl-0 font-mono"
                             style={{ color: tokens.textPrimary }}
                           >
                             {feature.name}
                           </td>
                           <td className="text-sm py-3 px-3">
-                            <span 
+                            <span
                               className="text-xs px-2 py-0.5 rounded font-mono"
-                              style={{ 
-                                background: tokens.infoBg, 
-                                color: tokens.textSecondary 
+                              style={{
+                                background: tokens.infoBg,
+                                color: tokens.textSecondary
                               }}
                             >
                               {feature.dataType}
                             </span>
                           </td>
-                          <td 
-                            className="text-sm py-3 px-3" 
+                          <td
+                            className="text-sm py-3 px-3"
                             style={{ color: tokens.textSecondary }}
                           >
                             {feature.description || '—'}
                           </td>
                           <td className="text-center py-3 px-3 last:pr-0">
                             {feature.isNullable ? (
-                              <span 
+                              <span
                                 className="text-xs px-2 py-0.5 rounded"
                                 style={{ background: tokens.warningBg, color: '#f59e0b' }}
                               >
                                 Yes
                               </span>
                             ) : (
-                              <span 
+                              <span
                                 className="text-xs px-2 py-0.5 rounded"
                                 style={{ background: tokens.successBg, color: '#22c55e' }}
                               >
@@ -799,7 +787,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {/* Dataset Details Card */}
             <GlassCard className="p-4">
               <SectionTitle icon={Database} title="Dataset Details" tokens={tokens} />
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="min-w-0">
                   <p className="text-xs" style={{ color: tokens.textMuted }}>License</p>
@@ -807,14 +795,14 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     {dataset.license || 'N/A'}
                   </p>
                 </div>
-                
+
                 <div className="min-w-0">
                   <p className="text-xs" style={{ color: tokens.textMuted }}>Visibility</p>
                   <p className="text-sm font-medium mt-1" style={{ color: visibilityConfig?.color || tokens.textPrimary }}>
                     {visibilityConfig?.label || dataset.visibility}
                   </p>
                 </div>
-                
+
                 <div className="min-w-0">
                   <p className="text-xs" style={{ color: tokens.textMuted }}>Pricing</p>
                   <p className="text-sm font-medium mt-1" style={{ color: dataset.isPaid ? '#f59e0b' : '#22c55e' }}>
@@ -933,15 +921,15 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {(primaryCategory || secondaryCategories.length > 0) && (
               <GlassCard className="p-4">
                 <SectionTitle icon={Layers} title="Categories" tokens={tokens} />
-                
+
                 <div className="space-y-4">
                   {primaryCategory && (
                     <div>
                       <p className="text-xs mb-2" style={{ color: tokens.textMuted }}>Primary</p>
-                      <span 
+                      <span
                         className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg"
-                        style={{ 
-                          background: tokens.successBg, 
+                        style={{
+                          background: tokens.successBg,
                           color: tokens.textPrimary,
                           border: `1px solid ${tokens.successBorder}`,
                         }}
@@ -951,17 +939,17 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       </span>
                     </div>
                   )}
-                  
+
                   {secondaryCategories.length > 0 && (
                     <div>
                       <p className="text-xs mb-2" style={{ color: tokens.textMuted }}>Secondary</p>
                       <div className="flex flex-wrap gap-2">
                         {secondaryCategories.map((cat) => (
-                          <span 
+                          <span
                             key={cat.id}
                             className="text-xs px-2.5 py-1 rounded-lg"
-                            style={{ 
-                              background: tokens.infoBg, 
+                            style={{
+                              background: tokens.infoBg,
                               color: tokens.textSecondary,
                             }}
                           >
@@ -979,7 +967,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {source && (
               <GlassCard className="p-4">
                 <SectionTitle icon={Globe} title="Data Source" tokens={tokens} />
-                
+
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
@@ -989,15 +977,15 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       <BadgeCheck className="w-4 h-4" style={{ color: '#22c55e' }} />
                     )}
                   </div>
-                  
+
                   {source.description && (
                     <p className="text-xs" style={{ color: tokens.textSecondary }}>
                       {source.description}
                     </p>
                   )}
-                  
+
                   {source.websiteUrl && (
-                    <a 
+                    <a
                       href={source.websiteUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -1016,19 +1004,19 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {verification && (
               <GlassCard className="p-4">
                 <SectionTitle icon={Shield} title="Verification" tokens={tokens} />
-                
+
                 <div className="space-y-4">
-                  <InfoItem 
-                    icon={VerificationIcon} 
-                    label="Status" 
+                  <InfoItem
+                    icon={VerificationIcon}
+                    label="Status"
                     value={verificationConfig.label}
                     valueColor={verificationConfig.color}
                     tokens={tokens}
                   />
-                  
-                  <InfoItem 
-                    icon={Calendar} 
-                    label="Last Updated" 
+
+                  <InfoItem
+                    icon={Calendar}
+                    label="Last Updated"
                     value={formatDate(verification.updatedAt)}
                     tokens={tokens}
                   />
@@ -1067,32 +1055,32 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {publishedUpload && (
               <GlassCard className="p-4">
                 <SectionTitle icon={FileText} title="Published File" tokens={tokens} />
-                
+
                 <div className="space-y-4">
-                  <InfoItem 
-                    icon={FileText} 
-                    label="Filename" 
+                  <InfoItem
+                    icon={FileText}
+                    label="Filename"
                     value={publishedUpload.originalFileName}
                     tokens={tokens}
                   />
-                  
-                  <InfoItem 
-                    icon={HardDrive} 
-                    label="Size" 
+
+                  <InfoItem
+                    icon={HardDrive}
+                    label="Size"
                     value={formatFileSize(publishedUpload.sizeBytes)}
                     tokens={tokens}
                   />
-                  
+
                   {publishedUpload.contentType && (
-                    <InfoItem 
-                      icon={FileType2} 
-                      label="Type" 
+                    <InfoItem
+                      icon={FileType2}
+                      label="Type"
                       value={publishedUpload.contentType}
                       tokens={tokens}
                     />
                   )}
                 </div>
-                
+
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: tokens.borderSubtle }}>
                   <DownloadButton
                     datasetId={dataset.id}
@@ -1108,20 +1096,20 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {/* Timeline Card */}
             <GlassCard className="p-4">
               <SectionTitle icon={Calendar} title="Timeline" tokens={tokens} />
-              
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span style={{ color: tokens.textMuted }}>Last Updated</span>
                   <span style={{ color: tokens.textPrimary }}>{formatDate(dataset.updatedAt)}</span>
                 </div>
-                
+
                 {dataset.publishedAt && (
                   <div className="flex items-center justify-between text-sm">
                     <span style={{ color: tokens.textMuted }}>Published</span>
                     <span style={{ color: tokens.textPrimary }}>{formatDate(dataset.publishedAt)}</span>
                   </div>
                 )}
-                
+
                 {dataset.archivedAt && (
                   <div className="flex items-center justify-between text-sm">
                     <span style={{ color: tokens.textMuted }}>Archived</span>

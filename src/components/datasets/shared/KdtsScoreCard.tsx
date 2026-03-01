@@ -8,6 +8,8 @@ import { getDatasetKdts, type DatasetKdtsResponse } from '@/lib/api/kdts';
 
 interface KdtsScoreCardProps {
   datasetId: string;
+  /** 'glass' (default) uses GlassCard with backdrop blur; 'flat' uses a plain bordered card matching DatasetDetail */
+  variant?: 'glass' | 'flat';
 }
 
 const KDTS_DIMS: Array<{ key: keyof NonNullable<DatasetKdtsResponse['breakdown']>; label: string }> = [
@@ -18,7 +20,7 @@ const KDTS_DIMS: Array<{ key: keyof NonNullable<DatasetKdtsResponse['breakdown']
   { key: 'F', label: 'Freshness' },
 ];
 
-export function KdtsScoreCard({ datasetId }: KdtsScoreCardProps) {
+export function KdtsScoreCard({ datasetId, variant = 'glass' }: KdtsScoreCardProps) {
   const tokens = useSupplierTokens();
   const [data, setData] = useState<DatasetKdtsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,9 +35,9 @@ export function KdtsScoreCard({ datasetId }: KdtsScoreCardProps) {
     return () => { cancelled = true; };
   }, [datasetId]);
 
-  return (
-    <GlassCard className="p-4">
-      {/* Section header — matches SectionTitle pattern in MyDatasetDetail */}
+  const inner = (
+    <>
+      {/* Section header */}
       <div className="flex items-center gap-2 mb-5">
         <Award className="w-5 h-5" style={{ color: tokens.textSecondary }} />
         <h3 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
@@ -108,6 +110,25 @@ export function KdtsScoreCard({ datasetId }: KdtsScoreCardProps) {
           )}
         </>
       )}
-    </GlassCard>
+    </>
   );
+
+  if (variant === 'flat') {
+    return (
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{
+          background: tokens.isDark ? 'rgba(26, 34, 64, 0.4)' : '#ffffff',
+          borderColor: tokens.borderDefault,
+          boxShadow: tokens.isDark
+            ? '0 2px 8px rgba(0, 0, 0, 0.18)'
+            : '0 2px 8px rgba(26, 34, 64, 0.06)',
+        }}
+      >
+        <div className="px-6 py-5">{inner}</div>
+      </div>
+    );
+  }
+
+  return <GlassCard className="p-4">{inner}</GlassCard>;
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PageBackground } from '@/components/shared';
 import { DatasetStatusBadge, EditableSection } from './shared';
+import { KdtsScoreCard } from './shared/KdtsScoreCard';
 import { AboutDatasetForm, DataFormatForm, FeaturesForm, MetadataEditForm, SecondaryCategoriesForm } from './forms';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { PricingEditDialog } from './actions';
@@ -679,6 +680,11 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             </div>
           </Card>
         )}
+
+        {/* KDTS Score Card */}
+        <div className="mb-6">
+          <KdtsScoreCard datasetId={proposal.dataset.id} variant="flat" />
+        </div>
 
         <div className="space-y-6">
           {/* Section 1: Basic Metadata */}
