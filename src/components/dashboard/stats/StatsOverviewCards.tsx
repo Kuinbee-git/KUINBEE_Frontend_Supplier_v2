@@ -85,13 +85,13 @@ export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProp
         {
             icon: <IndianRupee className="w-5 h-5" />,
             label: "Total Revenue",
-            value: `₹${overview.totalRevenue.toLocaleString("en-IN")}`,
+            value: `₹${Number(overview.totalRevenue).toLocaleString("en-IN")}`,
             accentColor: "#10b981",
         },
         {
             icon: <ShoppingCart className="w-5 h-5" />,
             label: "Total Sales",
-            value: overview.totalSales.toLocaleString(),
+            value: Number(overview.totalSales).toLocaleString(),
             accentColor: "#4a90e2",
         },
         {
@@ -103,13 +103,13 @@ export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProp
         {
             icon: <Eye className="w-5 h-5" />,
             label: "Total Views",
-            value: overview.totalViews.toLocaleString(),
+            value: Number(overview.totalViews).toLocaleString(),
             accentColor: "#f59e0b",
         },
         {
             icon: <Star className="w-5 h-5" />,
             label: "Avg Quality Score",
-            value: overview.averageQualityScore !== null ? `${overview.averageQualityScore.toFixed(1)}` : "N/A",
+            value: overview.averageQualityScore !== null ? `${Number(overview.averageQualityScore).toFixed(1)}` : "N/A",
             accentColor: "#ec4899",
         },
         {
@@ -121,7 +121,7 @@ export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProp
         {
             icon: <TrendingUp className="w-5 h-5" />,
             label: "Conversion Rate",
-            value: `${overview.conversionRate.toFixed(2)}%`,
+            value: `${Number(overview.conversionRate).toFixed(2)}%`,
             accentColor: "#06b6d4",
         },
     ];

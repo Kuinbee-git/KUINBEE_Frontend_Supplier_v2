@@ -11,9 +11,9 @@ import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFe
 import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep, PricingStep } from './create-steps';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { useDraftProposal } from '@/hooks/useDraftProposal';
-import type { 
-  DatasetSuperType, 
-  UpsertAboutInfoRequest, 
+import type {
+  DatasetSuperType,
+  UpsertAboutInfoRequest,
   UpsertDataFormatRequest,
   Feature,
   FileFormat,
@@ -89,11 +89,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   // Load draft on mount
   useEffect(() => {
     if (draftLoaded) return;
-    
+
     const draft = loadDraft();
     if (draft) {
       // Restore all form data from draft
-     if (draft.basicData) setBasicData(draft.basicData as any);
+      if (draft.basicData) setBasicData(draft.basicData as any);
       if (draft.aboutData) setAboutData(draft.aboutData as any);
       if (draft.formatData) setFormatData(draft.formatData as any);
       if (draft.features && draft.features.length > 0) setFeatures(draft.features as any);
@@ -101,7 +101,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       if (draft.createdProposalId) setCreatedProposalId(draft.createdProposalId);
       if (draft.currentStep) setCurrentStep(draft.currentStep as Step);
       if (draft.fileUploaded) setFileUploaded(draft.fileUploaded);
-      
+
       toast.success('Draft proposal restored!');
       setDraftLoaded(true);
     } else {
@@ -112,7 +112,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   // Auto-save draft whenever form data changes
   useEffect(() => {
     if (!draftLoaded) return;
-    
+
     const draftData = {
       basicData,
       aboutData,
@@ -123,7 +123,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       currentStep,
       fileUploaded,
     };
-    
+
     saveDraft(draftData);
   }, [draftLoaded, basicData, aboutData, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, saveDraft]);
 
@@ -141,7 +141,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   const isBasicValid = () => {
     return (
-      basicData.title.trim() !== '' && 
+      basicData.title.trim() !== '' &&
       basicData.superType !== '' &&
       basicData.primaryCategoryId !== '' &&
       basicData.sourceId !== '' &&
@@ -151,9 +151,9 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   const isAboutValid = () => {
     return (
-      aboutData.overview.trim() !== '' &&
-      aboutData.description.trim() !== '' &&
-      aboutData.dataQuality.trim() !== ''
+      (aboutData.overview?.trim() ?? '') !== '' &&
+      (aboutData.description?.trim() ?? '') !== '' &&
+      (aboutData.dataQuality?.trim() ?? '') !== ''
     );
   };
 
@@ -251,7 +251,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           sourceId: basicData.sourceId,
           license: basicData.license,
         });
-        
+
         setCreatedProposalId(response.dataset.id);
         setSuccess('Proposal created successfully!');
         setTimeout(() => {
@@ -569,7 +569,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                     {currentStep === 'upload' && (
                       <div className="space-y-8 py-8">
                         <div className="text-center space-y-6">
-                          <div 
+                          <div
                             className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
                             style={{
                               background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
@@ -695,83 +695,83 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       </>
                     ) : isLastStep ? (
                       fileUploaded ? (
-                  <>
-                    Complete & View Proposal
-                    <CheckCircle className="w-4 h-4" />
-                  </>
-                ) : (
-                  'Upload file to continue'
-                )
-              ) : (
-                <>
-                  Next
-                  <ChevronRight className="w-4 h-4 transition-transform duration-200" />
-                </>
-              )}
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* Right: Progress Stepper (Wider, Sticky) */}
-      <div className="w-96 flex-shrink-0">
-        <div className="sticky top-0 w-full flex flex-col px-6">
-          <h3 className="text-lg font-bold mb-10" style={{ color: tokens.textPrimary }}>
-            Progress
-          </h3>
-          <div className="space-y-14 w-full relative flex flex-col">
-            {steps.map((step, idx) => (
-              <div key={step.id} className="flex flex-row items-start w-full relative">
-                {/* Step Circle */}
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0 transition-all duration-300 relative z-10 shadow-md"
-                  style={{
-                    background: idx <= currentStepIndex 
-                      ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 100%)'
-                      : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(26, 34, 64, 0.05)',
-                    color: idx <= currentStepIndex ? '#fff' : tokens.textMuted,
-                    border: idx === currentStepIndex ? '2px solid rgba(59, 130, 246, 0.5)' : 'none',
-                  }}
-                >
-                  {idx < currentStepIndex ? '✓' : step.number}
+                        <>
+                          Complete & View Proposal
+                          <CheckCircle className="w-4 h-4" />
+                        </>
+                      ) : (
+                        'Upload file to continue'
+                      )
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight className="w-4 h-4 transition-transform duration-200" />
+                      </>
+                    )}
+                  </Button>
                 </div>
+              </Card>
+            </div>
 
-                {/* Step Label & Status */}
-                <div className="ml-4 pt-1 flex flex-col">
-                  <div 
-                    className="text-lg font-semibold"
-                    style={{ color: idx <= currentStepIndex ? tokens.textPrimary : tokens.textMuted }}
-                  >
-                    {step.label}
-                  </div>
-                  <div className="text-base" style={{ color: tokens.textMuted }}>
-                    {idx < currentStepIndex ? 'Complete' : idx === currentStepIndex ? 'In progress' : 'Pending'}
-                  </div>
+            {/* Right: Progress Stepper (Wider, Sticky) */}
+            <div className="w-96 flex-shrink-0">
+              <div className="sticky top-0 w-full flex flex-col px-6">
+                <h3 className="text-lg font-bold mb-10" style={{ color: tokens.textPrimary }}>
+                  Progress
+                </h3>
+                <div className="space-y-14 w-full relative flex flex-col">
+                  {steps.map((step, idx) => (
+                    <div key={step.id} className="flex flex-row items-start w-full relative">
+                      {/* Step Circle */}
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0 transition-all duration-300 relative z-10 shadow-md"
+                        style={{
+                          background: idx <= currentStepIndex
+                            ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 100%)'
+                            : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(26, 34, 64, 0.05)',
+                          color: idx <= currentStepIndex ? '#fff' : tokens.textMuted,
+                          border: idx === currentStepIndex ? '2px solid rgba(59, 130, 246, 0.5)' : 'none',
+                        }}
+                      >
+                        {idx < currentStepIndex ? '✓' : step.number}
+                      </div>
+
+                      {/* Step Label & Status */}
+                      <div className="ml-4 pt-1 flex flex-col">
+                        <div
+                          className="text-lg font-semibold"
+                          style={{ color: idx <= currentStepIndex ? tokens.textPrimary : tokens.textMuted }}
+                        >
+                          {step.label}
+                        </div>
+                        <div className="text-base" style={{ color: tokens.textMuted }}>
+                          {idx < currentStepIndex ? 'Complete' : idx === currentStepIndex ? 'In progress' : 'Pending'}
+                        </div>
+                      </div>
+
+                      {/* Connecting Line */}
+                      {idx < steps.length - 1 && (
+                        <div
+                          className="absolute w-1 transition-all duration-300"
+                          style={{
+                            left: '1.5rem',
+                            top: '3rem',
+                            height: '3.5rem',
+                            background: idx < currentStepIndex
+                              ? 'linear-gradient(to bottom, #1a2240, #2a3558)'
+                              : tokens.borderSubtle,
+                            zIndex: 0,
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
-
-                {/* Connecting Line */}
-                {idx < steps.length - 1 && (
-                  <div
-                    className="absolute w-1 transition-all duration-300"
-                    style={{
-                      left: '1.5rem',
-                      top: '3rem',
-                      height: '3.5rem',
-                      background: idx < currentStepIndex 
-                        ? 'linear-gradient(to bottom, #1a2240, #2a3558)'
-                        : tokens.borderSubtle,
-                      zIndex: 0,
-                    }}
-                  />
-                )}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
       {/* Upload Dialog */}
       {createdProposalId && (
