@@ -14,10 +14,10 @@ import { PricingEditDialog } from './actions';
 import { getDatasetThemeTokens, PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
 import { submitProposal, getProposalPricing, submitProposalPricing } from '@/lib/api/dataset-proposals';
 import { toast } from 'sonner';
-import { 
-  FileText, 
-  Upload, 
-  CheckCircle, 
+import {
+  FileText,
+  Upload,
+  CheckCircle,
   XCircle,
   AlertCircle,
   ArrowLeft,
@@ -228,8 +228,8 @@ const renderFeaturesDisplay = (features: any[], tokens: any, isDark: boolean) =>
             <span
               className="px-2 py-0.5 text-xs rounded"
               style={{
-                background: feature.isNullable 
-                  ? 'rgba(234, 179, 8, 0.1)' 
+                background: feature.isNullable
+                  ? 'rgba(234, 179, 8, 0.1)'
                   : 'rgba(34, 197, 94, 0.1)',
                 color: feature.isNullable ? '#eab308' : '#22c55e',
               }}
@@ -312,7 +312,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const verificationStatus = proposal.verification?.status;
   const isEditable = verificationStatus === 'PENDING' || verificationStatus === 'CHANGES_REQUESTED';
   const isTerminalState = verificationStatus === 'VERIFIED' || verificationStatus === 'REJECTED';
-  
+
   // Can submit when status is PENDING or CHANGES_REQUESTED
   const canSubmit = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
 
@@ -338,38 +338,38 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(2)} MB`;
     return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
-  
+
   // Check if proposal meets all prerequisites for submission
   const checkPrerequisites = () => {
     const missing = [];
-    
+
     // Must have uploaded file
     if (!proposal.currentUpload || proposal.currentUpload.status !== 'UPLOADED') {
       missing.push('File upload');
     }
-    
+
     // Must have About info
     if (!proposal.aboutDatasetInfo) {
       missing.push('About Dataset information');
     }
-    
+
     // Must have Data Format info
     if (!proposal.dataFormatInfo) {
       missing.push('Data Format information');
     }
-    
+
     // Must have at least 1 feature
     if (!proposal.features || proposal.features.length === 0) {
       missing.push('At least one feature/column');
     }
-    
+
     return missing;
   };
-  
+
   const getErrorMessage = (error: any): string => {
     // Check for specific error codes from API
     const errorCode = error?.data?.code || error?.code;
-    
+
     const errorMessages: Record<string, string> = {
       'NO_UPLOAD': 'No file has been uploaded. Please upload a dataset file before submitting.',
       'UPLOAD_NOT_READY': 'The uploaded file is not ready. Please wait for the upload to complete.',
@@ -383,22 +383,22 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
       'TIMEOUT': 'The request took too long. Please check your internet connection and try again.',
       'OFFLINE': 'You appear to be offline. Please check your internet connection.',
     };
-    
+
     if (errorCode && errorMessages[errorCode]) {
       return errorMessages[errorCode];
     }
-    
+
     // Check if it's a network error by message
     if (error?.message?.includes('Failed to fetch') || error?.message?.includes('Network')) {
       return 'Unable to connect to the server. Please verify your internet connection is working and try again.';
     }
-    
+
     return error?.message || 'Failed to submit proposal. Please check your connection and try again.';
   };
-  
+
   const handleSubmitForReview = () => {
     const missing = checkPrerequisites();
-    
+
     if (missing.length > 0) {
       toast.error('Cannot submit', {
         description: `Please complete: ${missing.join(', ')}`,
@@ -406,7 +406,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
       });
       return;
     }
-    
+
     // Show confirmation modal
     setShowConfirmModal(true);
   };
@@ -417,24 +417,24 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
     try {
       // Check if pricing needs to be submitted first (DRAFT = first submission)
       const pricingNeedsSubmission = pricingData && pricingData.status === 'DRAFT';
-      
+
       // If pricing is in DRAFT status, submit it first
       if (pricingNeedsSubmission) {
         await submitProposalPricing(proposal.dataset.id);
       }
-      
+
       // Submit the proposal
       await submitProposal(proposal.dataset.id);
-      
+
       const action = proposal.verification.status === 'PENDING' ? 'submitted' : 'resubmitted';
-      const pricingMessage = pricingNeedsSubmission 
-        ? ' along with your pricing' 
+      const pricingMessage = pricingNeedsSubmission
+        ? ' along with your pricing'
         : '';
-      
+
       toast.success(`Proposal ${action} successfully${pricingMessage}`, {
         description: 'Your proposal has been sent to the admin review queue. You will receive a notification when the review is complete.',
       });
-      
+
       // Refresh to get updated status
       onRefresh?.();
     } catch (error: any) {
@@ -537,8 +537,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
           </div>
         </Card>
 
-        {/* Verification Notes Banner */}
-        {proposal.verification.notes && (
+        {/* Verification Notes Banner - only show when status is CHANGES_REQUESTED */}
+        {proposal.verification.status === 'CHANGES_REQUESTED' && proposal.verification.notes && (
           <div
             className="mb-6 rounded-lg border px-6 py-4 flex items-start gap-4"
             style={{
@@ -553,7 +553,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
               <p className="text-base font-semibold mb-4" style={{ color: isDark ? '#eab308' : '#b45309' }}>
                 Changes Requested by the Admin
               </p>
-              
+
               <div className="space-y-4">
                 <div>
                   <p className="text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: tokens.textSecondary }}>
@@ -602,7 +602,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       ? 'Once submitted, your proposal will be reviewed by an admin. Make sure all required sections are complete.'
                       : 'Admin has requested changes. Review the feedback and resubmit when ready.'}
                   </p>
-                  
+
                   {(() => {
                     const missing = checkPrerequisites();
                     if (missing.length > 0) {
@@ -651,7 +651,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       </div>
                     );
                   })()}
-                  
+
                   <Button
                     onClick={handleSubmitForReview}
                     disabled={submitting || checkPrerequisites().length > 0}
@@ -660,11 +660,10 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       background: submitting || checkPrerequisites().length > 0
                         ? 'rgba(156, 163, 175, 0.2)'
                         : tokens.glassBg || 'transparent',
-                      border: `1.5px solid ${
-                        submitting || checkPrerequisites().length > 0
+                      border: `1.5px solid ${submitting || checkPrerequisites().length > 0
                           ? 'rgba(156, 163, 175, 0.3)'
                           : tokens.glassBorder || tokens.borderSubtle
-                      }`,
+                        }`,
                       color: tokens.textPrimary,
                     }}
                   >
@@ -672,8 +671,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     {submitting
                       ? 'Submitting...'
                       : proposal.verification.status === 'PENDING'
-                      ? 'Submit for Review'
-                      : 'Resubmit for Review'}
+                        ? 'Submit for Review'
+                        : 'Resubmit for Review'}
                   </Button>
                 </div>
               </div>
@@ -790,16 +789,16 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                         <span
                           className="px-3 py-1 text-xs font-medium rounded-full"
                           style={{
-                            background: 
+                            background:
                               proposal.currentUpload.status === 'UPLOADED' ? 'rgba(34, 197, 94, 0.1)' :
-                              proposal.currentUpload.status === 'UPLOADING' ? 'rgba(234, 179, 8, 0.1)' :
-                              proposal.currentUpload.status === 'FAILED' ? 'rgba(239, 68, 68, 0.1)' :
-                              'rgba(59, 130, 246, 0.1)',
+                                proposal.currentUpload.status === 'UPLOADING' ? 'rgba(234, 179, 8, 0.1)' :
+                                  proposal.currentUpload.status === 'FAILED' ? 'rgba(239, 68, 68, 0.1)' :
+                                    'rgba(59, 130, 246, 0.1)',
                             color:
                               proposal.currentUpload.status === 'UPLOADED' ? '#22c55e' :
-                              proposal.currentUpload.status === 'UPLOADING' ? '#eab308' :
-                              proposal.currentUpload.status === 'FAILED' ? '#ef4444' :
-                              '#3b82f6',
+                                proposal.currentUpload.status === 'UPLOADING' ? '#eab308' :
+                                  proposal.currentUpload.status === 'FAILED' ? '#ef4444' :
+                                    '#3b82f6',
                           }}
                         >
                           {proposal.currentUpload.status}
@@ -871,7 +870,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     <div
                       className="w-12 h-12 rounded-lg flex items-center justify-center transition-transform duration-200"
                       style={{
-                        background: isDark 
+                        background: isDark
                           ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)'
                           : 'linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(16, 185, 129, 0.12) 100%)',
                         border: `2px solid rgba(34, 197, 94, 0.2)`,
@@ -893,11 +892,10 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     style={{
                       background: PRICING_STATUS_CONFIG[pricingData.status]?.bgColor || '#f3f4f6',
                       color: PRICING_STATUS_CONFIG[pricingData.status]?.color || '#6b7280',
-                      border: `1.5px solid ${
-                        PRICING_STATUS_CONFIG[pricingData.status]?.color 
+                      border: `1.5px solid ${PRICING_STATUS_CONFIG[pricingData.status]?.color
                           ? PRICING_STATUS_CONFIG[pricingData.status]?.color + '4d'
                           : 'rgba(107, 114, 128, 0.3)'
-                      }`,
+                        }`,
                     }}
                   >
                     <span className="mr-1.5">{PRICING_STATUS_CONFIG[pricingData.status]?.icon}</span>
@@ -911,7 +909,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   <div
                     className="p-4 sm:p-5 rounded-xl border transition-all duration-200"
                     style={{
-                      background: isDark 
+                      background: isDark
                         ? 'rgba(255, 255, 255, 0.03)'
                         : 'rgba(26, 34, 64, 0.02)',
                       borderColor: tokens.borderSubtle,
@@ -931,7 +929,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                           <Label style={{ color: tokens.textSecondary }} className="text-xs">
                             Amount
                           </Label>
-                          <p 
+                          <p
                             className="text-2xl font-bold mt-2 tracking-tight"
                             style={{ color: '#22c55e' }}
                           >
@@ -951,22 +949,22 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     <div
                       className="p-4 sm:p-5 rounded-xl border-l-4 transition-all duration-200"
                       style={{
-                        background: isDark 
+                        background: isDark
                           ? 'rgba(234, 179, 8, 0.1)'
                           : 'rgba(234, 179, 8, 0.15)',
                         borderLeftColor: isDark ? '#fbbf24' : '#d97706',
                       }}
                     >
                       <div className="flex items-start gap-3">
-                        <AlertCircle 
-                          className="w-5 h-5 flex-shrink-0 mt-0.5" 
-                          style={{ color: isDark ? '#fbbf24' : '#d97706' }} 
+                        <AlertCircle
+                          className="w-5 h-5 flex-shrink-0 mt-0.5"
+                          style={{ color: isDark ? '#fbbf24' : '#d97706' }}
                         />
                         <div className="flex-1">
                           <p className="text-sm font-semibold mb-3" style={{ color: isDark ? '#eab308' : '#b45309' }}>
                             Pricing Changes Requested
                           </p>
-                          
+
                           <div className="space-y-3">
                             {pricingData.notes && (
                               <div>
@@ -985,7 +983,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                                 </div>
                               </div>
                             )}
-                            
+
                             <p className="text-xs pt-2" style={{ color: tokens.textSecondary }}>
                               Please review the feedback above and update your pricing before resubmitting.
                             </p>
@@ -1023,13 +1021,12 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       <Button
                         onClick={() => setShowPricingDialog(true)}
                         className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
-                        style={{ 
+                        style={{
                           background: tokens.glassBg || 'transparent',
-                          border: `1.5px solid ${
-                            pricingData.status === 'CHANGES_REQUESTED'
+                          border: `1.5px solid ${pricingData.status === 'CHANGES_REQUESTED'
                               ? 'rgba(239, 68, 68, 0.5)'
                               : tokens.glassBorder || tokens.borderSubtle
-                          }`,
+                            }`,
                           color: tokens.textPrimary,
                         }}
                       >
@@ -1247,14 +1244,14 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                    onClick={() => setShowConfirmModal(false)}
-                    disabled={submitting}
-                    className="flex-1 h-10 font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-                    style={{
-                      background: tokens.glassBg || 'transparent',
-                      border: `1.5px solid ${tokens.inputBorder}`,
-                      color: tokens.textPrimary,
-                    }}
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={submitting}
+                  className="flex-1 h-10 font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                  style={{
+                    background: tokens.glassBg || 'transparent',
+                    border: `1.5px solid ${tokens.inputBorder}`,
+                    color: tokens.textPrimary,
+                  }}
                 >
                   Cancel
                 </Button>
@@ -1266,11 +1263,10 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     background: submitting
                       ? 'rgba(156, 163, 175, 0.2)'
                       : tokens.glassBg || 'transparent',
-                    border: `1.5px solid ${
-                      submitting
+                    border: `1.5px solid ${submitting
                         ? 'rgba(156, 163, 175, 0.3)'
                         : tokens.glassBorder || tokens.borderSubtle
-                    }`,
+                      }`,
                     color: tokens.textPrimary,
                   }}
                 >

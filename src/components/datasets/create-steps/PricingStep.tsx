@@ -3,8 +3,15 @@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { StyledSelect } from '@/components/datasets/shared';
-import { DollarSign, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import type { UpsertPricingRequest } from '@/types/dataset-proposal.types';
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  INR: '₹',
+};
 
 interface PricingStepProps {
   data: UpsertPricingRequest;
@@ -84,10 +91,12 @@ export function PricingStep({
                   Price <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
-                  <DollarSign
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                  <span
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium select-none"
                     style={{ color: tokens.textMuted }}
-                  />
+                  >
+                    {CURRENCY_SYMBOLS[data.currency || 'USD'] ?? '$'}
+                  </span>
                   <Input
                     id="price"
                     type="text"
