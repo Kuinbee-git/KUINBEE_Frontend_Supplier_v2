@@ -52,8 +52,11 @@ function AuthStatesComponent({
         password: password,
       });
 
+      // Extract user from response (backend wraps as { success, data: { user } })
+      const user = (response as any).data?.user ?? (response as any).user;
+
       // Verify this is a supplier account
-      if (response.user?.userType !== 'SUPPLIER') {
+      if (user?.userType && user.userType !== 'SUPPLIER') {
         setLoginError("Access denied. This portal is for suppliers only.");
         onStateChange("initial");
         return;
