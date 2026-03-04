@@ -34,8 +34,8 @@ export function BuyerInsightsPanel({ insights, loading }: BuyerInsightsPanelProp
 
     // Prep chart data for top buyers
     const chartData = insights.topBuyers.map((b) => ({
-        name: b.name.split(" ")[0], // first name for brevity
-        fullName: b.name,
+        name: b.name ? b.name.split(" ")[0] : "Unknown", // first name for brevity
+        fullName: b.name ?? "Unknown",
         company: b.companyName,
         spent: b.totalSpent,
     }));
