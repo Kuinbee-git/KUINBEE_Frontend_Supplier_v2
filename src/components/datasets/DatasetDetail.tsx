@@ -26,7 +26,9 @@ import {
   Database,
   FileCode,
   Settings,
-  DollarSign
+  DollarSign,
+  Info,
+  RefreshCw
 } from 'lucide-react';
 import type { ProposalDetailsResponse, AboutDatasetInfo, DataFormatInfo, DatasetPricingVersion } from '@/types/dataset-proposal.types';
 
@@ -826,6 +828,51 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                           {formatDate(proposal.currentUpload.updatedAt)}
                         </p>
                       </div>
+
+                      {proposal.currentUpload.status === 'UPLOADING' && (
+                        <div className="pt-3 border-t" style={{ borderColor: tokens.borderSubtle }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="relative group">
+                              <Info className="w-4 h-4 cursor-help" style={{ color: '#eab308' }} />
+                              <div
+                                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none"
+                                style={{
+                                  background: isDark ? '#1e293b' : '#1a2240',
+                                  color: '#f8fafc',
+                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.15)'}`,
+                                }}
+                              >
+                                If the status is stuck as uploading, reupload
+                                <div
+                                  className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
+                                  style={{
+                                    background: isDark ? '#1e293b' : '#1a2240',
+                                    marginTop: '-4px',
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <span className="text-xs" style={{ color: '#eab308' }}>
+                              Upload may be stuck
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setUploadDialogOpen(true)}
+                            className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
+                            style={{
+                              background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.08)',
+                              border: '1.5px solid rgba(234, 179, 8, 0.4)',
+                              color: isDark ? '#fbbf24' : '#b45309',
+                            }}
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Reupload
+                          </Button>
+                        </div>
+                      )}
 
                       {isEditable && proposal.currentUpload.status !== 'UPLOADING' && (
                         <div className="pt-3 border-t" style={{ borderColor: tokens.borderSubtle }}>
