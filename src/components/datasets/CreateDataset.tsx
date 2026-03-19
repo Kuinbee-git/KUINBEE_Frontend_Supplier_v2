@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Upload } from 'lucide-react';
-import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing } from '@/lib/api';
+import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Upload, RotateCcw } from 'lucide-react';
+import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing, getProposalDetails } from '@/lib/api';
 import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep, PricingStep } from './create-steps';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { useDraftProposal } from '@/hooks/useDraftProposal';
@@ -92,18 +92,44 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
     const draft = loadDraft();
     if (draft) {
-      // Restore all form data from draft
-      if (draft.basicData) setBasicData(draft.basicData as any);
-      if (draft.aboutData) setAboutData(draft.aboutData as any);
-      if (draft.formatData) setFormatData(draft.formatData as any);
-      if (draft.features && draft.features.length > 0) setFeatures(draft.features as any);
-      if (draft.pricingData) setPricingData(draft.pricingData as any);
-      if (draft.createdProposalId) setCreatedProposalId(draft.createdProposalId);
-      if (draft.currentStep) setCurrentStep(draft.currentStep as Step);
-      if (draft.fileUploaded) setFileUploaded(draft.fileUploaded);
+      const restoreDraft = (d: any) => {
+        if (d.basicData) setBasicData(d.basicData as any);
+        if (d.aboutData) setAboutData(d.aboutData as any);
+        if (d.formatData) setFormatData(d.formatData as any);
+        if (d.features && d.features.length > 0) setFeatures(d.features as any);
+        if (d.pricingData) setPricingData(d.pricingData as any);
+        if (d.createdProposalId) setCreatedProposalId(d.createdProposalId);
+        if (d.currentStep) setCurrentStep(d.currentStep as Step);
+        if (d.fileUploaded) setFileUploaded(d.fileUploaded);
+        
+        // Only show toast if the draft actually contains meaningful progress
+        if (d.createdProposalId || d.currentStep !== 'basic' || (d.basicData && d.basicData.title)) {
+          toast.success('Draft proposal restored!');
+        }
+        
+        setDraftLoaded(true);
+      };
 
-      toast.success('Draft proposal restored!');
-      setDraftLoaded(true);
+      if (draft.createdProposalId) {
+        // Proactively verify the drafted dataset is still editable
+        getProposalDetails(draft.createdProposalId)
+          .then((res) => {
+            if (res.verification.status !== 'PENDING') {
+              console.log('Draft proposal is no longer in PENDING state. Clearing local draft.');
+              clearDraft();
+              setDraftLoaded(true);
+            } else {
+              restoreDraft(draft);
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to verify draft proposal. Clearing local draft.', err);
+            clearDraft();
+            setDraftLoaded(true);
+          });
+      } else {
+        restoreDraft(draft);
+      }
     } else {
       setDraftLoaded(true);
     }
@@ -223,6 +249,19 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     setError(null);
     setSuccess(null);
 
+    const handleApiError = (err: any, defaultMsg: string) => {
+      console.error(defaultMsg, err);
+      const errorMsg = err.message || defaultMsg;
+      if (errorMsg.toLowerCase().includes('not editable') || err?.code === 'INVALID_STATE') {
+        setError('This draft proposal is no longer editable. We have reset your session so you can create a new proposal with your existing data. Please review your Basic Info and click "Next".');
+        setCreatedProposalId(null);
+        setCurrentStep('basic');
+        return true;
+      }
+      setError(errorMsg);
+      return false;
+    };
+
     // Step 1: Create the basic proposal (or navigate if already created)
     if (currentStep === 'basic') {
       if (!isBasicValid()) {
@@ -288,8 +327,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           setCurrentStep('format');
         }, 1000);
       } catch (err: any) {
-        console.error('Failed to save about info:', err);
-        setError(err.message || 'Failed to save about information');
+        handleApiError(err, 'Failed to save about information');
       } finally {
         setSubmitting(false);
       }
@@ -320,8 +358,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           setCurrentStep('features');
         }, 1000);
       } catch (err: any) {
-        console.error('Failed to save format info:', err);
-        setError(err.message || 'Failed to save data format information');
+        handleApiError(err, 'Failed to save data format information');
       } finally {
         setSubmitting(false);
       }
@@ -349,8 +386,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           setCurrentStep('pricing');
         }, 1000);
       } catch (err: any) {
-        console.error('Failed to save features:', err);
-        setError(err.message || 'Failed to save features');
+        handleApiError(err, 'Failed to save features');
       } finally {
         setSubmitting(false);
       }
@@ -378,8 +414,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           setCurrentStep('upload');
         }, 1000);
       } catch (err: any) {
-        console.error('Failed to save pricing:', err);
-        setError(err.message || 'Failed to save pricing');
+        handleApiError(err, 'Failed to save pricing');
       } finally {
         setSubmitting(false);
       }
@@ -426,6 +461,13 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     return false;
   };
 
+  const handleStartOver = () => {
+    if (confirm('Are you sure you want to start over? Your current progress will be cleared.')) {
+      clearDraft();
+      window.location.reload();
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen px-6 py-8">
@@ -450,13 +492,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           </Button>
 
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2" style={{ color: tokens.textPrimary }}>
-              Create new proposal
-            </h1>
-            <p className="text-base" style={{ color: tokens.textMuted }}>
-              Complete the steps to submit your dataset proposal for review
-            </p>
+          <div className="mb-8 flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold mb-2" style={{ color: tokens.textPrimary }}>
+                Create new proposal
+              </h1>
+              <p className="text-base" style={{ color: tokens.textMuted }}>
+                Complete the steps to submit your dataset proposal for review
+              </p>
+            </div>
           </div>
 
           {/* Two Column Layout */}
@@ -466,16 +510,35 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
               {/* Error Message */}
               {error && (
                 <div
-                  className="rounded-lg border px-4 py-3 flex items-start gap-3 animate-in fade-in duration-200"
+                  className="rounded-lg border px-4 py-3 flex items-start justify-between gap-3 animate-in fade-in duration-200"
                   style={{
                     background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
                     borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
                   }}
                 >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#DC2626' }} />
-                  <p className="text-sm" style={{ color: '#DC2626' }}>
-                    {error}
-                  </p>
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#DC2626' }} />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium" style={{ color: '#DC2626' }}>
+                        {error}
+                      </p>
+                      {error.toLowerCase().includes('not editable') && (
+                        <p className="text-xs" style={{ color: '#DC2626', opacity: 0.8 }}>
+                          This draft might have been submitted already or is no longer editable. Click "Start Over" above to clear the draft.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {error.toLowerCase().includes('not editable') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleStartOver}
+                      className="text-xs border-red-200 text-red-600 hover:bg-red-50 h-8"
+                    >
+                      Start Over
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -659,25 +722,39 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                   className="px-8 py-6 border-t flex items-center justify-between gap-4"
                   style={{ borderColor: tokens.borderDefault }}
                 >
-                  {currentStepIndex > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={handleBack}
-                      disabled={submitting}
-                      className="gap-2 px-6 h-11 font-medium transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
-                      style={{
-                        background: tokens.glassBg,
-                        backdropFilter: "blur(16px)",
-                        WebkitBackdropFilter: "blur(16px)",
-                        border: `1.5px solid ${tokens.glassBorder}`,
-                        boxShadow: tokens.glassShadow,
-                        color: tokens.textPrimary,
-                      }}
-                    >
-                      <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
-                      Back
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {currentStepIndex > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleBack}
+                        disabled={submitting}
+                        className="gap-2 px-6 h-11 font-medium transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                        style={{
+                          background: tokens.glassBg,
+                          backdropFilter: "blur(16px)",
+                          WebkitBackdropFilter: "blur(16px)",
+                          border: `1.5px solid ${tokens.glassBorder}`,
+                          boxShadow: tokens.glassShadow,
+                          color: tokens.textPrimary,
+                        }}
+                      >
+                        <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
+                        Back
+                      </Button>
+                    )}
+                    
+                    {(createdProposalId || currentStep !== 'basic') && (
+                      <Button
+                        variant="ghost"
+                        onClick={handleStartOver}
+                        disabled={submitting}
+                        className="gap-2 px-4 h-11 font-medium transition-all duration-200 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Start Over
+                      </Button>
+                    )}
+                  </div>
 
                   <Button
                     onClick={handleNext}

@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 export type DraftProposalData = Record<string, any>;
 
 const DRAFT_KEY = 'kuinbee_proposal_draft';
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function useDraftProposal() {
   /**
@@ -15,8 +16,19 @@ export function useDraftProposal() {
     if (typeof window === 'undefined') return null;
     
     try {
-      const draft = localStorage.getItem(DRAFT_KEY);
-      return draft ? JSON.parse(draft) : null;
+      const draftStr = localStorage.getItem(DRAFT_KEY);
+      if (!draftStr) return null;
+      
+      const draft = JSON.parse(draftStr);
+      
+      // Check TTL expiration
+      if (draft._timestamp && Date.now() - draft._timestamp > DRAFT_TTL_MS) {
+        console.log('Draft proposal expired based on TTL. Clearing local draft.');
+        localStorage.removeItem(DRAFT_KEY);
+        return null;
+      }
+      
+      return draft;
     } catch (error) {
       console.error('Failed to load draft:', error);
       return null;
@@ -30,7 +42,11 @@ export function useDraftProposal() {
     if (typeof window === 'undefined') return;
     
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+      const dataWithTimestamp = {
+        ...data,
+        _timestamp: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(dataWithTimestamp));
     } catch (error) {
       console.error('Failed to save draft:', error);
     }
