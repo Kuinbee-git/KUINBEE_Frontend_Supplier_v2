@@ -22,6 +22,7 @@ import type {
   UpdateProfileRequest,
   UpdateProfileResponse,
   CompleteOnboardingResponse,
+  PartialCompleteOnboardingResponse,
 } from "@/types/onboarding.types";
 
 // ===== Helper: API Fetch =====
@@ -277,6 +278,20 @@ export async function completeOnboarding(): Promise<CompleteOnboardingResponse> 
   return apiFetch<CompleteOnboardingResponse>(SUPPLIER_API.COMPLETE_ONBOARDING, {
     method: "POST",
   });
+}
+
+/**
+ * Submit onboarding for manual verification
+ * Keeps supplier blocked until admin verifies
+ */
+export async function partialCompleteOnboarding(): Promise<PartialCompleteOnboardingResponse> {
+  const response = await apiFetch<{ success: boolean; data: PartialCompleteOnboardingResponse }>(
+    SUPPLIER_API.PARTIAL_COMPLETE_ONBOARDING,
+    {
+      method: "POST",
+    }
+  );
+  return response.data;
 }
 
 // ===== Utility: Check Onboarding Status =====
