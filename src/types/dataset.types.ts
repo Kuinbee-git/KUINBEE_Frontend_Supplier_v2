@@ -253,6 +253,16 @@ export interface DatasetDetailsResponse {
     createdAt: string;
     updatedAt: string;
   } | null;
+  locationInfo: {
+    country: string;
+    state: string | null;
+    city: string | null;
+    region: string | null;
+    coordinates: string | null;
+    coverage: string | null;
+    updatedAt?: string;
+  } | null;
+  tags: string[];
   verification: {
     id: string;
     status: "PENDING" | "SUBMITTED" | "CHANGES_REQUESTED" | "RESUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
