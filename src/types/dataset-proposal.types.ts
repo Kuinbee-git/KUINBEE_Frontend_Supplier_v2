@@ -23,6 +23,16 @@ export type DatasetVisibility = "PUBLIC" | "PRIVATE" | "UNLISTED";
 
 export type Currency = "INR" | "USD" | "EUR" | "GBP";
 
+export type SampleDeliveryMechanism = "API" | "FILE" | "OTHER";
+
+export interface SampleNotes {
+  whySample: string;
+  actualDataSize: string;
+  completeness?: string;
+  deliveryMechanism: SampleDeliveryMechanism;
+  deliveryMechanismNotes?: string;
+}
+
 export type FileFormat =
   | "CSV"
   | "JSON"
@@ -71,6 +81,11 @@ export interface CreateProposalRequest {
   primaryCategoryId: string;
   sourceId: string;
   license: string;
+  isSample?: boolean;
+  sampleNotes?: SampleNotes;
+  actualPrice?: number;
+  actualPriceCurrency?: Currency;
+  isNegotiable?: boolean;
 }
 
 export interface CreateProposalResponse {
@@ -112,6 +127,7 @@ export interface ListProposalsResponse {
     status: DatasetStatus;
     verificationStatus: VerificationStatus | null;
     currentUploadId: string | null;
+    isSample?: boolean;
     updatedAt: string;
   }>;
   page: number;
@@ -131,6 +147,11 @@ export interface ProposalDetailsResponse {
     sourceId: string;
     license: string;
     visibility?: DatasetVisibility;
+    isSample?: boolean;
+    sampleNotes?: SampleNotes | null;
+    actualPrice?: number | null;
+    actualPriceCurrency?: Currency;
+    isNegotiable?: boolean | null;
     isPaid?: boolean;
     price?: string | null;
     currency?: Currency;
@@ -178,6 +199,8 @@ export interface ProposalDetailsResponse {
     createdAt?: string;
     updatedAt?: string;
   };
+  locationInfo?: LocationInfo | null;
+  tags?: string[];
 }
 
 // Update Proposal Metadata
@@ -188,6 +211,11 @@ export interface UpdateProposalRequest {
   sourceId?: string;
   license?: string;
   visibility?: DatasetVisibility;
+  isSample?: boolean;
+  sampleNotes?: SampleNotes;
+  actualPrice?: number;
+  actualPriceCurrency?: Currency;
+  isNegotiable?: boolean;
   isPaid?: boolean;
   price?: string;
   currency?: Currency;
@@ -216,6 +244,16 @@ export interface AboutDatasetInfo {
   updatedAt?: string;
 }
 
+export interface LocationInfo {
+  country: string;
+  state?: string | null;
+  city?: string | null;
+  region?: string | null;
+  coordinates?: string | null;
+  coverage?: string | null;
+  updatedAt?: string;
+}
+
 export interface UpsertAboutInfoRequest {
   overview: string;
   description: string;
@@ -227,6 +265,27 @@ export interface UpsertAboutInfoRequest {
 
 export interface UpsertAboutInfoResponse {
   about: AboutDatasetInfo;
+}
+
+export interface UpsertLocationInfoRequest {
+  country: string;
+  state?: string | null;
+  city?: string | null;
+  region?: string | null;
+  coordinates?: string | null;
+  coverage?: string | null;
+}
+
+export interface UpsertLocationInfoResponse {
+  locationInfo: LocationInfo;
+}
+
+export interface SetTagsRequest {
+  tags: string[];
+}
+
+export interface SetTagsResponse {
+  tags: string[];
 }
 
 // Data Format Info
