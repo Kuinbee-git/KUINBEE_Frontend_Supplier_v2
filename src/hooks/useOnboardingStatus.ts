@@ -64,19 +64,23 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
   if (!nextStep && data?.onboarding) {
     const steps = data.onboarding.steps;
     const supplierType = data.onboarding.supplierType;
-    
-    if (!steps.supplierTypeSelected) {
-      nextStep = "SELECT_TYPE";
-    } else if (!steps.emailOtpVerified) {
-      nextStep = "VERIFY_EMAIL_OTP";
-    } else if (supplierType === "INDIVIDUAL" && steps.individualPan.status !== "VERIFIED") {
-      nextStep = "VERIFY_PAN";
-    } else if (!steps.profileCompleted) {
-      nextStep = "COMPLETE_PROFILE";
+    const supplierStatus = data.supplier?.status;
+
+    if (supplierStatus === "PENDING_VERIFICATION") {
+      nextStep = "PENDING_VERIFICATION";
     } else {
-      nextStep = "DONE";
+      if (!steps.supplierTypeSelected) {
+        nextStep = "SELECT_TYPE";
+      } else if (!steps.emailOtpVerified) {
+        nextStep = "VERIFY_EMAIL_OTP";
+      } else if (supplierType === "INDIVIDUAL" && steps.individualPan.status !== "VERIFIED") {
+        nextStep = "VERIFY_PAN";
+      } else if (!steps.profileCompleted) {
+        nextStep = "COMPLETE_PROFILE";
+      } else {
+        nextStep = "DONE";
+      }
     }
-    
   }
 
 
