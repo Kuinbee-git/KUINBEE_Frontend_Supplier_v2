@@ -14,6 +14,8 @@ export const ONBOARDING_STEP_ROUTES: Record<OnboardingNextStep, string> = {
   VERIFY_EMAIL_OTP: "/onboarding/verify-email",
   VERIFY_PAN: "/onboarding/verify-pan",
   COMPLETE_PROFILE: "/onboarding/complete-profile",
+  PARTIAL_COMPLETE: "/onboarding/complete-profile",
+  PENDING_VERIFICATION: "/onboarding/pending-verification",
   DONE: "/dashboard",
 };
 
@@ -23,6 +25,8 @@ export const ONBOARDING_STEP_LABELS: Record<OnboardingNextStep, string> = {
   VERIFY_EMAIL_OTP: "Verify Email",
   VERIFY_PAN: "Verify PAN",
   COMPLETE_PROFILE: "Complete Profile",
+  PARTIAL_COMPLETE: "Complete Profile",
+  PENDING_VERIFICATION: "Pending Verification",
   DONE: "Onboarding Complete",
 };
 
@@ -32,6 +36,8 @@ export const ONBOARDING_STEP_DESCRIPTIONS: Record<OnboardingNextStep, string> = 
   VERIFY_EMAIL_OTP: "Verify your email address with OTP",
   VERIFY_PAN: "Verify your PAN card for identity verification",
   COMPLETE_PROFILE: "Complete your supplier profile",
+  PARTIAL_COMPLETE: "Complete your supplier profile and submit for verification",
+  PENDING_VERIFICATION: "Your profile has been submitted for manual verification",
   DONE: "Your onboarding is complete!",
 };
 

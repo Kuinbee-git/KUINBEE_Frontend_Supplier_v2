@@ -15,10 +15,19 @@ export type OnboardingNextStep =
   | "VERIFY_EMAIL_OTP"
   | "VERIFY_PAN"
   | "COMPLETE_PROFILE"
+  | "PARTIAL_COMPLETE"
+  | "PENDING_VERIFICATION"
   | "DONE";
 
 // ===== Verification Status =====
 export type VerificationStatus = "NOT_STARTED" | "PENDING" | "FAILED" | "VERIFIED";
+
+export interface ManualKycStep {
+  status: "PENDING" | "VERIFIED" | "REJECTED";
+  pickedByAdminId: string | null;
+  pickedAt: string | null;
+  rejectionReason: string | null;
+}
 
 // ===== Supplier User =====
 export interface SupplierUser {
@@ -43,6 +52,7 @@ export interface OnboardingSteps {
   supplierTypeSelected: boolean;
   emailOtpVerified: boolean;
   individualPan: IndividualPanStep;
+  manualKyc?: ManualKycStep;
   profileCompleted: boolean;
 }
 
@@ -202,6 +212,8 @@ export interface CompleteOnboardingResponse {
     completedAt: string;
   };
 }
+
+export type PartialCompleteOnboardingResponse = OnboardingStatusResponse;
 
 // ===== Business Domains =====
 export const BUSINESS_DOMAINS = [
