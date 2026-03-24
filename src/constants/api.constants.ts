@@ -35,6 +35,7 @@ export const SUPPLIER_API = {
 
   // Complete Onboarding
   COMPLETE_ONBOARDING: `${API_BASE_PATH}/supplier/onboarding/complete`,
+  PARTIAL_COMPLETE_ONBOARDING: `${API_BASE_PATH}/supplier/onboarding/partial-complete`,
 
   // Stats
   STATS: (range: string) => `${API_BASE_PATH}/supplier/stats?range=${range}`,
@@ -52,6 +53,8 @@ export const DATASET_PROPOSAL_API = {
 
   // About & Format
   UPSERT_ABOUT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/about`,
+  UPSERT_LOCATION: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/location`,
+  SET_TAGS: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/tags`,
   UPSERT_DATA_FORMAT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/data-format`,
 
   // Features & Categories
