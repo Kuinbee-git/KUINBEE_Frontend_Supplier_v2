@@ -4,15 +4,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { PageBackground } from '@/components/shared';
 import { DatasetStatusBadge, EditableSection } from './shared';
 import { KdtsScoreCard } from './shared/KdtsScoreCard';
-import { AboutDatasetForm, DataFormatForm, FeaturesForm, MetadataEditForm, SecondaryCategoriesForm } from './forms';
+import { AboutDatasetForm, DataFormatForm, FeaturesForm, LocationTagsEditForm, MetadataEditForm, SecondaryCategoriesForm } from './forms';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { PricingEditDialog } from './actions';
 import { getDatasetThemeTokens, PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
-import { submitProposal, getProposalPricing, submitProposalPricing } from '@/lib/api/dataset-proposals';
+import { submitProposal, getProposalPricing, submitProposalPricing, updateProposalMetadata } from '@/lib/api/dataset-proposals';
 import { toast } from 'sonner';
 import {
   FileText,
@@ -25,12 +27,22 @@ import {
   ChevronDown,
   Database,
   FileCode,
+  MapPin,
   Settings,
+  Tag,
   DollarSign,
   Info,
-  RefreshCw
+  RefreshCw,
+  ArrowRightLeft,
 } from 'lucide-react';
-import type { ProposalDetailsResponse, AboutDatasetInfo, DataFormatInfo, DatasetPricingVersion } from '@/types/dataset-proposal.types';
+import type {
+  ProposalDetailsResponse,
+  AboutDatasetInfo,
+  DataFormatInfo,
+  DatasetPricingVersion,
+  Currency,
+  SampleDeliveryMechanism,
+} from '@/types/dataset-proposal.types';
 
 interface DatasetDetailProps {
   proposal: ProposalDetailsResponse;
@@ -94,6 +106,72 @@ const renderMetadataDisplay = (proposal: ProposalDetailsResponse, tokens: any) =
       </p>
     </div>
 
+  </div>
+);
+
+const renderLocationTagsDisplay = (proposal: ProposalDetailsResponse, tokens: any) => (
+  <div className="space-y-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textSecondary }}>Country</Label>
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+          {proposal.locationInfo?.country || 'N/A'}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textSecondary }}>State</Label>
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+          {proposal.locationInfo?.state || 'N/A'}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textSecondary }}>City</Label>
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+          {proposal.locationInfo?.city || 'N/A'}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textSecondary }}>Region</Label>
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+          {proposal.locationInfo?.region || 'N/A'}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textSecondary }}>Coverage</Label>
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+          {proposal.locationInfo?.coverage || 'N/A'}
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label style={{ color: tokens.textSecondary }}>Coordinates</Label>
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+          {proposal.locationInfo?.coordinates || 'N/A'}
+        </p>
+      </div>
+    </div>
+
+    <div className="space-y-2">
+      <Label style={{ color: tokens.textSecondary }}>Tags</Label>
+      {proposal.tags && proposal.tags.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {proposal.tags.map((tag, index) => (
+            <span
+              key={`${tag}-${index}`}
+              className="px-2.5 py-1 text-xs rounded-full"
+              style={{
+                background: 'rgba(59, 130, 246, 0.1)',
+                color: '#3b82f6',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm" style={{ color: tokens.textPrimary }}>No tags</p>
+      )}
+    </div>
   </div>
 );
 
@@ -277,12 +355,25 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
+  const [sampleToggleSubmitting, setSampleToggleSubmitting] = useState(false);
+  const [pendingSampleValue, setPendingSampleValue] = useState<boolean | null>(null);
+  const [sampleToggleError, setSampleToggleError] = useState<string | null>(null);
+  const [sampleWhy, setSampleWhy] = useState('');
+  const [sampleSize, setSampleSize] = useState('');
+  const [sampleCompleteness, setSampleCompleteness] = useState('');
+  const [sampleDelivery, setSampleDelivery] = useState<SampleDeliveryMechanism>('API');
+  const [sampleDeliveryNotes, setSampleDeliveryNotes] = useState('');
+  const [sampleActualPrice, setSampleActualPrice] = useState('');
+  const [sampleActualPriceCurrency, setSampleActualPriceCurrency] = useState<Currency>('USD');
+  const [sampleNegotiable, setSampleNegotiable] = useState<'yes' | 'no'>('no');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPricingDialog, setShowPricingDialog] = useState(false);
   const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     metadata: true,
+    locationTags: true,
     upload: true,
     about: true,
     format: true,
@@ -313,7 +404,113 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   // Can edit when status is PENDING or CHANGES_REQUESTED
   const verificationStatus = proposal.verification?.status;
   const isEditable = verificationStatus === 'PENDING' || verificationStatus === 'CHANGES_REQUESTED';
+  const isSampleProposal = proposal.dataset.isSample === true;
   const isTerminalState = verificationStatus === 'VERIFIED' || verificationStatus === 'REJECTED';
+
+  const isValidSamplePrice = (value: string) => {
+    if (!value.trim()) return false;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed >= 0;
+  };
+
+  const resetSampleDialogFields = () => {
+    setSampleWhy('');
+    setSampleSize('');
+    setSampleCompleteness('');
+    setSampleDelivery('API');
+    setSampleDeliveryNotes('');
+    setSampleActualPrice('');
+    setSampleActualPriceCurrency((proposal.dataset.actualPriceCurrency as Currency | undefined) ?? 'USD');
+    setSampleNegotiable('no');
+    setSampleToggleError(null);
+  };
+
+  const handleOpenSampleToggle = (nextValue: boolean) => {
+    if (!isEditable) return;
+
+    setPendingSampleValue(nextValue);
+    setSampleToggleError(null);
+
+    if (nextValue) {
+      setSampleWhy(proposal.dataset.sampleNotes?.whySample ?? '');
+      setSampleSize(proposal.dataset.sampleNotes?.actualDataSize ?? '');
+      setSampleCompleteness(proposal.dataset.sampleNotes?.completeness ?? '');
+      setSampleDelivery((proposal.dataset.sampleNotes?.deliveryMechanism as SampleDeliveryMechanism | undefined) ?? 'API');
+      setSampleDeliveryNotes(proposal.dataset.sampleNotes?.deliveryMechanismNotes ?? '');
+      setSampleActualPrice(proposal.dataset.actualPrice != null ? String(proposal.dataset.actualPrice) : '');
+      setSampleActualPriceCurrency((proposal.dataset.actualPriceCurrency as Currency | undefined) ?? 'USD');
+      setSampleNegotiable(proposal.dataset.isNegotiable === true ? 'yes' : 'no');
+    } else {
+      resetSampleDialogFields();
+    }
+
+    setSampleConfirmOpen(true);
+  };
+
+  const handleConfirmSampleToggle = async () => {
+    if (pendingSampleValue === null) return;
+
+    if (pendingSampleValue) {
+      if (!sampleWhy.trim()) {
+        setSampleToggleError('Why sample is required');
+        return;
+      }
+      if (!sampleSize.trim()) {
+        setSampleToggleError('Actual dataset size is required');
+        return;
+      }
+      if (!isValidSamplePrice(sampleActualPrice)) {
+        setSampleToggleError('Actual full price must be a valid non-negative integer');
+        return;
+      }
+      if (sampleDelivery === 'OTHER' && !sampleDeliveryNotes.trim()) {
+        setSampleToggleError('Delivery mechanism notes are required for OTHER');
+        return;
+      }
+    }
+
+    setSampleToggleSubmitting(true);
+    setSampleToggleError(null);
+
+    try {
+      if (pendingSampleValue) {
+        await updateProposalMetadata(proposal.dataset.id, {
+          isSample: true,
+          sampleNotes: {
+            whySample: sampleWhy.trim(),
+            actualDataSize: sampleSize.trim(),
+            ...(sampleCompleteness.trim() ? { completeness: sampleCompleteness.trim() } : {}),
+            deliveryMechanism: sampleDelivery,
+            ...(sampleDelivery === 'OTHER' && sampleDeliveryNotes.trim()
+              ? { deliveryMechanismNotes: sampleDeliveryNotes.trim() }
+              : {}),
+          },
+          actualPrice: Number.parseInt(sampleActualPrice, 10),
+          actualPriceCurrency: sampleActualPriceCurrency,
+          isNegotiable: sampleNegotiable === 'yes',
+        });
+      } else {
+        await updateProposalMetadata(proposal.dataset.id, { isSample: false });
+      }
+
+      toast.success(
+        pendingSampleValue
+          ? 'Sample mode enabled for this proposal'
+          : 'Sample mode disabled for this proposal'
+      );
+
+      setSampleConfirmOpen(false);
+      setPendingSampleValue(null);
+      resetSampleDialogFields();
+      onRefresh?.();
+    } catch (error: any) {
+      const message = error?.message || 'Failed to update sample mode';
+      setSampleToggleError(message);
+      toast.error('Failed to update sample mode', { description: message });
+    } finally {
+      setSampleToggleSubmitting(false);
+    }
+  };
 
   // Can submit when status is PENDING or CHANGES_REQUESTED
   const canSubmit = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
@@ -582,6 +779,55 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
           </div>
         )}
 
+        <Card
+          className="border overflow-hidden mb-6"
+          style={{
+            background: tokens.surfaceCard,
+            borderColor: isSampleProposal ? '#3b82f6' : tokens.borderDefault,
+          }}
+        >
+          <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  background: isSampleProposal
+                    ? (isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.12)')
+                    : (isDark ? 'rgba(107, 114, 128, 0.2)' : 'rgba(107, 114, 128, 0.12)'),
+                }}
+              >
+                <ArrowRightLeft className="w-4 h-4" style={{ color: isSampleProposal ? '#2563eb' : tokens.textSecondary }} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
+                  Sample Proposal Toggle
+                </h3>
+                <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
+                  Current mode: {isSampleProposal ? 'Sample' : 'Regular'}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => handleOpenSampleToggle(!isSampleProposal)}
+              disabled={!isEditable || sampleToggleSubmitting}
+              className="h-10 px-5 font-semibold"
+              variant="outline"
+              style={{
+                background: tokens.glassBg || 'transparent',
+                border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+                color: tokens.textPrimary,
+              }}
+            >
+              {sampleToggleSubmitting
+                ? 'Updating...'
+                : isSampleProposal
+                  ? 'Switch to Regular'
+                  : 'Switch to Sample'}
+            </Button>
+          </div>
+        </Card>
+
         {/* Submit for Review Section */}
         {canSubmit && (
           <Card
@@ -708,6 +954,11 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   primaryCategoryId: proposal.dataset.primaryCategoryId,
                   sourceId: proposal.dataset.sourceId,
                   license: proposal.dataset.license,
+                  isSample: proposal.dataset.isSample ?? false,
+                  sampleNotes: proposal.dataset.sampleNotes ?? null,
+                  actualPrice: proposal.dataset.actualPrice ?? null,
+                  actualPriceCurrency: proposal.dataset.actualPriceCurrency,
+                  isNegotiable: proposal.dataset.isNegotiable ?? null,
                 }}
                 isDark={isDark}
                 onSuccess={() => {
@@ -721,6 +972,126 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
             isDark={isDark}
             tokens={tokens}
           />
+
+          <EditableSection
+            title="Location & Tags"
+            icon={<MapPin className="w-5 h-5" />}
+            subtitle="Manage location details and discovery tags"
+            isExpanded={expandedSections.locationTags}
+            onToggle={() => toggleSection('locationTags')}
+            isEditable={isEditable}
+            isEditing={editingSection === 'locationTags'}
+            onEditClick={() => setEditingSection('locationTags')}
+            isEmpty={!proposal.locationInfo && (!proposal.tags || proposal.tags.length === 0)}
+            emptyIcon={<Tag className="w-12 h-12" />}
+            emptyMessage="Location and tags not provided yet"
+            emptyActionLabel="Add Location & Tags"
+            editContent={
+              <LocationTagsEditForm
+                datasetId={proposal.dataset.id}
+                initialData={{
+                  locationInfo: proposal.locationInfo ?? null,
+                  tags: proposal.tags ?? [],
+                }}
+                isDark={isDark}
+                onSuccess={() => {
+                  setEditingSection(null);
+                  onRefresh?.();
+                }}
+                onCancel={() => setEditingSection(null)}
+              />
+            }
+            displayContent={renderLocationTagsDisplay(proposal, tokens)}
+            isDark={isDark}
+            tokens={tokens}
+          />
+
+          {isSampleProposal && (
+            <Card
+              className="border overflow-hidden"
+              style={{
+                background: isDark
+                  ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(30, 64, 175, 0.10) 100%)'
+                  : 'linear-gradient(135deg, rgba(59, 130, 246, 0.10) 0%, rgba(30, 64, 175, 0.06) 100%)',
+                borderColor: '#3b82f6',
+              }}
+            >
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
+                    Sample Proposal Details
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{
+                        background: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.14)',
+                        color: '#2563eb',
+                        border: '1px solid rgba(59, 130, 246, 0.4)',
+                      }}
+                    >
+                      SAMPLE
+                    </span>
+                    {isEditable && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingSection('metadata')}
+                        className="font-semibold"
+                        style={{
+                          background: isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)',
+                          border: '1px solid rgba(59, 130, 246, 0.4)',
+                          color: '#1d4ed8',
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label style={{ color: tokens.textSecondary }}>Actual Price</Label>
+                    <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                      {proposal.dataset.actualPrice ?? 0} {proposal.dataset.actualPriceCurrency ?? ''}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label style={{ color: tokens.textSecondary }}>Negotiable</Label>
+                    <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                      {proposal.dataset.isNegotiable === true ? 'Yes' : proposal.dataset.isNegotiable === false ? 'No' : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                {proposal.dataset.sampleNotes && (
+                  <div className="space-y-2 rounded-lg border p-4" style={{ borderColor: 'rgba(59, 130, 246, 0.35)' }}>
+                    <Label style={{ color: tokens.textSecondary }}>Sample Notes</Label>
+                    <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                      <span className="font-medium">Why sample:</span> {proposal.dataset.sampleNotes.whySample}
+                    </p>
+                    <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                      <span className="font-medium">Actual data size:</span> {proposal.dataset.sampleNotes.actualDataSize}
+                    </p>
+                    {proposal.dataset.sampleNotes.completeness && (
+                      <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                        <span className="font-medium">Completeness:</span> {proposal.dataset.sampleNotes.completeness}
+                      </p>
+                    )}
+                    <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                      <span className="font-medium">Delivery mechanism:</span> {proposal.dataset.sampleNotes.deliveryMechanism}
+                    </p>
+                    {proposal.dataset.sampleNotes.deliveryMechanismNotes && (
+                      <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                        <span className="font-medium">Delivery notes:</span> {proposal.dataset.sampleNotes.deliveryMechanismNotes}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Section 2: Current Upload */}
           <Card
@@ -1051,6 +1422,8 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                     }}
                   >
                     <p className="text-xs sm:text-sm leading-relaxed" style={{ color: tokens.textSecondary }}>
+                      {isSampleProposal && '🧪 Sample proposal pricing is locked to free and cannot be edited here.'}
+                      {isSampleProposal && ' '}
                       {pricingData.status === 'DRAFT' && '💾 Your pricing is saved as draft. Review and submit it when ready.'}
                       {pricingData.status === 'SUBMITTED' && '📤 Your pricing is submitted and under admin review.'}
                       {pricingData.status === 'CHANGES_REQUESTED' && '✏️ Admin has requested changes. Make edits and resubmit.'}
@@ -1063,7 +1436,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                   </div>
 
                   {/* Action Button */}
-                  {(pricingData.status === 'DRAFT' || pricingData.status === 'CHANGES_REQUESTED' || pricingData.status === 'REJECTED') && (
+                  {!isSampleProposal && (pricingData.status === 'DRAFT' || pricingData.status === 'CHANGES_REQUESTED' || pricingData.status === 'REJECTED') && (
                     <div className="pt-2">
                       <Button
                         onClick={() => setShowPricingDialog(true)}
@@ -1325,8 +1698,218 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
         </div>
       )}
 
+      {sampleConfirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <Card
+            className="w-full max-w-xl shadow-xl border rounded-lg"
+            style={{
+              background: isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+              borderColor: tokens.borderDefault,
+              backdropFilter: isDark ? 'blur(12px)' : 'none',
+              WebkitBackdropFilter: isDark ? 'blur(12px)' : 'none',
+            }}
+          >
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <ArrowRightLeft className="w-5 h-5" style={{ color: '#3b82f6' }} />
+                <h3 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
+                  {pendingSampleValue ? 'Enable Sample Mode' : 'Disable Sample Mode'}
+                </h3>
+              </div>
+
+              <p className="text-sm" style={{ color: tokens.textSecondary }}>
+                {pendingSampleValue
+                  ? 'Confirm this draft should be marked as sample and provide required sample details.'
+                  : 'Confirm this draft should be converted from sample to regular. Sample-specific fields will be cleared.'}
+              </p>
+
+              {pendingSampleValue && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label style={{ color: tokens.textPrimary }}>Why sample *</Label>
+                    <Textarea
+                      value={sampleWhy}
+                      onChange={(e) => setSampleWhy(e.target.value)}
+                      rows={3}
+                      placeholder="Explain why this is a sample dataset"
+                      style={{
+                        background: tokens.inputBg,
+                        borderColor: tokens.inputBorder,
+                        color: tokens.textPrimary,
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Actual dataset size *</Label>
+                      <Input
+                        value={sampleSize}
+                        onChange={(e) => setSampleSize(e.target.value)}
+                        placeholder="e.g., 120 GB"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Completeness (optional)</Label>
+                      <Input
+                        value={sampleCompleteness}
+                        onChange={(e) => setSampleCompleteness(e.target.value)}
+                        placeholder="e.g., 80% representative"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Delivery mechanism *</Label>
+                      <select
+                        value={sampleDelivery}
+                        onChange={(e) => setSampleDelivery(e.target.value as SampleDeliveryMechanism)}
+                        className="w-full h-10 rounded-md border px-3 text-sm"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      >
+                        <option value="API">API</option>
+                        <option value="FILE">File</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Is price negotiable? *</Label>
+                      <select
+                        value={sampleNegotiable}
+                        onChange={(e) => setSampleNegotiable(e.target.value as 'yes' | 'no')}
+                        className="w-full h-10 rounded-md border px-3 text-sm"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      >
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {sampleDelivery === 'OTHER' && (
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Delivery mechanism notes *</Label>
+                      <Input
+                        value={sampleDeliveryNotes}
+                        onChange={(e) => setSampleDeliveryNotes(e.target.value)}
+                        placeholder="Describe delivery mechanism"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Actual full price *</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={sampleActualPrice}
+                        onChange={(e) => setSampleActualPrice(e.target.value)}
+                        placeholder="e.g., 499"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label style={{ color: tokens.textPrimary }}>Currency *</Label>
+                      <select
+                        value={sampleActualPriceCurrency}
+                        onChange={(e) => setSampleActualPriceCurrency(e.target.value as Currency)}
+                        className="w-full h-10 rounded-md border px-3 text-sm"
+                        style={{
+                          background: tokens.inputBg,
+                          borderColor: tokens.inputBorder,
+                          color: tokens.textPrimary,
+                        }}
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {sampleToggleError && (
+                <p className="text-sm" style={{ color: '#dc2626' }}>{sampleToggleError}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSampleConfirmOpen(false);
+                    setPendingSampleValue(null);
+                    setSampleToggleError(null);
+                  }}
+                  disabled={sampleToggleSubmitting}
+                  className="flex-1"
+                  style={{
+                    background: tokens.glassBg || 'transparent',
+                    border: `1.5px solid ${tokens.inputBorder}`,
+                    color: tokens.textPrimary,
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmSampleToggle}
+                  disabled={sampleToggleSubmitting}
+                  className="flex-1"
+                  style={{
+                    background: sampleToggleSubmitting
+                      ? 'rgba(156, 163, 175, 0.2)'
+                      : tokens.glassBg || 'transparent',
+                    border: `1.5px solid ${sampleToggleSubmitting
+                        ? 'rgba(156, 163, 175, 0.3)'
+                        : tokens.glassBorder || tokens.borderSubtle
+                      }`,
+                    color: tokens.textPrimary,
+                  }}
+                >
+                  {sampleToggleSubmitting ? 'Saving...' : 'Confirm'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Pricing Edit Dialog */}
-      {pricingData && (
+      {pricingData && !isSampleProposal && (
         <PricingEditDialog
           isOpen={showPricingDialog}
           onClose={() => setShowPricingDialog(false)}

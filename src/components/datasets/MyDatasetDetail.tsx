@@ -35,6 +35,7 @@ import {
   Info,
   Tag,
   Globe,
+  MapPin,
   Link2,
   Shield,
   FileCode,
@@ -298,7 +299,9 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
     features,
     primaryCategory,
     secondaryCategories,
-    source
+    source,
+    locationInfo,
+    tags,
   } = datasetData;
 
   // Status determination
@@ -996,6 +999,80 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       Visit Website
                     </a>
                   )}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Location Card */}
+            {locationInfo && (
+              <GlassCard className="p-4">
+                <SectionTitle icon={Globe} title="Location" tokens={tokens} />
+
+                <div className="space-y-4">
+                  <InfoItem
+                    icon={Globe}
+                    label="Country"
+                    value={locationInfo.country}
+                    tokens={tokens}
+                  />
+
+                  <InfoItem
+                    icon={MapPin}
+                    label="State"
+                    value={locationInfo.state}
+                    tokens={tokens}
+                  />
+
+                  <InfoItem
+                    icon={MapPin}
+                    label="City"
+                    value={locationInfo.city}
+                    tokens={tokens}
+                  />
+
+                  <InfoItem
+                    icon={MapPin}
+                    label="Region"
+                    value={locationInfo.region}
+                    tokens={tokens}
+                  />
+
+                  <InfoItem
+                    icon={MapPin}
+                    label="Coverage"
+                    value={locationInfo.coverage}
+                    tokens={tokens}
+                  />
+
+                  <InfoItem
+                    icon={MapPin}
+                    label="Coordinates"
+                    value={locationInfo.coordinates}
+                    tokens={tokens}
+                  />
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Tags Card */}
+            {tags && tags.length > 0 && (
+              <GlassCard className="p-4">
+                <SectionTitle icon={Tag} title="Tags" tokens={tokens} />
+
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-xs px-2.5 py-1 rounded-lg"
+                      style={{
+                        background: tokens.infoBg,
+                        color: tokens.textSecondary,
+                        border: `1px solid ${tokens.borderSubtle}`,
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </GlassCard>
             )}
