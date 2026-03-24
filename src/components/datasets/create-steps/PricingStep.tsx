@@ -17,6 +17,7 @@ interface PricingStepProps {
   data: UpsertPricingRequest;
   onChange: (field: keyof UpsertPricingRequest, value: any) => void;
   disabled?: boolean;
+  isSample?: boolean;
   tokens: any;
   isDark?: boolean;
 }
@@ -32,6 +33,7 @@ export function PricingStep({
   data, 
   onChange, 
   disabled,
+  isSample = false,
   tokens,
   isDark = false,
 }: PricingStepProps) {
@@ -42,7 +44,9 @@ export function PricingStep({
           Set Your Pricing
         </h3>
         <p className="text-sm" style={{ color: tokens.textMuted }}>
-          Decide whether your dataset is free or paid. You can change this later.
+          {isSample
+            ? 'Sample datasets are always free in marketplace pricing.'
+            : 'Decide whether your dataset is free or paid. You can change this later.'}
         </p>
       </div>
 
@@ -62,27 +66,41 @@ export function PricingStep({
 
       {/* Paid Toggle */}
       <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <Label style={{ color: tokens.textPrimary }} className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={data.isPaid}
-                onChange={(e) => onChange('isPaid', e.target.checked)}
-                disabled={disabled}
-                className="w-5 h-5 rounded cursor-pointer"
-                style={{
-                  background: data.isPaid ? '#3b82f6' : tokens.inputBg,
-                  borderColor: data.isPaid ? '#3b82f6' : tokens.inputBorder,
-                }}
-              />
-              <span className="font-medium">This dataset is paid</span>
-            </Label>
+        {!isSample ? (
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Label style={{ color: tokens.textPrimary }} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!data.isPaid}
+                  onChange={(e) => onChange('isPaid', e.target.checked)}
+                  disabled={disabled}
+                  className="w-5 h-5 rounded cursor-pointer"
+                  style={{
+                    background: data.isPaid ? '#3b82f6' : tokens.inputBg,
+                    borderColor: data.isPaid ? '#3b82f6' : tokens.inputBorder,
+                  }}
+                />
+                <span className="font-medium">This dataset is paid</span>
+              </Label>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="rounded-lg p-4"
+            style={{ background: tokens.successBg, border: `1px solid ${tokens.successBorder}` }}
+          >
+            <p className="text-sm font-medium" style={{ color: tokens.successText }}>
+              ✓ Sample proposal pricing is fixed as free
+            </p>
+            <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
+              Paid pricing is disabled for sample proposals.
+            </p>
+          </div>
+        )}
 
         {/* Conditional Paid Fields */}
-        {data.isPaid && (
+        {!isSample && data.isPaid && (
           <div className="space-y-4 pt-4 border-t" style={{ borderColor: tokens.borderDefault }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Price Input */}

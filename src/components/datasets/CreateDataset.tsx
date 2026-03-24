@@ -7,13 +7,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Upload, RotateCcw } from 'lucide-react';
-import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing, getProposalDetails } from '@/lib/api';
+import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing, getProposalDetails, upsertLocationInfo, setProposalTags } from '@/lib/api';
 import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep, PricingStep } from './create-steps';
 import { DatasetUploadFlow } from './DatasetUploadFlow';
 import { useDraftProposal } from '@/hooks/useDraftProposal';
 import type {
+  Currency,
   DatasetSuperType,
+  SampleDeliveryMechanism,
   UpsertAboutInfoRequest,
+  UpsertLocationInfoRequest,
   UpsertDataFormatRequest,
   Feature,
   FileFormat,
@@ -26,7 +29,96 @@ interface CreateDatasetProps {
   isDark?: boolean;
 }
 
+interface BasicFormData {
+  title: string;
+  superType: DatasetSuperType | '';
+  primaryCategoryId: string;
+  sourceId: string;
+  license: string;
+  isSample: boolean;
+  sampleNotes: {
+    whySample: string;
+    actualDataSize: string;
+    completeness: string;
+    deliveryMechanism: SampleDeliveryMechanism | '';
+    deliveryMechanismNotes: string;
+  };
+  actualPrice: string;
+  actualPriceCurrency: Currency;
+  isNegotiable: boolean | null;
+}
+
+interface LocationFormData {
+  country: string;
+  state: string;
+  city: string;
+  region: string;
+  coordinates: string;
+  coverage: string;
+}
+
+const DEFAULT_BASIC_DATA: BasicFormData = {
+  title: '',
+  superType: '' as DatasetSuperType | '',
+  primaryCategoryId: '',
+  sourceId: '',
+  license: '',
+  isSample: false,
+  sampleNotes: {
+    whySample: '',
+    actualDataSize: '',
+    completeness: '',
+    deliveryMechanism: '',
+    deliveryMechanismNotes: '',
+  },
+  actualPrice: '',
+  actualPriceCurrency: 'USD',
+  isNegotiable: null,
+};
+
+const DEFAULT_LOCATION_DATA: LocationFormData = {
+  country: '',
+  state: '',
+  city: '',
+  region: '',
+  coordinates: '',
+  coverage: '',
+};
+
+function normalizeBasicData(input: any): BasicFormData {
+  const raw = input ?? {};
+
+  return {
+    ...DEFAULT_BASIC_DATA,
+    ...raw,
+    isSample: raw?.isSample === true,
+    sampleNotes: {
+      ...DEFAULT_BASIC_DATA.sampleNotes,
+      ...(raw?.sampleNotes ?? {}),
+    },
+    actualPrice:
+      typeof raw?.actualPrice === 'string'
+        ? raw.actualPrice
+        : raw?.actualPrice != null
+          ? String(raw.actualPrice)
+          : '',
+    actualPriceCurrency: raw?.actualPriceCurrency ?? 'USD',
+    isNegotiable:
+      raw?.isNegotiable === true
+        ? true
+        : raw?.isNegotiable === false
+          ? false
+          : null,
+  };
+}
+
 type Step = 'basic' | 'about' | 'format' | 'features' | 'pricing' | 'upload';
+
+const SAMPLE_FREE_PRICING: UpsertPricingRequest = {
+  isPaid: false,
+  price: null,
+  currency: 'USD',
+};
 
 export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const router = useRouter();
@@ -39,13 +131,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const [fileUploaded, setFileUploaded] = useState(false);
 
   // Step 1: Basic Info
-  const [basicData, setBasicData] = useState({
-    title: '',
-    superType: '' as DatasetSuperType | '',
-    primaryCategoryId: '',
-    sourceId: '',
-    license: '',
-  });
+  const [basicData, setBasicData] = useState<BasicFormData>(DEFAULT_BASIC_DATA);
 
   // Step 2: About Dataset
   const [aboutData, setAboutData] = useState<UpsertAboutInfoRequest>({
@@ -56,6 +142,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     limitations: null,
     methodology: null,
   });
+  const [locationData, setLocationData] = useState<LocationFormData>(DEFAULT_LOCATION_DATA);
+  const [tagsText, setTagsText] = useState('');
 
   // Step 3: Data Format
   const [formatData, setFormatData] = useState<Omit<UpsertDataFormatRequest, 'fileFormat'> & { fileFormat: FileFormat | '' }>({
@@ -93,8 +181,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     const draft = loadDraft();
     if (draft) {
       const restoreDraft = (d: any) => {
-        if (d.basicData) setBasicData(d.basicData as any);
+        if (d.basicData) setBasicData(normalizeBasicData(d.basicData));
         if (d.aboutData) setAboutData(d.aboutData as any);
+        if (d.locationData) setLocationData({ ...DEFAULT_LOCATION_DATA, ...(d.locationData as any) });
+        if (typeof d.tagsText === 'string') setTagsText(d.tagsText);
         if (d.formatData) setFormatData(d.formatData as any);
         if (d.features && d.features.length > 0) setFeatures(d.features as any);
         if (d.pricingData) setPricingData(d.pricingData as any);
@@ -142,6 +232,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     const draftData = {
       basicData,
       aboutData,
+      locationData,
+      tagsText,
       formatData,
       features,
       pricingData,
@@ -151,7 +243,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     };
 
     saveDraft(draftData);
-  }, [draftLoaded, basicData, aboutData, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, saveDraft]);
+  }, [draftLoaded, basicData, aboutData, locationData, tagsText, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, saveDraft]);
 
   const steps = [
     { id: 'basic' as Step, label: 'Basic Info', number: 1 },
@@ -166,20 +258,38 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const isLastStep = currentStepIndex === steps.length - 1;
 
   const isBasicValid = () => {
-    return (
+    const baseFieldsValid = (
       basicData.title.trim() !== '' &&
       basicData.superType !== '' &&
       basicData.primaryCategoryId !== '' &&
       basicData.sourceId !== '' &&
       basicData.license !== ''
     );
+
+    if (!baseFieldsValid) return false;
+    if (!basicData.isSample) return true;
+
+    const parsedActualPrice = Number.parseInt(basicData.actualPrice, 10);
+    const hasValidActualPrice = Number.isInteger(parsedActualPrice) && parsedActualPrice >= 0;
+    const deliveryMechanism = basicData.sampleNotes.deliveryMechanism;
+
+    if (!basicData.sampleNotes.whySample.trim()) return false;
+    if (!basicData.sampleNotes.actualDataSize.trim()) return false;
+    if (!deliveryMechanism) return false;
+    if (!hasValidActualPrice) return false;
+    if (!basicData.actualPriceCurrency) return false;
+    if (basicData.isNegotiable === null) return false;
+    if (deliveryMechanism === 'OTHER' && !basicData.sampleNotes.deliveryMechanismNotes.trim()) return false;
+
+    return true;
   };
 
   const isAboutValid = () => {
     return (
       (aboutData.overview?.trim() ?? '') !== '' &&
       (aboutData.description?.trim() ?? '') !== '' &&
-      (aboutData.dataQuality?.trim() ?? '') !== ''
+      (aboutData.dataQuality?.trim() ?? '') !== '' &&
+      locationData.country.trim() !== ''
     );
   };
 
@@ -197,12 +307,48 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   };
 
   const isPricingValid = () => {
+    if (basicData.isSample) return true;
     if (!pricingData.isPaid) return true; // Free datasets don't need a price
     return !!(pricingData.price && pricingData.price.trim() !== '');
   };
 
+  useEffect(() => {
+    if (!basicData.isSample) return;
+
+    setPricingData((prev) => {
+      if (prev.isPaid === false && (prev.price == null || prev.price === '') && prev.currency === 'USD') {
+        return prev;
+      }
+      return { ...SAMPLE_FREE_PRICING };
+    });
+  }, [basicData.isSample]);
+
   const handleBasicChange = (field: string, value: any) => {
-    setBasicData((prev) => ({ ...prev, [field]: value }));
+    setBasicData((prev) => {
+      if (field.startsWith('sampleNotes.')) {
+        const nestedKey = field.replace('sampleNotes.', '') as keyof BasicFormData['sampleNotes'];
+        return {
+          ...prev,
+          sampleNotes: {
+            ...(prev.sampleNotes ?? DEFAULT_BASIC_DATA.sampleNotes),
+            [nestedKey]: value,
+          },
+        };
+      }
+
+      if (field === 'isSample' && value === false) {
+        return {
+          ...prev,
+          isSample: false,
+          sampleNotes: { ...DEFAULT_BASIC_DATA.sampleNotes },
+          actualPrice: DEFAULT_BASIC_DATA.actualPrice,
+          actualPriceCurrency: DEFAULT_BASIC_DATA.actualPriceCurrency,
+          isNegotiable: DEFAULT_BASIC_DATA.isNegotiable,
+        };
+      }
+
+      return { ...prev, [field]: value };
+    });
     setError(null);
   };
 
@@ -216,6 +362,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const handleAboutChange = (field: keyof UpsertAboutInfoRequest, value: string) => {
     setAboutData((prev) => ({ ...prev, [field]: value || null }));
     setError(null);
+  };
+
+  const handleLocationChange = (field: string, value: string) => {
+    setLocationData((prev) => ({ ...prev, [field as keyof LocationFormData]: value }));
+    setError(null);
+  };
+
+  const parseTags = (raw: string) => {
+    return Array.from(new Set(raw.split(',').map((tag) => tag.trim()).filter(Boolean)));
   };
 
   const handleFormatChange = (field: string, value: any) => {
@@ -241,6 +396,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   };
 
   const handlePricingChange = (field: keyof UpsertPricingRequest, value: any) => {
+    if (basicData.isSample) {
+      setPricingData({ ...SAMPLE_FREE_PRICING });
+      setError(null);
+      return;
+    }
     setPricingData((prev) => ({ ...prev, [field]: value }));
     setError(null);
   };
@@ -283,12 +443,32 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       // Only create new proposal if one doesn't exist yet
       setSubmitting(true);
       try {
+        const parsedActualPrice = Number.parseInt(basicData.actualPrice, 10);
+
         const response = await createDatasetProposal({
           title: basicData.title,
           superType: basicData.superType as DatasetSuperType,
           primaryCategoryId: basicData.primaryCategoryId,
           sourceId: basicData.sourceId,
           license: basicData.license,
+          isSample: basicData.isSample,
+          ...(basicData.isSample
+            ? {
+                sampleNotes: {
+                  whySample: basicData.sampleNotes.whySample.trim(),
+                  actualDataSize: basicData.sampleNotes.actualDataSize.trim(),
+                  completeness: basicData.sampleNotes.completeness.trim() || undefined,
+                  deliveryMechanism: basicData.sampleNotes.deliveryMechanism as SampleDeliveryMechanism,
+                  deliveryMechanismNotes:
+                    basicData.sampleNotes.deliveryMechanism === 'OTHER'
+                      ? basicData.sampleNotes.deliveryMechanismNotes.trim() || undefined
+                      : undefined,
+                },
+                actualPrice: parsedActualPrice,
+                actualPriceCurrency: basicData.actualPriceCurrency,
+                isNegotiable: basicData.isNegotiable ?? false,
+              }
+            : {}),
         });
 
         setCreatedProposalId(response.dataset.id);
@@ -309,7 +489,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     // Step 2: Add About information
     if (currentStep === 'about') {
       if (!isAboutValid()) {
-        setError('Please fill in all required fields (Overview, Description, Data Quality)');
+        setError('Please fill in all required fields (Overview, Description, Data Quality, Country)');
         return;
       }
 
@@ -321,6 +501,16 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       setSubmitting(true);
       try {
         await upsertAboutInfo(createdProposalId, aboutData);
+        const locationPayload: UpsertLocationInfoRequest = {
+          country: locationData.country.trim(),
+          state: locationData.state.trim() || null,
+          city: locationData.city.trim() || null,
+          region: locationData.region.trim() || null,
+          coordinates: locationData.coordinates.trim() || null,
+          coverage: locationData.coverage.trim() || null,
+        };
+        await upsertLocationInfo(createdProposalId, locationPayload);
+        await setProposalTags(createdProposalId, { tags: parseTags(tagsText) });
         setSuccess('About information saved!');
         setTimeout(() => {
           setSuccess(null);
@@ -407,7 +597,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
       setSubmitting(true);
       try {
-        await upsertProposalPricing(createdProposalId, pricingData);
+        const pricingPayload = basicData.isSample ? SAMPLE_FREE_PRICING : pricingData;
+        await upsertProposalPricing(createdProposalId, pricingPayload);
         setSuccess('Pricing saved!');
         setTimeout(() => {
           setSuccess(null);
@@ -592,6 +783,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       <AboutStep
                         data={aboutData}
                         onChange={handleAboutChange}
+                        locationData={locationData}
+                        onLocationChange={handleLocationChange}
+                        tagsText={tagsText}
+                        onTagsChange={setTagsText}
                         disabled={submitting}
                         tokens={tokens}
                       />
@@ -624,6 +819,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                         data={pricingData}
                         onChange={handlePricingChange}
                         disabled={submitting}
+                        isSample={basicData.isSample}
                         tokens={tokens}
                         isDark={isDark}
                       />
