@@ -8,7 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { UserCircle, Building2 } from "lucide-react";
-import { getSupplierProfile, updateSupplierProfile, completeOnboarding, getOnboardingStatus } from "@/lib/api";
+import {
+  getSupplierProfile,
+  updateSupplierProfile,
+  completeOnboarding,
+  partialCompleteOnboarding,
+  getOnboardingStatus,
+} from "@/lib/api";
 import { LogoHeader, GlassCard, PageBackground, StatusMessage } from "@/components/shared";
 import { StyledSelect } from "@/components/datasets/shared/StyledSelect";
 import { BUSINESS_DOMAINS } from "@/types/onboarding.types";
@@ -25,6 +31,7 @@ export default function CompleteProfilePage() {
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [legacySubmitting, setLegacySubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Form state
@@ -118,54 +125,69 @@ export default function CompleteProfilePage() {
     }
   }, [supplierType, individualName, companyName, contactPersonName, businessDomains]);
 
-  const handleSubmit = useCallback(async () => {
+  const buildProfileRequest = useCallback((): UpdateProfileRequest => {
+    if (supplierType === "INDIVIDUAL") {
+      return {
+        supplierType: "INDIVIDUAL",
+        individualName,
+        contactPersonName: contactPersonName || individualName,
+        businessDomains,
+        primaryDomain: primaryDomain || undefined,
+        naturesOfDataProvided: naturesOfDataProvided || undefined,
+      };
+    }
+
+    return {
+      supplierType: "COMPANY",
+      companyName,
+      websiteUrl: websiteUrl || undefined,
+      contactPersonName,
+      businessDomains,
+      primaryDomain: primaryDomain || undefined,
+      naturesOfDataProvided: naturesOfDataProvided || undefined,
+    };
+  }, [
+    supplierType,
+    individualName,
+    companyName,
+    websiteUrl,
+    contactPersonName,
+    businessDomains,
+    primaryDomain,
+    naturesOfDataProvided,
+  ]);
+
+  const handleSubmitForVerification = useCallback(async () => {
     try {
       setSubmitting(true);
       setError(null);
 
-      // Updating profile
+      await updateSupplierProfile(buildProfileRequest());
+      await partialCompleteOnboarding();
 
-      // Prepare request based on supplier type
-      let request: UpdateProfileRequest;
-      
-      if (supplierType === "INDIVIDUAL") {
-        request = {
-          supplierType: "INDIVIDUAL",
-          individualName,
-          contactPersonName: contactPersonName || individualName,
-          businessDomains,
-          primaryDomain: primaryDomain || undefined,
-          naturesOfDataProvided: naturesOfDataProvided || undefined,
-        };
-      } else {
-        request = {
-          supplierType: "COMPANY",
-          companyName,
-          websiteUrl: websiteUrl || undefined,
-          contactPersonName,
-          businessDomains,
-          primaryDomain: primaryDomain || undefined,
-          naturesOfDataProvided: naturesOfDataProvided || undefined,
-        };
-      }
-
-      // Update profile
-      await updateSupplierProfile(request);
-      // Profile updated successfully
-
-      // Complete onboarding
-      await completeOnboarding();
-      // Onboarding completed
-
-      // Navigate to dashboard
-      router.push("/dashboard");
+      router.push("/onboarding/pending-verification");
     } catch (err: any) {
-      // Failed to complete profile (logged silently)
-      setError(err.message || "Failed to complete profile");
+      setError(err.message || "Failed to submit profile for verification");
     } finally {
       setSubmitting(false);
     }
-  }, [supplierType, individualName, companyName, websiteUrl, contactPersonName, businessDomains, primaryDomain, naturesOfDataProvided, router]);
+  }, [buildProfileRequest, router]);
+
+  const handleLegacyComplete = useCallback(async () => {
+    try {
+      setLegacySubmitting(true);
+      setError(null);
+
+      await updateSupplierProfile(buildProfileRequest());
+      await completeOnboarding();
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Failed to complete onboarding");
+    } finally {
+      setLegacySubmitting(false);
+    }
+  }, [buildProfileRequest, router]);
 
   const handleLogout = useCallback(() => {
     // Clear all stores
@@ -208,7 +230,7 @@ export default function CompleteProfilePage() {
           <StatusMessage
             variant="info"
             title="Almost done!"
-            message="Complete your profile to unlock full access to the Kuinbee marketplace."
+            message="Submit your profile for manual verification. You can still use legacy complete during rollout."
             className="mb-6"
           />
 
@@ -547,18 +569,31 @@ export default function CompleteProfilePage() {
               )}
 
               {/* Action Buttons */}
-              <div className="mt-8 flex gap-4">
+              <div className="mt-8 flex gap-4 flex-col sm:flex-row">
                 <Button
-                  onClick={handleSubmit}
-                  disabled={!isFormValid() || submitting}
+                  onClick={handleSubmitForVerification}
+                  disabled={!isFormValid() || submitting || legacySubmitting}
                   className="flex-1"
                   style={{
-                    background: !isFormValid() || submitting 
+                    background: !isFormValid() || submitting || legacySubmitting
                       ? 'rgba(26, 34, 64, 0.5)'
                       : 'linear-gradient(135deg, #1a2240 0%, #2a3250 100%)',
                   }}
                 >
-                  {submitting ? "Completing..." : "Complete Onboarding"}
+                  {submitting ? "Submitting..." : "Submit for Verification"}
+                </Button>
+
+                <Button
+                  onClick={handleLegacyComplete}
+                  disabled={!isFormValid() || submitting || legacySubmitting}
+                  className="flex-1"
+                  variant="outline"
+                  style={{
+                    borderColor: tokens.borderDefault,
+                    color: tokens.textSecondary,
+                  }}
+                >
+                  {legacySubmitting ? "Completing..." : "Complete Onboarding (Legacy)"}
                 </Button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Database, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard, StatCard } from "@/components/shared";
+import { getSupplierProfile } from "@/lib/api";
 import { listMyProposals } from "@/lib/api/dataset-proposals";
 import { listMyDatasets } from "@/lib/api/datasets";
 
@@ -17,20 +18,23 @@ export default function DashboardPage() {
   const [proposalCount, setProposalCount] = useState(0);
   const [datasetCount, setDatasetCount] = useState(0);
   const [proposals, setProposals] = useState<any[]>([]);
+  const [isOfflineContractDone, setIsOfflineContractDone] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCounts = async () => {
       try {
         // Fetch proposals and datasets in parallel for faster loading
-        const [proposalsData, datasetsData] = await Promise.all([
+        const [proposalsData, datasetsData, profileData] = await Promise.all([
           listMyProposals({ pageSize: 4, page: 1 }),
           listMyDatasets({ pageSize: 1, page: 1 }),
+          getSupplierProfile(),
         ]);
 
         setProposalCount(proposalsData.total || 0);
         setProposals(proposalsData.items || []);
         setDatasetCount(datasetsData.total || 0);
+        setIsOfflineContractDone(profileData.profile?.isOfflineContractDone ?? null);
       } catch (error) {
         console.error("Failed to fetch counts:", error);
       } finally {
@@ -68,6 +72,25 @@ export default function DashboardPage() {
       >
         Welcome back! Here's an overview of your activity.
       </p>
+
+      {isOfflineContractDone === false ? (
+        <GlassCard className="mb-6">
+          <div
+            className="p-4 rounded-lg border"
+            style={{
+              background: tokens.warningBg,
+              borderColor: tokens.warningBorder,
+            }}
+          >
+            <p className="text-sm font-semibold" style={{ color: tokens.warningText }}>
+              Offline contract pending
+            </p>
+            <p className="mt-1 text-sm" style={{ color: tokens.textSecondary }}>
+              Your offline contract is not completed yet. Some actions remain restricted until admin confirms it.
+            </p>
+          </div>
+        </GlassCard>
+      ) : null}
 
       {/* Stats Grid */}
       <div style={{ animation: 'fadeIn 0.6s ease-out' }}>
