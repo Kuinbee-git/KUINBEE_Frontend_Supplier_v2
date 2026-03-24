@@ -14,6 +14,10 @@ import type {
   UpdateProposalResponse,
   UpsertAboutInfoRequest,
   UpsertAboutInfoResponse,
+  UpsertLocationInfoRequest,
+  UpsertLocationInfoResponse,
+  SetTagsRequest,
+  SetTagsResponse,
   UpsertDataFormatRequest,
   UpsertDataFormatResponse,
   ReplaceFeaturesRequest,
@@ -174,6 +178,40 @@ export async function upsertAboutInfo(
 ): Promise<UpsertAboutInfoResponse> {
   const response = await apiFetch<{ success: boolean; data: UpsertAboutInfoResponse }>(
     DATASET_PROPOSAL_API.UPSERT_ABOUT(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Create or update LocationInfo for a proposal
+ */
+export async function upsertLocationInfo(
+  datasetId: string,
+  data: UpsertLocationInfoRequest
+): Promise<UpsertLocationInfoResponse> {
+  const response = await apiFetch<{ success: boolean; data: UpsertLocationInfoResponse }>(
+    DATASET_PROPOSAL_API.UPSERT_LOCATION(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Replace free-text tags for a proposal (creates missing tags server-side)
+ */
+export async function setProposalTags(
+  datasetId: string,
+  data: SetTagsRequest
+): Promise<SetTagsResponse> {
+  const response = await apiFetch<{ success: boolean; data: SetTagsResponse }>(
+    DATASET_PROPOSAL_API.SET_TAGS(datasetId),
     {
       method: "PUT",
       body: JSON.stringify(data),
