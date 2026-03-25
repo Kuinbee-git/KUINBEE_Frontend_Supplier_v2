@@ -196,6 +196,17 @@ export interface DatasetDetailsResponse {
     title: string;
     status: ProposalDatasetStatus;
     visibility: ProposalDatasetVisibility;
+    isSample?: boolean;
+    sampleNotes?: {
+      whySample: string;
+      actualDataSize: string;
+      completeness?: string;
+      deliveryMechanism: 'API' | 'FILE' | 'OTHER';
+      deliveryMechanismNotes?: string;
+    } | null;
+    actualPrice?: number | null;
+    actualPriceCurrency?: string | null;
+    isNegotiable?: boolean | null;
     isPaid: boolean;
     price: string | null;
     currency: Currency;

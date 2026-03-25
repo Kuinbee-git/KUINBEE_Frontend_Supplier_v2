@@ -393,6 +393,17 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 >
                   {datasetStatusConfig.label}
                 </span>
+                {dataset.isSample && (
+                  <span
+                    className="text-xs font-medium px-3 py-1.5 rounded-full"
+                    style={{
+                      background: tokens.warningBg,
+                      color: tokens.warningText,
+                    }}
+                  >
+                    Sample Dataset
+                  </span>
+                )}
               </div>
               <h1
                 className="text-3xl font-bold mb-2 leading-tight"
@@ -541,6 +552,102 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               </GlassCard>
             )}
 
+            {/* Sample, Location & Tags */}
+            {(dataset.isSample || dataset.sampleNotes || dataset.actualPrice !== undefined || dataset.isNegotiable !== undefined || locationInfo || (tags && tags.length > 0)) && (
+              <GlassCard className="p-5">
+                <SectionTitle icon={MessageCircle} title="Sample, Location & Tags" tokens={tokens} />
+
+                <div className="space-y-6">
+                  {(dataset.isSample || dataset.sampleNotes || dataset.actualPrice !== undefined || dataset.isNegotiable !== undefined) && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-3" style={{ color: tokens.textSecondary }}>
+                        Sample Information
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="rounded-lg p-3" style={{ background: tokens.infoBg }}>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Dataset Type</p>
+                          <p className="text-sm font-semibold mt-1" style={{ color: dataset.isSample ? tokens.warningText : tokens.successText }}>
+                            {dataset.isSample ? 'Sample Dataset' : 'Full Dataset'}
+                          </p>
+                        </div>
+                        <div className="rounded-lg p-3" style={{ background: tokens.infoBg }}>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Negotiable</p>
+                          <p className="text-sm font-semibold mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.isNegotiable === null || dataset.isNegotiable === undefined
+                              ? 'N/A'
+                              : dataset.isNegotiable
+                                ? 'Yes'
+                                : 'No'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Why Sample</p>
+                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.sampleNotes?.whySample || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Actual Data Size</p>
+                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.sampleNotes?.actualDataSize || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Completeness</p>
+                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.sampleNotes?.completeness || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Delivery Mechanism</p>
+                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.sampleNotes?.deliveryMechanism || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Delivery Notes</p>
+                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.sampleNotes?.deliveryMechanismNotes || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs" style={{ color: tokens.textMuted }}>Actual Price</p>
+                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
+                            {dataset.actualPrice !== null && dataset.actualPrice !== undefined
+                              ? `${dataset.actualPrice} ${dataset.actualPriceCurrency || ''}`.trim()
+                              : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {tags && tags.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-3" style={{ color: tokens.textSecondary }}>
+                        Tags
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-xs px-2.5 py-1 rounded-lg"
+                            style={{
+                              background: tokens.infoBg,
+                              color: tokens.textSecondary,
+                              border: `1px solid ${tokens.borderSubtle}`,
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            )}
+
             {/* About Dataset */}
             {aboutDatasetInfo && (
               <GlassCard className="p-5">
@@ -619,6 +726,22 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       Last updated: {formatDateTime(aboutDatasetInfo.updatedAt)}
                     </p>
                   )}
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Location */}
+            {locationInfo && (
+              <GlassCard className="p-5">
+                <SectionTitle icon={MapPin} title="Location" tokens={tokens} />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoItem icon={Globe} label="Country" value={locationInfo.country} tokens={tokens} />
+                  <InfoItem icon={MapPin} label="State" value={locationInfo.state} tokens={tokens} />
+                  <InfoItem icon={MapPin} label="City" value={locationInfo.city} tokens={tokens} />
+                  <InfoItem icon={MapPin} label="Region" value={locationInfo.region} tokens={tokens} />
+                  <InfoItem icon={MapPin} label="Coverage" value={locationInfo.coverage} tokens={tokens} />
+                  <InfoItem icon={MapPin} label="Coordinates" value={locationInfo.coordinates} tokens={tokens} />
                 </div>
               </GlassCard>
             )}
@@ -999,80 +1122,6 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       Visit Website
                     </a>
                   )}
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Location Card */}
-            {locationInfo && (
-              <GlassCard className="p-4">
-                <SectionTitle icon={Globe} title="Location" tokens={tokens} />
-
-                <div className="space-y-4">
-                  <InfoItem
-                    icon={Globe}
-                    label="Country"
-                    value={locationInfo.country}
-                    tokens={tokens}
-                  />
-
-                  <InfoItem
-                    icon={MapPin}
-                    label="State"
-                    value={locationInfo.state}
-                    tokens={tokens}
-                  />
-
-                  <InfoItem
-                    icon={MapPin}
-                    label="City"
-                    value={locationInfo.city}
-                    tokens={tokens}
-                  />
-
-                  <InfoItem
-                    icon={MapPin}
-                    label="Region"
-                    value={locationInfo.region}
-                    tokens={tokens}
-                  />
-
-                  <InfoItem
-                    icon={MapPin}
-                    label="Coverage"
-                    value={locationInfo.coverage}
-                    tokens={tokens}
-                  />
-
-                  <InfoItem
-                    icon={MapPin}
-                    label="Coordinates"
-                    value={locationInfo.coordinates}
-                    tokens={tokens}
-                  />
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Tags Card */}
-            {tags && tags.length > 0 && (
-              <GlassCard className="p-4">
-                <SectionTitle icon={Tag} title="Tags" tokens={tokens} />
-
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs px-2.5 py-1 rounded-lg"
-                      style={{
-                        background: tokens.infoBg,
-                        color: tokens.textSecondary,
-                        border: `1px solid ${tokens.borderSubtle}`,
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
                 </div>
               </GlassCard>
             )}
