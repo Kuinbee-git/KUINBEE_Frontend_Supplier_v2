@@ -109,6 +109,7 @@ function generateRevenueTrend(range: StatsTimeRange): RevenueTrendPoint[] {
             points.push({
                 date: date.toISOString().slice(0, 7), // YYYY-MM
                 revenue: Math.floor(Math.random() * 50000) + 10000,
+                currency: "INR" as const,
             });
         }
     } else {
@@ -118,6 +119,7 @@ function generateRevenueTrend(range: StatsTimeRange): RevenueTrendPoint[] {
             points.push({
                 date: date.toISOString().slice(0, 10), // YYYY-MM-DD
                 revenue: Math.floor(Math.random() * 5000) + 500,
+                currency: "INR" as const,
             });
         }
     }
@@ -131,6 +133,7 @@ const mockDatasets: DatasetPerformanceItem[] = [
         views: 1240,
         sales: 87,
         revenue: 43500,
+        revenueCurrency: "INR",
         conversionRate: 7.02,
         qualityScore: 92,
         status: "published",
@@ -141,6 +144,7 @@ const mockDatasets: DatasetPerformanceItem[] = [
         views: 890,
         sales: 52,
         revenue: 26000,
+        revenueCurrency: "INR",
         conversionRate: 5.84,
         qualityScore: 88,
         status: "published",
@@ -151,6 +155,7 @@ const mockDatasets: DatasetPerformanceItem[] = [
         views: 2100,
         sales: 34,
         revenue: 17000,
+        revenueCurrency: "INR",
         conversionRate: 1.62,
         qualityScore: 95,
         status: "published",
@@ -161,6 +166,7 @@ const mockDatasets: DatasetPerformanceItem[] = [
         views: 560,
         sales: 41,
         revenue: 20500,
+        revenueCurrency: "INR",
         conversionRate: 7.32,
         qualityScore: 85,
         status: "published",
@@ -171,6 +177,7 @@ const mockDatasets: DatasetPerformanceItem[] = [
         views: 1800,
         sales: 12,
         revenue: 6000,
+        revenueCurrency: "INR",
         conversionRate: 0.67,
         qualityScore: 78,
         status: "published",
@@ -181,6 +188,7 @@ const mockDatasets: DatasetPerformanceItem[] = [
         views: 320,
         sales: 8,
         revenue: 4000,
+        revenueCurrency: "INR",
         conversionRate: 2.5,
         qualityScore: 82,
         status: "draft",
@@ -193,6 +201,7 @@ const mockTopBuyers: TopBuyer[] = [
         name: "Arjun Mehta",
         companyName: "DataVerse Analytics",
         totalSpent: 28500,
+        totalSpentCurrency: "INR",
         totalPurchases: 14,
         lastPurchaseDate: "2026-02-25",
     },
@@ -201,6 +210,7 @@ const mockTopBuyers: TopBuyer[] = [
         name: "Priya Sharma",
         companyName: "InsightForge AI",
         totalSpent: 19200,
+        totalSpentCurrency: "INR",
         totalPurchases: 9,
         lastPurchaseDate: "2026-02-22",
     },
@@ -209,6 +219,7 @@ const mockTopBuyers: TopBuyer[] = [
         name: "Rahul Gupta",
         companyName: "NexGen Research",
         totalSpent: 15800,
+        totalSpentCurrency: "INR",
         totalPurchases: 7,
         lastPurchaseDate: "2026-02-18",
     },
@@ -217,6 +228,7 @@ const mockTopBuyers: TopBuyer[] = [
         name: "Sneha Patel",
         companyName: "Quantify Labs",
         totalSpent: 12100,
+        totalSpentCurrency: "INR",
         totalPurchases: 6,
         lastPurchaseDate: "2026-02-14",
     },
@@ -225,6 +237,7 @@ const mockTopBuyers: TopBuyer[] = [
         name: "Vikram Singh",
         companyName: "TrueData Corp",
         totalSpent: 9500,
+        totalSpentCurrency: "INR",
         totalPurchases: 4,
         lastPurchaseDate: "2026-02-10",
     },
@@ -273,6 +286,8 @@ export function getMockSupplierStats(range: StatsTimeRange): SupplierStatsRespon
     return {
         overview: {
             totalRevenue: 117000,
+            totalRevenueCurrency: "INR",
+            totalRevenueByCurrency: [{ currency: "INR", revenue: 117000 }],
             totalSales: 234,
             activeDatasets: 5,
             totalViews: 6910,
