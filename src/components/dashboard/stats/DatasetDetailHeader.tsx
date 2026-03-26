@@ -2,7 +2,8 @@
 
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import type { DatasetPerformanceItem } from "@/types/supplier-stats.types";
-import { ArrowLeft, Star, Eye, ShoppingCart, IndianRupee } from "lucide-react";
+import { formatCurrencyValue } from "@/lib/utils/currency.utils";
+import { ArrowLeft, Star, Eye, ShoppingCart, Coins } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface DatasetDetailHeaderProps {
@@ -20,6 +21,8 @@ export function DatasetDetailHeader({ dataset }: DatasetDetailHeaderProps) {
     const tokens = useSupplierTokens();
     const router = useRouter();
     const statusStyle = statusColors[dataset.status] || statusColors.draft;
+    const isMixed = dataset.revenueCurrency === null;
+    const revenueDisplay = `${formatCurrencyValue(dataset.revenue, dataset.revenueCurrency)}${isMixed ? " (Mixed)" : ""}`;
 
     return (
         <div>
@@ -70,7 +73,7 @@ export function DatasetDetailHeader({ dataset }: DatasetDetailHeaderProps) {
             {/* Quick Stats Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 {[
-                    { icon: <IndianRupee className="w-4 h-4" />, label: "Revenue", value: `₹${dataset.revenue.toLocaleString("en-IN")}`, color: "#10b981" },
+                    { icon: <Coins className="w-4 h-4" />, label: "Revenue", value: revenueDisplay, color: "#10b981" },
                     { icon: <Eye className="w-4 h-4" />, label: "Views", value: dataset.views.toLocaleString(), color: "#f59e0b" },
                     { icon: <ShoppingCart className="w-4 h-4" />, label: "Sales", value: dataset.sales.toString(), color: "#4a90e2" },
                     { icon: <span className="text-xs font-bold">%</span>, label: "Conv. Rate", value: `${dataset.conversionRate.toFixed(2)}%`, color: "#8b5cf6" },

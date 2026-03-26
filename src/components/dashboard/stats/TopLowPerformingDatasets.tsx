@@ -2,7 +2,8 @@
 
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import type { PerformingDataset } from "@/types/supplier-stats.types";
-import { TrendingUp, TrendingDown, Eye, ShoppingCart, IndianRupee, BarChart2 } from "lucide-react";
+import { formatCurrencyValue } from "@/lib/utils/currency.utils";
+import { TrendingUp, TrendingDown, Eye, ShoppingCart, Coins, BarChart2 } from "lucide-react";
 
 interface TopLowPerformingDatasetsProps {
     topPerforming: PerformingDataset | null;
@@ -60,6 +61,8 @@ function PerformanceCard({
         );
     }
 
+    const isMixed = dataset.revenueCurrency === null;
+
     return (
         <div
             className="flex-1 rounded-xl p-5 transition-all duration-300 hover:scale-[1.01]"
@@ -98,11 +101,16 @@ function PerformanceCard({
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2">
-                    <IndianRupee className="w-3.5 h-3.5" style={{ color: tokens.textMuted }} />
+                    <Coins className="w-3.5 h-3.5" style={{ color: tokens.textMuted }} />
                     <div>
                         <p className="text-xs" style={{ color: tokens.textMuted }}>Revenue</p>
                         <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                            ₹{dataset.revenue.toLocaleString("en-IN")}
+                            {formatCurrencyValue(dataset.revenue, dataset.revenueCurrency)}
+                            {isMixed && (
+                                <span className="ml-1 text-xs font-normal" style={{ color: tokens.textMuted }}>
+                                    (Mixed)
+                                </span>
+                            )}
                         </p>
                     </div>
                 </div>
