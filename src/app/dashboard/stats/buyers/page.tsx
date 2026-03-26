@@ -6,7 +6,7 @@ import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import { getSupplierStats } from "@/lib/api/stats";
 import { GlassCard } from "@/components/shared";
 import { BuyerInsightsPanel } from "@/components/dashboard/stats/BuyerInsightsPanel";
-import type { StatsTimeRange, BuyerInsights } from "@/types/supplier-stats.types";
+import type { StatsTimeRange, BuyerInsights, DatasetPerformanceItem } from "@/types/supplier-stats.types";
 import { Users } from "lucide-react";
 
 function BuyersContent() {
@@ -14,6 +14,7 @@ function BuyersContent() {
     const searchParams = useSearchParams();
     const range = (searchParams.get("range") as StatsTimeRange) || "30d";
     const [insights, setInsights] = useState<BuyerInsights | null>(null);
+    const [datasetPerformance, setDatasetPerformance] = useState<DatasetPerformanceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +24,7 @@ function BuyersContent() {
         try {
             const data = await getSupplierStats(selectedRange);
             setInsights(data.buyerInsights);
+            setDatasetPerformance(data.datasetPerformance);
         } catch (error) {
             console.error("Failed to fetch buyer insights:", error);
             setError(error instanceof Error ? error.message : "Failed to fetch buyer insights");
@@ -59,6 +61,7 @@ function BuyersContent() {
                                 highIntentNonBuyers: [],
                             }
                         }
+                        datasetPerformance={datasetPerformance}
                         loading={loading}
                     />
                 </div>

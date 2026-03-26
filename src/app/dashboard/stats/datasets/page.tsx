@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import { getSupplierStats } from "@/lib/api/stats";
 import { GlassCard } from "@/components/shared";
@@ -11,7 +11,6 @@ import { Database, ExternalLink } from "lucide-react";
 
 function DatasetsContent() {
     const tokens = useSupplierTokens();
-    const router = useRouter();
     const searchParams = useSearchParams();
     const range = (searchParams.get("range") as StatsTimeRange) || "30d";
     const [datasets, setDatasets] = useState<DatasetPerformanceItem[]>([]);
@@ -36,10 +35,7 @@ function DatasetsContent() {
         fetchData(range);
     }, [range, fetchData]);
 
-    const handleDatasetClick = (datasetId: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        router.push(`/dashboard/stats/datasets/${datasetId}?${params.toString()}`);
-    };
+
 
     return (
         <div style={{ animation: "fadeIn 0.5s ease-out" }}>
@@ -57,14 +53,10 @@ function DatasetsContent() {
                                 Dataset Performance
                             </h2>
                         </div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>
-                            Click a row to view detailed analytics
-                        </p>
                     </div>
                     <DatasetPerformanceTable
                         data={datasets}
                         loading={loading}
-                        onRowClick={handleDatasetClick}
                     />
                 </div>
             </GlassCard>

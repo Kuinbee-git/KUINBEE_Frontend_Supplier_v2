@@ -50,7 +50,8 @@ function StatsOverviewContent() {
                 <StatsOverviewCards
                     overview={
                         stats?.overview || {
-                            totalRevenue: 0, totalSales: 0, activeDatasets: 0,
+                            totalRevenue: 0, totalRevenueCurrency: null, totalRevenueByCurrency: [],
+                            totalSales: 0, activeDatasets: 0,
                             totalViews: 0, averageQualityScore: 0,
                             pendingValidationCount: 0, conversionRate: 0,
                         }

@@ -173,14 +173,14 @@ export function SupplierAccount({
                   <div>
                     <div className="space-y-3">
                       {/* Individual PAN (if required) */}
-                      {onboardingStatus.onboarding.steps.individualPan.required && (
+                      {onboardingStatus.onboarding.steps.individualPan?.required && (
                         <div className="flex items-start gap-3 text-sm">
                           <div className="flex-shrink-0 mt-0.5">
-                            {onboardingStatus.onboarding.steps.individualPan.status === 'VERIFIED' ? (
+                            {onboardingStatus.onboarding.steps.individualPan?.status === 'VERIFIED' ? (
                               <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : onboardingStatus.onboarding.steps.individualPan.status === 'PENDING' ? (
+                            ) : onboardingStatus.onboarding.steps.individualPan?.status === 'PENDING' ? (
                               <Clock className="w-4 h-4" style={{ color: tokens.textMuted }} />
-                            ) : onboardingStatus.onboarding.steps.individualPan.status === 'FAILED' ? (
+                            ) : onboardingStatus.onboarding.steps.individualPan?.status === 'FAILED' ? (
                               <AlertCircle className="w-4 h-4 text-red-500" />
                             ) : (
                               <Clock className="w-4 h-4" style={{ color: tokens.textMuted }} />
@@ -190,10 +190,10 @@ export function SupplierAccount({
                             <p>PAN Verification</p>
                             <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
                               Status: <span style={{ color: 
-                                onboardingStatus.onboarding.steps.individualPan.status === 'VERIFIED' ? '#10b981' : 
-                                onboardingStatus.onboarding.steps.individualPan.status === 'FAILED' ? '#ef4444' : 
+                                onboardingStatus.onboarding.steps.individualPan?.status === 'VERIFIED' ? '#10b981' : 
+                                onboardingStatus.onboarding.steps.individualPan?.status === 'FAILED' ? '#ef4444' : 
                                 '#f59e0b'
-                              }}>{onboardingStatus.onboarding.steps.individualPan.status}</span>
+                              }}>{onboardingStatus.onboarding.steps.individualPan?.status}</span>
                             </p>
                           </div>
                         </div>
@@ -222,7 +222,7 @@ export function SupplierAccount({
         
         {/* PAN Verification History - Only for Individual suppliers */}
         {onboardingStatus?.onboarding.supplierType === 'INDIVIDUAL' && 
-         onboardingStatus.onboarding.steps.individualPan.required && (
+         onboardingStatus?.onboarding.steps.individualPan?.required && (
           <div className="mb-8">
             <PanVerificationHistory isDark={isDark} />
           </div>
