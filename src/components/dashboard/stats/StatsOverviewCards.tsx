@@ -2,8 +2,9 @@
 
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import type { StatsOverview } from "@/types/supplier-stats.types";
+import { getCurrencySymbol, formatCurrencyValue } from "@/lib/utils/currency.utils";
 import {
-    IndianRupee,
+    Coins,
     ShoppingCart,
     Database,
     Eye,
@@ -23,9 +24,10 @@ interface MetricCardProps {
     label: string;
     value: string;
     accentColor: string;
+    subContent?: ReactNode;
 }
 
-function MetricCard({ icon, label, value, accentColor }: MetricCardProps) {
+function MetricCard({ icon, label, value, accentColor, subContent }: MetricCardProps) {
     const tokens = useSupplierTokens();
 
     return (
@@ -62,11 +64,14 @@ function MetricCard({ icon, label, value, accentColor }: MetricCardProps) {
             >
                 {value}
             </p>
+            {subContent && <div className="mt-2">{subContent}</div>}
         </div>
     );
 }
 
 export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProps) {
+    const tokens = useSupplierTokens();
+
     if (loading) {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -81,11 +86,23 @@ export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProp
         );
     }
 
+    const isMixed = overview.totalRevenueCurrency === null && (overview.totalRevenueByCurrency?.length ?? 0) > 1;
+
+    // When mixed currencies, show per-currency breakdown as the primary value
+    const revenueValue = isMixed && overview.totalRevenueByCurrency
+        ? overview.totalRevenueByCurrency
+            .map((item) => formatCurrencyValue(item.revenue, item.currency))
+            .join(" · ")
+        : formatCurrencyValue(
+            overview.totalRevenue ?? 0,
+            overview.totalRevenueCurrency
+        );
+
     const metrics: MetricCardProps[] = [
         {
-            icon: <IndianRupee className="w-5 h-5" />,
+            icon: <Coins className="w-5 h-5" />,
             label: "Total Revenue",
-            value: `₹${Number(overview.totalRevenue).toLocaleString("en-IN")}`,
+            value: revenueValue,
             accentColor: "#10b981",
         },
         {
@@ -121,7 +138,7 @@ export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProp
         {
             icon: <TrendingUp className="w-5 h-5" />,
             label: "Conversion Rate",
-            value: `${Number(overview.conversionRate).toFixed(2)}%`,
+            value: `${(Number(overview.conversionRate) * 100).toFixed(2)}%`,
             accentColor: "#06b6d4",
         },
     ];
