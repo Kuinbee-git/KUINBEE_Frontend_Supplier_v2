@@ -6,6 +6,14 @@
 // ===== Time Range =====
 export type StatsTimeRange = "7d" | "30d" | "90d" | "1y" | "lifetime";
 
+// ===== Currency =====
+export type Currency = "INR" | "USD" | "EUR" | "GBP";
+
+export interface CurrencyBreakdownItem {
+    currency: Currency;
+    revenue: string | number;
+}
+
 // ===== Overview =====
 export interface StatsOverview {
     totalRevenue: number;
@@ -15,12 +23,18 @@ export interface StatsOverview {
     averageQualityScore: number | null;
     pendingValidationCount: number;
     conversionRate: number;
+    /** Currency of totalRevenue — null when mixed currencies */
+    totalRevenueCurrency?: Currency | null;
+    /** Per-currency breakdown of revenue */
+    totalRevenueByCurrency?: CurrencyBreakdownItem[];
 }
 
 // ===== Revenue Trend =====
 export interface RevenueTrendPoint {
     date: string;
     revenue: number;
+    /** Currency for this data point */
+    currency?: Currency;
 }
 
 // ===== Dataset Performance =====
@@ -30,6 +44,8 @@ export interface DatasetPerformanceItem {
     views: number;
     sales: number;
     revenue: number;
+    /** Currency of revenue — null when mixed currencies */
+    revenueCurrency?: Currency | null;
     conversionRate: number;
     qualityScore: number;
     status: string;
@@ -44,6 +60,8 @@ export interface TopBuyer {
     name: string;
     companyName: string;
     totalSpent: number;
+    /** Currency of totalSpent — null when mixed */
+    totalSpentCurrency?: Currency | null;
     totalPurchases: number;
     lastPurchaseDate: string;
 }
