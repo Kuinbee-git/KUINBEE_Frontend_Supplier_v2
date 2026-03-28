@@ -893,10 +893,6 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 <ul className="space-y-1.5 list-none">
                                   <li className="flex items-start gap-2">
                                     <span className="text-blue-500">•</span>
-                                    <span>Maximum file size: 500MB</span>
-                                  </li>
-                                  <li className="flex items-start gap-2">
-                                    <span className="text-blue-500">•</span>
                                     <span>Supported formats: CSV, JSON, Parquet, XLSX</span>
                                   </li>
                                   <li className="flex items-start gap-2">

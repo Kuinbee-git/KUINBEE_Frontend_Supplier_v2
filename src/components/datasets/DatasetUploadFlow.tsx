@@ -174,7 +174,7 @@ export function DatasetUploadFlow({
                     Drop your file here or click to browse
                   </p>
                   <p className="text-xs mb-4" style={{ color: tokens.textMuted }}>
-                    Supported formats: CSV, JSON, Parquet, XLSX (max 500MB)
+                    Supported formats: CSV, JSON, Parquet, XLSX
                   </p>
                   <input
                     id="file-upload"
@@ -228,7 +228,6 @@ export function DatasetUploadFlow({
                 <div className="text-xs leading-relaxed" style={{ color: tokens.textSecondary }}>
                   <p className="font-medium mb-1">File requirements:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Maximum file size: 500MB</li>
                     <li>Accepted formats: CSV, JSON, Parquet, XLSX</li>
                     <li>Files will be validated after upload</li>
                   </ul>
