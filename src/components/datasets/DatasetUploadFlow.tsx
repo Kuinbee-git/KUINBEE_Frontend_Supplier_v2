@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { getDatasetThemeTokens, FILE_UPLOAD_CONSTRAINTS } from '@/constants/dataset.constants';
 import { formatFileSize, validateDatasetFile } from '@/utils/dataset.utils';
-import { presignCurrentUpload, uploadFileToS3, completeCurrentUpload } from '@/lib/api';
+import { presignCurrentUpload, uploadFileToS3, completeCurrentUpload, presignSampleUpload, completeSampleUpload } from '@/lib/api';
 import { 
   Upload, 
   FileText, 
@@ -20,6 +20,7 @@ interface DatasetUploadFlowProps {
   onClose: () => void;
   datasetId: string;
   isDark?: boolean;
+  uploadKind?: 'current' | 'sample';
   onUploadComplete?: (fileInfo: { fileName: string; fileSize: string }) => void;
 }
 
@@ -30,6 +31,7 @@ export function DatasetUploadFlow({
   onClose, 
   datasetId, 
   isDark = false,
+  uploadKind = 'current',
   onUploadComplete 
 }: DatasetUploadFlowProps) {
   const [step, setStep] = useState<UploadStep>('select');
@@ -39,6 +41,7 @@ export function DatasetUploadFlow({
   const [uploadedFileInfo, setUploadedFileInfo] = useState<{ fileName: string; fileSize: string } | null>(null);
 
   const tokens = getDatasetThemeTokens(isDark);
+  const isSampleUpload = uploadKind === 'sample';
 
   const handleFileSelect = (file: File) => {
     const validation = validateDatasetFile(file);
@@ -81,10 +84,15 @@ export function DatasetUploadFlow({
 
     try {
       // Step 1: Get presigned URL from backend
-      const presignResponse = await presignCurrentUpload(datasetId, {
-        originalFileName: selectedFile.name,
-        contentType: selectedFile.type || 'application/octet-stream',
-      });
+      const presignResponse = isSampleUpload
+        ? await presignSampleUpload(datasetId, {
+            originalFileName: selectedFile.name,
+            contentType: selectedFile.type || 'application/octet-stream',
+          })
+        : await presignCurrentUpload(datasetId, {
+            originalFileName: selectedFile.name,
+            contentType: selectedFile.type || 'application/octet-stream',
+          });
 
       // Step 2: Upload file directly to S3 with progress tracking
       await uploadFileToS3(
@@ -94,9 +102,15 @@ export function DatasetUploadFlow({
       );
 
       // Step 3: Notify backend that upload is complete
-      await completeCurrentUpload(datasetId, {
-        sizeBytes: selectedFile.size.toString(),
-      });
+      if (isSampleUpload) {
+        await completeSampleUpload(datasetId, {
+          sizeBytes: selectedFile.size.toString(),
+        });
+      } else {
+        await completeCurrentUpload(datasetId, {
+          sizeBytes: selectedFile.size.toString(),
+        });
+      }
 
       // Success!
       const fileInfo = {
@@ -140,7 +154,7 @@ export function DatasetUploadFlow({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle style={{ color: tokens.textPrimary }}>
-              {step === 'select' && 'Upload dataset file'}
+              {step === 'select' && (isSampleUpload ? 'Upload sample file' : 'Upload dataset file')}
               {step === 'uploading' && 'Uploading...'}
               {step === 'complete' && 'Upload complete'}
               {step === 'error' && 'Upload failed'}
@@ -294,10 +308,12 @@ export function DatasetUploadFlow({
                   <CheckCircle className="w-8 h-8 text-green-500" />
                 </div>
                 <p className="text-sm font-medium mb-2" style={{ color: tokens.textPrimary }}>
-                  File uploaded successfully
+                  {isSampleUpload ? 'Sample file uploaded successfully' : 'File uploaded successfully'}
                 </p>
                 <p className="text-xs" style={{ color: tokens.textMuted }}>
-                  Your file is being processed and will be reviewed by admins
+                  {isSampleUpload
+                    ? 'Your sample file is ready and can be replaced anytime before review'
+                    : 'Your file is being processed and will be reviewed by admins'}
                 </p>
               </div>
 

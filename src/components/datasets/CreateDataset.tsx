@@ -128,7 +128,9 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+   const [sampleUploadDialogOpen, setSampleUploadDialogOpen] = useState(false);
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [sampleFileUploaded, setSampleFileUploaded] = useState(false);
 
   // Step 1: Basic Info
   const [basicData, setBasicData] = useState<BasicFormData>(DEFAULT_BASIC_DATA);
@@ -191,6 +193,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         if (d.createdProposalId) setCreatedProposalId(d.createdProposalId);
         if (d.currentStep) setCurrentStep(d.currentStep as Step);
         if (d.fileUploaded) setFileUploaded(d.fileUploaded);
+        if (d.sampleFileUploaded) setSampleFileUploaded(d.sampleFileUploaded);
         
         // Only show toast if the draft actually contains meaningful progress
         if (d.createdProposalId || d.currentStep !== 'basic' || (d.basicData && d.basicData.title)) {
@@ -240,10 +243,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       createdProposalId,
       currentStep,
       fileUploaded,
+      sampleFileUploaded,
     };
 
     saveDraft(draftData);
-  }, [draftLoaded, basicData, aboutData, locationData, tagsText, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, saveDraft]);
+  }, [draftLoaded, basicData, aboutData, locationData, tagsText, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, sampleFileUploaded, saveDraft]);
 
   const steps = [
     { id: 'basic' as Step, label: 'Basic Info', number: 1 },
@@ -322,6 +326,12 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       return { ...SAMPLE_FREE_PRICING };
     });
   }, [basicData.isSample]);
+
+  useEffect(() => {
+    if (basicData.isSample || !pricingData.isPaid) {
+      setSampleFileUploaded(false);
+    }
+  }, [basicData.isSample, pricingData.isPaid]);
 
   const handleBasicChange = (field: string, value: any) => {
     setBasicData((prev) => {
@@ -659,6 +669,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
   };
 
+  const shouldShowSampleUpload = !basicData.isSample && pricingData.isPaid;
+
   return (
     <>
       <div className="min-h-screen px-6 py-8">
@@ -904,6 +916,60 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             </div>
                           </div>
                         )}
+
+                        {shouldShowSampleUpload && (
+                          <div
+                            className="rounded-lg border p-5 max-w-md mx-auto"
+                            style={{
+                              background: 'rgba(34, 197, 94, 0.06)',
+                              borderColor: 'rgba(34, 197, 94, 0.25)',
+                            }}
+                          >
+                            <div className="text-center space-y-4">
+                              <div>
+                                <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
+                                  Optional: Upload sample file
+                                </p>
+                                <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
+                                  Buyers can download this sample file freely before purchasing.
+                                </p>
+                              </div>
+
+                              {sampleFileUploaded ? (
+                                <div
+                                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
+                                  style={{
+                                    background: 'rgba(34, 197, 94, 0.12)',
+                                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                                    Sample upload complete
+                                  </span>
+                                </div>
+                              ) : null}
+
+                              <Button
+                                onClick={() => setSampleUploadDialogOpen(true)}
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
+                                style={{
+                                  background: tokens.glassBg,
+                                  backdropFilter: 'blur(16px)',
+                                  WebkitBackdropFilter: 'blur(16px)',
+                                  border: `1.5px solid ${tokens.glassBorder}`,
+                                  boxShadow: tokens.glassShadow,
+                                  color: tokens.textPrimary,
+                                }}
+                              >
+                                <Upload className="w-4 h-4" />
+                                {sampleFileUploaded ? 'Replace sample file' : 'Upload sample file'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1053,6 +1119,22 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
             setFileUploaded(true);
             setUploadDialogOpen(false);
             setSuccess('File uploaded successfully!');
+            setTimeout(() => setSuccess(null), 2000);
+          }}
+        />
+      )}
+
+      {createdProposalId && shouldShowSampleUpload && (
+        <DatasetUploadFlow
+          isOpen={sampleUploadDialogOpen}
+          onClose={() => setSampleUploadDialogOpen(false)}
+          datasetId={createdProposalId}
+          isDark={isDark}
+          uploadKind="sample"
+          onUploadComplete={() => {
+            setSampleFileUploaded(true);
+            setSampleUploadDialogOpen(false);
+            setSuccess('Sample file uploaded successfully!');
             setTimeout(() => setSuccess(null), 2000);
           }}
         />

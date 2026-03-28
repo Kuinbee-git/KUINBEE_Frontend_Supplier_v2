@@ -354,6 +354,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
   const router = useRouter();
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadDialogKind, setUploadDialogKind] = useState<'current' | 'sample'>('current');
   const [submitting, setSubmitting] = useState(false);
   const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
   const [sampleToggleSubmitting, setSampleToggleSubmitting] = useState(false);
@@ -514,6 +515,17 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
 
   // Can submit when status is PENDING or CHANGES_REQUESTED
   const canSubmit = proposal.verification.status === 'PENDING' || proposal.verification.status === 'CHANGES_REQUESTED';
+  const shouldShowSampleUpload = (proposal.dataset.isPaid ?? pricingData?.isPaid ?? false) && !proposal.dataset.isSample;
+
+  const openCurrentUploadDialog = () => {
+    setUploadDialogKind('current');
+    setUploadDialogOpen(true);
+  };
+
+  const openSampleUploadDialog = () => {
+    setUploadDialogKind('sample');
+    setUploadDialogOpen(true);
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -1133,7 +1145,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                       No file uploaded yet
                     </p>
                     <Button
-                      onClick={() => setUploadDialogOpen(true)}
+                      onClick={openCurrentUploadDialog}
                       className="text-white font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
                       style={{
                         background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
@@ -1231,7 +1243,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setUploadDialogOpen(true)}
+                            onClick={openCurrentUploadDialog}
                             className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
                             style={{
                               background: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.08)',
@@ -1250,7 +1262,7 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => setUploadDialogOpen(true)}
+                            onClick={openCurrentUploadDialog}
                             className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
                             style={{
                               background: tokens.glassBg || 'transparent',
@@ -1269,6 +1281,110 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
               </div>
             )}
           </Card>
+
+          {shouldShowSampleUpload && (
+            <Card
+              className="border overflow-hidden"
+              style={{
+                background: tokens.surfaceCard,
+                borderColor: tokens.borderDefault,
+              }}
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" style={{ color: '#22c55e' }} />
+                    <div>
+                      <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
+                        Sample File Upload
+                      </h3>
+                      <p className="text-xs" style={{ color: tokens.textMuted }}>
+                        Buyers can download this file freely before purchase
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={openSampleUploadDialog}
+                    className="h-10 px-5 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
+                    style={{
+                      background: tokens.glassBg || 'transparent',
+                      border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
+                      color: tokens.textPrimary,
+                    }}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {proposal.sampleUpload ? 'Replace sample file' : 'Upload sample file'}
+                  </Button>
+                </div>
+
+                {proposal.sampleUpload ? (
+                  <div
+                    className="p-4 rounded-lg border"
+                    style={{
+                      background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+                      borderColor: tokens.borderSubtle,
+                    }}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label style={{ color: tokens.textSecondary }}>File Name</Label>
+                          <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                            {proposal.sampleUpload.originalFileName || 'N/A'}
+                          </p>
+                        </div>
+                        <span
+                          className="px-3 py-1 text-xs font-medium rounded-full"
+                          style={{
+                            background:
+                              proposal.sampleUpload.status === 'UPLOADED' ? 'rgba(34, 197, 94, 0.1)' :
+                                proposal.sampleUpload.status === 'UPLOADING' ? 'rgba(234, 179, 8, 0.1)' :
+                                  proposal.sampleUpload.status === 'FAILED' ? 'rgba(239, 68, 68, 0.1)' :
+                                    'rgba(59, 130, 246, 0.1)',
+                            color:
+                              proposal.sampleUpload.status === 'UPLOADED' ? '#22c55e' :
+                                proposal.sampleUpload.status === 'UPLOADING' ? '#eab308' :
+                                  proposal.sampleUpload.status === 'FAILED' ? '#ef4444' :
+                                    '#3b82f6',
+                          }}
+                        >
+                          {proposal.sampleUpload.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label style={{ color: tokens.textSecondary }}>Content Type</Label>
+                          <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                            {proposal.sampleUpload.contentType || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <Label style={{ color: tokens.textSecondary }}>File Size</Label>
+                          <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                            {formatFileSize(proposal.sampleUpload.sizeBytes)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label style={{ color: tokens.textSecondary }}>Last Updated</Label>
+                        <p className="text-sm" style={{ color: tokens.textPrimary }}>
+                          {formatDate(proposal.sampleUpload.updatedAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm" style={{ color: tokens.textMuted }}>
+                    No sample file uploaded yet.
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Section: Pricing */}
           {pricingData && (
@@ -1586,11 +1702,16 @@ export function DatasetDetail({ proposal, isDark = false, onRefresh }: DatasetDe
       {/* Upload Dialog */}
       <DatasetUploadFlow
         isOpen={uploadDialogOpen}
-        onClose={() => setUploadDialogOpen(false)}
+        onClose={() => {
+          setUploadDialogOpen(false);
+          setUploadDialogKind('current');
+        }}
         datasetId={proposal.dataset.id}
         isDark={isDark}
+        uploadKind={uploadDialogKind}
         onUploadComplete={() => {
           setUploadDialogOpen(false);
+          setUploadDialogKind('current');
           onRefresh?.();
         }}
       />
