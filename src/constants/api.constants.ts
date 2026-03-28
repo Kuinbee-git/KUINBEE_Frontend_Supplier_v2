@@ -64,6 +64,8 @@ export const DATASET_PROPOSAL_API = {
   // Upload
   PRESIGN_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/current-upload/presign`,
   COMPLETE_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/current-upload/complete`,
+  PRESIGN_SAMPLE_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/sample-upload/presign`,
+  COMPLETE_SAMPLE_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/sample-upload/complete`,
 
   // Submit
   SUBMIT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/submit`,

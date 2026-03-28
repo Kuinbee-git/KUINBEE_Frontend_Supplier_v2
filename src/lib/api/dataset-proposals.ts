@@ -28,6 +28,10 @@ import type {
   PresignUploadResponse,
   CompleteUploadRequest,
   CompleteUploadResponse,
+  PresignSampleUploadRequest,
+  PresignSampleUploadResponse,
+  CompleteSampleUploadRequest,
+  CompleteSampleUploadResponse,
   SubmitProposalResponse,
   DatasetPricingVersion,
   UpsertPricingRequest,
@@ -309,6 +313,44 @@ export async function completeCurrentUpload(
 ): Promise<CompleteUploadResponse> {
   const response = await apiFetch<{ success: boolean; data: CompleteUploadResponse }>(
     DATASET_PROPOSAL_API.COMPLETE_UPLOAD(datasetId),
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+// ===== Presign Sample Upload =====
+
+/**
+ * Create or replace sample upload and return a presigned PUT URL for S3
+ */
+export async function presignSampleUpload(
+  datasetId: string,
+  data: PresignSampleUploadRequest = {}
+): Promise<PresignSampleUploadResponse> {
+  const response = await apiFetch<{ success: boolean; data: PresignSampleUploadResponse }>(
+    DATASET_PROPOSAL_API.PRESIGN_SAMPLE_UPLOAD(datasetId),
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+// ===== Complete Sample Upload =====
+
+/**
+ * Mark sample upload as completed (status: UPLOADED)
+ */
+export async function completeSampleUpload(
+  datasetId: string,
+  data: CompleteSampleUploadRequest = {}
+): Promise<CompleteSampleUploadResponse> {
+  const response = await apiFetch<{ success: boolean; data: CompleteSampleUploadResponse }>(
+    DATASET_PROPOSAL_API.COMPLETE_SAMPLE_UPLOAD(datasetId),
     {
       method: "POST",
       body: JSON.stringify(data),

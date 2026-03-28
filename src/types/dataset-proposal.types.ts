@@ -173,6 +173,14 @@ export interface ProposalDetailsResponse {
     sizeBytes: string | null;
     updatedAt: string;
   } | null;
+  sampleUpload?: {
+    id: string;
+    status: DatasetUploadStatus;
+    originalFileName: string | null;
+    contentType: string | null;
+    sizeBytes: string | null;
+    updatedAt: string;
+  } | null;
   aboutDatasetInfo?: AboutDatasetInfo;
   dataFormatInfo?: DataFormatInfo;
   features?: Feature[];
@@ -362,6 +370,36 @@ export interface CompleteUploadRequest {
 }
 
 export interface CompleteUploadResponse {
+  upload: {
+    id: string;
+    status: "UPLOADED";
+    updatedAt: string;
+  };
+}
+
+export interface PresignSampleUploadRequest {
+  originalFileName?: string | null;
+  contentType?: string | null;
+  checksumSha256?: string | null;
+}
+
+export interface PresignSampleUploadResponse {
+  upload: {
+    id: string;
+    status: "UPLOADING";
+    s3Key: string;
+    createdAt: string;
+  };
+  putUrl: string;
+  expiresAt: string;
+}
+
+export interface CompleteSampleUploadRequest {
+  sizeBytes?: string | null;
+  etag?: string | null;
+}
+
+export interface CompleteSampleUploadResponse {
   upload: {
     id: string;
     status: "UPLOADED";
