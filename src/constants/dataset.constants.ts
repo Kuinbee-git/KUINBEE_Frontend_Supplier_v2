@@ -64,12 +64,14 @@ export function getDatasetThemeTokens(isDark: boolean) {
  */
 export const FILE_UPLOAD_CONSTRAINTS = {
   MAX_SIZE: 500 * 1024 * 1024, // 500MB
-  ALLOWED_EXTENSIONS: ['.csv', '.json', '.parquet', '.xlsx'],
+  ALLOWED_EXTENSIONS: ['.csv', '.json', '.parquet', '.xlsx', '.zip'],
   ALLOWED_MIME_TYPES: [
     'text/csv',
     'application/json',
     'application/vnd.apache.parquet',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/zip',
+    'application/x-zip-compressed',
   ],
 } as const;
 

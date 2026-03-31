@@ -96,7 +96,7 @@ export function getStatusConfig(status: DatasetStatus, isDark: boolean = false) 
  */
 export function validateDatasetFile(file: File): { valid: boolean; error?: string } {
   const MAX_SIZE = 500 * 1024 * 1024; // 500MB
-  const ALLOWED_EXTENSIONS = ['.csv', '.json', '.parquet', '.xlsx'];
+  const ALLOWED_EXTENSIONS = ['.csv', '.json', '.parquet', '.xlsx', '.zip'];
 
   if (file.size > MAX_SIZE) {
     return {

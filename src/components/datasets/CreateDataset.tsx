@@ -857,7 +857,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             <p className="text-sm max-w-md mx-auto" style={{ color: tokens.textMuted }}>
                               {fileUploaded
                                 ? 'Your file has been uploaded. Click Complete below to finish creating your proposal.'
-                                : 'Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX.'}
+                                : 'Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX, ZIP.'}
                             </p>
                           </div>
 
@@ -905,7 +905,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 <ul className="space-y-1.5 list-none">
                                   <li className="flex items-start gap-2">
                                     <span className="text-blue-500">•</span>
-                                    <span>Supported formats: CSV, JSON, Parquet, XLSX</span>
+                                    <span>Supported formats: CSV, JSON, Parquet, XLSX, ZIP</span>
                                   </li>
                                   <li className="flex items-start gap-2">
                                     <span className="text-blue-500">•</span>
