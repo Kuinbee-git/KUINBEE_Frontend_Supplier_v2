@@ -9,14 +9,24 @@ import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { upsertDataFormatInfo } from '@/lib/api';
-import type { DataFormatInfo, UpsertDataFormatRequest, FileFormat, CompressionType } from '@/types/dataset-proposal.types';
+import type { DataFormatInfo, UpsertDataFormatRequest, UpsertDataFormatResponse, FileFormat, CompressionType } from '@/types/dataset-proposal.types';
+
+type DataFormatInitialData = {
+  fileFormat?: string | null;
+  rows?: number | null;
+  cols?: number | null;
+  fileSize?: string | null;
+  compressionType?: string | null;
+  encoding?: string | null;
+};
 
 interface DataFormatFormProps {
   datasetId: string;
-  initialData?: DataFormatInfo;
+  initialData?: DataFormatInitialData;
   isDark?: boolean;
   onSuccess?: (data: DataFormatInfo) => void;
   onCancel?: () => void;
+  onSubmitData?: (datasetId: string, data: UpsertDataFormatRequest) => Promise<UpsertDataFormatResponse>;
 }
 
 const FILE_FORMATS: FileFormat[] = [
@@ -33,6 +43,7 @@ export function DataFormatForm({
   isDark = false,
   onSuccess,
   onCancel,
+  onSubmitData,
 }: DataFormatFormProps) {
   const tokens = getDatasetThemeTokens(isDark);
   const [submitting, setSubmitting] = useState(false);
@@ -40,11 +51,11 @@ export function DataFormatForm({
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState<UpsertDataFormatRequest>({
-    fileFormat: initialData?.fileFormat || 'CSV',
+    fileFormat: (initialData?.fileFormat as FileFormat) || 'CSV',
     rows: initialData?.rows || 0,
     cols: initialData?.cols || 0,
     fileSize: initialData?.fileSize || '',
-    compressionType: initialData?.compressionType || 'NONE',
+    compressionType: (initialData?.compressionType as CompressionType) || 'NONE',
     encoding: initialData?.encoding || 'UTF-8',
   });
 
@@ -76,7 +87,7 @@ export function DataFormatForm({
     setSuccess(false);
 
     try {
-      const response = await upsertDataFormatInfo(datasetId, formData);
+      const response = await (onSubmitData ? onSubmitData(datasetId, formData) : upsertDataFormatInfo(datasetId, formData));
       setSuccess(true);
       
       if (onSuccess) {
@@ -99,11 +110,11 @@ export function DataFormatForm({
     } else {
       // Reset to initial data
       setFormData({
-        fileFormat: initialData?.fileFormat || 'CSV',
+        fileFormat: (initialData?.fileFormat as FileFormat) || 'CSV',
         rows: initialData?.rows || 0,
         cols: initialData?.cols || 0,
         fileSize: initialData?.fileSize || '',
-        compressionType: initialData?.compressionType || 'NONE',
+        compressionType: (initialData?.compressionType as CompressionType) || 'NONE',
         encoding: initialData?.encoding || 'UTF-8',
       });
       setError(null);
