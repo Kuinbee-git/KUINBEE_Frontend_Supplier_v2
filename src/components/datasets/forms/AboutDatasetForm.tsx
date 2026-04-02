@@ -8,14 +8,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { upsertAboutInfo } from '@/lib/api';
-import type { AboutDatasetInfo, UpsertAboutInfoRequest } from '@/types/dataset-proposal.types';
+import type { AboutDatasetInfo, UpsertAboutInfoRequest, UpsertAboutInfoResponse } from '@/types/dataset-proposal.types';
+
+type AboutInitialData = {
+  overview?: string | null;
+  description?: string | null;
+  dataQuality?: string | null;
+  useCases?: string | null;
+  limitations?: string | null;
+  methodology?: string | null;
+};
 
 interface AboutDatasetFormProps {
   datasetId: string;
-  initialData?: AboutDatasetInfo;
+  initialData?: AboutInitialData;
   isDark?: boolean;
   onSuccess?: (data: AboutDatasetInfo) => void;
   onCancel?: () => void;
+  onSubmitData?: (datasetId: string, data: UpsertAboutInfoRequest) => Promise<UpsertAboutInfoResponse>;
 }
 
 export function AboutDatasetForm({
@@ -24,6 +34,7 @@ export function AboutDatasetForm({
   isDark = false,
   onSuccess,
   onCancel,
+  onSubmitData,
 }: AboutDatasetFormProps) {
   const tokens = getDatasetThemeTokens(isDark);
   const [submitting, setSubmitting] = useState(false);
@@ -66,7 +77,7 @@ export function AboutDatasetForm({
     setSuccess(false);
 
     try {
-      const response = await upsertAboutInfo(datasetId, formData);
+      const response = await (onSubmitData ? onSubmitData(datasetId, formData) : upsertAboutInfo(datasetId, formData));
       setSuccess(true);
       
       if (onSuccess) {
