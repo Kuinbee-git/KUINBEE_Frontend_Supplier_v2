@@ -208,7 +208,6 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         getProposalDetails(draft.createdProposalId)
           .then((res) => {
             if (res.verification.status !== 'PENDING') {
-              console.log('Draft proposal is no longer in PENDING state. Clearing local draft.');
               clearDraft();
               setDraftLoaded(true);
             } else {

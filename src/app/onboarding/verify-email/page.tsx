@@ -24,7 +24,6 @@ export default function VerifyEmailPage() {
       setResendError(null);
       await sendEmailOtp({ reason: "SUPPLIER_ONBOARDING" });
       resendAttemptCountRef.current = 0;
-      console.log('[OTP] OTP sent successfully');
       // OTP sent successfully
     } catch (err: any) {
       const errorMsg = err.message || "Failed to send OTP";
@@ -52,12 +51,10 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     const sendOtpOnMount = async () => {
       if (hasAttemptedSendRef.current) {
-        console.log('[OTP] Already attempted to send OTP');
         return;
       }
       
       hasAttemptedSendRef.current = true;
-      console.log('[OTP] Sending OTP on page mount');
       
       try {
         await handleSendOtp();

@@ -37,7 +37,6 @@ export function CategoriesSelect({
       setLoading(true);
       setFetchError(null);
       const response = await listCategories({ pageSize: 100 });
-      console.log('Categories fetched:', response.items);
       setCategories(response.items || []);
     } catch (err: any) {
       console.error('Failed to fetch categories:', err);

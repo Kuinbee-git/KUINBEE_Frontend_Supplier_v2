@@ -63,7 +63,6 @@ export function ForgotPasswordFlow({
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      console.log('[FORGOT PASSWORD] Reset email request sent for:', email);
       setCurrentStep('sent');
     } catch (err) {
       setNetworkError('Something went wrong. Please try again.');
@@ -78,7 +77,6 @@ export function ForgotPasswordFlow({
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 800));
-      console.log('[FORGOT PASSWORD] Reset email resent');
     } catch (err) {
       setNetworkError('Something went wrong. Please try again.');
     } finally {
@@ -100,7 +98,6 @@ export function ForgotPasswordFlow({
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      console.log('[FORGOT PASSWORD] Password updated successfully');
       setCurrentStep('success');
       onPasswordResetComplete?.();
     } catch (err) {
@@ -117,7 +114,6 @@ export function ForgotPasswordFlow({
   };
 
   const handleBackToLoginClick = () => {
-    console.log('[FORGOT PASSWORD] Navigating back to login');
     onBackToLogin();
   };
 

@@ -32,7 +32,6 @@ export default function LoginPage() {
 
   // Handle successful authentication
   const handleSuccess = useCallback(() => {
-    console.log("[AUTH] Authentication successful, redirecting...");
     // Check onboarding status - this will be handled by dashboard layout
     // If onboarding incomplete, dashboard layout will redirect appropriately
     router.push("/dashboard");
@@ -40,14 +39,12 @@ export default function LoginPage() {
 
   // Handle forgot password
   const handleForgotPassword = useCallback(() => {
-    console.log("[AUTH] Forgot password");
     // Navigate to forgot password page
     router.push("/auth/forgot-password");
   }, [router]);
 
   // Handle create account
   const handleCreateAccount = useCallback(() => {
-    console.log("[AUTH] Navigate to registration");
     router.push("/auth/register");
   }, [router]);
 

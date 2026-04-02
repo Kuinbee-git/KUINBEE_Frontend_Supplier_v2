@@ -67,7 +67,6 @@ async function apiFetch<T>(
           
           // Redirect to login if not already there
           if (!window.location.pathname.includes('/auth/login')) {
-            console.log('[API Client] Auth failure detected, forcing logout');
             window.location.href = '/auth/login';
           }
         }

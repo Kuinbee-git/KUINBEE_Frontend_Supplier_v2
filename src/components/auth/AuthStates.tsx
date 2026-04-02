@@ -39,7 +39,6 @@ function AuthStatesComponent({
 
   // Handle login submission
   const handleLogin = useCallback(async (submittedEmail: string, password: string) => {
-    console.log("[AUTH] Login attempt:", submittedEmail);
     setLoginError("");
 
     // Show loading state
@@ -62,8 +61,6 @@ function AuthStatesComponent({
         return;
       }
 
-      console.log("[AUTH] Login successful:", response);
-
       // On success, trigger parent success handler which will:
       // 1. Navigate to dashboard
       // 2. Dashboard layout will check onboarding status
@@ -80,7 +77,6 @@ function AuthStatesComponent({
 
   // Handle create account navigation
   const handleCreateAccount = useCallback(() => {
-    console.log("[AUTH] Navigating to registration");
     if (onCreateAccount) {
       onCreateAccount();
     } else {
@@ -91,27 +87,25 @@ function AuthStatesComponent({
 
   // Handle forgot password
   const handleForgotPassword = useCallback(() => {
-    console.log("[AUTH] Forgot password clicked");
     onForgotPassword?.();
   }, [onForgotPassword]);
 
   // Handle new supplier form submission (sends OTP)
   const handleNewSupplierSubmit = useCallback((submittedEmail: string) => {
-    console.log("[AUTH] Sending OTP to:", submittedEmail);
+    void submittedEmail;
 
     // Show loading state briefly
     onStateChange("checking");
 
     // Simulate OTP send
     setTimeout(() => {
-      console.log("[AUTH] OTP sent, navigating to OTP screen");
       onStateChange("otp");
     }, 800);
   }, [onStateChange]);
 
   // Handle OTP verification
   const handleOTPVerify = useCallback((code: string) => {
-    console.log("[AUTH] OTP verified:", code);
+    void code;
     onSuccess?.();
   }, [onSuccess]);
 

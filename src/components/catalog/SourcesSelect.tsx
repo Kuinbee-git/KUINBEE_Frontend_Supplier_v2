@@ -44,7 +44,6 @@ export function SourcesSelect({
       setLoading(true);
       setFetchError(null);
       const response = await listMySources({ pageSize: 100 });
-      console.log('Sources fetched:', response.items);
       setSources(response.items || []);
     } catch (err: any) {
       console.error('Failed to fetch sources:', err);

@@ -122,13 +122,10 @@ export function OTPVerification({
     setCanResend(false);
     inputRefs.current[0]?.focus();
     
-    console.log('[OTP] Resending code to:', email);
-    
     // Call the parent's onResend handler if provided
     if (onResend) {
       try {
         await onResend();
-        console.log('[OTP] Resend successful');
       } catch (err) {
         console.error('[OTP] Resend failed:', err);
         // Reset countdown so they can try again

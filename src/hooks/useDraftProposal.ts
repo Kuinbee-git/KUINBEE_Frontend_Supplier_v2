@@ -23,7 +23,6 @@ export function useDraftProposal() {
       
       // Check TTL expiration
       if (draft._timestamp && Date.now() - draft._timestamp > DRAFT_TTL_MS) {
-        console.log('Draft proposal expired based on TTL. Clearing local draft.');
         localStorage.removeItem(DRAFT_KEY);
         return null;
       }

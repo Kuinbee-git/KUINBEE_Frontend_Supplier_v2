@@ -23,12 +23,8 @@ export default function RegisterPage() {
         return;
       }
       
-      console.log("[REGISTER] Registering supplier:", email);
-      
       // Call registration API
       await registerSupplier({ email, password });
-      
-      console.log("[REGISTER] Registration successful, redirecting to dashboard...");
       
       // Navigate to dashboard (will auto-redirect to onboarding)
       router.push("/dashboard");
