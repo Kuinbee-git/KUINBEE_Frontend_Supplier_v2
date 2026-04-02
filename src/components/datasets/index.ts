@@ -4,6 +4,7 @@ export { DatasetDetail } from './DatasetDetail';
 export { DatasetUploadFlow } from './DatasetUploadFlow';
 export { MyDatasets } from './MyDatasets';
 export { MyDatasetDetail } from './MyDatasetDetail';
+export { DelistedDatasetEdit } from './DelistedDatasetEdit';
 export { SubmittedProposals } from './SubmittedProposals';
 
 // Shared components
