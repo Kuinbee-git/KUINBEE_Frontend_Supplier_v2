@@ -27,6 +27,8 @@ interface LocationTagsEditFormProps {
   isDark?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
+  onUpsertLocation?: (datasetId: string, data: UpsertLocationInfoRequest) => Promise<any>;
+  onSetTags?: (datasetId: string, data: SetTagsRequest) => Promise<any>;
 }
 
 const DEFAULT_LOCATION_INFO: LocationFormData = {
@@ -70,6 +72,8 @@ export function LocationTagsEditForm({
   isDark = false,
   onSuccess,
   onCancel,
+  onUpsertLocation,
+  onSetTags,
 }: LocationTagsEditFormProps) {
   const tokens = getDatasetThemeTokens(isDark);
   const [submitting, setSubmitting] = useState(false);
@@ -150,12 +154,12 @@ export function LocationTagsEditForm({
           ...(normalizedLocation.coverage ? { coverage: normalizedLocation.coverage } : {}),
         };
 
-        tasks.push(upsertLocationInfo(datasetId, locationPayload));
+        tasks.push(onUpsertLocation ? onUpsertLocation(datasetId, locationPayload) : upsertLocationInfo(datasetId, locationPayload));
       }
 
       if (tagsChanged) {
         const tagsPayload: SetTagsRequest = { tags: nextTags };
-        tasks.push(setProposalTags(datasetId, tagsPayload));
+        tasks.push(onSetTags ? onSetTags(datasetId, tagsPayload) : setProposalTags(datasetId, tagsPayload));
       }
 
       await Promise.all(tasks);
