@@ -11,6 +11,7 @@ import {
   ChangeVisibilityDialog,
   PricingEditDialog,
   ArchiveConfirmDialog,
+  DelistConfirmDialog,
   DownloadButton,
 } from './actions';
 import { PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
@@ -113,6 +114,7 @@ const VERIFICATION_STATUS_CONFIG: Record<VerificationStatusType, {
 const DATASET_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
   VERIFIED: { label: 'Verified', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
   PUBLISHED: { label: 'Published', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)' },
+  DELISTED: { label: 'Delisted', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.15)' },
   ARCHIVED: { label: 'Archived', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.15)' },
   REJECTED: { label: 'Rejected', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)' },
 };
@@ -195,6 +197,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [showPricingDialog, setShowPricingDialog] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [showDelistDialog, setShowDelistDialog] = useState(false);
 
   const fetchDataset = async () => {
     try {
@@ -328,6 +331,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   // State flags
   const isVerified = dataset.status === 'VERIFIED';
   const isPublished = dataset.status === 'PUBLISHED';
+  const isDelisted = dataset.status === 'DELISTED';
   const isArchived = dataset.status === 'ARCHIVED';
 
   // Format helpers
@@ -418,7 +422,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
           </div>
 
           {/* Quick Actions Bar */}
-          {(isVerified || isPublished || isArchived) && (
+          {(isVerified || isPublished || isDelisted || isArchived) && (
             <div className="mt-6 pt-6 border-t" style={{ borderColor: tokens.borderSubtle }}>
               <p className="text-xs mb-3 font-medium uppercase tracking-wide" style={{ color: tokens.textMuted }}>Quick Actions</p>
               <div className="flex flex-wrap gap-2">
@@ -439,17 +443,33 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   </Button>
                 )}
 
+                {isDelisted && (
+                  <Button
+                    onClick={() => router.push(`/dashboard/my-datasets/${dataset.id}/edit`)}
+                    variant="outline"
+                    className="flex-1 min-w-[120px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
+                    style={{
+                      background: tokens.glassBg,
+                      border: `1px solid ${tokens.glassBorder}`,
+                      color: tokens.textPrimary,
+                    }}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Edit Dataset</span>
+                  </Button>
+                )}
+
                 {/* Visibility Button */}
                 <Button
                   onClick={() => setShowVisibilityDialog(true)}
-                  disabled={!isVerified || isArchived}
+                  disabled={!isVerified || isArchived || isDelisted}
                   variant="outline"
                   className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
                   style={{
                     background: tokens.glassBg,
                     border: `1px solid ${tokens.glassBorder}`,
                     color: tokens.textPrimary,
-                    opacity: (!isVerified || isArchived) ? 0.5 : 1,
+                    opacity: (!isVerified || isArchived || isDelisted) ? 0.5 : 1,
                   }}
                 >
                   <Eye className="w-4 h-4" />
@@ -457,21 +477,38 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 </Button>
 
                 {/* Pricing Button */}
-                <Button
-                  onClick={() => setShowPricingDialog(true)}
-                  disabled={!isVerified || isArchived}
-                  variant="outline"
-                  className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                  style={{
-                    background: tokens.glassBg,
-                    border: `1px solid ${tokens.glassBorder}`,
-                    color: tokens.textPrimary,
-                    opacity: (!isVerified || isArchived) ? 0.5 : 1,
-                  }}
-                >
-                  <DollarSign className="w-4 h-4" />
-                  <span className="hidden sm:inline">Pricing</span>
-                </Button>
+                {isVerified && !isArchived && !isDelisted && (
+                  <Button
+                    onClick={() => setShowPricingDialog(true)}
+                    variant="outline"
+                    className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
+                    style={{
+                      background: tokens.glassBg,
+                      border: `1px solid ${tokens.glassBorder}`,
+                      color: tokens.textPrimary,
+                    }}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    <span className="hidden sm:inline">Pricing</span>
+                  </Button>
+                )}
+
+                {/* Archive Button */}
+                {isPublished && (
+                  <Button
+                    onClick={() => setShowDelistDialog(true)}
+                    variant="outline"
+                    className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
+                    style={{
+                      background: tokens.glassBg,
+                      border: `1px solid ${tokens.warningBorder}`,
+                      color: tokens.warningText,
+                    }}
+                  >
+                    <Archive className="w-4 h-4" />
+                    <span className="hidden sm:inline">Delist</span>
+                  </Button>
+                )}
 
                 {/* Archive Button */}
                 <Button
@@ -546,6 +583,28 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     <p className="text-xs" style={{ color: tokens.textSecondary }}>
                       It is no longer visible on the marketplace.
                       {dataset.archivedAt && ` Archived on ${formatDate(dataset.archivedAt)}.`}
+                    </p>
+                  </div>
+                </div>
+              </GlassCard>
+            )}
+
+            {isDelisted && (
+              <GlassCard className="p-5">
+                <div
+                  className="flex items-center gap-3 p-4 rounded-xl"
+                  style={{
+                    background: tokens.warningBg,
+                    border: `1px solid ${tokens.warningBorder}`,
+                  }}
+                >
+                  <Archive className="w-5 h-5 flex-shrink-0" style={{ color: tokens.warningText }} />
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                      This dataset is delisted for updates
+                    </p>
+                    <p className="text-xs" style={{ color: tokens.textSecondary }}>
+                      Use the Edit Dataset action to update metadata and pricing, then submit for admin review.
                     </p>
                   </div>
                 </div>
@@ -930,13 +989,6 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs" style={{ color: tokens.textMuted }}>Pricing</p>
-                  <p className="text-sm font-medium mt-1" style={{ color: dataset.isPaid ? '#f59e0b' : '#22c55e' }}>
-                    {dataset.isPaid ? `${dataset.currency} ${dataset.price}` : 'Free'}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
                   <p className="text-xs" style={{ color: tokens.textMuted }}>Status</p>
                   <p className="text-sm font-medium mt-1" style={{ color: datasetStatusConfig.color }}>
                     {datasetStatusConfig.label}
@@ -946,7 +998,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             </GlassCard>
 
             {/* Pricing Card */}
-            {pricingData && (
+            {pricingData && isVerified && (
               <GlassCard className="p-4">
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-2">
@@ -1028,15 +1080,6 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       style={{ background: '#3b82f6', color: 'white' }}
                     >
                       Edit Pricing
-                    </Button>
-                  )}
-                  {(pricingData.status === 'ACTIVE' && isPublished) && (
-                    <Button
-                      onClick={() => setShowPricingDialog(true)}
-                      variant="outline"
-                      className="w-full text-sm"
-                    >
-                      Draft Price Change
                     </Button>
                   )}
                 </div>
@@ -1271,7 +1314,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               isDark={tokens.isDark}
             />
 
-            {pricingData && (
+            {pricingData && isVerified && (
               <PricingEditDialog
                 isOpen={showPricingDialog}
                 onClose={() => setShowPricingDialog(false)}
@@ -1284,6 +1327,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               />
             )}
           </>
+        )}
+
+        {(isPublished && !isArchived) && (
+          <DelistConfirmDialog
+            isOpen={showDelistDialog}
+            onClose={() => setShowDelistDialog(false)}
+            datasetId={dataset.id}
+            datasetTitle={dataset.title}
+            onSuccess={fetchDataset}
+          />
         )}
 
         {(isPublished && !isArchived) && (
