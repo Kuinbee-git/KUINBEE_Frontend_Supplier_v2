@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, Plus, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { replaceFeatures } from '@/lib/api';
-import type { Feature } from '@/types/dataset-proposal.types';
+import type { Feature, ReplaceFeaturesRequest, ReplaceFeaturesResponse } from '@/types/dataset-proposal.types';
 
 interface FeaturesFormProps {
   datasetId: string;
@@ -18,6 +18,7 @@ interface FeaturesFormProps {
   isDark?: boolean;
   onSuccess?: (count: number) => void;
   onCancel?: () => void;
+  onSubmitData?: (datasetId: string, data: ReplaceFeaturesRequest) => Promise<ReplaceFeaturesResponse>;
 }
 
 export function FeaturesForm({
@@ -26,6 +27,7 @@ export function FeaturesForm({
   isDark = false,
   onSuccess,
   onCancel,
+  onSubmitData,
 }: FeaturesFormProps) {
   const tokens = getDatasetThemeTokens(isDark);
   const [submitting, setSubmitting] = useState(false);
@@ -87,7 +89,9 @@ export function FeaturesForm({
         isNullable: feature.isNullable || false,
       }));
 
-      const response = await replaceFeatures(datasetId, { features: cleanedFeatures });
+      const response = await (onSubmitData
+        ? onSubmitData(datasetId, { features: cleanedFeatures })
+        : replaceFeatures(datasetId, { features: cleanedFeatures }));
       setSuccess(true);
       
       if (onSuccess) {
