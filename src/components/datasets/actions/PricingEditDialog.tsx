@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { DollarSign, AlertCircle, Loader2, CheckCircle, Euro, PoundSterling, IndianRupee } from 'lucide-react';
-import { upsertProposalPricing, submitProposalPricing } from '@/lib/api';
+import { submitDatasetPricing, submitProposalPricing, upsertDatasetPricing, upsertProposalPricing } from '@/lib/api';
 import { toast } from 'sonner';
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
 import type { DatasetPricingVersion, UpsertPricingRequest, DatasetPricingStatus } from '@/types/dataset-proposal.types';
@@ -21,6 +21,7 @@ interface PricingEditDialogProps {
   isDark?: boolean;
   feedbackMessage?: string;
   pricingStatus?: DatasetPricingStatus;
+  mode?: 'proposal' | 'dataset';
 }
 
 const CURRENCY_OPTIONS = [
@@ -68,6 +69,7 @@ export function PricingEditDialog({
   isDark = false,
   feedbackMessage,
   pricingStatus,
+  mode = 'proposal',
 }: PricingEditDialogProps) {
   const tokens = useSupplierTokens();
   const [isPaid, setIsPaid] = useState(currentPricing?.isPaid ?? false);
@@ -75,6 +77,22 @@ export function PricingEditDialog({
   const [currency, setCurrency] = useState<'USD' | 'INR' | 'EUR' | 'GBP'>(currentPricing?.currency ?? 'USD');
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const upsertPricing = async (payload: UpsertPricingRequest) => {
+    if (mode === 'dataset') {
+      await upsertDatasetPricing(datasetId, payload);
+      return;
+    }
+    await upsertProposalPricing(datasetId, payload);
+  };
+
+  const submitPricing = async () => {
+    if (mode === 'dataset') {
+      await submitDatasetPricing(datasetId);
+      return;
+    }
+    await submitProposalPricing(datasetId);
+  };
 
   useEffect(() => {
     if (currentPricing) {
@@ -90,10 +108,10 @@ export function PricingEditDialog({
       setSubmitting(true);
       try {
         // Save first
-        await upsertProposalPricing(datasetId, { isPaid: false, price: null, currency });
+        await upsertPricing({ isPaid: false, price: null, currency });
         
         // Then submit
-        await submitProposalPricing(datasetId);
+        await submitPricing();
         
         toast.success('Pricing submitted successfully', {
           description: 'Admin will review your pricing now.',
@@ -122,14 +140,14 @@ export function PricingEditDialog({
     setSubmitting(true);
     try {
       // Save first
-      await upsertProposalPricing(datasetId, {
+      await upsertPricing({
         isPaid,
         price: isPaid ? price : null,
         currency,
       });
 
       // Then submit
-      await submitProposalPricing(datasetId);
+      await submitPricing();
 
       toast.success('Pricing submitted successfully', {
         description: 'Admin will review your pricing now.',
@@ -157,7 +175,7 @@ export function PricingEditDialog({
 
     setSaving(true);
     try {
-      await upsertProposalPricing(datasetId, {
+      await upsertPricing({
         isPaid,
         price: isPaid ? price : null,
         currency,
