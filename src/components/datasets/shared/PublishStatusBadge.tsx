@@ -58,6 +58,13 @@ const STATUS_CONFIG: Record<DatasetStatus, {
     border: 'rgba(148, 163, 176, 0.3)',
     icon: Archive,
   },
+  DELISTED: {
+    label: 'Delisted',
+    bg: 'rgba(245, 158, 11, 0.1)',
+    text: '#f59e0b',
+    border: 'rgba(245, 158, 11, 0.3)',
+    icon: Archive,
+  },
 };
 
 export function PublishStatusBadge({ status, isDark = false, className = '' }: PublishStatusBadgeProps) {
