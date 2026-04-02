@@ -11,6 +11,7 @@ export type DatasetStatus =
   | 'UNDER_REVIEW'         // Under admin review
   | 'VERIFIED'             // Approved, ready to publish
   | 'PUBLISHED'            // Published on marketplace
+  | 'DELISTED'             // Temporarily off-market for update flow
   | 'ARCHIVED'             // Removed from marketplace
   | 'REJECTED';            // Rejected by admin
 
@@ -164,7 +165,7 @@ import type { DatasetStatus as ProposalDatasetStatus, DatasetVisibility as Propo
 
 // List My Datasets
 export interface ListDatasetsQuery {
-  status?: "VERIFIED" | "PUBLISHED" | "ARCHIVED" | "REJECTED";
+  status?: "VERIFIED" | "PUBLISHED" | "DELISTED" | "ARCHIVED" | "REJECTED";
   visibility?: "PUBLIC" | "PRIVATE" | "UNLISTED";
   page?: number;
   pageSize?: number;
@@ -337,6 +338,29 @@ export interface ArchiveDatasetResponse {
     id: string;
     status: "ARCHIVED";
     archivedAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface DelistDatasetResponse {
+  dataset: {
+    id: string;
+    status: "DELISTED";
+    updatedAt: string;
+  };
+}
+
+export interface SubmitDatasetUpdateResponse {
+  dataset: {
+    id: string;
+    status: "SUBMITTED";
+    updatedAt: string;
+  };
+  verification: {
+    id: string;
+    status: "SUBMITTED" | "RESUBMITTED";
+    currentUploadId: string | null;
+    submittedAt: string;
     updatedAt: string;
   };
 }
