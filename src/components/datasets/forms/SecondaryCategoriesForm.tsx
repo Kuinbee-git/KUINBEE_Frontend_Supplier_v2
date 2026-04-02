@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, Plus, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { setSecondaryCategories } from '@/lib/api';
-
+import { CategoriesSelect } from '@/components/catalog';
+import type { SetCategoriesRequest, SetCategoriesResponse } from '@/types/dataset-proposal.types';
 interface SecondaryCategoriesFormProps {
   datasetId: string;
   initialCategories?: string[];
   isDark?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
+  onSubmitData?: (datasetId: string, data: SetCategoriesRequest) => Promise<SetCategoriesResponse>;
 }
 
 export function SecondaryCategoriesForm({
@@ -22,6 +24,7 @@ export function SecondaryCategoriesForm({
   isDark = false,
   onSuccess,
   onCancel,
+  onSubmitData,
 }: SecondaryCategoriesFormProps) {
   const tokens = getDatasetThemeTokens(isDark);
   const [submitting, setSubmitting] = useState(false);
@@ -68,7 +71,9 @@ export function SecondaryCategoriesForm({
 
     try {
       const validCategoryIds = categoryIds.filter(id => id.trim() !== '');
-      await setSecondaryCategories(datasetId, { categoryIds: validCategoryIds });
+      await (onSubmitData
+        ? onSubmitData(datasetId, { categoryIds: validCategoryIds })
+        : setSecondaryCategories(datasetId, { categoryIds: validCategoryIds }));
       setSuccess(true);
       
       setTimeout(() => {
@@ -172,18 +177,15 @@ export function SecondaryCategoriesForm({
               >
                 {index + 1}
               </span>
-              <Input
-                value={categoryId}
-                onChange={(e) => handleCategoryChange(index, e.target.value)}
-                placeholder={`Enter category ID ${index + 1}`}
-                disabled={submitting}
-                className="h-10 transition-colors focus-visible:ring-2 font-mono text-sm"
-                style={{
-                  background: tokens.inputBg,
-                  borderColor: tokens.inputBorder,
-                  color: tokens.textPrimary,
-                }}
-              />
+              <div className="flex-1">
+                <CategoriesSelect
+                  value={categoryId}
+                  onValueChange={(value) => handleCategoryChange(index, value)}
+                  disabled={submitting}
+                  isDark={isDark}
+                  tokens={tokens}
+                />
+              </div>
               {categoryIds.length > 1 && (
                 <Button
                   type="button"
