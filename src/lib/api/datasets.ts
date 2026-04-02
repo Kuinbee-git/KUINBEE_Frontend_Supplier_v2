@@ -13,9 +13,23 @@ import type {
   ChangeVisibilityResponse,
   PricingChangeRequest,
   ArchiveDatasetResponse,
+  DelistDatasetResponse,
+  SubmitDatasetUpdateResponse,
   DownloadUrlResponse,
 } from "@/types/dataset.types";
 import type {
+  UpsertAboutInfoRequest,
+  UpsertAboutInfoResponse,
+  UpsertLocationInfoRequest,
+  UpsertLocationInfoResponse,
+  UpsertDataFormatRequest,
+  UpsertDataFormatResponse,
+  ReplaceFeaturesRequest,
+  ReplaceFeaturesResponse,
+  SetCategoriesRequest,
+  SetCategoriesResponse,
+  SetTagsRequest,
+  SetTagsResponse,
   DatasetPricingVersion,
   UpsertPricingRequest,
   GetPricingResponse,
@@ -195,6 +209,152 @@ export async function archiveDataset(
     DATASET_API.ARCHIVE(datasetId),
     {
       method: "POST",
+    }
+  );
+  return response.data;
+}
+
+// ===== Delist Dataset =====
+
+/**
+ * Delist a published dataset to start update flow
+ * POST /api/v1/supplier/datasets/:datasetId/delist
+ */
+export async function delistDataset(
+  datasetId: string
+): Promise<DelistDatasetResponse> {
+  const response = await apiFetch<{ success: boolean; data: DelistDatasetResponse }>(
+    DATASET_API.DELIST(datasetId),
+    {
+      method: "POST",
+    }
+  );
+  return response.data;
+}
+
+// ===== Submit Dataset Update =====
+
+/**
+ * Submit dataset metadata/pricing updates for admin review
+ * POST /api/v1/supplier/datasets/:datasetId/submit-update
+ */
+export async function submitDatasetUpdate(
+  datasetId: string
+): Promise<SubmitDatasetUpdateResponse> {
+  const response = await apiFetch<{ success: boolean; data: SubmitDatasetUpdateResponse }>(
+    DATASET_API.SUBMIT_UPDATE(datasetId),
+    {
+      method: "POST",
+    }
+  );
+  return response.data;
+}
+
+// ===== Metadata Update (Delisted Flow) =====
+
+/**
+ * Upsert about info for an existing published dataset in update flow
+ * PUT /api/v1/supplier/datasets/:datasetId/about
+ */
+export async function upsertDatasetAboutInfo(
+  datasetId: string,
+  data: UpsertAboutInfoRequest
+): Promise<UpsertAboutInfoResponse> {
+  const response = await apiFetch<{ success: boolean; data: UpsertAboutInfoResponse }>(
+    DATASET_API.UPSERT_ABOUT(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Upsert location info for an existing published dataset in update flow
+ * PUT /api/v1/supplier/datasets/:datasetId/location
+ */
+export async function upsertDatasetLocationInfo(
+  datasetId: string,
+  data: UpsertLocationInfoRequest
+): Promise<UpsertLocationInfoResponse> {
+  const response = await apiFetch<{ success: boolean; data: UpsertLocationInfoResponse }>(
+    DATASET_API.UPSERT_LOCATION(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Upsert data format info for an existing published dataset in update flow
+ * PUT /api/v1/supplier/datasets/:datasetId/data-format
+ */
+export async function upsertDatasetDataFormatInfo(
+  datasetId: string,
+  data: UpsertDataFormatRequest
+): Promise<UpsertDataFormatResponse> {
+  const response = await apiFetch<{ success: boolean; data: UpsertDataFormatResponse }>(
+    DATASET_API.UPSERT_DATA_FORMAT(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Replace features for an existing published dataset in update flow
+ * PUT /api/v1/supplier/datasets/:datasetId/features
+ */
+export async function replaceDatasetFeatures(
+  datasetId: string,
+  data: ReplaceFeaturesRequest
+): Promise<ReplaceFeaturesResponse> {
+  const response = await apiFetch<{ success: boolean; data: ReplaceFeaturesResponse }>(
+    DATASET_API.REPLACE_FEATURES(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Set secondary categories for an existing published dataset in update flow
+ * PUT /api/v1/supplier/datasets/:datasetId/categories
+ */
+export async function setDatasetSecondaryCategories(
+  datasetId: string,
+  data: SetCategoriesRequest
+): Promise<SetCategoriesResponse> {
+  const response = await apiFetch<{ success: boolean; data: SetCategoriesResponse }>(
+    DATASET_API.SET_CATEGORIES(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Set tags for an existing published dataset in update flow
+ * PUT /api/v1/supplier/datasets/:datasetId/tags
+ */
+export async function setDatasetTags(
+  datasetId: string,
+  data: SetTagsRequest
+): Promise<SetTagsResponse> {
+  const response = await apiFetch<{ success: boolean; data: SetTagsResponse }>(
+    DATASET_API.SET_TAGS(datasetId),
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
     }
   );
   return response.data;
