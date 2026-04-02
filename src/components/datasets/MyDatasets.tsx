@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { listMyDatasets } from '@/lib/api';
@@ -21,7 +21,7 @@ interface MyDatasetsProps {
   isDark?: boolean;
 }
 
-type FilterStatus = 'ALL' | 'VERIFIED' | 'PUBLISHED' | 'ARCHIVED';
+type FilterStatus = 'ALL' | 'VERIFIED' | 'PUBLISHED' | 'DELISTED' | 'ARCHIVED';
 type FilterVisibility = 'ALL' | 'PUBLIC' | 'PRIVATE' | 'UNLISTED';
 
 interface DatasetItem {
@@ -37,6 +37,7 @@ interface DatasetItem {
 
 export function MyDatasets({ isDark = false }: MyDatasetsProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tokens = getDatasetThemeTokens(isDark);
 
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);
@@ -45,15 +46,28 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
   const [visibilityFilter, setVisibilityFilter] = useState<FilterVisibility>('ALL');
+  const fetchRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    const statusFromQuery = searchParams.get('status');
+    if (statusFromQuery === 'VERIFIED' || statusFromQuery === 'PUBLISHED' || statusFromQuery === 'DELISTED' || statusFromQuery === 'ARCHIVED') {
+      setStatusFilter(statusFromQuery as FilterStatus);
+      return;
+    }
+
+    setStatusFilter('ALL');
+  }, [searchParams]);
 
   const fetchDatasets = async () => {
+    const requestId = ++fetchRequestIdRef.current;
+
     try {
       setLoading(true);
       setError(null);
 
-      let apiStatus: 'VERIFIED' | 'PUBLISHED' | 'ARCHIVED' | undefined = undefined;
+      let apiStatus: 'VERIFIED' | 'PUBLISHED' | 'DELISTED' | 'ARCHIVED' | undefined = undefined;
       
-      if (statusFilter === 'VERIFIED' || statusFilter === 'PUBLISHED' || statusFilter === 'ARCHIVED') {
+      if (statusFilter === 'VERIFIED' || statusFilter === 'PUBLISHED' || statusFilter === 'DELISTED' || statusFilter === 'ARCHIVED') {
         apiStatus = statusFilter;
       }
       
@@ -64,11 +78,23 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
         pageSize: 100,
       });
 
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
+
       setDatasets(response.items);
     } catch (err: any) {
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
+
       console.error('Failed to fetch datasets:', err);
       setError(err.message || 'Failed to load datasets');
     } finally {
+      if (requestId !== fetchRequestIdRef.current) {
+        return;
+      }
+
       setLoading(false);
     }
   };
@@ -87,6 +113,7 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
     { value: filteredDatasets.length, label: 'Total Datasets', color: tokens.textPrimary },
     { value: datasets.filter(d => d.status === 'VERIFIED').length, label: 'Verified', color: '#22c55e' },
     { value: datasets.filter(d => d.status === 'PUBLISHED').length, label: 'Published', color: '#10b981' },
+    { value: datasets.filter(d => d.status === 'DELISTED').length, label: 'Delisted', color: '#f59e0b' },
     { value: datasets.filter(d => d.status === 'ARCHIVED').length, label: 'Archived', color: '#94a3b0' },
     { value: datasets.filter(d => d.visibility === 'PUBLIC').length, label: 'Public', color: '#3b82f6' },
     { value: datasets.filter(d => d.visibility === 'PRIVATE').length, label: 'Private', color: '#ef4444' },
@@ -283,6 +310,7 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
               { label: 'All Statuses', value: 'ALL' },
               { label: 'Verified', value: 'VERIFIED' },
               { label: 'Published', value: 'PUBLISHED' },
+              { label: 'Delisted', value: 'DELISTED' },
               { label: 'Archived', value: 'ARCHIVED' },
             ],
             onChange: (value) => setStatusFilter(value as FilterStatus),
