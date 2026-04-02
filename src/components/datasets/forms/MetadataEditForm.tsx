@@ -48,6 +48,7 @@ interface MetadataEditFormProps {
     actualPriceCurrency?: Currency;
     isNegotiable?: boolean | null;
   };
+  mode?: 'full' | 'basicOnly' | 'sampleOnly';
   isDark?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -82,6 +83,7 @@ const NEGOTIABLE_OPTIONS = [
 export function MetadataEditForm({
   datasetId,
   initialData,
+  mode = 'full',
   isDark = false,
   onSuccess,
   onCancel,
@@ -148,12 +150,19 @@ export function MetadataEditForm({
   };
 
   const isFormValid = () => {
-    if (!formData.title?.trim() || !formData.license?.trim() || !formData.primaryCategoryId || !formData.sourceId) {
+    const shouldValidateBasic = mode !== 'sampleOnly';
+    const shouldValidateSample = mode !== 'basicOnly';
+
+    if (shouldValidateBasic && (!formData.title?.trim() || !formData.license?.trim() || !formData.primaryCategoryId || !formData.sourceId)) {
       return false;
     }
 
-    if (!formData.isSample) {
+    if (!shouldValidateSample) {
       return true;
+    }
+
+    if (!formData.isSample) {
+      return false;
     }
 
     if (!formData.sampleNotes.whySample.trim()) return false;
@@ -182,18 +191,20 @@ export function MetadataEditForm({
     try {
       // Build payload with only changed fields
       const payload: UpdateProposalRequest = {};
-      
-      if (formData.title.trim() !== initialData.title.trim()) {
-        payload.title = formData.title.trim();
-      }
-      if (formData.primaryCategoryId !== initialData.primaryCategoryId) {
-        payload.primaryCategoryId = formData.primaryCategoryId;
-      }
-      if (formData.sourceId !== initialData.sourceId) {
-        payload.sourceId = formData.sourceId;
-      }
-      if (formData.license.trim() !== initialData.license.trim()) {
-        payload.license = formData.license.trim();
+
+      if (mode !== 'sampleOnly') {
+        if (formData.title.trim() !== initialData.title.trim()) {
+          payload.title = formData.title.trim();
+        }
+        if (formData.primaryCategoryId !== initialData.primaryCategoryId) {
+          payload.primaryCategoryId = formData.primaryCategoryId;
+        }
+        if (formData.sourceId !== initialData.sourceId) {
+          payload.sourceId = formData.sourceId;
+        }
+        if (formData.license.trim() !== initialData.license.trim()) {
+          payload.license = formData.license.trim();
+        }
       }
 
       const initialNormalizedSampleNotes = {
@@ -211,7 +222,7 @@ export function MetadataEditForm({
         deliveryMechanismNotes: formData.sampleNotes.deliveryMechanismNotes.trim(),
       };
 
-      if (formData.isSample) {
+      if (mode !== 'basicOnly' && formData.isSample) {
         const sampleNotesChanged =
           normalizedSampleNotes.whySample !== initialNormalizedSampleNotes.whySample ||
           normalizedSampleNotes.actualDataSize !== initialNormalizedSampleNotes.actualDataSize ||
@@ -307,6 +318,7 @@ export function MetadataEditForm({
       )}
 
       <div className="space-y-5">
+        {mode !== 'sampleOnly' && (
         <div
           className="rounded-xl border p-5 space-y-5"
           style={{
@@ -387,7 +399,9 @@ export function MetadataEditForm({
             />
           </div>
         </div>
+        )}
 
+        {mode !== 'basicOnly' && (
         <div
           className="rounded-xl border p-5"
           style={{
@@ -570,6 +584,7 @@ export function MetadataEditForm({
             </p>
           )}
         </div>
+        )}
 
       </div>
 
