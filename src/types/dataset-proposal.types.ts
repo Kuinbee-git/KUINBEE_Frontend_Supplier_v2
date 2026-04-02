@@ -51,7 +51,7 @@ export type CompressionType = "NONE" | "ZIP" | "GZIP" | "BZIP2" | "TAR" | "RAR";
 
 export type DatasetUploadStatus = "UPLOADING" | "UPLOADED" | "FAILED" | "PROMOTED";
 
-export type DatasetStatus = "SUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
+export type DatasetStatus = "SUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "PUBLISHED" | "DELISTED" | "REJECTED" | "ARCHIVED";
 
 export type VerificationStatus =
   | "PENDING"
