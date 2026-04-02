@@ -8,3 +8,4 @@ export { StyledSelect } from './StyledSelect';
 export { StatsCards } from './StatsCards';
 export { SearchAndFilterBar } from './SearchAndFilterBar';
 export { DatasetsTable } from './DatasetsTable';
+export { ReadOnlyFieldCard } from './ReadOnlyFieldCard';

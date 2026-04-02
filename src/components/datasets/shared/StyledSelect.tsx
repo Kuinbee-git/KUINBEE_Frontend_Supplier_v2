@@ -70,7 +70,7 @@ export function StyledSelect({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent
-          className="transition-all duration-200 ease-out"
+          className="max-h-80 overflow-y-auto transition-all duration-200 ease-out"
           style={{
             background: isDark ? 'rgba(26, 34, 64, 0.95)' : finalTokens.surfaceCard,
             borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : finalTokens.borderDefault,
