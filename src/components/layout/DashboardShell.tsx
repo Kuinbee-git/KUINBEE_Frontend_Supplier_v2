@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard,
   BarChart3,
@@ -27,6 +27,7 @@ interface DashboardShellProps {
 export function DashboardShell({ children }: DashboardShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isDark, toggleTheme } = useThemeStore();
   const { user, logout } = useAuthStore();
   const { isComplete } = useOnboardingStatus();
@@ -93,6 +94,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
       label: 'My Datasets',
       icon: Database,
       path: '/dashboard/my-datasets',
+      disabled: false
+    },
+    {
+      id: 'delisted-edits',
+      label: 'Delisted Edits',
+      icon: Database,
+      path: '/dashboard/my-datasets?status=DELISTED',
       disabled: false
     },
     {
@@ -237,7 +245,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
             {navItems.map((item) => {
               const Icon = item.icon;
               // Only one item should be active at a time
-              const isActive = pathname === item.path || (item.path !== '/dashboard' && pathname?.startsWith(item.path));
+              const isDelistedEditsItem = item.id === 'delisted-edits';
+              const isMyDatasetsItem = item.id === 'my-datasets';
+              const isDelistedEditingView = pathname === '/dashboard/my-datasets' && searchParams.get('status') === 'DELISTED';
+
+              let isActive = false;
+              if (isDelistedEditsItem) {
+                isActive = isDelistedEditingView;
+              } else if (isMyDatasetsItem) {
+                isActive = pathname === '/dashboard/my-datasets' && !isDelistedEditingView;
+              } else {
+                isActive = pathname === item.path || (item.path !== '/dashboard' && pathname?.startsWith(item.path));
+              }
               const isDisabled = item.disabled;
 
               return (
