@@ -50,7 +50,6 @@ import {
   RefreshCw,
   Download,
   Loader2,
-  MessageCircle,
 } from 'lucide-react';
 import type { DatasetDetailsResponse } from '@/types/dataset.types';
 
@@ -614,7 +613,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             {/* Sample, Location & Tags */}
             {(dataset.isSample || dataset.sampleNotes || dataset.actualPrice !== undefined || dataset.isNegotiable !== undefined || locationInfo || (tags && tags.length > 0)) && (
               <GlassCard className="p-5">
-                <SectionTitle icon={MessageCircle} title="Sample, Location & Tags" tokens={tokens} />
+                <SectionTitle icon={Tag} title="Sample, Location & Tags" tokens={tokens} />
 
                 <div className="space-y-6">
                   {(dataset.isSample || dataset.sampleNotes || dataset.actualPrice !== undefined || dataset.isNegotiable !== undefined) && (
@@ -992,6 +991,20 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   <p className="text-xs" style={{ color: tokens.textMuted }}>Status</p>
                   <p className="text-sm font-medium mt-1" style={{ color: datasetStatusConfig.color }}>
                     {datasetStatusConfig.label}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>Rating</p>
+                  <p className="text-sm font-medium mt-1" style={{ color: tokens.textPrimary }}>
+                    {dataset.rating ? Number(dataset.rating).toFixed(1) : 'N/A'}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>Reviews</p>
+                  <p className="text-sm font-medium mt-1" style={{ color: tokens.textPrimary }}>
+                    {dataset.reviewCount ?? 0}
                   </p>
                 </div>
               </div>
