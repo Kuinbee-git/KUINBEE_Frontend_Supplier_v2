@@ -91,6 +91,9 @@ export const DATASET_API = {
   SET_CATEGORIES: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/categories`,
   SET_TAGS: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/tags`,
   DOWNLOAD_PUBLISHED: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/published-upload/download-url`,
+  QUESTIONS: (datasetId: string) => `${API_BASE_PATH}/marketplace/datasets/${datasetId}/questions`,
+  REVIEWS: (datasetId: string) => `${API_BASE_PATH}/marketplace/datasets/${datasetId}/reviews`,
+  ANSWER_QUESTION: (questionId: string) => `${API_BASE_PATH}/marketplace/questions/${questionId}/answers`,
   // KDTS Score (public route)
   KDTS_SCORE: (datasetId: string) => `${API_BASE_PATH}/datasets/${datasetId}/kdts`,
 } as const;
