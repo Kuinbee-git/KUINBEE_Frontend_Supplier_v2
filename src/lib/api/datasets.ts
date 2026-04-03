@@ -16,6 +16,10 @@ import type {
   DelistDatasetResponse,
   SubmitDatasetUpdateResponse,
   DownloadUrlResponse,
+  DatasetQuestionsResponse,
+  AnswerQuestionRequest,
+  AnswerQuestionResponse,
+  DatasetReviewsResponse,
 } from "@/types/dataset.types";
 import type {
   UpsertAboutInfoRequest,
@@ -371,6 +375,56 @@ export async function getPublishedFileDownloadUrl(
 ): Promise<DownloadUrlResponse> {
   const response = await apiFetch<{ success: boolean; data: DownloadUrlResponse }>(
     DATASET_API.DOWNLOAD_PUBLISHED(datasetId),
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
+}
+
+/**
+ * List marketplace questions for a dataset
+ * GET /api/v1/marketplace/datasets/:datasetId/questions
+ */
+export async function getDatasetQuestions(
+  datasetId: string,
+): Promise<DatasetQuestionsResponse> {
+  const response = await apiFetch<{ success: boolean; data: DatasetQuestionsResponse }>(
+    DATASET_API.QUESTIONS(datasetId),
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Answer a marketplace question as supplier/admin
+ * POST /api/v1/marketplace/questions/:questionId/answers
+ */
+export async function answerDatasetQuestion(
+  questionId: string,
+  data: AnswerQuestionRequest,
+): Promise<AnswerQuestionResponse> {
+  const response = await apiFetch<{ success: boolean; data: AnswerQuestionResponse }>(
+    DATASET_API.ANSWER_QUESTION(questionId),
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+/**
+ * List marketplace reviews for a dataset
+ * GET /api/v1/marketplace/datasets/:datasetId/reviews
+ */
+export async function getDatasetReviews(
+  datasetId: string,
+): Promise<DatasetReviewsResponse> {
+  const response = await apiFetch<{ success: boolean; data: DatasetReviewsResponse }>(
+    DATASET_API.REVIEWS(datasetId),
     {
       method: "GET",
     }
