@@ -14,7 +14,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Database
+  Database,
+  MessageSquare,
+  Star,
 } from 'lucide-react';
 import { useThemeStore } from '@/store';
 import { useAuthStore } from '@/store';
@@ -94,6 +96,20 @@ export function DashboardShell({ children }: DashboardShellProps) {
       label: 'My Datasets',
       icon: Database,
       path: '/dashboard/my-datasets',
+      disabled: false
+    },
+    {
+      id: 'questions',
+      label: 'Questions',
+      icon: MessageSquare,
+      path: '/dashboard/questions',
+      disabled: false
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews',
+      icon: Star,
+      path: '/dashboard/reviews',
       disabled: false
     },
     {
