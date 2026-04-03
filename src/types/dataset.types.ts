@@ -175,6 +175,8 @@ export interface PublishedDatasetListItem {
   id: string;
   datasetUniqueId: string;
   title: string;
+  rating: string | null;
+  reviewCount: number;
   status: ProposalDatasetStatus;
   visibility: ProposalDatasetVisibility;
   publishedUploadId: string | null;
@@ -195,6 +197,8 @@ export interface DatasetDetailsResponse {
     id: string;
     datasetUniqueId: string;
     title: string;
+    rating: string | null;
+    reviewCount: number;
     status: ProposalDatasetStatus;
     visibility: ProposalDatasetVisibility;
     isSample?: boolean;
@@ -291,6 +295,49 @@ export interface DatasetDetailsResponse {
     sizeBytes: string | null;
     updatedAt: string;
   } | null;
+}
+
+export interface DatasetQuestionAnswer {
+  id: string;
+  answer: string;
+  createdAt: string;
+}
+
+export interface DatasetQuestion {
+  id: string;
+  question: string;
+  createdAt: string;
+  answers: DatasetQuestionAnswer[];
+}
+
+export interface DatasetQuestionsResponse {
+  items: DatasetQuestion[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface AnswerQuestionRequest {
+  answer: string;
+}
+
+export interface AnswerQuestionResponse {
+  answer: DatasetQuestionAnswer;
+}
+
+export interface DatasetReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface DatasetReviewsResponse {
+  items: DatasetReview[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 // Publish Dataset
