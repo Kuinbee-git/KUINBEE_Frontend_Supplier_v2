@@ -95,23 +95,9 @@ export function getStatusConfig(status: DatasetStatus, isDark: boolean = false) 
  * Validate file for dataset upload
  */
 export function validateDatasetFile(file: File): { valid: boolean; error?: string } {
-  const MAX_SIZE = 500 * 1024 * 1024; // 500MB
-  const ALLOWED_EXTENSIONS = ['.csv', '.json', '.parquet', '.xlsx', '.zip'];
-
-  if (file.size > MAX_SIZE) {
-    return {
-      valid: false,
-      error: `File size exceeds 500MB limit. Your file is ${formatFileSize(file.size)}.`,
-    };
+   const ALLOWED_EXTENSIONS = ['.csv', '.json', '.parquet', '.xlsx', '.zip'];
+  if (!ALLOWED_EXTENSIONS.some(ext => file.name.endsWith(ext))) {
+    return { valid: false, error: 'Invalid file type. Please upload a CSV, JSON, Parquet, XLSX, or ZIP file.' };
   }
-
-  const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-  if (!ALLOWED_EXTENSIONS.includes(extension)) {
-    return {
-      valid: false,
-      error: `Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`,
-    };
-  }
-
   return { valid: true };
 }

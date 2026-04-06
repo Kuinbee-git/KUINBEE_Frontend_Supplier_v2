@@ -4,8 +4,8 @@ import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { getDatasetThemeTokens, FILE_UPLOAD_CONSTRAINTS } from '@/constants/dataset.constants';
-import { formatFileSize, validateDatasetFile } from '@/utils/dataset.utils';
+import { getDatasetThemeTokens } from '@/constants/dataset.constants';
+import { formatFileSize } from '@/utils/dataset.utils';
 import { presignCurrentUpload, uploadFileToS3, completeCurrentUpload, presignSampleUpload, completeSampleUpload } from '@/lib/api';
 import { 
   Upload, 
@@ -44,13 +44,6 @@ export function DatasetUploadFlow({
   const isSampleUpload = uploadKind === 'sample';
 
   const handleFileSelect = (file: File) => {
-    const validation = validateDatasetFile(file);
-    if (!validation.valid) {
-      setErrorMessage(validation.error || 'Invalid file');
-      setStep('error');
-      return;
-    }
-
     setSelectedFile(file);
   };
 
@@ -188,13 +181,12 @@ export function DatasetUploadFlow({
                     Drop your file here or click to browse
                   </p>
                   <p className="text-xs mb-4" style={{ color: tokens.textMuted }}>
-                    Supported formats: CSV, JSON, Parquet, XLSX, ZIP
+                    Select any file to upload
                   </p>
                   <input
                     id="file-upload"
                     type="file"
                     className="hidden"
-                    accept={FILE_UPLOAD_CONSTRAINTS.ALLOWED_EXTENSIONS.join(',')}
                     onChange={handleFileInputChange}
                   />
                 </div>
@@ -242,8 +234,8 @@ export function DatasetUploadFlow({
                 <div className="text-xs leading-relaxed" style={{ color: tokens.textSecondary }}>
                   <p className="font-medium mb-1">File requirements:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li>Accepted formats: CSV, JSON, Parquet, XLSX, ZIP</li>
-                    <li>Files will be validated after upload</li>
+                    <li>No file size or type limits are enforced in the panel</li>
+                    <li>Files are uploaded as-is</li>
                   </ul>
                 </div>
               </div>
