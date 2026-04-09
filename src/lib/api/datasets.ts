@@ -60,6 +60,7 @@ async function apiFetch<T>(
     if (!response.ok) {
       // Try to parse error from response
       const errorData = await response.json().catch(() => null);
+      const apiError = errorData?.error ?? errorData;
       
       // Global auth failure handler - ONLY redirect for 401
       // 403 is NOT an auth error - it's a permission/business logic error
@@ -74,10 +75,10 @@ async function apiFetch<T>(
       }
       
       const error: any = new Error(
-        errorData?.message || `HTTP ${response.status}: ${response.statusText}`
+        apiError?.message || `HTTP ${response.status}: ${response.statusText}`
       );
       error.status = response.status;
-      error.code = errorData?.code || `HTTP_${response.status}`;
+      error.code = apiError?.code || `HTTP_${response.status}`;
       error.data = errorData;
       
       throw error;
