@@ -49,6 +49,31 @@ export type FileFormat =
 
 export type CompressionType = "NONE" | "ZIP" | "GZIP" | "BZIP2" | "TAR" | "RAR";
 
+export type EncodingType =
+  | "UTF-8"
+  | "UTF-16"
+  | "UTF-16LE"
+  | "UTF-16BE"
+  | "UTF-32"
+  | "ASCII"
+  | "ISO-8859-1"
+  | "WINDOWS-1252"
+  | "SHIFT_JIS"
+  | "GB18030";
+
+export const ENCODING_TYPES: readonly EncodingType[] = [
+  "UTF-8",
+  "UTF-16",
+  "UTF-16LE",
+  "UTF-16BE",
+  "UTF-32",
+  "ASCII",
+  "ISO-8859-1",
+  "WINDOWS-1252",
+  "SHIFT_JIS",
+  "GB18030",
+];
+
 export type DatasetUploadStatus = "UPLOADING" | "UPLOADED" | "FAILED" | "PROMOTED";
 
 export type DatasetStatus = "SUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "PUBLISHED" | "DELISTED" | "REJECTED" | "ARCHIVED";
@@ -303,7 +328,7 @@ export interface DataFormatInfo {
   cols: number;
   fileSize: string;
   compressionType?: CompressionType;
-  encoding?: string;
+  encoding?: EncodingType;
   updatedAt?: string;
 }
 
@@ -313,7 +338,7 @@ export interface UpsertDataFormatRequest {
   cols: number;
   fileSize: string;
   compressionType?: CompressionType;
-  encoding?: string;
+  encoding?: EncodingType;
 }
 
 export interface UpsertDataFormatResponse {

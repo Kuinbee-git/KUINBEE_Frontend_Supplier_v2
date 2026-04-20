@@ -3,7 +3,8 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
-import type { FileFormat, CompressionType } from '@/types/dataset-proposal.types';
+import { ENCODING_TYPES } from '@/types/dataset-proposal.types';
+import type { FileFormat, CompressionType, EncodingType } from '@/types/dataset-proposal.types';
 
 const FILE_FORMATS: FileFormat[] = ["CSV", "JSON", "EXCEL", "PARQUET", "SQL", "XML", "TSV", "AVRO", "HDF5", "PICKLE", "FEATHER", "OTHER"];
 const COMPRESSION_TYPES: CompressionType[] = ["NONE", "ZIP", "GZIP", "BZIP2", "TAR", "RAR"];
@@ -15,7 +16,7 @@ interface DataFormatStepProps {
     rows: number;
     cols: number;
     compressionType?: CompressionType;
-    encoding?: string;
+    encoding?: EncodingType;
   };
   onChange: (field: string, value: any) => void;
   disabled?: boolean;
@@ -116,17 +117,14 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
         <Label htmlFor="encoding" style={{ color: tokens.textPrimary }}>
           Encoding
         </Label>
-        <Input
-          id="encoding"
+        <StyledSelect
+          options={ENCODING_TYPES.map((encoding) => ({ label: encoding, value: encoding }))}
           value={data.encoding || 'UTF-8'}
-          onChange={(e) => onChange('encoding', e.target.value)}
-          placeholder="e.g., UTF-8"
+          onValueChange={(value) => onChange('encoding', value as EncodingType)}
+          placeholder="Select encoding"
           disabled={disabled}
-          style={{
-            background: tokens.inputBg,
-            borderColor: tokens.inputBorder,
-            color: tokens.textPrimary,
-          }}
+          tokens={tokens}
+          isDark={isDark}
         />
       </div>
     </div>

@@ -9,7 +9,8 @@ import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
 import { getDatasetThemeTokens } from '@/constants/dataset.constants';
 import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
 import { upsertDataFormatInfo } from '@/lib/api';
-import type { DataFormatInfo, UpsertDataFormatRequest, UpsertDataFormatResponse, FileFormat, CompressionType } from '@/types/dataset-proposal.types';
+import { ENCODING_TYPES } from '@/types/dataset-proposal.types';
+import type { DataFormatInfo, UpsertDataFormatRequest, UpsertDataFormatResponse, FileFormat, CompressionType, EncodingType } from '@/types/dataset-proposal.types';
 
 type DataFormatInitialData = {
   fileFormat?: string | null;
@@ -45,6 +46,13 @@ export function DataFormatForm({
   onCancel,
   onSubmitData,
 }: DataFormatFormProps) {
+  const normalizeEncoding = (value?: string | null): EncodingType => {
+    if (value && ENCODING_TYPES.includes(value as EncodingType)) {
+      return value as EncodingType;
+    }
+    return 'UTF-8';
+  };
+
   const tokens = getDatasetThemeTokens(isDark);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +64,7 @@ export function DataFormatForm({
     cols: initialData?.cols || 0,
     fileSize: initialData?.fileSize || '',
     compressionType: (initialData?.compressionType as CompressionType) || 'NONE',
-    encoding: initialData?.encoding || 'UTF-8',
+    encoding: normalizeEncoding(initialData?.encoding),
   });
 
   const handleFieldChange = (field: keyof UpsertDataFormatRequest, value: any) => {
@@ -115,7 +123,7 @@ export function DataFormatForm({
         cols: initialData?.cols || 0,
         fileSize: initialData?.fileSize || '',
         compressionType: (initialData?.compressionType as CompressionType) || 'NONE',
-        encoding: initialData?.encoding || 'UTF-8',
+        encoding: normalizeEncoding(initialData?.encoding),
       });
       setError(null);
       setSuccess(false);
@@ -330,18 +338,13 @@ export function DataFormatForm({
                 <Label htmlFor="encoding" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
                   Encoding
                 </Label>
-                <Input
-                  id="encoding"
-                  value={formData.encoding || ''}
-                  onChange={(e) => handleFieldChange('encoding', e.target.value)}
-                  placeholder="e.g., UTF-8, ASCII"
+                <StyledSelect
+                  options={ENCODING_TYPES.map((encoding) => ({ label: encoding, value: encoding }))}
+                  value={formData.encoding || 'UTF-8'}
+                  onValueChange={(value) => handleFieldChange('encoding', value as EncodingType)}
                   disabled={submitting}
-                  className="h-11 transition-colors focus-visible:ring-2"
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
+                  tokens={tokens}
+                  isDark={isDark}
                 />
               </div>
             </div>
