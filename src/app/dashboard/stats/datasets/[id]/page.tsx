@@ -1,262 +1,239 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import { getMockDatasetDetail } from "@/lib/api/stats";
-import { GlassCard } from "@/components/shared";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, BarChart3, RefreshCw, TrendingUp, Users } from "lucide-react";
+
+import { DatasetSection, DatasetWorkspace } from "@/components/datasets/workspace";
+import { DatasetConversionFunnel } from "@/components/dashboard/stats/DatasetConversionFunnel";
 import { DatasetDetailHeader } from "@/components/dashboard/stats/DatasetDetailHeader";
 import { DatasetViewsSalesChart } from "@/components/dashboard/stats/DatasetViewsSalesChart";
-import { DatasetConversionFunnel } from "@/components/dashboard/stats/DatasetConversionFunnel";
 import { RevenueTrendChart } from "@/components/dashboard/stats/RevenueTrendChart";
 import { TimeRangeSelector } from "@/components/dashboard/stats/TimeRangeSelector";
-import type { StatsTimeRange, DatasetDetailStats } from "@/types/supplier-stats.types";
-import { TrendingUp, BarChart3, Users, ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { PageBackground } from "@/components/shared";
+import { Button } from "@/components/ui/button";
+import { getSupplierDatasetStats } from "@/lib/api/stats";
+import { formatCurrencyValue } from "@/lib/utils/currency.utils";
+import type {
+  DatasetDetailStats,
+  StatsTimeRange,
+} from "@/types/supplier-stats.types";
+
+const VALID_RANGES: StatsTimeRange[] = ["7d", "30d", "90d", "1y", "lifetime"];
+
+function getTimeRange(value: string | null): StatsTimeRange {
+  return VALID_RANGES.includes(value as StatsTimeRange)
+    ? (value as StatsTimeRange)
+    : "30d";
+}
+
+function AnalyticsSkeleton() {
+  return (
+    <PageBackground withGrid>
+      <DatasetWorkspace className="max-w-[1380px]">
+        <div className="space-y-4" aria-label="Loading dataset analytics" aria-busy="true">
+          <div className="h-10 w-40 animate-pulse rounded-lg bg-foreground/[0.06]" />
+          <div className="supplier-glass-card h-52 animate-pulse rounded-2xl border" />
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="supplier-glass-card h-80 animate-pulse rounded-xl border" />
+            <div className="supplier-glass-card h-80 animate-pulse rounded-xl border" />
+          </div>
+        </div>
+      </DatasetWorkspace>
+    </PageBackground>
+  );
+}
 
 function DatasetDetailContent() {
-    const tokens = useSupplierTokens();
-    const params = useParams();
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const datasetId = params.id as string;
-    const range = (searchParams.get("range") as StatsTimeRange) || "30d";
-    const [detail, setDetail] = useState<DatasetDetailStats | null>(null);
-    const [loading, setLoading] = useState(true);
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const datasetId = params.id as string;
+  const range = getTimeRange(searchParams.get("range"));
+  const [detail, setDetail] = useState<DatasetDetailStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const handleRangeChange = (newRange: StatsTimeRange) => {
-        const p = new URLSearchParams(searchParams.toString());
-        p.set("range", newRange);
-        router.push(`/dashboard/stats/datasets/${datasetId}?${p.toString()}`);
-    };
+  const handleRangeChange = (newRange: StatsTimeRange) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("range", newRange);
+    router.push(`/dashboard/stats/datasets/${datasetId}?${nextParams.toString()}`);
+  };
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = getMockDatasetDetail(datasetId, range);
-            await new Promise((resolve) => setTimeout(resolve, 400));
-            setDetail(data);
-        } catch (error) {
-            console.error("Failed to fetch dataset detail:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [datasetId, range]);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    if (!loading && !detail) {
-        return (
-            <div className="max-w-[1400px] mx-auto px-8 py-7">
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center gap-2 mb-5 text-sm font-medium transition-all duration-200 hover:gap-3"
-                    style={{ color: tokens.textSecondary }}
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Datasets
-                </button>
-                <GlassCard>
-                    <div className="p-10 text-center">
-                        <p className="text-lg font-medium" style={{ color: tokens.textPrimary }}>
-                            Dataset not found
-                        </p>
-                        <p className="text-sm mt-2" style={{ color: tokens.textSecondary }}>
-                            The dataset you're looking for doesn't exist or has been removed.
-                        </p>
-                    </div>
-                </GlassCard>
-            </div>
-        );
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getSupplierDatasetStats(datasetId, range);
+      setDetail(data);
+    } catch (requestError: unknown) {
+      setDetail(null);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "The analytics request could not be completed."
+      );
+    } finally {
+      setLoading(false);
     }
+  }, [datasetId, range]);
 
-    // Build revenue trend from time series data
-    const revenueTrend = detail?.timeSeries.map((t) => ({
-        date: t.date,
-        revenue: t.revenue,
-    })) || [];
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
+  if (loading) {
+    return <AnalyticsSkeleton />;
+  }
+
+  if (error || !detail) {
     return (
-        <div>
-            {/* Header + Range Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
-                <div className="flex-1">
-                    {detail && (
-                        <div style={{ animation: "fadeIn 0.4s ease-out" }}>
-                            <DatasetDetailHeader dataset={detail.dataset} />
-                        </div>
-                    )}
-                    {loading && (
-                        <div className="space-y-3">
-                            <div className="h-6 w-48 rounded-lg animate-pulse" style={{ background: "var(--muted)" }} />
-                            <div className="h-10 w-96 rounded-lg animate-pulse" style={{ background: "var(--muted)" }} />
-                            <div className="grid grid-cols-4 gap-3">
-                                {[0, 1, 2, 3].map((i) => (
-                                    <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: "var(--muted)" }} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <div className="flex-shrink-0">
-                    <TimeRangeSelector value={range} onChange={handleRangeChange} />
-                </div>
-            </div>
-
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* Revenue Trend */}
-                <div style={{ animation: "fadeIn 0.5s ease-out 0.1s backwards" }}>
-                    <GlassCard>
-                        <div className="p-5">
-                            <div className="flex items-center gap-3 mb-4">
-                                <TrendingUp className="w-5 h-5" style={{ color: tokens.textPrimary }} />
-                                <h2 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
-                                    Revenue Over Time
-                                </h2>
-                            </div>
-                            <RevenueTrendChart data={revenueTrend} loading={loading} />
-                        </div>
-                    </GlassCard>
-                </div>
-
-                {/* Views vs Sales */}
-                <div style={{ animation: "fadeIn 0.5s ease-out 0.2s backwards" }}>
-                    <GlassCard>
-                        <div className="p-5">
-                            <div className="flex items-center gap-3 mb-4">
-                                <BarChart3 className="w-5 h-5" style={{ color: tokens.textPrimary }} />
-                                <h2 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
-                                    Views vs Sales
-                                </h2>
-                            </div>
-                            <DatasetViewsSalesChart data={detail?.timeSeries || []} loading={loading} />
-                        </div>
-                    </GlassCard>
-                </div>
-
-                {/* Conversion Funnel */}
-                <div style={{ animation: "fadeIn 0.5s ease-out 0.3s backwards" }}>
-                    <GlassCard>
-                        <div className="p-5">
-                            <div className="flex items-center gap-3 mb-4">
-                                <TrendingUp className="w-5 h-5" style={{ color: tokens.textPrimary }} />
-                                <h2 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
-                                    Conversion Funnel
-                                </h2>
-                            </div>
-                            {detail && <DatasetConversionFunnel dataset={detail.dataset} loading={loading} />}
-                            {loading && (
-                                <div className="rounded-xl animate-pulse" style={{ background: "var(--muted)", height: "180px" }} />
-                            )}
-                        </div>
-                    </GlassCard>
-                </div>
-
-                {/* Recent Buyers */}
-                <div style={{ animation: "fadeIn 0.5s ease-out 0.4s backwards" }}>
-                    <GlassCard>
-                        <div className="p-5">
-                            <div className="flex items-center gap-3 mb-4">
-                                <Users className="w-5 h-5" style={{ color: tokens.textPrimary }} />
-                                <h2 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
-                                    Recent Buyers
-                                </h2>
-                            </div>
-                            {loading ? (
-                                <div className="rounded-xl animate-pulse" style={{ background: "var(--muted)", height: "200px" }} />
-                            ) : detail && detail.recentBuyers.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr style={{ borderBottom: `1px solid ${tokens.borderDefault}` }}>
-                                                {["Buyer", "Company", "Date", "Amount"].map((h) => (
-                                                    <th
-                                                        key={h}
-                                                        className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-wider ${h === "Amount" ? "text-right" : "text-left"}`}
-                                                        style={{ color: tokens.textMuted }}
-                                                    >
-                                                        {h}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {detail.recentBuyers.map((buyer, idx) => (
-                                                <tr
-                                                    key={buyer.userId}
-                                                    className="transition-colors duration-200"
-                                                    style={{
-                                                        borderBottom:
-                                                            idx < detail.recentBuyers.length - 1
-                                                                ? `1px solid ${tokens.borderSubtle}`
-                                                                : undefined,
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background = tokens.isDark
-                                                            ? "rgba(255,255,255,0.03)"
-                                                            : "rgba(26,34,64,0.02)";
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background = "transparent";
-                                                    }}
-                                                >
-                                                    <td className="px-3 py-3">
-                                                        <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                                                            {buyer.name}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-3 py-3">
-                                                        <p className="text-sm" style={{ color: tokens.textSecondary }}>
-                                                            {buyer.companyName}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-3 py-3">
-                                                        <p className="text-sm" style={{ color: tokens.textSecondary }}>
-                                                            {new Date(buyer.purchaseDate).toLocaleDateString("en-IN", {
-                                                                day: "numeric",
-                                                                month: "short",
-                                                                year: "numeric",
-                                                            })}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-3 py-3 text-right">
-                                                        <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                                                            ₹{buyer.amount.toLocaleString("en-IN")}
-                                                        </p>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8">
-                                    <p className="text-sm" style={{ color: tokens.textMuted }}>No buyers yet</p>
-                                </div>
-                            )}
-                        </div>
-                    </GlassCard>
-                </div>
-            </div>
-        </div>
+      <PageBackground withGrid>
+        <DatasetWorkspace className="max-w-[1380px]">
+          <Button variant="outline" className="mb-5 gap-2" onClick={() => router.back()}>
+            <ArrowLeft className="size-4" /> Back to analytics
+          </Button>
+          <section className="supplier-glass-card rounded-2xl border p-6 sm:p-8">
+            <h1 className="text-xl font-semibold text-foreground">Dataset analytics could not be loaded</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+              {error ?? "This dataset is unavailable or has been removed."}
+            </p>
+            <Button className="mt-5 gap-2" onClick={() => void fetchData()}>
+              <RefreshCw className="size-4" /> Try again
+            </Button>
+          </section>
+        </DatasetWorkspace>
+      </PageBackground>
     );
+  }
+
+  return (
+    <PageBackground withGrid>
+      <DatasetWorkspace className="max-w-[1380px]">
+        <Button variant="ghost" className="-ml-3 gap-2" onClick={() => router.back()}>
+          <ArrowLeft className="size-4" /> Back to analytics
+        </Button>
+
+        <div className="mt-5">
+          <DatasetDetailHeader
+            dataset={detail.dataset}
+            action={
+              <div className="max-w-full overflow-x-auto pb-1">
+                <TimeRangeSelector value={range} onChange={handleRangeChange} />
+              </div>
+            }
+          />
+        </div>
+
+        <div className="mt-6 grid items-start gap-5 lg:grid-cols-2">
+          <DatasetSection
+            title="Revenue over time"
+            description="Recognized dataset revenue within the selected period."
+            icon={TrendingUp}
+          >
+            <RevenueTrendChart data={detail.revenueTrend} loading={false} />
+          </DatasetSection>
+
+          <DatasetSection
+            title="Views and sales"
+            description="Compare marketplace attention with completed purchases."
+            icon={BarChart3}
+          >
+            <DatasetViewsSalesChart data={detail.timeSeries} loading={false} />
+          </DatasetSection>
+
+          <DatasetSection
+            title="Conversion funnel"
+            description="See how views progress into paid orders."
+            icon={TrendingUp}
+          >
+            <DatasetConversionFunnel dataset={detail.dataset} loading={false} />
+          </DatasetSection>
+
+          <DatasetSection
+            title="Recent buyers"
+            description="Latest purchases attributed to this dataset."
+            icon={Users}
+          >
+            {detail.recentBuyers.length > 0 ? (
+              <>
+                <div className="space-y-3 sm:hidden">
+                  {detail.recentBuyers.map((buyer) => (
+                    <article key={buyer.purchaseId} className="rounded-xl border border-border/70 bg-background/35 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{buyer.name || "Buyer"}</p>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">{buyer.companyName || "No company provided"}</p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                          {formatCurrencyValue(buyer.amount, buyer.currency)}
+                        </p>
+                      </div>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        {new Date(buyer.purchaseDate).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto sm:block">
+                  <table className="w-full min-w-[560px] text-left">
+                    <thead>
+                      <tr className="border-b border-border/70">
+                        {[
+                          ["Buyer", "text-left"],
+                          ["Company", "text-left"],
+                          ["Date", "text-left"],
+                          ["Amount", "text-right"],
+                        ].map(([label, alignment]) => (
+                          <th key={label} className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground ${alignment}`}>
+                            {label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.recentBuyers.map((buyer) => (
+                        <tr key={buyer.purchaseId} className="border-b border-border/60 last:border-0 hover:bg-foreground/[0.025]">
+                          <td className="px-3 py-3 text-sm font-medium text-foreground">{buyer.name || "Buyer"}</td>
+                          <td className="px-3 py-3 text-sm text-muted-foreground">{buyer.companyName || "—"}</td>
+                          <td className="px-3 py-3 text-sm text-muted-foreground">
+                            {new Date(buyer.purchaseDate).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </td>
+                          <td className="px-3 py-3 text-right text-sm font-medium tabular-nums text-foreground">
+                            {formatCurrencyValue(buyer.amount, buyer.currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border py-10 text-center">
+                <p className="text-sm font-medium text-foreground">No buyers in this period</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try a longer time range to view earlier purchases.</p>
+              </div>
+            )}
+          </DatasetSection>
+        </div>
+      </DatasetWorkspace>
+    </PageBackground>
+  );
 }
 
 export default function DatasetDetailPage() {
-    return (
-        <Suspense
-            fallback={
-                <div className="max-w-[1400px] mx-auto px-8 py-7 space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="rounded-xl animate-pulse h-40" style={{ background: "var(--muted)" }} />
-                    ))}
-                </div>
-            }
-        >
-            <DatasetDetailContent />
-        </Suspense>
-    );
+  return (
+    <Suspense fallback={<AnalyticsSkeleton />}>
+      <DatasetDetailContent />
+    </Suspense>
+  );
 }
