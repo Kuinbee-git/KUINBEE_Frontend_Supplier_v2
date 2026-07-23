@@ -2,21 +2,57 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Building2, User, Briefcase, Mail, Globe } from 'lucide-react';
+import { Building2, User, Briefcase, Mail, Globe, ImageIcon, Upload } from 'lucide-react';
 import { useSupplierTokens } from '@/hooks/useSupplierTokens';
 import { SectionHeader, StatusMessage } from '@/components/shared';
 import { ProfileSection, FormField } from './shared';
-import { getSupplierProfile, updateSupplierProfile, getOnboardingStatus } from '@/lib/api';
+import { completeSupplierLogoUpload, getSupplierProfile, presignSupplierLogoUpload, updateSupplierProfile, getOnboardingStatus, uploadFileToS3 } from '@/lib/api';
 import {
   SupplierType,
   UpdateProfileRequest,
-  BUSINESS_DOMAINS,
+  SupplierLogoContentType,
 } from '@/types/onboarding.types';
 import type { SupplierProfile as SupplierProfileType } from '@/types/onboarding.types';
 
 interface SupplierProfileProps {
   onSave?: (profile: SupplierProfileType) => void;
 }
+
+const LOGO_ALLOWED_TYPES: SupplierLogoContentType[] = ['image/png', 'image/jpeg', 'image/webp'];
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+const LOGO_MIN_DIMENSION = 256;
+const LOGO_MAX_DIMENSION = 2048;
+
+const getSupplierInitials = (name: string) => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
+};
+
+const readImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read image dimensions'));
+    };
+    image.src = url;
+  });
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const getErrorCode = (error: unknown) =>
+  typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code)
+    : null;
 
 /**
  * Supplier Profile Component
@@ -29,11 +65,14 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
   // Loading & Error States
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Profile Data
   const [profile, setProfile] = useState<SupplierProfileType | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   
   // Form State
@@ -62,7 +101,7 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
       try {
         const statusResponse = await getOnboardingStatus();
         setIsOnboardingComplete(statusResponse.onboarding.nextStep === 'DONE');
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to check onboarding status:', err);
       }
 
@@ -80,16 +119,17 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
         setBusinessDomains(p.businessDomains);
         setPrimaryDomain(p.primaryDomain || '');
         setNaturesOfDataProvided(p.naturesOfDataProvided || '');
+        setLogoPreviewUrl(p.logoUrl || null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load profile:', err);
-      setError(err.message || 'Failed to load profile');
+      setError(getErrorMessage(err, 'Failed to load profile'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleFieldChange = (setter: (v: any) => void) => (value: any) => {
+  const handleFieldChange = <T,>(setter: (value: T) => void) => (value: T) => {
     setter(value);
     setHasChanges(true);
     setSaveSuccess(false);
@@ -121,6 +161,85 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
     }
 
     return null;
+  };
+
+  const getSupplierDisplayName = () => {
+    if (supplierType === 'COMPANY') return companyName.trim() || profile?.companyName || 'Supplier';
+    return individualName.trim() || profile?.individualName || profile?.contactPersonName || 'Supplier';
+  };
+
+  const validateLogoFile = async (file: File): Promise<string | null> => {
+    if (!LOGO_ALLOWED_TYPES.includes(file.type as SupplierLogoContentType)) {
+      return 'Logo must be a PNG, JPEG, or WebP image.';
+    }
+
+    if (file.size > LOGO_MAX_BYTES) {
+      return 'Logo must be 2 MB or smaller.';
+    }
+
+    const dimensions = await readImageDimensions(file);
+    if (dimensions.width !== dimensions.height) {
+      return 'Logo must be square. Use a padded square canvas for wide logos.';
+    }
+
+    if (
+      dimensions.width < LOGO_MIN_DIMENSION ||
+      dimensions.height < LOGO_MIN_DIMENSION ||
+      dimensions.width > LOGO_MAX_DIMENSION ||
+      dimensions.height > LOGO_MAX_DIMENSION
+    ) {
+      return 'Logo dimensions must be between 256x256 and 2048x2048 pixels.';
+    }
+
+    return null;
+  };
+
+  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setLogoError(null);
+
+    if (!profile) {
+      setLogoError('Save your supplier profile before uploading a logo.');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const localPreview = URL.createObjectURL(file);
+
+    try {
+      const validationError = await validateLogoFile(file);
+      if (validationError) {
+        URL.revokeObjectURL(localPreview);
+        setLogoError(validationError);
+        return;
+      }
+
+      const presign = await presignSupplierLogoUpload({
+        originalFileName: file.name,
+        contentType: file.type as SupplierLogoContentType,
+      });
+
+      await uploadFileToS3(presign.putUrl, file);
+      const complete = await completeSupplierLogoUpload({
+        s3Key: presign.s3Key,
+        sizeBytes: file.size.toString(),
+      });
+
+      setProfile(complete.profile);
+      setLogoPreviewUrl(complete.profile.logoUrl || localPreview);
+      if (complete.profile.logoUrl) URL.revokeObjectURL(localPreview);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: unknown) {
+      URL.revokeObjectURL(localPreview);
+      console.error('Failed to upload supplier logo:', err);
+      setLogoError(getErrorMessage(err, 'Failed to upload logo'));
+    } finally {
+      setIsUploadingLogo(false);
+    }
   };
 
   const handleSave = async () => {
@@ -170,14 +289,14 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
       }
 
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save profile:', err);
       
-      if (err.code === 'ONBOARDING_ALREADY_COMPLETED') {
+      if (getErrorCode(err) === 'ONBOARDING_ALREADY_COMPLETED') {
         setError('Your onboarding has been completed and finalized. Profile cannot be modified.');
         setIsOnboardingComplete(true);
       } else {
-        setError(err.message || 'Failed to save profile');
+        setError(getErrorMessage(err, 'Failed to save profile'));
       }
     } finally {
       setIsSaving(false);
@@ -312,6 +431,78 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* LEFT COLUMN */}
           <div className="space-y-6">
+            <ProfileSection
+              icon={ImageIcon}
+              title="Marketplace Logo"
+              subtitle="This logo appears on dataset discovery cards."
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                <div
+                  className="w-24 h-24 rounded-xl border flex items-center justify-center overflow-hidden flex-shrink-0"
+                  style={{
+                    background: tokens.inputBg,
+                    borderColor: tokens.inputBorder,
+                    color: tokens.textPrimary,
+                  }}
+                >
+                  {logoPreviewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoPreviewUrl}
+                      alt={`${getSupplierDisplayName()} logo`}
+                      className="h-full w-full object-contain p-3"
+                    />
+                  ) : (
+                    <span className="text-2xl font-semibold">
+                      {getSupplierInitials(getSupplierDisplayName())}
+                    </span>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium mb-1" style={{ color: tokens.textPrimary }}>
+                    Supplier logo
+                  </p>
+                  <p className="text-xs leading-relaxed mb-4" style={{ color: tokens.textMuted }}>
+                    Upload a square PNG, JPEG, or WebP logo. Recommended 512x512 px, accepted 256x256 to 2048x2048 px, max 2 MB.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      id="supplier-logo-upload"
+                      type="file"
+                      accept={LOGO_ALLOWED_TYPES.join(',')}
+                      className="hidden"
+                      onChange={handleLogoFileChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!profile || isUploadingLogo}
+                      onClick={() => document.getElementById('supplier-logo-upload')?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploadingLogo ? 'Uploading...' : logoPreviewUrl ? 'Replace Logo' : 'Upload Logo'}
+                    </Button>
+                    {!profile && (
+                      <span className="text-xs" style={{ color: tokens.textMuted }}>
+                        Save profile first
+                      </span>
+                    )}
+                  </div>
+                  {profile?.logoUpdatedAt && (
+                    <p className="text-xs mt-3" style={{ color: tokens.textMuted }}>
+                      Updated: {new Date(profile.logoUpdatedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                  {logoError && (
+                    <p className="text-xs mt-3" style={{ color: '#ef4444' }}>
+                      {logoError}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </ProfileSection>
+
             {/* Supplier Type & Identity */}
             <ProfileSection
               icon={supplierType === 'COMPANY' ? Building2 : User}

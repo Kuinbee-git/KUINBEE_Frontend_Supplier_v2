@@ -4,46 +4,107 @@ import { useEffect, useMemo, useState } from "react";
 import { GlassCard } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import { answerDatasetQuestion, getDatasetQuestions, listMyDatasets } from "@/lib/api/datasets";
-import type { DatasetQuestion, PublishedDatasetListItem } from "@/types/dataset.types";
-import { MessageSquare, Send, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import {
+  answerDatasetQuestion,
+  getDatasetQuestions,
+  listMyDatasets,
+} from "@/lib/api/datasets";
+import type {
+  DatasetQuestion,
+  PublishedDatasetListItem,
+} from "@/types/dataset.types";
+import {
+  MessageSquare,
+  Send,
+  CheckCircle2,
+  Clock,
+  Loader2,
+} from "lucide-react";
 
 type DatasetQuestionBucket = {
   dataset: PublishedDatasetListItem;
   questions: DatasetQuestion[];
 };
 
+const FETCH_PAGE_SIZE = 100;
+
+async function fetchAllSupplierDatasets() {
+  const datasets: PublishedDatasetListItem[] = [];
+  let page = 1;
+  let fetched = 0;
+  let total = 0;
+
+  do {
+    const response = await listMyDatasets({ page, pageSize: FETCH_PAGE_SIZE });
+    const items = response.items || [];
+    datasets.push(...items);
+    fetched += items.length;
+    total = response.total || 0;
+    if (items.length === 0) break;
+    page += 1;
+  } while (fetched < total);
+
+  return datasets;
+}
+
+async function fetchAllDatasetQuestions(datasetId: string) {
+  const questions: DatasetQuestion[] = [];
+  let page = 1;
+  let fetched = 0;
+  let total = 0;
+
+  do {
+    const response = await getDatasetQuestions(datasetId, {
+      page,
+      pageSize: FETCH_PAGE_SIZE,
+    });
+    const items = response.items || [];
+    questions.push(...items);
+    fetched += items.length;
+    total = response.total || 0;
+    if (items.length === 0) break;
+    page += 1;
+  } while (fetched < total);
+
+  return questions;
+}
+
 export default function SupplierQuestionsPage() {
   const tokens = useSupplierTokens();
   const [loading, setLoading] = useState(true);
   const [buckets, setBuckets] = useState<DatasetQuestionBucket[]>([]);
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(
+    null
+  );
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
-  const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(null);
+  const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(
+    null
+  );
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      const datasetsResponse = await listMyDatasets();
-      const datasets = datasetsResponse.items;
+
+      const datasets = await fetchAllSupplierDatasets();
 
       const bucketsPromises = datasets.map(async (dataset) => {
         try {
-          const questionsResponse = await getDatasetQuestions(dataset.id);
           return {
             dataset,
-            questions: questionsResponse.items || []
+            questions: await fetchAllDatasetQuestions(dataset.id),
           };
         } catch (error) {
-          console.error(`Failed to fetch questions for dataset ${dataset.id}:`, error);
+          console.error(
+            `Failed to fetch questions for dataset ${dataset.id}:`,
+            error
+          );
           return { dataset, questions: [] };
         }
       });
 
       const allBuckets = await Promise.all(bucketsPromises);
       const filtered = allBuckets.filter((item) => item.questions.length > 0);
-      
+
       setBuckets(filtered);
       if (!selectedDatasetId && filtered.length > 0) {
         setSelectedDatasetId(filtered[0].dataset.id);
@@ -65,7 +126,10 @@ export default function SupplierQuestionsPage() {
   );
 
   // Stats
-  const totalQuestions = buckets.reduce((sum, b) => sum + b.questions.length, 0);
+  const totalQuestions = buckets.reduce(
+    (sum, b) => sum + b.questions.length,
+    0
+  );
   const unansweredCount = buckets.reduce(
     (sum, b) => sum + b.questions.filter((q) => q.answers.length === 0).length,
     0
@@ -90,7 +154,10 @@ export default function SupplierQuestionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-semibold mb-1" style={{ color: tokens.textPrimary }}>
+          <h1
+            className="text-3xl font-semibold mb-1"
+            style={{ color: tokens.textPrimary }}
+          >
             Questions
           </h1>
           <p className="text-sm" style={{ color: tokens.textSecondary }}>
@@ -101,20 +168,32 @@ export default function SupplierQuestionsPage() {
           <div className="flex items-center gap-3">
             <div
               className="flex items-center gap-2 rounded-lg px-3 py-2"
-              style={{ background: tokens.infoBg, border: `1px solid ${tokens.infoBorder}` }}
+              style={{
+                background: tokens.infoBg,
+                border: `1px solid ${tokens.infoBorder}`,
+              }}
             >
               <MessageSquare size={14} style={{ color: tokens.textMuted }} />
-              <span className="text-xs font-medium" style={{ color: tokens.textSecondary }}>
+              <span
+                className="text-xs font-medium"
+                style={{ color: tokens.textSecondary }}
+              >
                 {totalQuestions} total
               </span>
             </div>
             {unansweredCount > 0 && (
               <div
                 className="flex items-center gap-2 rounded-lg px-3 py-2"
-                style={{ background: tokens.warningBg, border: `1px solid ${tokens.warningBorder}` }}
+                style={{
+                  background: tokens.warningBg,
+                  border: `1px solid ${tokens.warningBorder}`,
+                }}
               >
                 <Clock size={14} style={{ color: tokens.warningText }} />
-                <span className="text-xs font-medium" style={{ color: tokens.warningText }}>
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: tokens.warningText }}
+                >
                   {unansweredCount} awaiting reply
                 </span>
               </div>
@@ -125,17 +204,29 @@ export default function SupplierQuestionsPage() {
 
       {loading ? (
         <GlassCard className="p-12 flex items-center justify-center">
-          <Loader2 className="animate-spin mr-3" size={20} style={{ color: tokens.textMuted }} />
+          <Loader2
+            className="animate-spin mr-3"
+            size={20}
+            style={{ color: tokens.textMuted }}
+          />
           <span style={{ color: tokens.textMuted }}>Loading questions…</span>
         </GlassCard>
       ) : buckets.length === 0 ? (
         <GlassCard className="p-12 text-center">
-          <MessageSquare size={40} className="mx-auto mb-4" style={{ color: tokens.textMuted, opacity: 0.4 }} />
-          <p className="text-base font-medium mb-1" style={{ color: tokens.textPrimary }}>
+          <MessageSquare
+            size={40}
+            className="mx-auto mb-4"
+            style={{ color: tokens.textMuted, opacity: 0.4 }}
+          />
+          <p
+            className="text-base font-medium mb-1"
+            style={{ color: tokens.textPrimary }}
+          >
             No questions yet
           </p>
           <p className="text-sm" style={{ color: tokens.textMuted }}>
-            Questions from buyers will appear here once your datasets are published
+            Questions from buyers will appear here once your datasets are
+            published
           </p>
         </GlassCard>
       ) : (
@@ -143,14 +234,19 @@ export default function SupplierQuestionsPage() {
           {/* Dataset Sidebar */}
           <GlassCard className="p-3 overflow-auto">
             <div className="px-1 py-2 mb-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: tokens.textMuted }}>
+              <h2
+                className="text-xs font-semibold uppercase tracking-wider"
+                style={{ color: tokens.textMuted }}
+              >
                 Datasets ({buckets.length})
               </h2>
             </div>
             <div className="space-y-1.5">
               {buckets.map((bucket) => {
                 const isActive = bucket.dataset.id === selectedDatasetId;
-                const unanswered = bucket.questions.filter((q) => q.answers.length === 0).length;
+                const unanswered = bucket.questions.filter(
+                  (q) => q.answers.length === 0
+                ).length;
 
                 return (
                   <button
@@ -158,7 +254,9 @@ export default function SupplierQuestionsPage() {
                     onClick={() => setSelectedDatasetId(bucket.dataset.id)}
                     className="w-full text-left rounded-lg p-3 transition-all duration-200"
                     style={{
-                      background: isActive ? tokens.navItemActive : "transparent",
+                      background: isActive
+                        ? tokens.navItemActive
+                        : "transparent",
                       border: `1px solid ${isActive ? tokens.borderDefault : "transparent"}`,
                     }}
                   >
@@ -169,13 +267,20 @@ export default function SupplierQuestionsPage() {
                       {bucket.dataset.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-xs" style={{ color: tokens.textMuted }}>
-                        {bucket.questions.length} question{bucket.questions.length === 1 ? "" : "s"}
+                      <span
+                        className="text-xs"
+                        style={{ color: tokens.textMuted }}
+                      >
+                        {bucket.questions.length} question
+                        {bucket.questions.length === 1 ? "" : "s"}
                       </span>
                       {unanswered > 0 && (
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                          style={{ background: tokens.warningBg, color: tokens.warningText }}
+                          style={{
+                            background: tokens.warningBg,
+                            color: tokens.warningText,
+                          }}
                         >
                           {unanswered} pending
                         </span>
@@ -197,20 +302,33 @@ export default function SupplierQuestionsPage() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: `1px solid ${tokens.borderSubtle}` }}>
+                <div
+                  className="flex items-center justify-between mb-5 pb-4"
+                  style={{ borderBottom: `1px solid ${tokens.borderSubtle}` }}
+                >
                   <div>
-                    <h2 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>
+                    <h2
+                      className="text-base font-semibold"
+                      style={{ color: tokens.textPrimary }}
+                    >
                       {selected.dataset.title}
                     </h2>
-                    <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: tokens.textMuted }}
+                    >
                       {selected.dataset.datasetUniqueId}
                     </p>
                   </div>
                   <span
                     className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{ background: tokens.infoBg, color: tokens.textSecondary }}
+                    style={{
+                      background: tokens.infoBg,
+                      color: tokens.textSecondary,
+                    }}
                   >
-                    {selected.questions.length} question{selected.questions.length === 1 ? "" : "s"}
+                    {selected.questions.length} question
+                    {selected.questions.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
@@ -231,28 +349,47 @@ export default function SupplierQuestionsPage() {
                         <div className="flex items-start gap-3">
                           <div
                             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5"
-                            style={{ background: tokens.glassBg, border: `1px solid ${tokens.borderSubtle}` }}
+                            style={{
+                              background: tokens.glassBg,
+                              border: `1px solid ${tokens.borderSubtle}`,
+                            }}
                           >
-                            <MessageSquare size={14} style={{ color: tokens.textSecondary }} />
+                            <MessageSquare
+                              size={14}
+                              style={{ color: tokens.textSecondary }}
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium leading-relaxed" style={{ color: tokens.textPrimary }}>
+                            <p
+                              className="text-sm font-medium leading-relaxed"
+                              style={{ color: tokens.textPrimary }}
+                            >
                               {question.question}
                             </p>
-                            <p className="text-[11px] mt-1" style={{ color: tokens.textMuted }}>
-                              Asked {new Date(question.createdAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                            <p
+                              className="text-[11px] mt-1"
+                              style={{ color: tokens.textMuted }}
+                            >
+                              Asked{" "}
+                              {new Date(question.createdAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </p>
                           </div>
                           {isUnanswered && (
                             <span
                               className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full shrink-0"
-                              style={{ background: tokens.warningBg, color: tokens.warningText }}
+                              style={{
+                                background: tokens.warningBg,
+                                color: tokens.warningText,
+                              }}
                             >
                               Pending
                             </span>
@@ -272,18 +409,33 @@ export default function SupplierQuestionsPage() {
                                 }}
                               >
                                 <div className="flex items-center gap-2 mb-1.5">
-                                  <CheckCircle2 size={13} style={{ color: tokens.successText }} />
-                                  <span className="text-[11px] font-semibold" style={{ color: tokens.successText }}>
+                                  <CheckCircle2
+                                    size={13}
+                                    style={{ color: tokens.successText }}
+                                  />
+                                  <span
+                                    className="text-[11px] font-semibold"
+                                    style={{ color: tokens.successText }}
+                                  >
                                     Your Response
                                   </span>
-                                  <span className="text-[11px]" style={{ color: tokens.textMuted }}>
-                                    · {new Date(answer.createdAt).toLocaleDateString("en-US", {
+                                  <span
+                                    className="text-[11px]"
+                                    style={{ color: tokens.textMuted }}
+                                  >
+                                    ·{" "}
+                                    {new Date(
+                                      answer.createdAt
+                                    ).toLocaleDateString("en-US", {
                                       month: "short",
                                       day: "numeric",
                                     })}
                                   </span>
                                 </div>
-                                <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                                <p
+                                  className="text-sm leading-relaxed"
+                                  style={{ color: tokens.textPrimary }}
+                                >
                                   {answer.answer}
                                 </p>
                               </div>
@@ -301,10 +453,17 @@ export default function SupplierQuestionsPage() {
                                 border: `1px solid ${tokens.inputBorder}`,
                                 color: tokens.textPrimary,
                               }}
-                              placeholder={question.answers.length > 0 ? "Add another response…" : "Write your answer…"}
+                              placeholder={
+                                question.answers.length > 0
+                                  ? "Add another response…"
+                                  : "Write your answer…"
+                              }
                               value={answerDrafts[question.id] || ""}
                               onChange={(e) =>
-                                setAnswerDrafts((prev) => ({ ...prev, [question.id]: e.target.value }))
+                                setAnswerDrafts((prev) => ({
+                                  ...prev,
+                                  [question.id]: e.target.value,
+                                }))
                               }
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
@@ -316,7 +475,10 @@ export default function SupplierQuestionsPage() {
                             <Button
                               size="sm"
                               onClick={() => handleAnswer(question.id)}
-                              disabled={answeringQuestionId === question.id || !(answerDrafts[question.id] || "").trim()}
+                              disabled={
+                                answeringQuestionId === question.id ||
+                                !(answerDrafts[question.id] || "").trim()
+                              }
                               className="h-10 px-4"
                             >
                               {answeringQuestionId === question.id ? (
