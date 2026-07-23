@@ -10,25 +10,37 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
-  
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    credentials: "include", // Include cookies for session
-  });
+  const url = endpoint.startsWith("http")
+    ? endpoint
+    : `${API_BASE_URL}${endpoint}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      credentials: "include", // Include cookies for session
+    });
+  } catch (err) {
+    console.error(`[AUTH API] Network error for ${endpoint}:`, err);
+    const error = new Error(
+      "Unable to reach the authentication server. Please refresh and try again."
+    );
+    (error as any).code = "NETWORK_ERROR";
+    throw error;
+  }
 
   if (!response.ok) {
     let errorMessage = response.statusText;
     let errorCode = `HTTP_${response.status}`;
-    
+
     try {
       const errorData = await response.json();
       // Handle nested error structure: { error: { code, message } }
-      if (errorData.error && typeof errorData.error === 'object') {
+      if (errorData.error && typeof errorData.error === "object") {
         errorMessage = errorData.error.message || errorMessage;
         errorCode = errorData.error.code || errorCode;
       } else {
@@ -39,26 +51,26 @@ async function apiFetch<T>(
     } catch {
       // If response is not JSON, use status text
     }
-    
+
     // CRITICAL: Global 401/403 handler - Force logout and redirect
     if (response.status === 401 || response.status === 403) {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         // Clear auth state immediately
         try {
-          localStorage.removeItem('auth-storage');
-          localStorage.removeItem('kuinbee-supplier-storage');
-          localStorage.removeItem('onboarding-storage');
+          localStorage.removeItem("auth-storage");
+          localStorage.removeItem("kuinbee-supplier-storage");
+          localStorage.removeItem("onboarding-storage");
         } catch {
           // Ignore localStorage errors
         }
-        
+
         // Redirect to login if not already there
-        if (!window.location.pathname.includes('/auth/login')) {
-          window.location.href = '/auth/login';
+        if (!window.location.pathname.includes("/auth/login")) {
+          window.location.href = "/auth/login";
         }
       }
     }
-    
+
     // Create a proper error with message property
     const error = new Error(errorMessage);
     (error as any).status = response.status;
