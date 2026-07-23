@@ -15,3 +15,4 @@ export { getSupplierProfile, updateSupplierProfile } from "./supplier";
 
 // Stats
 export * from "./stats";
+export * from "./custom-collection";
