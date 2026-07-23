@@ -1,69 +1,16 @@
-import type { VerificationStatus } from '@/types/dataset-proposal.types';
+import {
+  BadgeCheck,
+  CircleHelp,
+  CircleX,
+  Clock3,
+  Eye,
+  MessageSquareWarning,
+  RefreshCw,
+  Send,
+  type LucideIcon,
+} from "lucide-react";
 
-interface StatusConfig {
-  label: string;
-  bg: string;
-  border: string;
-  text: string;
-}
-
-function getVerificationStatusConfig(status: VerificationStatus | null, isDark: boolean): StatusConfig {
-  if (!status) {
-    return {
-      label: 'Unknown',
-      bg: isDark ? 'rgba(128, 128, 128, 0.1)' : 'rgba(128, 128, 128, 0.05)',
-      border: isDark ? 'rgba(128, 128, 128, 0.2)' : 'rgba(128, 128, 128, 0.15)',
-      text: isDark ? '#9CA3AF' : '#6B7280',
-    };
-  }
-
-  const configs: Record<VerificationStatus, StatusConfig> = {
-    PENDING: {
-      label: 'Pending',
-      bg: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.05)',
-      border: isDark ? 'rgba(234, 179, 8, 0.2)' : 'rgba(234, 179, 8, 0.15)',
-      text: isDark ? '#FDE047' : '#CA8A04',
-    },
-    SUBMITTED: {
-      label: 'Submitted',
-      bg: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
-      border: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)',
-      text: isDark ? '#93C5FD' : '#2563EB',
-    },
-    CHANGES_REQUESTED: {
-      label: 'Changes Requested',
-      bg: isDark ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.05)',
-      border: isDark ? 'rgba(249, 115, 22, 0.2)' : 'rgba(249, 115, 22, 0.15)',
-      text: isDark ? '#FED7AA' : '#EA580C',
-    },
-    RESUBMITTED: {
-      label: 'Resubmitted',
-      bg: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
-      border: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
-      text: isDark ? '#C4B5FD' : '#7C3AED',
-    },
-    UNDER_REVIEW: {
-      label: 'Under Review',
-      bg: isDark ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
-      border: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.15)',
-      text: isDark ? '#D8B4FE' : '#9333EA',
-    },
-    VERIFIED: {
-      label: 'Verified',
-      bg: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-      border: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)',
-      text: isDark ? '#86EFAC' : '#16A34A',
-    },
-    REJECTED: {
-      label: 'Rejected',
-      bg: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-      border: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.15)',
-      text: isDark ? '#FCA5A5' : '#DC2626',
-    },
-  };
-
-  return configs[status];
-}
+import type { VerificationStatus } from "@/types/dataset-proposal.types";
 
 interface DatasetStatusBadgeProps {
   status: VerificationStatus | null;
@@ -71,18 +18,66 @@ interface DatasetStatusBadgeProps {
   className?: string;
 }
 
-export function DatasetStatusBadge({ status, isDark = false, className = '' }: DatasetStatusBadgeProps) {
-  const config = getVerificationStatusConfig(status, isDark);
+const STATUS_CONFIG: Record<
+  VerificationStatus,
+  { label: string; icon: LucideIcon; className: string }
+> = {
+  PENDING: {
+    label: "Draft",
+    icon: Clock3,
+    className: "border-slate-500/25 bg-slate-500/10 text-slate-500 dark:text-slate-300",
+  },
+  SUBMITTED: {
+    label: "Submitted",
+    icon: Send,
+    className: "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  CHANGES_REQUESTED: {
+    label: "Changes requested",
+    icon: MessageSquareWarning,
+    className: "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  RESUBMITTED: {
+    label: "Resubmitted",
+    icon: RefreshCw,
+    className: "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  UNDER_REVIEW: {
+    label: "Under review",
+    icon: Eye,
+    className: "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  VERIFIED: {
+    label: "Verified",
+    icon: BadgeCheck,
+    className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  REJECTED: {
+    label: "Rejected",
+    icon: CircleX,
+    className: "border-red-500/25 bg-red-500/10 text-red-600 dark:text-red-400",
+  },
+};
+
+export function DatasetStatusBadge({
+  status,
+  className = "",
+}: DatasetStatusBadgeProps) {
+  const config = status
+    ? STATUS_CONFIG[status]
+    : {
+        label: "Unknown",
+        icon: CircleHelp,
+        className:
+          "border-slate-500/25 bg-slate-500/10 text-slate-500 dark:text-slate-300",
+      };
+  const Icon = config.icon;
 
   return (
     <span
-      className={`px-3 py-1 text-xs font-medium rounded-full border inline-flex items-center ${className}`}
-      style={{
-        background: config.bg,
-        borderColor: config.border,
-        color: config.text,
-      }}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium ${config.className} ${className}`}
     >
+      <Icon className="size-3" aria-hidden="true" />
       {config.label}
     </span>
   );
