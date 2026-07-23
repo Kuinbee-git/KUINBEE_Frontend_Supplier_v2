@@ -1,72 +1,101 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { DatasetDetail } from '@/components/datasets';
-import { useThemeStore } from '@/store';
-import { getProposalDetails } from '@/lib/api';
-import type { ProposalDetailsResponse } from '@/types/dataset-proposal.types';
-import { AlertCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { DatasetDetail } from "@/components/datasets";
+import { useThemeStore } from "@/store";
+import { getProposalDetails } from "@/lib/api";
+import type { ProposalDetailsResponse } from "@/types/dataset-proposal.types";
+import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PageBackground } from "@/components/shared";
+import { DatasetWorkspace } from "@/components/datasets/workspace";
 
 export default function DatasetDetailPage() {
   const { theme } = useThemeStore();
   const params = useParams();
   const router = useRouter();
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
   const datasetId = params.id as string;
 
-  const [proposal, setProposal] = useState<ProposalDetailsResponse | null>(null);
+  const [proposal, setProposal] = useState<ProposalDetailsResponse | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProposal = async () => {
+  const fetchProposal = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getProposalDetails(datasetId);
       setProposal(data);
-    } catch (err: any) {
-      console.error('Failed to fetch proposal:', err);
-      setError(err.message || 'Failed to load proposal');
+    } catch (err: unknown) {
+      console.error("Failed to fetch proposal:", err);
+      setError(err instanceof Error ? err.message : "Failed to load proposal");
     } finally {
       setLoading(false);
     }
-  };
+  }, [datasetId]);
 
   useEffect(() => {
-    fetchProposal();
-  }, [datasetId]);
+    void fetchProposal();
+  }, [fetchProposal]);
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center" style={{ background: isDark ? '#0f172a' : '#f8fafc' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: isDark ? '#fff' : '#1a2240' }}></div>
-      </div>
+      <PageBackground withGrid>
+        <DatasetWorkspace className="max-w-[1380px]">
+          <div
+            className="supplier-glass-panel min-h-72 animate-pulse rounded-2xl border p-6"
+            aria-label="Loading proposal"
+          >
+            <div className="h-4 w-28 rounded bg-foreground/[0.07]" />
+            <div className="mt-5 h-8 w-2/3 rounded bg-foreground/[0.08]" />
+            <div className="mt-4 h-5 w-48 rounded bg-foreground/[0.06]" />
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-24 rounded-xl bg-foreground/[0.05]"
+                />
+              ))}
+            </div>
+          </div>
+        </DatasetWorkspace>
+      </PageBackground>
     );
   }
 
   if (error || !proposal) {
     return (
-      <div className="h-screen flex items-center justify-center" style={{ background: isDark ? '#0f172a' : '#f8fafc' }}>
-        <div className="text-center space-y-4 max-w-md">
-          <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
-          <h2 className="text-xl font-semibold" style={{ color: isDark ? '#fff' : '#1a2240' }}>
-            Failed to load proposal
-          </h2>
-          <p className="text-sm" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-            {error || 'Proposal not found'}
-          </p>
-          <button
-            onClick={() => router.push('/dashboard/datasets')}
-            className="px-4 py-2 rounded-lg text-white"
-            style={{ background: '#1a2240' }}
-          >
-            Back to proposals
-          </button>
-        </div>
-      </div>
+      <PageBackground withGrid>
+        <DatasetWorkspace className="max-w-3xl">
+          <div className="supplier-glass-panel rounded-2xl border px-6 py-12 text-center">
+            <AlertCircle className="mx-auto size-11 text-destructive" />
+            <h2 className="mt-4 text-xl font-semibold text-foreground">
+              Failed to load proposal
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {error || "Proposal not found"}
+            </p>
+            <Button
+              onClick={() => router.push("/dashboard/datasets")}
+              className="mt-5"
+            >
+              Back to proposals
+            </Button>
+          </div>
+        </DatasetWorkspace>
+      </PageBackground>
     );
   }
 
-  return <DatasetDetail proposal={proposal} isDark={isDark} onRefresh={fetchProposal} />;
+  return (
+    <DatasetDetail
+      proposal={proposal}
+      isDark={isDark}
+      onRefresh={fetchProposal}
+    />
+  );
 }

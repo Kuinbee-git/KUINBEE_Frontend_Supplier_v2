@@ -1,28 +1,84 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { listMyDatasets } from '@/lib/api';
-import { StatsCards } from './shared/StatsCards';
-import { SearchAndFilterBar } from './shared/SearchAndFilterBar';
-import { DatasetsTable, TableColumn } from './shared/DatasetsTable';
-import { PublishStatusBadge } from './shared';
-import { 
-  Database, 
-  AlertCircle,
-  Eye,
-  ChevronRight
-} from 'lucide-react';
-import type { DatasetStatus, DatasetVisibility } from '@/types/dataset.types';
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import {
+  Archive,
+  ArrowRight,
+  BadgeCheck,
+  CircleOff,
+  Database,
+  Globe2,
+  Plus,
+} from "lucide-react";
+
+import { PaginationControls } from "@/components/shared";
+import { Button } from "@/components/ui/button";
+import { listMyDatasets } from "@/lib/api";
+import type {
+  DatasetStatus,
+  DatasetVisibility,
+  ListDatasetsResponse,
+} from "@/types/dataset.types";
+import { PublishStatusBadge } from "./shared";
+import {
+  DatasetEmptyState,
+  DatasetErrorBanner,
+  DatasetFilterToolbar,
+  DatasetInventoryHeader,
+  DatasetListSkeleton,
+  DatasetMetricStrip,
+  DatasetMobileRecordCard,
+  DatasetPageHeader,
+  DatasetRecordIdentity,
+  DatasetRecordList,
+  DatasetVisibilityBadge,
+  DatasetWorkspace,
+  formatDatasetDate,
+  getDatasetActionLabel,
+  type DatasetMetric,
+  type DatasetRecordColumn,
+} from "./workspace";
 
 interface MyDatasetsProps {
   isDark?: boolean;
 }
 
-type FilterStatus = 'ALL' | 'VERIFIED' | 'PUBLISHED' | 'DELISTED' | 'ARCHIVED';
-type FilterVisibility = 'ALL' | 'PUBLIC' | 'PRIVATE' | 'UNLISTED';
+type FilterStatus = "ALL" | "VERIFIED" | "PUBLISHED" | "DELISTED" | "ARCHIVED";
+type FilterVisibility = "ALL" | "PUBLIC" | "PRIVATE" | "UNLISTED";
+
+const PAGE_SIZE = 10;
+const STATUS_OPTIONS = [
+  { label: "All statuses", value: "ALL" },
+  { label: "Verified", value: "VERIFIED" },
+  { label: "Published", value: "PUBLISHED" },
+  { label: "Delisted", value: "DELISTED" },
+  { label: "Archived", value: "ARCHIVED" },
+];
+const VISIBILITY_OPTIONS = [
+  { label: "All visibility", value: "ALL" },
+  { label: "Public", value: "PUBLIC" },
+  { label: "Private", value: "PRIVATE" },
+  { label: "Unlisted", value: "UNLISTED" },
+];
+
+const EMPTY_DATASET_SUMMARY: ListDatasetsResponse["summary"] = {
+  total: 0,
+  byStatus: {
+    SUBMITTED: 0,
+    UNDER_REVIEW: 0,
+    VERIFIED: 0,
+    PUBLISHED: 0,
+    DELISTED: 0,
+    ARCHIVED: 0,
+  },
+  byVisibility: {
+    PUBLIC: 0,
+    PRIVATE: 0,
+    UNLISTED: 0,
+  },
+};
 
 interface DatasetItem {
   id: string;
@@ -32,324 +88,308 @@ interface DatasetItem {
   visibility: DatasetVisibility;
   publishedAt: string | null;
   updatedAt: string;
-  _index?: number;
 }
 
 export function MyDatasets({ isDark = false }: MyDatasetsProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const tokens = getDatasetThemeTokens(isDark);
-
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);
+  const [totalDatasets, setTotalDatasets] = useState(0);
+  const [summary, setSummary] = useState<ListDatasetsResponse["summary"]>(
+    EMPTY_DATASET_SUMMARY
+  );
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
-  const [visibilityFilter, setVisibilityFilter] = useState<FilterVisibility>('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
+  const [visibilityFilter, setVisibilityFilter] =
+    useState<FilterVisibility>("ALL");
   const fetchRequestIdRef = useRef(0);
 
   useEffect(() => {
-    const statusFromQuery = searchParams.get('status');
-    if (statusFromQuery === 'VERIFIED' || statusFromQuery === 'PUBLISHED' || statusFromQuery === 'DELISTED' || statusFromQuery === 'ARCHIVED') {
-      setStatusFilter(statusFromQuery as FilterStatus);
+    const statusFromQuery = searchParams.get("status");
+    if (
+      statusFromQuery === "VERIFIED" ||
+      statusFromQuery === "PUBLISHED" ||
+      statusFromQuery === "DELISTED" ||
+      statusFromQuery === "ARCHIVED"
+    ) {
+      setStatusFilter(statusFromQuery);
       return;
     }
-
-    setStatusFilter('ALL');
+    setStatusFilter("ALL");
   }, [searchParams]);
 
-  const fetchDatasets = async () => {
-    const requestId = ++fetchRequestIdRef.current;
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
 
+  const fetchDatasets = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     try {
       setLoading(true);
       setError(null);
-
-      let apiStatus: 'VERIFIED' | 'PUBLISHED' | 'DELISTED' | 'ARCHIVED' | undefined = undefined;
-      
-      if (statusFilter === 'VERIFIED' || statusFilter === 'PUBLISHED' || statusFilter === 'DELISTED' || statusFilter === 'ARCHIVED') {
-        apiStatus = statusFilter;
-      }
-      
       const response = await listMyDatasets({
-        status: apiStatus,
-        visibility: visibilityFilter !== 'ALL' ? visibilityFilter : undefined,
-        page: 1,
-        pageSize: 100,
+        q: debouncedSearchQuery || undefined,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        visibility: visibilityFilter === "ALL" ? undefined : visibilityFilter,
+        page,
+        pageSize: PAGE_SIZE,
       });
 
-      if (requestId !== fetchRequestIdRef.current) {
-        return;
-      }
-
+      if (requestId !== fetchRequestIdRef.current) return;
       setDatasets(response.items);
-    } catch (err: any) {
-      if (requestId !== fetchRequestIdRef.current) {
-        return;
-      }
-
-      console.error('Failed to fetch datasets:', err);
-      setError(err.message || 'Failed to load datasets');
+      setTotalDatasets(response.total || 0);
+      setSummary(
+        response.summary ?? {
+          ...EMPTY_DATASET_SUMMARY,
+          total: response.total || 0,
+        }
+      );
+    } catch (loadError: unknown) {
+      if (requestId !== fetchRequestIdRef.current) return;
+      console.error("Failed to fetch datasets:", loadError);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Your datasets could not be loaded."
+      );
     } finally {
-      if (requestId !== fetchRequestIdRef.current) {
-        return;
-      }
-
-      setLoading(false);
+      if (requestId === fetchRequestIdRef.current) setLoading(false);
     }
-  };
+  }, [debouncedSearchQuery, page, statusFilter, visibilityFilter]);
 
   useEffect(() => {
-    fetchDatasets();
+    void fetchDatasets();
+  }, [fetchDatasets]);
+
+  useEffect(() => {
+    setPage(1);
   }, [statusFilter, visibilityFilter]);
 
-  // Filter datasets based on search
-  const filteredDatasets = datasets.filter(dataset =>
-    dataset.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Stats for quick overview
-  const stats = [
-    { value: filteredDatasets.length, label: 'Total Datasets', color: tokens.textPrimary },
-    { value: datasets.filter(d => d.status === 'VERIFIED').length, label: 'Verified', color: '#22c55e' },
-    { value: datasets.filter(d => d.status === 'PUBLISHED').length, label: 'Published', color: '#10b981' },
-    { value: datasets.filter(d => d.status === 'DELISTED').length, label: 'Delisted', color: '#f59e0b' },
-    { value: datasets.filter(d => d.status === 'ARCHIVED').length, label: 'Archived', color: '#94a3b0' },
-    { value: datasets.filter(d => d.visibility === 'PUBLIC').length, label: 'Public', color: '#3b82f6' },
-    { value: datasets.filter(d => d.visibility === 'PRIVATE').length, label: 'Private', color: '#ef4444' },
+  const datasetSummary = summary ?? EMPTY_DATASET_SUMMARY;
+  const metrics: DatasetMetric<FilterStatus>[] = [
+    {
+      label: "All datasets",
+      supportingText: "Complete inventory",
+      value: datasetSummary.total,
+      filterValue: "ALL",
+      icon: Database,
+      tone: "neutral",
+    },
+    {
+      label: "Ready to publish",
+      supportingText: "Verified by Kuinbee",
+      value: datasetSummary.byStatus.VERIFIED,
+      filterValue: "VERIFIED",
+      icon: BadgeCheck,
+      tone: "blue",
+    },
+    {
+      label: "Live",
+      supportingText: "Visible to buyers",
+      value: datasetSummary.byStatus.PUBLISHED,
+      filterValue: "PUBLISHED",
+      icon: Globe2,
+      tone: "green",
+    },
+    {
+      label: "Needs attention",
+      supportingText: "Currently delisted",
+      value: datasetSummary.byStatus.DELISTED,
+      filterValue: "DELISTED",
+      icon: CircleOff,
+      tone: "amber",
+    },
+    {
+      label: "Archived",
+      supportingText: "Kept for reference",
+      value: datasetSummary.byStatus.ARCHIVED,
+      filterValue: "ARCHIVED",
+      icon: Archive,
+      tone: "slate",
+    },
   ];
 
-  const handleViewDataset = (dataset: DatasetItem) => {
-    router.push(`/dashboard/my-datasets/${dataset.id}`);
+  const hasFilters =
+    Boolean(searchQuery.trim()) ||
+    statusFilter !== "ALL" ||
+    visibilityFilter !== "ALL";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setStatusFilter("ALL");
+    setVisibilityFilter("ALL");
+    setPage(1);
   };
 
-  // Table columns configuration
-  const columns: TableColumn<DatasetItem>[] = [
+  const columns: DatasetRecordColumn<DatasetItem>[] = [
     {
-      header: 'No.',
-      accessor: (item) => (
-        <span className="font-medium" style={{ color: tokens.textMuted }}>
-          {(item._index || 0) + 1}
-        </span>
-      ),
-      headerClassName: 'text-center',
-      className: 'text-center',
-      minWidth: 'clamp(40px, 5vw, 60px)',
-    },
-    {
-      header: 'Dataset',
-      accessor: (item) => (
-        <div className="flex items-center gap-2 min-w-0">
-          <Database className="w-4 h-4 flex-shrink-0" style={{ color: tokens.textMuted }} />
-          <span
-            className="text-xs sm:text-sm truncate"
-            style={{
-              color: tokens.textPrimary,
-              fontWeight: '500',
-              lineHeight: '1.4',
-            }}
-          >
-            {item.title}
-          </span>
-        </div>
+      header: "Dataset",
+      headerClassName: "w-[42%]",
+      render: (dataset) => (
+        <DatasetRecordIdentity
+          href={`/dashboard/my-datasets/${dataset.id}`}
+          title={dataset.title}
+          identifier={dataset.datasetUniqueId}
+        />
       ),
     },
     {
-      header: 'ID',
-      accessor: (item) => (
-        <span
-          className="text-xs font-mono truncate"
-          style={{
-            color: tokens.textSecondary,
-            lineHeight: '1.4',
-          }}
-        >
-          {item.datasetUniqueId}
-        </span>
-      ),
-      hidden: 'sm',
-      minWidth: 'clamp(100px, 12vw, 140px)',
+      header: "Status",
+      render: (dataset) => <PublishStatusBadge status={dataset.status} />,
     },
     {
-      header: 'Status',
-      accessor: (item) => (
-        <PublishStatusBadge status={item.status} isDark={isDark} />
+      header: "Visibility",
+      render: (dataset) => (
+        <DatasetVisibilityBadge visibility={dataset.visibility} />
       ),
-      hidden: 'md',
-      minWidth: 'clamp(100px, 12vw, 160px)',
     },
     {
-      header: 'Visibility',
-      accessor: (item) => (
-        <span
-          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded"
-          style={{
-            background: item.visibility === 'PUBLIC' ? 'rgba(16, 185, 129, 0.1)' :
-                       item.visibility === 'PRIVATE' ? 'rgba(239, 68, 68, 0.1)' :
-                       'rgba(148, 163, 176, 0.1)',
-            color: item.visibility === 'PUBLIC' ? '#10b981' :
-                   item.visibility === 'PRIVATE' ? '#ef4444' :
-                   '#94a3b0',
-          }}
-        >
-          <Eye className="w-3 h-3" />
-          {item.visibility}
-        </span>
-      ),
-      hidden: 'lg',
-      minWidth: 'clamp(80px, 10vw, 120px)',
+      header: "Last updated",
+      className: "whitespace-nowrap text-sm text-muted-foreground",
+      render: (dataset) => formatDatasetDate(dataset.updatedAt),
     },
     {
-      header: 'Last Updated',
-      accessor: (item) => (
-        <span
-          className="text-xs sm:text-sm"
-          style={{
-            color: tokens.textSecondary,
-            lineHeight: '1.4',
-          }}
-        >
-          {new Date(item.updatedAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })}
-        </span>
+      header: "Action",
+      headerClassName: "text-right",
+      className: "text-right",
+      render: (dataset) => (
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/dashboard/my-datasets/${dataset.id}`}>
+            {getDatasetActionLabel(dataset.status)} <ArrowRight />
+          </Link>
+        </Button>
       ),
-      hidden: 'xl',
-      minWidth: 'clamp(140px, 18vw, 220px)',
-    },
-    {
-      header: 'Actions',
-      accessor: (item) => (
-        <button
-          className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs transition-all duration-150"
-          style={{
-            color: tokens.textSecondary,
-            fontWeight: '500',
-            background: 'transparent',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isDark
-              ? 'rgba(255, 255, 255, 0.08)'
-              : 'rgba(26, 34, 64, 0.06)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleViewDataset(item);
-          }}
-        >
-          View
-          <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-        </button>
-      ),
-      headerClassName: 'text-right',
-      className: 'text-right',
-      minWidth: 'clamp(70px, 10vw, 110px)',
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="max-w-[1400px] mx-auto p-8">
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: tokens.textPrimary }}></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-[1400px] mx-auto p-8">
-        <div className="text-center py-20">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.warningText }} />
-          <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-            Failed to load datasets
-          </h3>
-          <p className="mb-6" style={{ color: tokens.textSecondary }}>
-            {error}
-          </p>
-          <Button onClick={fetchDatasets}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-[1400px] mx-auto p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-              My Datasets
-            </h1>
-            <p style={{ color: tokens.textSecondary }}>
-              View and manage your published and verified datasets
-            </p>
-          </div>
-        </div>
+    <DatasetWorkspace>
+      <DatasetPageHeader
+        title="My Datasets"
+        description="Manage verified datasets, control marketplace visibility, and keep published listings current."
+        action={
+          <Button asChild className="h-10 w-full px-5 sm:w-auto">
+            <Link href="/dashboard/datasets/create">
+              <Plus /> Create dataset
+            </Link>
+          </Button>
+        }
+      />
 
-        {/* Stats Cards */}
-        <StatsCards stats={stats} tokens={tokens} isDark={isDark} />
-      </div>
+      <section aria-label="Dataset lifecycle overview" className="mt-7">
+        <DatasetMetricStrip
+          metrics={metrics}
+          activeValue={statusFilter}
+          onSelect={setStatusFilter}
+          loading={loading && datasetSummary.total === 0}
+        />
+      </section>
 
-      {/* Search & Filter Controls */}
-      <SearchAndFilterBar
-        searchQuery={searchQuery}
+      <DatasetFilterToolbar
+        searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        searchPlaceholder="Search title or dataset ID"
+        searchAriaLabel="Search datasets by title or dataset ID"
         filters={[
           {
-            label: 'Dataset Status',
             value: statusFilter,
-            options: [
-              { label: 'All Statuses', value: 'ALL' },
-              { label: 'Verified', value: 'VERIFIED' },
-              { label: 'Published', value: 'PUBLISHED' },
-              { label: 'Delisted', value: 'DELISTED' },
-              { label: 'Archived', value: 'ARCHIVED' },
-            ],
-            onChange: (value) => setStatusFilter(value as FilterStatus),
+            onValueChange: (value) => setStatusFilter(value as FilterStatus),
+            options: STATUS_OPTIONS,
+            ariaLabel: "Filter datasets by status",
           },
           {
-            label: 'Visibility',
             value: visibilityFilter,
-            options: [
-              { label: 'All Visibility', value: 'ALL' },
-              { label: 'Public', value: 'PUBLIC' },
-              { label: 'Private', value: 'PRIVATE' },
-              { label: 'Unlisted', value: 'UNLISTED' },
-            ],
-            onChange: (value) => setVisibilityFilter(value as FilterVisibility),
+            onValueChange: (value) =>
+              setVisibilityFilter(value as FilterVisibility),
+            options: VISIBILITY_OPTIONS,
+            ariaLabel: "Filter datasets by visibility",
           },
         ]}
-        activeFilterCount={(statusFilter !== 'ALL' ? 1 : 0) + (visibilityFilter !== 'ALL' ? 1 : 0)}
-        tokens={tokens}
+        activeFilterCount={
+          (statusFilter !== "ALL" ? 1 : 0) +
+          (visibilityFilter !== "ALL" ? 1 : 0)
+        }
+        onClear={clearFilters}
         isDark={isDark}
       />
 
-      {/* Datasets Table */}
-      <div className="space-y-4 pt-2">
-        <DatasetsTable
-          data={filteredDatasets.map((d, i) => ({ ...d, _index: i }))}
-          columns={columns}
-          onRowClick={handleViewDataset}
-          emptyIcon={<Database className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.textMuted }} />}
-          emptyTitle={searchQuery || statusFilter !== 'ALL' || visibilityFilter !== 'ALL' ? 'No datasets found' : 'No datasets yet'}
-          emptyDescription={
-            searchQuery || statusFilter !== 'ALL' || visibilityFilter !== 'ALL'
-              ? 'Try adjusting your search or filters'
-              : 'Your verified and published datasets will appear here'
-          }
-          tokens={tokens}
-          isDark={isDark}
-          getRowKey={(item) => item.id}
+      {error && (
+        <DatasetErrorBanner
+          title="We could not load your datasets"
+          message={error}
+          onRetry={fetchDatasets}
         />
-      </div>
-    </div>
+      )}
+
+      <section aria-labelledby="dataset-inventory-title" className="mt-5">
+        <DatasetInventoryHeader
+          id="dataset-inventory-title"
+          title="Dataset inventory"
+          loading={loading}
+          total={totalDatasets}
+          singularLabel="dataset"
+          pluralLabel="datasets"
+        />
+
+        {loading ? (
+          <DatasetListSkeleton />
+        ) : !error && datasets.length === 0 ? (
+          <DatasetEmptyState
+            filtered={hasFilters}
+            onClear={clearFilters}
+            title="No verified datasets yet"
+            description="Create a dataset proposal and submit it for verification. Approved datasets will appear here."
+            filteredTitle="No datasets match this view"
+            filteredDescription="Try another title, dataset ID, status, or visibility setting."
+            action={
+              <Button asChild>
+                <Link href="/dashboard/datasets/create">
+                  <Plus /> Create dataset
+                </Link>
+              </Button>
+            }
+          />
+        ) : datasets.length > 0 ? (
+          <>
+            <DatasetRecordList
+              items={datasets}
+              columns={columns}
+              getKey={(dataset) => dataset.id}
+              renderMobile={(dataset) => (
+                <DatasetMobileRecordCard
+                  href={`/dashboard/my-datasets/${dataset.id}`}
+                  title={dataset.title}
+                  identifier={dataset.datasetUniqueId}
+                  badges={
+                    <>
+                      <PublishStatusBadge status={dataset.status} />
+                      <DatasetVisibilityBadge visibility={dataset.visibility} />
+                    </>
+                  }
+                  supportingText={`Updated ${formatDatasetDate(dataset.updatedAt)}`}
+                  actionLabel={getDatasetActionLabel(dataset.status)}
+                />
+              )}
+            />
+            <PaginationControls
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={totalDatasets}
+              itemLabel="datasets"
+              mutedColor="var(--muted-foreground)"
+              onPageChange={setPage}
+            />
+          </>
+        ) : null}
+      </section>
+    </DatasetWorkspace>
   );
 }
