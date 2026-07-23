@@ -1,105 +1,112 @@
 "use client";
 
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import type { DatasetPerformanceItem } from "@/types/supplier-stats.types";
+import type { ReactNode } from "react";
+import { Coins, Eye, Percent, ShoppingCart, Star } from "lucide-react";
+
+import { DatasetEntityHeader } from "@/components/datasets/workspace";
 import { formatCurrencyValue } from "@/lib/utils/currency.utils";
-import { ArrowLeft, Star, Eye, ShoppingCart, Coins } from "lucide-react";
-import { useRouter } from "next/navigation";
+import type { DatasetPerformanceItem } from "@/types/supplier-stats.types";
 
 interface DatasetDetailHeaderProps {
-    dataset: DatasetPerformanceItem;
+  dataset: DatasetPerformanceItem;
+  action?: ReactNode;
 }
 
-const statusColors: Record<string, { bg: string; text: string }> = {
-    published: { bg: "rgba(16, 185, 129, 0.12)", text: "#10b981" },
-    draft: { bg: "rgba(245, 158, 11, 0.12)", text: "#f59e0b" },
-    pending: { bg: "rgba(74, 144, 226, 0.12)", text: "#4a90e2" },
-    archived: { bg: "rgba(107, 114, 128, 0.12)", text: "#6b7280" },
+const statusClasses: Record<string, string> = {
+  PUBLISHED:
+    "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  VERIFIED:
+    "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  SUBMITTED:
+    "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  UNDER_REVIEW:
+    "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  ARCHIVED:
+    "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300",
 };
 
-export function DatasetDetailHeader({ dataset }: DatasetDetailHeaderProps) {
-    const tokens = useSupplierTokens();
-    const router = useRouter();
-    const statusStyle = statusColors[dataset.status] || statusColors.draft;
-    const isMixed = dataset.revenueCurrency === null;
-    const revenueDisplay = `${formatCurrencyValue(dataset.revenue, dataset.revenueCurrency)}${isMixed ? " (Mixed)" : ""}`;
+export function DatasetDetailHeader({ dataset, action }: DatasetDetailHeaderProps) {
+  const status = dataset.status.toUpperCase();
+  const isMixed = dataset.revenueCurrency === null;
+  const revenueDisplay = `${formatCurrencyValue(dataset.revenue, dataset.revenueCurrency)}${isMixed ? " (Mixed)" : ""}`;
+  const conversionPercent = dataset.conversionRate * 100;
 
-    return (
-        <div>
-            {/* Back Button */}
-            <button
-                onClick={() => router.back()}
-                className="flex items-center gap-2 mb-5 text-sm font-medium transition-all duration-200 hover:gap-3"
-                style={{ color: tokens.textSecondary }}
+  const metrics = [
+    {
+      icon: Coins,
+      label: "Revenue",
+      value: revenueDisplay,
+      className: "bg-emerald-500/10 text-emerald-500",
+    },
+    {
+      icon: Eye,
+      label: "Views",
+      value: dataset.views.toLocaleString(),
+      className: "bg-amber-500/10 text-amber-500",
+    },
+    {
+      icon: ShoppingCart,
+      label: "Sales",
+      value: dataset.sales.toLocaleString(),
+      className: "bg-blue-500/10 text-blue-500",
+    },
+    {
+      icon: Percent,
+      label: "Conversion rate",
+      value: `${conversionPercent.toFixed(2)}%`,
+      className: "bg-violet-500/10 text-violet-500",
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <DatasetEntityHeader
+        eyebrow="Dataset performance"
+        title={dataset.title}
+        identifier={dataset.datasetId}
+        description="Understand how marketplace discovery converts into purchases and revenue for this dataset."
+        badges={
+          <>
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${
+                statusClasses[status] ??
+                "border-border bg-muted text-muted-foreground"
+              }`}
             >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Datasets
-            </button>
+              {dataset.status.replaceAll("_", " ")}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/25 bg-pink-500/10 px-2.5 py-1 text-xs font-medium text-pink-600 dark:text-pink-400">
+              <Star className="size-3" aria-hidden="true" />
+              Quality {dataset.qualityScore ?? "—"}/100
+            </span>
+          </>
+        }
+        actions={action}
+      />
 
-            {/* Title Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <h1
-                        className="text-2xl font-semibold"
-                        style={{ color: tokens.textPrimary }}
-                    >
-                        {dataset.title}
-                    </h1>
-                    <span
-                        className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold capitalize"
-                        style={{ background: statusStyle.bg, color: statusStyle.text }}
-                    >
-                        {dataset.status}
-                    </span>
-                </div>
-
-                {/* Quality Score Badge */}
-                <div
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
-                    style={{
-                        background: tokens.isDark
-                            ? "rgba(236, 72, 153, 0.1)"
-                            : "rgba(236, 72, 153, 0.06)",
-                        border: `1px solid ${tokens.isDark ? "rgba(236, 72, 153, 0.25)" : "rgba(236, 72, 153, 0.15)"}`,
-                    }}
-                >
-                    <Star className="w-4 h-4" style={{ color: "#ec4899" }} />
-                    <span className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                        Quality: {dataset.qualityScore}/100
-                    </span>
-                </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <div
+              key={metric.label}
+              className="supplier-glass-card flex min-h-24 items-center gap-3 rounded-xl border p-4"
+            >
+              <span
+                className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${metric.className}`}
+              >
+                <Icon className="size-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">{metric.label}</p>
+                <p className="mt-1 truncate text-sm font-semibold tabular-nums text-foreground sm:text-base">
+                  {metric.value}
+                </p>
+              </div>
             </div>
-
-            {/* Quick Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                {[
-                    { icon: <Coins className="w-4 h-4" />, label: "Revenue", value: revenueDisplay, color: "#10b981" },
-                    { icon: <Eye className="w-4 h-4" />, label: "Views", value: dataset.views.toLocaleString(), color: "#f59e0b" },
-                    { icon: <ShoppingCart className="w-4 h-4" />, label: "Sales", value: dataset.sales.toString(), color: "#4a90e2" },
-                    { icon: <span className="text-xs font-bold">%</span>, label: "Conv. Rate", value: `${dataset.conversionRate.toFixed(2)}%`, color: "#8b5cf6" },
-                ].map((stat) => (
-                    <div
-                        key={stat.label}
-                        className="rounded-xl p-3.5 flex items-center gap-3"
-                        style={{
-                            background: tokens.glassBg,
-                            backdropFilter: "blur(16px)",
-                            border: `1px solid ${tokens.glassBorder}`,
-                        }}
-                    >
-                        <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center"
-                            style={{ background: `${stat.color}15`, color: stat.color }}
-                        >
-                            {stat.icon}
-                        </div>
-                        <div>
-                            <p className="text-xs" style={{ color: tokens.textMuted }}>{stat.label}</p>
-                            <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>{stat.value}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+          );
+        })}
+      </div>
+    </div>
+  );
 }

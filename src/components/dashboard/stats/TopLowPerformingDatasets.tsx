@@ -137,7 +137,7 @@ function PerformanceCard({
                     <div>
                         <p className="text-xs" style={{ color: tokens.textMuted }}>Conv. Rate</p>
                         <p className="text-sm font-semibold" style={{ color: accentColor }}>
-                            {dataset.conversionRate.toFixed(2)}%
+                            {(dataset.conversionRate * 100).toFixed(2)}%
                         </p>
                     </div>
                 </div>
