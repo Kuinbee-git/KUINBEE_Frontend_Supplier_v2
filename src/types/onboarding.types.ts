@@ -165,6 +165,12 @@ export interface SupplierProfile {
   individualName: string | null;
   companyName: string | null;
   websiteUrl: string | null;
+  logoUrl: string | null;
+  logoContentType: string | null;
+  logoSizeBytes: string | null;
+  logoWidth: number | null;
+  logoHeight: number | null;
+  logoUpdatedAt: string | null;
   contactPersonName: string;
   contactEmail: string;
   businessDomains: string[];
@@ -201,6 +207,40 @@ export interface UpdateProfileCompanyRequest {
 export type UpdateProfileRequest = UpdateProfileIndividualRequest | UpdateProfileCompanyRequest;
 
 export interface UpdateProfileResponse {
+  profile: SupplierProfile;
+}
+
+export type SupplierLogoContentType = "image/png" | "image/jpeg" | "image/webp";
+
+export interface SupplierLogoConstraints {
+  allowedContentTypes: SupplierLogoContentType[];
+  maxSizeBytes: number;
+  minWidth: number;
+  minHeight: number;
+  maxWidth: number;
+  maxHeight: number;
+  requiredAspectRatio: "1:1";
+  recommendedSize: "512x512";
+}
+
+export interface PresignSupplierLogoRequest {
+  originalFileName?: string | null;
+  contentType: SupplierLogoContentType;
+}
+
+export interface PresignSupplierLogoResponse {
+  s3Key: string;
+  putUrl: string;
+  expiresAt: string;
+  constraints: SupplierLogoConstraints;
+}
+
+export interface CompleteSupplierLogoRequest {
+  s3Key: string;
+  sizeBytes?: string;
+}
+
+export interface CompleteSupplierLogoResponse {
   profile: SupplierProfile;
 }
 

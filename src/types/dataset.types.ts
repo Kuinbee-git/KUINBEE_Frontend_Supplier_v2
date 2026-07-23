@@ -6,21 +6,21 @@ import { BaseEntity } from "./common.types";
 
 // ===== Dataset Status =====
 
-export type DatasetStatus = 
-  | 'SUBMITTED'            // Submitted for verification
-  | 'UNDER_REVIEW'         // Under admin review
-  | 'VERIFIED'             // Approved, ready to publish
-  | 'PUBLISHED'            // Published on marketplace
-  | 'DELISTED'             // Temporarily off-market for update flow
-  | 'ARCHIVED'             // Removed from marketplace
-  | 'REJECTED';            // Rejected by admin
+export type DatasetStatus =
+  | "SUBMITTED" // Submitted for verification
+  | "UNDER_REVIEW" // Under admin review
+  | "VERIFIED" // Approved, ready to publish
+  | "PUBLISHED" // Published on marketplace
+  | "DELISTED" // Temporarily off-market for update flow
+  | "ARCHIVED" // Removed from marketplace
+  | "REJECTED"; // Rejected by admin
 
 // ===== Dataset Visibility =====
 
-export type DatasetVisibility = 
-  | 'PUBLIC'      // Available to all
-  | 'PRIVATE'     // Available to specific buyers
-  | 'UNLISTED';   // Not shown in marketplace browse
+export type DatasetVisibility =
+  | "PUBLIC" // Available to all
+  | "PRIVATE" // Available to specific buyers
+  | "UNLISTED"; // Not shown in marketplace browse
 
 // ===== Dataset Entity =====
 
@@ -29,47 +29,58 @@ export interface Dataset extends BaseEntity {
   datasetId: string;
   name: string;
   description: string;
-  
+
   // Supplier
   supplierId: string;
   supplierName: string;
-  
+
   // Classification
   categoryId: string;
   categoryName: string;
   sourceId?: string;
   sourceName?: string;
   tags: string[];
-  
+
   // Metadata
   dataFormat: string[];
-  updateFrequency: 'realtime' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  updateFrequency:
+    | "realtime"
+    | "daily"
+    | "weekly"
+    | "monthly"
+    | "quarterly"
+    | "yearly";
   geographicCoverage: string[];
   temporalCoverage?: {
     from: string;
     to: string;
   };
-  
+
   // Pricing
-  pricingModel: 'free' | 'one_time' | 'subscription' | 'usage_based' | 'contact';
+  pricingModel:
+    | "free"
+    | "one_time"
+    | "subscription"
+    | "usage_based"
+    | "contact";
   price?: number;
   currency?: string;
-  
+
   // Size & Schema
   estimatedSize?: string;
   recordCount?: number;
   schemaFields?: DatasetSchemaField[];
-  
+
   // Files
   activeUploadId?: string;
   uploadHistory?: DatasetUpload[];
-  
+
   // Status & Lifecycle
   status: DatasetStatus;
   visibility: DatasetVisibility;
   publishedAt?: string;
   lastReviewedAt?: string;
-  
+
   // Review
   reviewThread?: ReviewMessage[];
   changesRequested?: string[];
@@ -79,7 +90,7 @@ export interface Dataset extends BaseEntity {
 
 export interface DatasetSchemaField {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'object' | 'array';
+  type: "string" | "number" | "boolean" | "date" | "object" | "array";
   description?: string;
   required?: boolean;
   example?: string;
@@ -95,13 +106,13 @@ export interface DatasetUpload extends BaseEntity {
   fileType: string;
   uploadedAt: string;
   uploadedBy: string;
-  
-  status: 'active' | 'superseded' | 'rejected';
-  
+
+  status: "active" | "superseded" | "rejected";
+
   // Validation
-  validationStatus?: 'pending' | 'passed' | 'failed';
+  validationStatus?: "pending" | "passed" | "failed";
   validationErrors?: string[];
-  
+
   // Admin review
   reviewedAt?: string;
   reviewedBy?: string;
@@ -114,12 +125,12 @@ export interface ReviewMessage extends BaseEntity {
   datasetId: string;
   authorId: string;
   authorName: string;
-  authorType: 'admin' | 'supplier';
+  authorType: "admin" | "supplier";
   message: string;
   timestamp: string;
-  
+
   // Metadata
-  isInternal?: boolean;  // Admin-only notes
+  isInternal?: boolean; // Admin-only notes
   attachments?: string[];
 }
 
@@ -132,10 +143,10 @@ export interface CreateDatasetDto {
   sourceId?: string;
   tags: string[];
   dataFormat: string[];
-  updateFrequency: Dataset['updateFrequency'];
+  updateFrequency: Dataset["updateFrequency"];
   geographicCoverage: string[];
-  temporalCoverage?: Dataset['temporalCoverage'];
-  pricingModel: Dataset['pricingModel'];
+  temporalCoverage?: Dataset["temporalCoverage"];
+  pricingModel: Dataset["pricingModel"];
   price?: number;
   currency?: string;
   estimatedSize?: string;
@@ -161,11 +172,23 @@ export interface DatasetListItem {
 
 // ===== Published Dataset Types (Stage 4) =====
 
-import type { DatasetStatus as ProposalDatasetStatus, DatasetVisibility as ProposalDatasetVisibility, Currency } from './dataset-proposal.types';
+import type {
+  DatasetStatus as ProposalDatasetStatus,
+  DatasetVisibility as ProposalDatasetVisibility,
+  Currency,
+  DatasetPricingVersion,
+} from "./dataset-proposal.types";
 
 // List My Datasets
 export interface ListDatasetsQuery {
-  status?: "VERIFIED" | "PUBLISHED" | "DELISTED" | "ARCHIVED" | "REJECTED";
+  q?: string;
+  status?:
+    | "SUBMITTED"
+    | "UNDER_REVIEW"
+    | "VERIFIED"
+    | "PUBLISHED"
+    | "DELISTED"
+    | "ARCHIVED";
   visibility?: "PUBLIC" | "PRIVATE" | "UNLISTED";
   page?: number;
   pageSize?: number;
@@ -179,6 +202,11 @@ export interface PublishedDatasetListItem {
   reviewCount: number;
   status: ProposalDatasetStatus;
   visibility: ProposalDatasetVisibility;
+  isSample?: boolean;
+  actualPrice?: number | null;
+  actualPriceCurrency?: string | null;
+  isNegotiable?: boolean | null;
+  pricing?: DatasetPricingVersion | null;
   publishedUploadId: string | null;
   publishedAt: string | null;
   updatedAt: string;
@@ -189,6 +217,19 @@ export interface ListDatasetsResponse {
   page: number;
   pageSize: number;
   total: number;
+  summary: {
+    total: number;
+    byStatus: Record<
+      | "SUBMITTED"
+      | "UNDER_REVIEW"
+      | "VERIFIED"
+      | "PUBLISHED"
+      | "DELISTED"
+      | "ARCHIVED",
+      number
+    >;
+    byVisibility: Record<"PUBLIC" | "PRIVATE" | "UNLISTED", number>;
+  };
 }
 
 // Get Dataset Details
@@ -206,7 +247,7 @@ export interface DatasetDetailsResponse {
       whySample: string;
       actualDataSize: string;
       completeness?: string;
-      deliveryMechanism: 'API' | 'FILE' | 'OTHER';
+      deliveryMechanism: "API" | "FILE" | "OTHER";
       deliveryMechanismNotes?: string;
     } | null;
     actualPrice?: number | null;
@@ -281,7 +322,14 @@ export interface DatasetDetailsResponse {
   tags: string[];
   verification: {
     id: string;
-    status: "PENDING" | "SUBMITTED" | "CHANGES_REQUESTED" | "RESUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
+    status:
+      | "PENDING"
+      | "SUBMITTED"
+      | "CHANGES_REQUESTED"
+      | "RESUBMITTED"
+      | "UNDER_REVIEW"
+      | "VERIFIED"
+      | "REJECTED";
     notes: string | null;
     rejectionReason: string | null;
     updatedAt: string;

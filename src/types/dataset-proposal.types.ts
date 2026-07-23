@@ -74,9 +74,20 @@ export const ENCODING_TYPES: readonly EncodingType[] = [
   "GB18030",
 ];
 
-export type DatasetUploadStatus = "UPLOADING" | "UPLOADED" | "FAILED" | "PROMOTED";
+export type DatasetUploadStatus =
+  | "UPLOADING"
+  | "UPLOADED"
+  | "FAILED"
+  | "PROMOTED";
 
-export type DatasetStatus = "SUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "PUBLISHED" | "DELISTED" | "REJECTED" | "ARCHIVED";
+export type DatasetStatus =
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "VERIFIED"
+  | "PUBLISHED"
+  | "DELISTED"
+  | "REJECTED"
+  | "ARCHIVED";
 
 export type VerificationStatus =
   | "PENDING"
@@ -138,6 +149,8 @@ export interface CreateProposalResponse {
 
 // List My Proposals
 export interface ListProposalsQuery {
+  q?: string;
+  scope?: "DRAFTS" | "SUBMITTED";
   status?: DatasetStatus;
   verificationStatus?: VerificationStatus;
   page?: number;
@@ -158,6 +171,13 @@ export interface ListProposalsResponse {
   page: number;
   pageSize: number;
   total: number;
+  // Optional for compatibility with a locally running pre-summary backend.
+  summary?: {
+    total: number;
+    draftsWithCurrentUpload: number;
+    draftsWithoutCurrentUpload: number;
+    byVerificationStatus: Record<VerificationStatus, number>;
+  };
 }
 
 // Get Proposal Details
@@ -264,6 +284,11 @@ export interface UpdateProposalResponse {
     status: VerificationStatus;
     updatedAt: string;
   };
+}
+
+export interface DiscardProposalResponse {
+  datasetId: string;
+  discarded: true;
 }
 
 // About Dataset Info

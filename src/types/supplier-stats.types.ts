@@ -11,7 +11,7 @@ export type Currency = "INR" | "USD" | "EUR" | "GBP";
 
 export interface CurrencyBreakdownItem {
     currency: Currency;
-    revenue: string | number;
+    revenue: number;
 }
 
 // ===== Overview =====
@@ -47,29 +47,29 @@ export interface DatasetPerformanceItem {
     /** Currency of revenue — null when mixed currencies */
     revenueCurrency?: Currency | null;
     conversionRate: number;
-    qualityScore: number;
+    qualityScore: number | null;
     status: string;
 }
 
 // ===== Performing Dataset (Top / Low) =====
-export interface PerformingDataset extends DatasetPerformanceItem { }
+export type PerformingDataset = DatasetPerformanceItem;
 
 // ===== Buyer Insights =====
 export interface TopBuyer {
     userId: string;
-    name: string;
-    companyName: string;
+    name: string | null;
+    companyName: string | null;
     totalSpent: number;
     /** Currency of totalSpent — null when mixed */
     totalSpentCurrency?: Currency | null;
     totalPurchases: number;
-    lastPurchaseDate: string;
+    lastPurchaseDate: string | null;
 }
 
 export interface HighIntentNonBuyer {
     userId: string;
-    name: string;
-    companyName: string;
+    name: string | null;
+    companyName: string | null;
     totalViews: number;
     viewedDatasets: string[];
 }
@@ -96,19 +96,21 @@ export interface DatasetTimePoint {
     date: string;
     views: number;
     sales: number;
-    revenue: number;
 }
 
 export interface DatasetBuyer {
+    purchaseId: string;
     userId: string;
-    name: string;
-    companyName: string;
+    name: string | null;
+    companyName: string | null;
     purchaseDate: string;
     amount: number;
+    currency: Currency;
 }
 
 export interface DatasetDetailStats {
     dataset: DatasetPerformanceItem;
     timeSeries: DatasetTimePoint[];
+    revenueTrend: RevenueTrendPoint[];
     recentBuyers: DatasetBuyer[];
 }

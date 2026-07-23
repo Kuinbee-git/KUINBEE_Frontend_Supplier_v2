@@ -88,3 +88,6 @@ export * from "./common.types";
 
 // Supplier stats types
 export * from "./supplier-stats.types";
+
+// Custom collection service types
+export * from "./custom-collection.types";
