@@ -7,28 +7,28 @@
   /* Kuinbee Brand Colors */
   --brand-primary: #1a2240;
   --brand-secondary: #4e5a7e;
-  
+
   /* Surfaces */
   --surface-base: #ffffff;
   --surface-background: #f7f8fa;
   --surface-hover: #f3f5fb;
   --surface-selected: #eef1fb;
-  
+
   /* Borders */
   --border-default: #e3e6f3;
   --border-subtle: #edf0f7;
-  
+
   /* Text */
   --text-primary: #111827;
   --text-secondary: #4b5563;
   --text-muted: #6b7280;
   --text-disabled: #9ca3af;
-  
+
   /* Semantic */
   --semantic-success: #10b981;
   --semantic-warning: #f59e0b;
   --semantic-error: #ef4444;
-  
+
   /* Shadcn mappings */
   --background: var(--surface-background);
   --foreground: var(--text-primary);
@@ -71,32 +71,32 @@
 
 .dark {
   /* Kuinbee Dark Mode - Infrastructure-Grade System */
-  
+
   /* Surfaces */
   --surface-base: #0f1428;
   --surface-elevated: #141b36;
   --surface-card: rgba(26, 34, 64, 0.65);
   --surface-hover: rgba(255, 255, 255, 0.04);
-  
+
   /* Borders */
   --border-default: rgba(255, 255, 255, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.04);
-  
+
   /* Text */
   --text-primary: #e5e7eb;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
   --text-disabled: #4b5563;
-  
+
   /* Brand */
   --brand-primary: #4a90e2;
   --brand-accent: #1a2240;
-  
+
   /* Semantic */
   --semantic-success: #10b981;
   --semantic-warning: #f59e0b;
   --semantic-error: #ef4444;
-  
+
   /* Shadcn mappings for dark mode */
   --background: var(--surface-base);
   --foreground: var(--text-primary);
@@ -177,6 +177,331 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@layer components {
+  .supplier-glass-panel {
+    background: #ffffff !important;
+    border-color: #dde3f0;
+    box-shadow: 0 8px 24px rgba(26, 34, 64, 0.08) !important;
+  }
+
+  .supplier-glass-card {
+    background: #ffffff !important;
+    border-color: #dde3f0;
+    box-shadow: none !important;
+  }
+
+  .supplier-glass-input {
+    background: #f3f5fb;
+    border-color: #e3e6f3;
+  }
+
+  .dark .supplier-glass-panel {
+    background: rgba(26, 34, 64, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .dark .supplier-glass-card {
+    background: rgba(26, 34, 64, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: none !important;
+  }
+
+  .dark .supplier-glass-input {
+    background: rgba(26, 34, 64, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .custom-collection-form input:not([type="checkbox"]),
+  .custom-collection-form textarea {
+    background: #f3f5fb;
+    border-color: #e3e6f3;
+  }
+
+  .dark .custom-collection-form input:not([type="checkbox"]),
+  .dark .custom-collection-form textarea {
+    background: rgba(26, 34, 64, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .custom-collection-dialog {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-color: #dde3f0 !important;
+    box-shadow: 0 8px 24px rgba(26, 34, 64, 0.12) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .dark .custom-collection-dialog {
+    background: rgba(26, 34, 64, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="default"] {
+    background: #2a3558 !important;
+    border-color: #2a3558 !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 10px rgba(26, 34, 64, 0.18) !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="default"]:hover:not(:disabled) {
+    background: #35436d !important;
+    box-shadow: 0 6px 16px rgba(26, 34, 64, 0.24) !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="secondary"] {
+    background: #4e5a7e !important;
+    border-color: #4e5a7e !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(26, 34, 64, 0.14) !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="secondary"]:hover:not(:disabled) {
+    background: #5b688f !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="outline"] {
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-color: #dde3f0 !important;
+    color: #1a2240 !important;
+    box-shadow: none !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="outline"]:hover:not(:disabled) {
+    background: rgba(26, 34, 64, 0.07) !important;
+    border-color: rgba(26, 34, 64, 0.18) !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="ghost"] {
+    color: #525d6f !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="ghost"]:hover:not(:disabled) {
+    background: rgba(26, 34, 64, 0.06) !important;
+    color: #1a2240 !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="default"] {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24) !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="secondary"] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="secondary"]:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="outline"] {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="outline"]:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="ghost"] {
+    color: rgba(255, 255, 255, 0.68) !important;
+  }
+
+  .dark
+    :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    [data-variant="ghost"]:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+    .supplier-action-danger {
+    background: transparent !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    color: #ef4444 !important;
+  }
+
+  :is(
+      .custom-collection-scope,
+      .custom-collection-form,
+      .custom-collection-dialog
+    )
+  .supplier-action-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1) !important;
+  }
+
+  /* My Datasets prototype: one restrained action palette across both themes. */
+  .dataset-workspace-scope [data-variant="default"] {
+    background: #56658f !important;
+    border: 1px solid rgba(255, 255, 255, 0.32) !important;
+    color: #ffffff !important;
+    box-shadow:
+      0 4px 12px rgba(42, 53, 88, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  }
+
+  .dataset-workspace-scope [data-variant="default"]:hover:not(:disabled) {
+    background: #62719a !important;
+    box-shadow:
+      0 7px 18px rgba(42, 53, 88, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  }
+
+  .dataset-workspace-scope [data-variant="outline"] {
+    background: rgba(255, 255, 255, 0.76) !important;
+    border-color: rgba(78, 90, 126, 0.2) !important;
+    color: #3f4c71 !important;
+    box-shadow:
+      0 2px 7px rgba(42, 53, 88, 0.07),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .dataset-workspace-scope [data-variant="outline"]:hover:not(:disabled) {
+    background: rgba(238, 241, 251, 0.94) !important;
+    border-color: rgba(78, 90, 126, 0.32) !important;
+    color: #2a3558 !important;
+  }
+
+  .dataset-workspace-scope [data-variant="ghost"] {
+    color: #56617d !important;
+  }
+
+  .dataset-workspace-scope [data-variant="ghost"]:hover:not(:disabled) {
+    background: rgba(78, 90, 126, 0.08) !important;
+    color: #2a3558 !important;
+  }
+
+  .dark .dataset-workspace-scope [data-variant="default"] {
+    background: rgba(74, 144, 226, 0.2) !important;
+    border-color: rgba(112, 175, 244, 0.42) !important;
+    color: #e8f3ff !important;
+    box-shadow:
+      0 5px 16px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dark .dataset-workspace-scope [data-variant="default"]:hover:not(:disabled) {
+    background: rgba(74, 144, 226, 0.3) !important;
+    border-color: rgba(125, 188, 255, 0.58) !important;
+  }
+
+  .dark .dataset-workspace-scope [data-variant="outline"] {
+    background: rgba(255, 255, 255, 0.065) !important;
+    border-color: rgba(255, 255, 255, 0.13) !important;
+    color: rgba(255, 255, 255, 0.84) !important;
+    box-shadow:
+      0 3px 10px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .dark .dataset-workspace-scope [data-variant="outline"]:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.105) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+  }
+
+  .dark .dataset-workspace-scope [data-variant="ghost"] {
+    color: rgba(226, 232, 240, 0.76) !important;
+  }
+
+  .dark .dataset-workspace-scope [data-variant="ghost"]:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.075) !important;
+    color: #ffffff !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -186,11 +511,15 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 200ms ease, color 200ms ease;
+    transition:
+      background-color 200ms ease,
+      color 200ms ease;
   }
 
   /* Smooth theme transition for all elements */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     transition-property: background-color, border-color, color, box-shadow;
     transition-duration: 200ms;
     transition-timing-function: ease;
@@ -201,7 +530,7 @@
  * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
  */
 @layer base {
-  :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
     h1 {
       font-size: var(--text-2xl);
       font-weight: var(--font-weight-medium);
@@ -281,7 +610,9 @@ select:-webkit-autofill:focus {
   box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.7) inset !important;
   background-color: rgba(255, 255, 255, 0.7) !important;
   caret-color: #1a2240 !important;
-  transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
+  transition:
+    background-color 5000s ease-in-out 0s,
+    color 5000s ease-in-out 0s;
 }
 
 /* Dark mode autofill - higher specificity */
@@ -308,7 +639,9 @@ html.dark textarea:-webkit-autofill:focus,
   box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.05) inset !important;
   background-color: rgba(255, 255, 255, 0.05) !important;
   caret-color: #ffffff !important;
-  transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
+  transition:
+    background-color 5000s ease-in-out 0s,
+    color 5000s ease-in-out 0s;
 }
 
 /* Hide scrollbars globally while maintaining scroll functionality */
