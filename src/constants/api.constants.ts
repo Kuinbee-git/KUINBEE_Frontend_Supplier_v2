@@ -4,7 +4,13 @@
  */
 
 // ===== Base URLs =====
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const isLocalBrowser =
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+export const API_BASE_URL = isLocalBrowser
+  ? ""
+  : process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 export const API_VERSION = "v1";
 export const API_BASE_PATH = `/api/${API_VERSION}`;
 
@@ -15,7 +21,8 @@ export const SUPPLIER_API = {
   LOGIN: `${API_BASE_PATH}/auth/login`,
 
   // Invites (Public)
-  GET_INVITE: (inviteId: string) => `${API_BASE_PATH}/supplier/invites/${inviteId}`,
+  GET_INVITE: (inviteId: string) =>
+    `${API_BASE_PATH}/supplier/invites/${inviteId}`,
 
   // Onboarding (Authenticated)
   ONBOARDING_STATUS: `${API_BASE_PATH}/supplier/onboarding/status`,
@@ -32,6 +39,8 @@ export const SUPPLIER_API = {
   // Profile
   GET_PROFILE: `${API_BASE_PATH}/supplier/onboarding/profile`,
   UPDATE_PROFILE: `${API_BASE_PATH}/supplier/onboarding/profile`,
+  PRESIGN_PROFILE_LOGO: `${API_BASE_PATH}/supplier/onboarding/profile/logo/presign`,
+  COMPLETE_PROFILE_LOGO: `${API_BASE_PATH}/supplier/onboarding/profile/logo/complete`,
 
   // Complete Onboarding
   COMPLETE_ONBOARDING: `${API_BASE_PATH}/supplier/onboarding/complete`,
@@ -39,6 +48,8 @@ export const SUPPLIER_API = {
 
   // Stats
   STATS: (range: string) => `${API_BASE_PATH}/supplier/stats?range=${range}`,
+  DATASET_STATS: (datasetId: string, range: string) =>
+    `${API_BASE_PATH}/supplier/stats/datasets/${encodeURIComponent(datasetId)}?range=${range}`,
 } as const;
 
 // ===== Dataset Proposal API Endpoints =====
@@ -48,54 +59,91 @@ export const DATASET_PROPOSAL_API = {
   LIST: `${API_BASE_PATH}/supplier/dataset-proposals`,
 
   // Single Proposal Operations
-  GET_DETAILS: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}`,
-  UPDATE_METADATA: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}`,
+  GET_DETAILS: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}`,
+  UPDATE_METADATA: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}`,
+  DISCARD_DRAFT: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}`,
 
   // About & Format
-  UPSERT_ABOUT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/about`,
-  UPSERT_LOCATION: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/location`,
-  SET_TAGS: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/tags`,
-  UPSERT_DATA_FORMAT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/data-format`,
+  UPSERT_ABOUT: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/about`,
+  UPSERT_LOCATION: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/location`,
+  SET_TAGS: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/tags`,
+  UPSERT_DATA_FORMAT: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/data-format`,
 
   // Features & Categories
-  REPLACE_FEATURES: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/features`,
-  SET_CATEGORIES: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/categories`,
+  REPLACE_FEATURES: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/features`,
+  SET_CATEGORIES: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/categories`,
 
   // Upload
-  PRESIGN_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/current-upload/presign`,
-  COMPLETE_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/current-upload/complete`,
-  PRESIGN_SAMPLE_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/sample-upload/presign`,
-  COMPLETE_SAMPLE_UPLOAD: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/sample-upload/complete`,
+  PRESIGN_UPLOAD: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/current-upload/presign`,
+  COMPLETE_UPLOAD: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/current-upload/complete`,
+  PRESIGN_SAMPLE_UPLOAD: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/sample-upload/presign`,
+  COMPLETE_SAMPLE_UPLOAD: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/sample-upload/complete`,
 
   // Submit
-  SUBMIT: (datasetId: string) => `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/submit`,
+  SUBMIT: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/dataset-proposals/${datasetId}/submit`,
 } as const;
 
 // ===== Dataset API Endpoints (Published/Verified Datasets) =====
 export const DATASET_API = {
   // List & Details
   LIST: `${API_BASE_PATH}/supplier/datasets`,
-  GET_DETAILS: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}`,
+  GET_DETAILS: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}`,
 
   // Actions
-  PUBLISH: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/publish`,
-  CHANGE_VISIBILITY: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/visibility`,
-  REQUEST_PRICING_CHANGE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/pricing-change-request`,
-  ARCHIVE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/archive`,
-  DELIST: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/delist`,
-  SUBMIT_UPDATE: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/submit-update`,
-  UPSERT_ABOUT: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/about`,
-  UPSERT_LOCATION: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/location`,
-  UPSERT_DATA_FORMAT: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/data-format`,
-  REPLACE_FEATURES: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/features`,
-  SET_CATEGORIES: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/categories`,
-  SET_TAGS: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/tags`,
-  DOWNLOAD_PUBLISHED: (datasetId: string) => `${API_BASE_PATH}/supplier/datasets/${datasetId}/published-upload/download-url`,
-  QUESTIONS: (datasetId: string) => `${API_BASE_PATH}/marketplace/datasets/${datasetId}/questions`,
-  REVIEWS: (datasetId: string) => `${API_BASE_PATH}/marketplace/datasets/${datasetId}/reviews`,
-  ANSWER_QUESTION: (questionId: string) => `${API_BASE_PATH}/marketplace/questions/${questionId}/answers`,
+  PUBLISH: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/publish`,
+  CHANGE_VISIBILITY: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/visibility`,
+  REQUEST_PRICING_CHANGE: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/pricing-change-request`,
+  ARCHIVE: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/archive`,
+  DELIST: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/delist`,
+  SUBMIT_UPDATE: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/submit-update`,
+  UPSERT_ABOUT: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/about`,
+  UPSERT_LOCATION: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/location`,
+  UPSERT_DATA_FORMAT: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/data-format`,
+  REPLACE_FEATURES: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/features`,
+  SET_CATEGORIES: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/categories`,
+  SET_TAGS: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/tags`,
+  DOWNLOAD_PUBLISHED: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/published-upload/download-url`,
+  DISCOUNT_PROPOSALS: (datasetId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/discount-proposals`,
+  CANCEL_DISCOUNT_PROPOSAL: (datasetId: string, discountProposalId: string) =>
+    `${API_BASE_PATH}/supplier/datasets/${datasetId}/discount-proposals/${discountProposalId}/cancel`,
+  QUESTIONS: (datasetId: string) =>
+    `${API_BASE_PATH}/marketplace/datasets/${datasetId}/questions`,
+  REVIEWS: (datasetId: string) =>
+    `${API_BASE_PATH}/marketplace/datasets/${datasetId}/reviews`,
+  ANSWER_QUESTION: (questionId: string) =>
+    `${API_BASE_PATH}/marketplace/questions/${questionId}/answers`,
   // KDTS Score (public route)
-  KDTS_SCORE: (datasetId: string) => `${API_BASE_PATH}/datasets/${datasetId}/kdts`,
+  KDTS_SCORE: (datasetId: string) =>
+    `${API_BASE_PATH}/datasets/${datasetId}/kdts`,
 } as const;
 
 // ===== Catalog (Sources & Categories) API Endpoints =====
@@ -103,8 +151,10 @@ export const CATALOG_API = {
   // Sources
   LIST_SOURCES: `${API_BASE_PATH}/supplier/sources`,
   CREATE_SOURCE: `${API_BASE_PATH}/supplier/sources`,
-  UPDATE_SOURCE: (sourceId: string) => `${API_BASE_PATH}/supplier/sources/${sourceId}`,
-  DELETE_SOURCE: (sourceId: string) => `${API_BASE_PATH}/supplier/sources/${sourceId}`,
+  UPDATE_SOURCE: (sourceId: string) =>
+    `${API_BASE_PATH}/supplier/sources/${sourceId}`,
+  DELETE_SOURCE: (sourceId: string) =>
+    `${API_BASE_PATH}/supplier/sources/${sourceId}`,
 
   // Categories
   LIST_CATEGORIES: `${API_BASE_PATH}/supplier/categories`,
