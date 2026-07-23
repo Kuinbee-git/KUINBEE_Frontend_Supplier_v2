@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Kuinbee Supplier Portal",
-  description: "Manage and publish your datasets on the Kuinbee marketplace",
+  description:
+    "Manage datasets and custom collection services on the Kuinbee marketplace",
 };
 
 export default function RootLayout({
