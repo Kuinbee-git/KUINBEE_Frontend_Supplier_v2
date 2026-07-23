@@ -1,11 +1,23 @@
 'use client';
 
 import { Label } from '@/components/ui/label';
-import type { ProposalDetailsResponse } from '@/types/dataset-proposal.types';
+import type { DatasetDetailTokens } from '../detailTokens';
+
+interface LocationTagsValue {
+  locationInfo?: {
+    country: string;
+    state?: string | null;
+    city?: string | null;
+    region?: string | null;
+    coordinates?: string | null;
+    coverage?: string | null;
+  } | null;
+  tags?: string[];
+}
 
 interface LocationTagsDisplayProps {
-  proposal: ProposalDetailsResponse;
-  tokens: any;
+  proposal: LocationTagsValue;
+  tokens: DatasetDetailTokens;
 }
 
 export function LocationTagsDisplay({ proposal, tokens }: LocationTagsDisplayProps) {

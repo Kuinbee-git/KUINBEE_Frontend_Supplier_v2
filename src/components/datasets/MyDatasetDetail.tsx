@@ -1,11 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/components/shared';
-import { useSupplierTokens } from '@/hooks/useSupplierTokens';
-import { getDatasetDetails, getDatasetPricing } from '@/lib/api/datasets';
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { GlassCard, PageBackground } from "@/components/shared";
+import {
+  canArchiveDataset,
+  canChangeDatasetVisibility,
+  canDelistDataset,
+  canPublishDataset,
+  DatasetEntityHeader,
+  DatasetVisibilityBadge,
+  DatasetWorkspace,
+} from "./workspace";
+import { PublishStatusBadge } from "./shared";
+import { useSupplierTokens } from "@/hooks/useSupplierTokens";
+import { getDatasetDetails, getDatasetPricing } from "@/lib/api/datasets";
 import {
   PublishConfirmDialog,
   ChangeVisibilityDialog,
@@ -13,10 +23,14 @@ import {
   ArchiveConfirmDialog,
   DelistConfirmDialog,
   DownloadButton,
-} from './actions';
-import { PRICING_STATUS_CONFIG } from '@/constants/dataset.constants';
-import { KdtsScoreCard } from './shared/KdtsScoreCard';
-import type { DatasetPricingVersion } from '@/types/dataset-proposal.types';
+} from "./actions";
+import { PRICING_STATUS_CONFIG } from "@/constants/dataset.constants";
+import { KdtsScoreCard } from "./shared/KdtsScoreCard";
+import type {
+  DatasetPricingVersion,
+  DatasetStatus,
+  VerificationStatus,
+} from "@/types/dataset-proposal.types";
 import {
   ArrowLeft,
   AlertCircle,
@@ -49,79 +63,132 @@ import {
   BadgeCheck,
   RefreshCw,
   Download,
-  Loader2,
-} from 'lucide-react';
-import type { DatasetDetailsResponse } from '@/types/dataset.types';
+  History,
+  type LucideIcon,
+} from "lucide-react";
+import type { DatasetDetailsResponse } from "@/types/dataset.types";
 
 interface MyDatasetDetailProps {
   datasetId: string;
   isDark?: boolean;
 }
 
-type VerificationStatusType = 'PENDING' | 'SUBMITTED' | 'CHANGES_REQUESTED' | 'RESUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED';
+type VerificationDisplayStatus = VerificationStatus | "UNKNOWN";
 
-const VERIFICATION_STATUS_CONFIG: Record<VerificationStatusType, {
-  label: string;
-  description: string;
-  color: string;
-  icon: any;
-}> = {
+const VERIFICATION_STATUS_CONFIG: Record<
+  VerificationDisplayStatus,
+  {
+    label: string;
+    description: string;
+    color: string;
+    icon: LucideIcon;
+  }
+> = {
   PENDING: {
-    label: 'Pending Submission',
-    description: 'This dataset is still in draft mode and has not been submitted for review.',
-    color: '#f59e0b',
+    label: "Pending Submission",
+    description:
+      "This dataset is still in draft mode and has not been submitted for review.",
+    color: "#f59e0b",
     icon: Clock,
   },
   SUBMITTED: {
-    label: 'Submitted for Review',
-    description: 'Your dataset has been submitted and is waiting for the review process to begin.',
-    color: '#3b82f6',
+    label: "Submitted for Review",
+    description:
+      "Your dataset has been submitted and is waiting for the review process to begin.",
+    color: "#3b82f6",
     icon: FileText,
   },
   CHANGES_REQUESTED: {
-    label: 'Changes Requested',
-    description: 'The reviewer has requested changes to your dataset. Please review the feedback below.',
-    color: '#ef4444',
+    label: "Changes Requested",
+    description:
+      "The reviewer has requested changes to your dataset. Please review the feedback below.",
+    color: "#ef4444",
     icon: AlertCircle,
   },
   RESUBMITTED: {
-    label: 'Resubmitted for Review',
-    description: 'Your revised dataset has been resubmitted and is awaiting review.',
-    color: '#8b5cf6',
+    label: "Resubmitted for Review",
+    description:
+      "Your revised dataset has been resubmitted and is awaiting review.",
+    color: "#8b5cf6",
     icon: Clock,
   },
   UNDER_REVIEW: {
-    label: 'Under Review',
-    description: 'Your dataset is currently being reviewed by our verification team.',
-    color: '#f59e0b',
+    label: "Under Review",
+    description:
+      "Your dataset is currently being reviewed by our verification team.",
+    color: "#f59e0b",
     icon: Clock,
   },
   VERIFIED: {
-    label: 'Verified',
-    description: 'Your dataset has been verified and approved. It is ready for publication.',
-    color: '#22c55e',
+    label: "Verified",
+    description:
+      "Your dataset has been verified and approved. It is ready for publication.",
+    color: "#22c55e",
     icon: CheckCircle,
   },
   REJECTED: {
-    label: 'Rejected',
-    description: 'Your dataset submission has been rejected. Please review the feedback below.',
-    color: '#ef4444',
+    label: "Rejected",
+    description:
+      "Your dataset submission has been rejected. Please review the feedback below.",
+    color: "#ef4444",
     icon: XCircle,
+  },
+  UNKNOWN: {
+    label: "Verification unavailable",
+    description: "Verification information is not available for this dataset.",
+    color: "#6b7280",
+    icon: AlertCircle,
   },
 };
 
-const DATASET_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-  VERIFIED: { label: 'Verified', color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
-  PUBLISHED: { label: 'Published', color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)' },
-  DELISTED: { label: 'Delisted', color: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.15)' },
-  ARCHIVED: { label: 'Archived', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.15)' },
-  REJECTED: { label: 'Rejected', color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)' },
+const DATASET_STATUS_CONFIG: Record<
+  DatasetStatus,
+  { label: string; color: string; bgColor: string }
+> = {
+  SUBMITTED: {
+    label: "Submitted",
+    color: "#3b82f6",
+    bgColor: "rgba(59, 130, 246, 0.15)",
+  },
+  UNDER_REVIEW: {
+    label: "Under Review",
+    color: "#8b5cf6",
+    bgColor: "rgba(139, 92, 246, 0.15)",
+  },
+  VERIFIED: {
+    label: "Verified",
+    color: "#22c55e",
+    bgColor: "rgba(34, 197, 94, 0.15)",
+  },
+  PUBLISHED: {
+    label: "Published",
+    color: "#3b82f6",
+    bgColor: "rgba(59, 130, 246, 0.15)",
+  },
+  DELISTED: {
+    label: "Delisted",
+    color: "#f59e0b",
+    bgColor: "rgba(245, 158, 11, 0.15)",
+  },
+  ARCHIVED: {
+    label: "Archived",
+    color: "#6b7280",
+    bgColor: "rgba(107, 114, 128, 0.15)",
+  },
+  REJECTED: {
+    label: "Rejected",
+    color: "#ef4444",
+    bgColor: "rgba(239, 68, 68, 0.15)",
+  },
 };
 
-const VISIBILITY_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
-  PUBLIC: { label: 'Public', icon: Eye, color: '#22c55e' },
-  PRIVATE: { label: 'Private', icon: Lock, color: '#ef4444' },
-  UNLISTED: { label: 'Unlisted', icon: EyeOff, color: '#f59e0b' },
+const VISIBILITY_CONFIG: Record<
+  string,
+  { label: string; icon: LucideIcon; color: string }
+> = {
+  PUBLIC: { label: "Public", icon: Eye, color: "#22c55e" },
+  PRIVATE: { label: "Private", icon: Lock, color: "#ef4444" },
+  UNLISTED: { label: "Unlisted", icon: EyeOff, color: "#f59e0b" },
 };
 
 // Helper component for info items
@@ -132,9 +199,9 @@ function InfoItem({
   tokens,
   valueColor,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
   tokens: ReturnType<typeof useSupplierTokens>;
   valueColor?: string;
 }) {
@@ -147,9 +214,14 @@ function InfoItem({
         <Icon className="w-4 h-4" style={{ color: tokens.textSecondary }} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs mb-0.5" style={{ color: tokens.textMuted }}>{label}</p>
-        <p className="text-sm font-medium" style={{ color: valueColor || tokens.textPrimary }}>
-          {value || 'N/A'}
+        <p className="text-xs mb-0.5" style={{ color: tokens.textMuted }}>
+          {label}
+        </p>
+        <p
+          className="text-sm font-medium"
+          style={{ color: valueColor || tokens.textPrimary }}
+        >
+          {value || "N/A"}
         </p>
       </div>
     </div>
@@ -163,16 +235,21 @@ function SectionTitle({
   badge,
   tokens,
 }: {
-  icon: any;
+  icon: LucideIcon;
   title: string;
-  badge?: React.ReactNode;
+  badge?: ReactNode;
   tokens: ReturnType<typeof useSupplierTokens>;
 }) {
   return (
     <div className="flex items-center justify-between mb-5">
       <div className="flex items-center gap-2">
         <Icon className="w-5 h-5" style={{ color: tokens.textSecondary }} />
-        <h3 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>{title}</h3>
+        <h3
+          className="text-base font-semibold"
+          style={{ color: tokens.textPrimary }}
+        >
+          {title}
+        </h3>
       </div>
       {badge}
     </div>
@@ -183,14 +260,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const router = useRouter();
   const tokens = useSupplierTokens();
 
-  const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(null);
+  const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Pricing state
-  const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(null);
-  const [pricingLoading, setPricingLoading] = useState(false);
-
+  const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(
+    null
+  );
   // Dialog states
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
@@ -198,7 +277,19 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [showDelistDialog, setShowDelistDialog] = useState(false);
 
-  const fetchDataset = async () => {
+  const fetchPricing = useCallback(async () => {
+    try {
+      const response = await getDatasetPricing(datasetId);
+      if (response.pricing) {
+        setPricingData(response.pricing);
+      }
+    } catch (error: unknown) {
+      console.error("Failed to fetch pricing:", error);
+      // Pricing is supplementary to the dataset detail request.
+    }
+  }, [datasetId]);
+
+  const fetchDataset = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -207,88 +298,71 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
       // Also fetch pricing
       await fetchPricing();
-    } catch (err: any) {
-      console.error('Failed to fetch dataset:', err);
-      setError(err.message || 'Failed to load dataset');
+    } catch (err: unknown) {
+      console.error("Failed to fetch dataset:", err);
+      setError(err instanceof Error ? err.message : "Failed to load dataset");
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchPricing = async () => {
-    try {
-      setPricingLoading(true);
-      const response = await getDatasetPricing(datasetId);
-      if (response.pricing) {
-        setPricingData(response.pricing);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch pricing:', err);
-      // Don't set error here - it's non-critical
-    } finally {
-      setPricingLoading(false);
-    }
-  };
+  }, [datasetId, fetchPricing]);
 
   useEffect(() => {
-    fetchDataset();
-  }, [datasetId]);
+    void fetchDataset();
+  }, [fetchDataset]);
 
   // Loading state
   if (loading) {
     return (
-      <div className="h-full overflow-auto">
-        <div className="max-w-[1200px] mx-auto px-8 py-7">
-          <div className="flex items-center justify-center py-32">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2
-                className="w-10 h-10 animate-spin"
-                style={{ color: tokens.textSecondary }}
-              />
-              <p className="text-sm" style={{ color: tokens.textMuted }}>
-                Loading dataset details...
-              </p>
+      <PageBackground withGrid>
+        <DatasetWorkspace className="max-w-[1380px]">
+          <div className="supplier-glass-panel min-h-80 animate-pulse rounded-2xl border p-6">
+            <div className="h-4 w-32 rounded bg-foreground/[0.07]" />
+            <div className="mt-5 h-9 w-2/3 rounded bg-foreground/[0.08]" />
+            <div className="mt-4 h-5 w-52 rounded bg-foreground/[0.06]" />
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-28 rounded-xl bg-foreground/[0.05]"
+                />
+              ))}
             </div>
           </div>
-        </div>
-      </div>
+        </DatasetWorkspace>
+      </PageBackground>
     );
   }
 
   // Error state
   if (error || !datasetData) {
     return (
-      <div className="h-full overflow-auto">
-        <div className="max-w-[1200px] mx-auto px-8 py-7">
-          <div className="flex flex-col items-center justify-center py-32">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-              style={{ background: tokens.errorBg }}
-            >
-              <AlertCircle className="w-8 h-8" style={{ color: tokens.errorText }} />
-            </div>
-            <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
+      <PageBackground withGrid>
+        <DatasetWorkspace className="max-w-3xl">
+          <div className="supplier-glass-panel rounded-2xl border px-6 py-12 text-center">
+            <AlertCircle className="mx-auto size-11 text-destructive" />
+            <h3 className="mt-4 text-xl font-semibold text-foreground">
               Failed to load dataset
             </h3>
-            <p className="text-sm mb-6 text-center max-w-md" style={{ color: tokens.textSecondary }}>
-              {error || 'Dataset not found or you may not have permission to view it.'}
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+              {error ||
+                "Dataset not found or you may not have permission to view it."}
             </p>
-            <div className="flex gap-3">
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Button
                 variant="outline"
-                onClick={() => fetchDataset()}
+                onClick={() => void fetchDataset()}
                 className="gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 Retry
               </Button>
-              <Button onClick={() => router.push('/dashboard/my-datasets')}>
+              <Button onClick={() => router.push("/dashboard/my-datasets")}>
                 Back to My Datasets
               </Button>
             </div>
           </div>
-        </div>
-      </div>
+        </DatasetWorkspace>
+      </PageBackground>
     );
   }
 
@@ -307,266 +381,213 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   } = datasetData;
 
   // Status determination
-  const verificationStatus = (verification?.status || 'VERIFIED') as VerificationStatusType;
+  const verificationStatus: VerificationDisplayStatus =
+    verification?.status ?? "UNKNOWN";
   const verificationConfig = VERIFICATION_STATUS_CONFIG[verificationStatus];
-  const datasetStatusConfig = DATASET_STATUS_CONFIG[dataset.status] || DATASET_STATUS_CONFIG.VERIFIED;
-  const visibilityConfig = VISIBILITY_CONFIG[dataset.visibility || 'PUBLIC'];
-
-  if (!verificationConfig) {
-    return (
-      <div className="h-full overflow-auto">
-        <div className="max-w-[1200px] mx-auto px-8 py-7">
-          <div className="text-center py-20">
-            <p style={{ color: tokens.errorText }}>Error: Invalid verification status</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const datasetStatusConfig = DATASET_STATUS_CONFIG[dataset.status];
+  const visibilityConfig = VISIBILITY_CONFIG[dataset.visibility || "PUBLIC"];
 
   const VerificationIcon = verificationConfig.icon;
-  const VisibilityIcon = visibilityConfig?.icon || Eye;
 
   // State flags
-  const isVerified = dataset.status === 'VERIFIED';
-  const isPublished = dataset.status === 'PUBLISHED';
-  const isDelisted = dataset.status === 'DELISTED';
-  const isArchived = dataset.status === 'ARCHIVED';
+  const isVerified = dataset.status === "VERIFIED";
+  const isPublished = dataset.status === "PUBLISHED";
+  const isDelisted = dataset.status === "DELISTED";
+  const isArchived = dataset.status === "ARCHIVED";
+  const canPublish = canPublishDataset(dataset.status, verification?.status);
+  const canChangeVisibility = canChangeDatasetVisibility(dataset.status);
+  const canDelist = canDelistDataset(dataset.status);
+  const canArchive = canArchiveDataset(dataset.status);
 
   // Format helpers
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
 
-  const formatDateTime = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const formatDateTime = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   const formatFileSize = (bytes: string | null) => {
-    if (!bytes) return 'N/A';
+    if (!bytes) return "N/A";
     const size = parseInt(bytes);
     if (size < 1024) return `${size} B`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-    if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+    if (size < 1024 * 1024 * 1024)
+      return `${(size / (1024 * 1024)).toFixed(2)} MB`;
     return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
 
+  const lifecycleEvents: Array<{
+    title: string;
+    date: string;
+    detail: string;
+  }> = [];
+  if (dataset.archivedAt) {
+    lifecycleEvents.push({
+      title: "Dataset archived",
+      date: dataset.archivedAt,
+      detail: "Removed from marketplace discovery.",
+    });
+  }
+  if (dataset.publishedAt) {
+    lifecycleEvents.push({
+      title: "Dataset published",
+      date: dataset.publishedAt,
+      detail: `${dataset.visibility || "PUBLIC"} marketplace visibility.`,
+    });
+  }
+  if (verification) {
+    lifecycleEvents.push({
+      title: verificationConfig.label,
+      date: verification.updatedAt,
+      detail: verification.notes || verificationConfig.description,
+    });
+  }
+  lifecycleEvents.push({
+    title: "Dataset updated",
+    date: dataset.updatedAt,
+    detail: "Latest saved dataset information.",
+  });
+
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-[1200px] mx-auto px-8 py-7">
-        {/* Header Navigation */}
-        <div className="mb-8">
+    <PageBackground withGrid>
+      <DatasetWorkspace className="max-w-[1380px]">
+        <div className="space-y-6">
           <Button
             variant="ghost"
-            onClick={() => router.push('/dashboard/my-datasets')}
-            className="gap-2 -ml-3 mb-6 transition-all duration-300 hover:bg-transparent hover:translate-x-[-4px] text-sm"
-            style={{ color: tokens.textSecondary }}
+            onClick={() => router.push("/dashboard/my-datasets")}
+            className="-ml-3 gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to My Datasets
           </Button>
 
-          {/* Page Title & Status Row */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 mb-3">
-                <span
-                  className="text-xs font-mono px-2.5 py-1.5 rounded-md"
-                  style={{
-                    background: tokens.infoBg,
-                    color: tokens.textSecondary,
-                    fontWeight: '500',
-                  }}
-                >
-                  {dataset.datasetUniqueId}
-                </span>
-                {/* Status Badges */}
-                <span
-                  className="text-xs font-medium px-3 py-1.5 rounded-full"
-                  style={{
-                    background: datasetStatusConfig.bgColor,
-                    color: datasetStatusConfig.color,
-                  }}
-                >
-                  {datasetStatusConfig.label}
-                </span>
+          <DatasetEntityHeader
+            eyebrow="Dataset workspace"
+            title={dataset.title}
+            identifier={dataset.datasetUniqueId}
+            description={
+              isPublished
+                ? "Manage marketplace visibility, pricing, files, and lifecycle actions for this published dataset."
+                : isDelisted
+                  ? "Review the delisted dataset and open the update workspace when you are ready to make changes."
+                  : isArchived
+                    ? "This dataset is retained for your records and is no longer available on the marketplace."
+                    : "Review the verified dataset and complete the remaining publication setup."
+            }
+            metadata={<>Last updated {formatDateTime(dataset.updatedAt)}</>}
+            badges={
+              <>
+                <PublishStatusBadge status={dataset.status} />
+                <DatasetVisibilityBadge
+                  visibility={dataset.visibility || "PUBLIC"}
+                />
                 {dataset.isSample && (
-                  <span
-                    className="text-xs font-medium px-3 py-1.5 rounded-full"
-                    style={{
-                      background: tokens.warningBg,
-                      color: tokens.warningText,
-                    }}
-                  >
-                    Sample Dataset
+                  <span className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                    Sample dataset
                   </span>
                 )}
-              </div>
-              <h1
-                className="text-3xl font-bold mb-2 leading-tight"
-                style={{ color: tokens.textPrimary }}
-              >
-                {dataset.title}
-              </h1>
-              <p className="text-sm" style={{ color: tokens.textMuted }}>
-                Last updated {formatDateTime(dataset.updatedAt)}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Actions Bar */}
-          {(isVerified || isPublished || isDelisted || isArchived) && (
-            <div className="mt-6 pt-6 border-t" style={{ borderColor: tokens.borderSubtle }}>
-              <p className="text-xs mb-3 font-medium uppercase tracking-wide" style={{ color: tokens.textMuted }}>Quick Actions</p>
-              <div className="flex flex-wrap gap-2">
-                {/* Publish Button - only for verified but not published */}
-                {isVerified && !isPublished && !isArchived && (
-                  <Button
-                    onClick={() => setShowPublishDialog(true)}
-                    variant="outline"
-                    className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                    style={{
-                      background: tokens.glassBg,
-                      border: `1px solid ${tokens.glassBorder}`,
-                      color: tokens.textPrimary,
-                    }}
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span className="hidden sm:inline">Publish Dataset</span>
-                  </Button>
-                )}
-
-                {isDelisted && (
-                  <Button
-                    onClick={() => router.push(`/dashboard/my-datasets/${dataset.id}/edit`)}
-                    variant="outline"
-                    className="flex-1 min-w-[120px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                    style={{
-                      background: tokens.glassBg,
-                      border: `1px solid ${tokens.glassBorder}`,
-                      color: tokens.textPrimary,
-                    }}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span className="hidden sm:inline">Edit Dataset</span>
-                  </Button>
-                )}
-
-                {/* Visibility Button */}
-                <Button
-                  onClick={() => setShowVisibilityDialog(true)}
-                  disabled={!isVerified || isArchived || isDelisted}
-                  variant="outline"
-                  className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                  style={{
-                    background: tokens.glassBg,
-                    border: `1px solid ${tokens.glassBorder}`,
-                    color: tokens.textPrimary,
-                    opacity: (!isVerified || isArchived || isDelisted) ? 0.5 : 1,
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                  <span className="hidden sm:inline">Visibility</span>
-                </Button>
-
-                {/* Pricing Button */}
-                {isVerified && !isArchived && !isDelisted && (
-                  <Button
-                    onClick={() => setShowPricingDialog(true)}
-                    variant="outline"
-                    className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                    style={{
-                      background: tokens.glassBg,
-                      border: `1px solid ${tokens.glassBorder}`,
-                      color: tokens.textPrimary,
-                    }}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span className="hidden sm:inline">Pricing</span>
-                  </Button>
-                )}
-
-                {/* Archive Button */}
-                {isPublished && (
-                  <Button
-                    onClick={() => setShowDelistDialog(true)}
-                    variant="outline"
-                    className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                    style={{
-                      background: tokens.glassBg,
-                      border: `1px solid ${tokens.warningBorder}`,
-                      color: tokens.warningText,
-                    }}
-                  >
-                    <Archive className="w-4 h-4" />
-                    <span className="hidden sm:inline">Delist</span>
-                  </Button>
-                )}
-
-                {/* Archive Button */}
-                <Button
-                  onClick={() => setShowArchiveDialog(true)}
-                  disabled={!isPublished}
-                  variant="outline"
-                  className="flex-1 min-w-[100px] gap-2 justify-center transition-all duration-300 hover:shadow-md hover:scale-[1.01] h-10 text-sm font-medium"
-                  style={{
-                    background: tokens.glassBg,
-                    border: `1px solid ${isArchived ? tokens.successBorder : tokens.errorBorder}`,
-                    color: isArchived ? '#22c55e' : tokens.errorText,
-                    opacity: !isPublished ? 0.5 : 1,
-                    cursor: !isPublished ? 'not-allowed' : 'pointer',
-                  }}
-                  title={!isPublished ? "Archive is only available after publishing" : ""}
-                >
-                  <Archive className="w-4 h-4" />
-                  <span className="hidden sm:inline">{isArchived ? 'Unarchive' : 'Archive'}</span>
-                </Button>
-
-                {/* Download Button */}
-                {publishedUpload ? (
-                  <DownloadButton
-                    datasetId={dataset.id}
-                    fileName={publishedUpload.originalFileName}
-                    variant="default"
-                    size="sm"
-                    className="flex-1 min-w-[100px] gap-2 justify-center h-10 text-sm font-medium"
-                  />
-                ) : (
-                  <Button
-                    disabled
-                    variant="outline"
-                    className="flex-1 min-w-[100px] gap-2 justify-center h-10 text-sm font-medium"
-                    style={{
-                      background: tokens.glassBg,
-                      border: `1px solid ${tokens.glassBorder}`,
-                      color: tokens.textMuted,
-                      opacity: 0.5,
-                      cursor: 'not-allowed',
-                    }}
-                    title="Download will be available once a file is published"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Download</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
+              </>
+            }
+            actions={
+              isVerified || isPublished || isDelisted || isArchived ? (
+                <>
+                  {canPublish && (
+                    <Button
+                      onClick={() => setShowPublishDialog(true)}
+                      className="flex-1 gap-2 sm:flex-none"
+                    >
+                      <Upload className="size-4" />{" "}
+                      {isDelisted ? "Republish dataset" : "Publish dataset"}
+                    </Button>
+                  )}
+                  {isDelisted && (
+                    <Button
+                      onClick={() =>
+                        router.push(`/dashboard/my-datasets/${dataset.id}/edit`)
+                      }
+                      variant="outline"
+                      className="flex-1 gap-2 sm:flex-none"
+                    >
+                      <FileText className="size-4" /> Edit dataset
+                    </Button>
+                  )}
+                  {canChangeVisibility && (
+                    <Button
+                      onClick={() => setShowVisibilityDialog(true)}
+                      variant="outline"
+                      className="flex-1 gap-2 sm:flex-none"
+                    >
+                      <Eye className="size-4" /> Visibility
+                    </Button>
+                  )}
+                  {isVerified && !isArchived && !isDelisted && (
+                    <Button
+                      onClick={() => setShowPricingDialog(true)}
+                      variant="outline"
+                      className="flex-1 gap-2 sm:flex-none"
+                    >
+                      <DollarSign className="size-4" /> Pricing
+                    </Button>
+                  )}
+                  {canDelist && (
+                    <Button
+                      onClick={() => setShowDelistDialog(true)}
+                      variant="outline"
+                      className="flex-1 gap-2 border-amber-500/35 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400 sm:flex-none"
+                    >
+                      <Archive className="size-4" /> Delist
+                    </Button>
+                  )}
+                  {canArchive && (
+                    <Button
+                      onClick={() => setShowArchiveDialog(true)}
+                      variant="outline"
+                      className="supplier-action-danger flex-1 gap-2 sm:flex-none"
+                    >
+                      <Archive className="size-4" /> Archive
+                    </Button>
+                  )}
+                  {publishedUpload ? (
+                    <DownloadButton
+                      datasetId={dataset.id}
+                      fileName={publishedUpload.originalFileName}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2 sm:flex-none"
+                    />
+                  ) : (
+                    <Button
+                      disabled
+                      variant="outline"
+                      className="flex-1 gap-2 sm:flex-none"
+                      title="Download will be available once a file is published"
+                    >
+                      <Download className="size-4" /> Download
+                    </Button>
+                  )}
+                </>
+              ) : null
+            }
+          />
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="mt-7 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
           {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <main className="min-w-0 space-y-6">
             {/* Archived Notice */}
             {isArchived && (
-              <GlassCard className="p-5">
+              <GlassCard className="supplier-glass-card p-5">
                 <div
                   className="flex items-center gap-3 p-4 rounded-xl"
                   style={{
@@ -574,14 +595,24 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     border: `1px solid ${tokens.errorBorder}`,
                   }}
                 >
-                  <Archive className="w-5 h-5 flex-shrink-0" style={{ color: tokens.errorText }} />
+                  <Archive
+                    className="w-5 h-5 flex-shrink-0"
+                    style={{ color: tokens.errorText }}
+                  />
                   <div>
-                    <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                    <p
+                      className="text-sm font-medium"
+                      style={{ color: tokens.textPrimary }}
+                    >
                       This dataset is archived
                     </p>
-                    <p className="text-xs" style={{ color: tokens.textSecondary }}>
+                    <p
+                      className="text-xs"
+                      style={{ color: tokens.textSecondary }}
+                    >
                       It is no longer visible on the marketplace.
-                      {dataset.archivedAt && ` Archived on ${formatDate(dataset.archivedAt)}.`}
+                      {dataset.archivedAt &&
+                        ` Archived on ${formatDate(dataset.archivedAt)}.`}
                     </p>
                   </div>
                 </div>
@@ -589,7 +620,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             )}
 
             {isDelisted && (
-              <GlassCard className="p-5">
+              <GlassCard className="supplier-glass-card p-5">
                 <div
                   className="flex items-center gap-3 p-4 rounded-xl"
                   style={{
@@ -597,13 +628,23 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     border: `1px solid ${tokens.warningBorder}`,
                   }}
                 >
-                  <Archive className="w-5 h-5 flex-shrink-0" style={{ color: tokens.warningText }} />
+                  <Archive
+                    className="w-5 h-5 flex-shrink-0"
+                    style={{ color: tokens.warningText }}
+                  />
                   <div>
-                    <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                    <p
+                      className="text-sm font-medium"
+                      style={{ color: tokens.textPrimary }}
+                    >
                       This dataset is delisted for updates
                     </p>
-                    <p className="text-xs" style={{ color: tokens.textSecondary }}>
-                      Use the Edit Dataset action to update metadata and pricing, then submit for admin review.
+                    <p
+                      className="text-xs"
+                      style={{ color: tokens.textSecondary }}
+                    >
+                      Use the Edit Dataset action to update metadata and
+                      pricing, then submit for admin review.
                     </p>
                   </div>
                 </div>
@@ -611,69 +652,163 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             )}
 
             {/* Sample, Location & Tags */}
-            {(dataset.isSample || dataset.sampleNotes || dataset.actualPrice !== undefined || dataset.isNegotiable !== undefined || locationInfo || (tags && tags.length > 0)) && (
-              <GlassCard className="p-5">
-                <SectionTitle icon={Tag} title="Sample, Location & Tags" tokens={tokens} />
+            {(dataset.isSample ||
+              dataset.sampleNotes ||
+              dataset.actualPrice !== undefined ||
+              dataset.isNegotiable !== undefined ||
+              locationInfo ||
+              (tags && tags.length > 0)) && (
+              <GlassCard className="supplier-glass-card p-5">
+                <SectionTitle
+                  icon={Tag}
+                  title="Sample, Location & Tags"
+                  tokens={tokens}
+                />
 
                 <div className="space-y-6">
-                  {(dataset.isSample || dataset.sampleNotes || dataset.actualPrice !== undefined || dataset.isNegotiable !== undefined) && (
+                  {(dataset.isSample ||
+                    dataset.sampleNotes ||
+                    dataset.actualPrice !== undefined ||
+                    dataset.isNegotiable !== undefined) && (
                     <div>
-                      <h4 className="text-sm font-medium mb-3" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-3"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Sample Information
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="rounded-lg p-3" style={{ background: tokens.infoBg }}>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Dataset Type</p>
-                          <p className="text-sm font-semibold mt-1" style={{ color: dataset.isSample ? tokens.warningText : tokens.successText }}>
-                            {dataset.isSample ? 'Sample Dataset' : 'Full Dataset'}
+                        <div
+                          className="rounded-lg p-3"
+                          style={{ background: tokens.infoBg }}
+                        >
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Dataset Type
+                          </p>
+                          <p
+                            className="text-sm font-semibold mt-1"
+                            style={{
+                              color: dataset.isSample
+                                ? tokens.warningText
+                                : tokens.successText,
+                            }}
+                          >
+                            {dataset.isSample
+                              ? "Sample Dataset"
+                              : "Full Dataset"}
                           </p>
                         </div>
-                        <div className="rounded-lg p-3" style={{ background: tokens.infoBg }}>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Negotiable</p>
-                          <p className="text-sm font-semibold mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.isNegotiable === null || dataset.isNegotiable === undefined
-                              ? 'N/A'
+                        <div
+                          className="rounded-lg p-3"
+                          style={{ background: tokens.infoBg }}
+                        >
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Negotiable
+                          </p>
+                          <p
+                            className="text-sm font-semibold mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.isNegotiable === null ||
+                            dataset.isNegotiable === undefined
+                              ? "N/A"
                               : dataset.isNegotiable
-                                ? 'Yes'
-                                : 'No'}
+                                ? "Yes"
+                                : "No"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Why Sample</p>
-                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.sampleNotes?.whySample || 'N/A'}
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Why Sample
+                          </p>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.sampleNotes?.whySample || "N/A"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Actual Data Size</p>
-                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.sampleNotes?.actualDataSize || 'N/A'}
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Actual Data Size
+                          </p>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.sampleNotes?.actualDataSize || "N/A"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Completeness</p>
-                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.sampleNotes?.completeness || 'N/A'}
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Completeness
+                          </p>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.sampleNotes?.completeness || "N/A"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Delivery Mechanism</p>
-                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.sampleNotes?.deliveryMechanism || 'N/A'}
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Delivery Mechanism
+                          </p>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.sampleNotes?.deliveryMechanism || "N/A"}
                           </p>
                         </div>
                         <div className="sm:col-span-2">
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Delivery Notes</p>
-                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.sampleNotes?.deliveryMechanismNotes || 'N/A'}
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Delivery Notes
+                          </p>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.sampleNotes?.deliveryMechanismNotes ||
+                              "N/A"}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs" style={{ color: tokens.textMuted }}>Actual Price</p>
-                          <p className="text-sm mt-1" style={{ color: tokens.textPrimary }}>
-                            {dataset.actualPrice !== null && dataset.actualPrice !== undefined
-                              ? `${dataset.actualPrice} ${dataset.actualPriceCurrency || ''}`.trim()
-                              : 'N/A'}
+                          <p
+                            className="text-xs"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            Actual Price
+                          </p>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {dataset.actualPrice !== null &&
+                            dataset.actualPrice !== undefined
+                              ? `${dataset.actualPrice} ${dataset.actualPriceCurrency || ""}`.trim()
+                              : "N/A"}
                           </p>
                         </div>
                       </div>
@@ -682,7 +817,10 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {tags && tags.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-medium mb-3" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-3"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Tags
                       </h4>
                       <div className="flex flex-wrap gap-2">
@@ -708,16 +846,26 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* About Dataset */}
             {aboutDatasetInfo && (
-              <GlassCard className="p-5">
-                <SectionTitle icon={Info} title="About Dataset" tokens={tokens} />
+              <GlassCard className="supplier-glass-card p-5">
+                <SectionTitle
+                  icon={Info}
+                  title="Marketplace Content"
+                  tokens={tokens}
+                />
 
                 <div className="space-y-5">
                   {aboutDatasetInfo.overview && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-2"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Overview
                       </h4>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {aboutDatasetInfo.overview}
                       </p>
                     </div>
@@ -725,10 +873,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {aboutDatasetInfo.description && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-2"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Description
                       </h4>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {aboutDatasetInfo.description}
                       </p>
                     </div>
@@ -736,10 +890,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {aboutDatasetInfo.useCases && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-2"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Use Cases
                       </h4>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {aboutDatasetInfo.useCases}
                       </p>
                     </div>
@@ -747,10 +907,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {aboutDatasetInfo.dataQuality && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-2"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Data Quality
                       </h4>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {aboutDatasetInfo.dataQuality}
                       </p>
                     </div>
@@ -758,10 +924,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {aboutDatasetInfo.methodology && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-2"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Methodology
                       </h4>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {aboutDatasetInfo.methodology}
                       </p>
                     </div>
@@ -769,10 +941,16 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {aboutDatasetInfo.limitations && (
                     <div>
-                      <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textSecondary }}>
+                      <h4
+                        className="text-sm font-medium mb-2"
+                        style={{ color: tokens.textSecondary }}
+                      >
                         Limitations
                       </h4>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {aboutDatasetInfo.limitations}
                       </p>
                     </div>
@@ -780,7 +958,13 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {/* Updated timestamp */}
                   {aboutDatasetInfo.updatedAt && (
-                    <p className="text-xs pt-2 border-t" style={{ color: tokens.textMuted, borderColor: tokens.borderSubtle }}>
+                    <p
+                      className="text-xs pt-2 border-t"
+                      style={{
+                        color: tokens.textMuted,
+                        borderColor: tokens.borderSubtle,
+                      }}
+                    >
                       Last updated: {formatDateTime(aboutDatasetInfo.updatedAt)}
                     </p>
                   )}
@@ -790,24 +974,58 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Location */}
             {locationInfo && (
-              <GlassCard className="p-5">
+              <GlassCard className="supplier-glass-card p-5">
                 <SectionTitle icon={MapPin} title="Location" tokens={tokens} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoItem icon={Globe} label="Country" value={locationInfo.country} tokens={tokens} />
-                  <InfoItem icon={MapPin} label="State" value={locationInfo.state} tokens={tokens} />
-                  <InfoItem icon={MapPin} label="City" value={locationInfo.city} tokens={tokens} />
-                  <InfoItem icon={MapPin} label="Region" value={locationInfo.region} tokens={tokens} />
-                  <InfoItem icon={MapPin} label="Coverage" value={locationInfo.coverage} tokens={tokens} />
-                  <InfoItem icon={MapPin} label="Coordinates" value={locationInfo.coordinates} tokens={tokens} />
+                  <InfoItem
+                    icon={Globe}
+                    label="Country"
+                    value={locationInfo.country}
+                    tokens={tokens}
+                  />
+                  <InfoItem
+                    icon={MapPin}
+                    label="State"
+                    value={locationInfo.state}
+                    tokens={tokens}
+                  />
+                  <InfoItem
+                    icon={MapPin}
+                    label="City"
+                    value={locationInfo.city}
+                    tokens={tokens}
+                  />
+                  <InfoItem
+                    icon={MapPin}
+                    label="Region"
+                    value={locationInfo.region}
+                    tokens={tokens}
+                  />
+                  <InfoItem
+                    icon={MapPin}
+                    label="Coverage"
+                    value={locationInfo.coverage}
+                    tokens={tokens}
+                  />
+                  <InfoItem
+                    icon={MapPin}
+                    label="Coordinates"
+                    value={locationInfo.coordinates}
+                    tokens={tokens}
+                  />
                 </div>
               </GlassCard>
             )}
 
             {/* Data Format Information */}
             {dataFormatInfo && (
-              <GlassCard className="p-5">
-                <SectionTitle icon={FileCode} title="Data Format" tokens={tokens} />
+              <GlassCard className="supplier-glass-card p-5">
+                <SectionTitle
+                  icon={FileCode}
+                  title="Data Format"
+                  tokens={tokens}
+                />
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   <InfoItem
@@ -847,7 +1065,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   <InfoItem
                     icon={FileArchive}
                     label="Compression"
-                    value={dataFormatInfo.compressionType || 'None'}
+                    value={dataFormatInfo.compressionType || "None"}
                     tokens={tokens}
                   />
 
@@ -863,14 +1081,17 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Features / Schema */}
             {features && features.length > 0 && (
-              <GlassCard className="p-5">
+              <GlassCard className="supplier-glass-card p-5">
                 <SectionTitle
                   icon={Table2}
                   title="Features / Schema"
                   badge={
                     <span
                       className="text-xs px-2 py-1 rounded-full"
-                      style={{ background: tokens.infoBg, color: tokens.textSecondary }}
+                      style={{
+                        background: tokens.infoBg,
+                        color: tokens.textSecondary,
+                      }}
                     >
                       {features.length} columns
                     </span>
@@ -881,7 +1102,11 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 <div className="overflow-x-auto -mx-5 px-5">
                   <table className="w-full min-w-[500px]">
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${tokens.borderDefault}` }}>
+                      <tr
+                        style={{
+                          borderBottom: `1px solid ${tokens.borderDefault}`,
+                        }}
+                      >
                         <th
                           className="text-left text-xs font-medium py-3 px-3 first:pl-0"
                           style={{ color: tokens.textMuted }}
@@ -914,7 +1139,10 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                           key={feature.id}
                           className="transition-colors"
                           style={{
-                            borderBottom: index < features.length - 1 ? `1px solid ${tokens.borderSubtle}` : 'none',
+                            borderBottom:
+                              index < features.length - 1
+                                ? `1px solid ${tokens.borderSubtle}`
+                                : "none",
                           }}
                         >
                           <td
@@ -928,7 +1156,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                               className="text-xs px-2 py-0.5 rounded font-mono"
                               style={{
                                 background: tokens.infoBg,
-                                color: tokens.textSecondary
+                                color: tokens.textSecondary,
                               }}
                             >
                               {feature.dataType}
@@ -938,20 +1166,26 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                             className="text-sm py-3 px-3"
                             style={{ color: tokens.textSecondary }}
                           >
-                            {feature.description || '—'}
+                            {feature.description || "—"}
                           </td>
                           <td className="text-center py-3 px-3 last:pr-0">
                             {feature.isNullable ? (
                               <span
                                 className="text-xs px-2 py-0.5 rounded"
-                                style={{ background: tokens.warningBg, color: '#f59e0b' }}
+                                style={{
+                                  background: tokens.warningBg,
+                                  color: "#f59e0b",
+                                }}
                               >
                                 Yes
                               </span>
                             ) : (
                               <span
                                 className="text-xs px-2 py-0.5 rounded"
-                                style={{ background: tokens.successBg, color: '#22c55e' }}
+                                style={{
+                                  background: tokens.successBg,
+                                  color: "#22c55e",
+                                }}
                               >
                                 No
                               </span>
@@ -964,46 +1198,77 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                 </div>
               </GlassCard>
             )}
-          </div>
+          </main>
 
           {/* Right Column - Sidebar */}
-          <div className="space-y-6">
+          <aside className="order-first space-y-5 xl:order-none xl:sticky xl:top-6">
             {/* Dataset Details Card */}
-            <GlassCard className="p-4">
-              <SectionTitle icon={Database} title="Dataset Details" tokens={tokens} />
+            <GlassCard className="supplier-glass-card p-4">
+              <SectionTitle
+                icon={Database}
+                title="Dataset Details"
+                tokens={tokens}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs" style={{ color: tokens.textMuted }}>License</p>
-                  <p className="text-sm font-medium mt-1" style={{ color: tokens.textPrimary }}>
-                    {dataset.license || 'N/A'}
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>
+                    License
+                  </p>
+                  <p
+                    className="text-sm font-medium mt-1"
+                    style={{ color: tokens.textPrimary }}
+                  >
+                    {dataset.license || "N/A"}
                   </p>
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs" style={{ color: tokens.textMuted }}>Visibility</p>
-                  <p className="text-sm font-medium mt-1" style={{ color: visibilityConfig?.color || tokens.textPrimary }}>
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>
+                    Visibility
+                  </p>
+                  <p
+                    className="text-sm font-medium mt-1"
+                    style={{
+                      color: visibilityConfig?.color || tokens.textPrimary,
+                    }}
+                  >
                     {visibilityConfig?.label || dataset.visibility}
                   </p>
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs" style={{ color: tokens.textMuted }}>Status</p>
-                  <p className="text-sm font-medium mt-1" style={{ color: datasetStatusConfig.color }}>
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>
+                    Status
+                  </p>
+                  <p
+                    className="text-sm font-medium mt-1"
+                    style={{ color: datasetStatusConfig.color }}
+                  >
                     {datasetStatusConfig.label}
                   </p>
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs" style={{ color: tokens.textMuted }}>Rating</p>
-                  <p className="text-sm font-medium mt-1" style={{ color: tokens.textPrimary }}>
-                    {dataset.rating ? Number(dataset.rating).toFixed(1) : 'N/A'}
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>
+                    Rating
+                  </p>
+                  <p
+                    className="text-sm font-medium mt-1"
+                    style={{ color: tokens.textPrimary }}
+                  >
+                    {dataset.rating ? Number(dataset.rating).toFixed(1) : "N/A"}
                   </p>
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs" style={{ color: tokens.textMuted }}>Reviews</p>
-                  <p className="text-sm font-medium mt-1" style={{ color: tokens.textPrimary }}>
+                  <p className="text-xs" style={{ color: tokens.textMuted }}>
+                    Reviews
+                  </p>
+                  <p
+                    className="text-sm font-medium mt-1"
+                    style={{ color: tokens.textPrimary }}
+                  >
                     {dataset.reviewCount ?? 0}
                   </p>
                 </div>
@@ -1012,16 +1277,25 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Pricing Card */}
             {pricingData && isVerified && (
-              <GlassCard className="p-4">
+              <GlassCard className="supplier-glass-card p-4">
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" style={{ color: tokens.textSecondary }} />
-                    <h3 className="text-base font-semibold" style={{ color: tokens.textPrimary }}>Pricing</h3>
+                    <DollarSign
+                      className="w-5 h-5"
+                      style={{ color: tokens.textSecondary }}
+                    />
+                    <h3
+                      className="text-base font-semibold"
+                      style={{ color: tokens.textPrimary }}
+                    >
+                      Pricing
+                    </h3>
                   </div>
                   <div
                     className="px-3 py-1.5 rounded-lg text-xs font-medium"
                     style={{
-                      background: PRICING_STATUS_CONFIG[pricingData.status].bgColor,
+                      background:
+                        PRICING_STATUS_CONFIG[pricingData.status].bgColor,
                       color: PRICING_STATUS_CONFIG[pricingData.status].color,
                       border: `1px solid ${PRICING_STATUS_CONFIG[pricingData.status].color}33`,
                     }}
@@ -1036,61 +1310,88 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     className="rounded-lg p-3"
                     style={{ background: tokens.infoBg }}
                   >
-                    <p className="text-xs" style={{ color: tokens.textMuted }}>Current Price</p>
-                    <p className="text-lg font-bold mt-1" style={{ color: tokens.textPrimary }}>
+                    <p className="text-xs" style={{ color: tokens.textMuted }}>
+                      Current Price
+                    </p>
+                    <p
+                      className="text-lg font-bold mt-1"
+                      style={{ color: tokens.textPrimary }}
+                    >
                       {pricingData.isPaid
-                        ? `${pricingData.currency === 'USD' ? '$' : pricingData.currency === 'EUR' ? '€' : pricingData.currency === 'GBP' ? '£' : '₹'}${pricingData.price}`
-                        : 'Free'}
+                        ? `${pricingData.currency === "USD" ? "$" : pricingData.currency === "EUR" ? "€" : pricingData.currency === "GBP" ? "£" : "₹"}${pricingData.price}`
+                        : "Free"}
                     </p>
                   </div>
 
                   {/* Feedback if changes requested */}
-                  {pricingData.status === 'CHANGES_REQUESTED' && pricingData.rejectionReason && (
-                    <div
-                      className="rounded-lg p-3 flex items-start gap-2"
-                      style={{
-                        background: tokens.warningBg,
-                        border: `1px solid ${tokens.warningBorder}`,
-                      }}
-                    >
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: tokens.warningText }} />
-                      <div>
-                        <p className="text-xs font-medium" style={{ color: tokens.textPrimary }}>Admin Feedback</p>
-                        <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
-                          {pricingData.rejectionReason}
-                        </p>
+                  {pricingData.status === "CHANGES_REQUESTED" &&
+                    pricingData.rejectionReason && (
+                      <div
+                        className="rounded-lg p-3 flex items-start gap-2"
+                        style={{
+                          background: tokens.warningBg,
+                          border: `1px solid ${tokens.warningBorder}`,
+                        }}
+                      >
+                        <AlertCircle
+                          className="w-4 h-4 flex-shrink-0 mt-0.5"
+                          style={{ color: tokens.warningText }}
+                        />
+                        <div>
+                          <p
+                            className="text-xs font-medium"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            Admin Feedback
+                          </p>
+                          <p
+                            className="text-xs mt-1"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            {pricingData.rejectionReason}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Status Messages */}
-                  {pricingData.status === 'DRAFT' && (
+                  {pricingData.status === "DRAFT" && (
                     <p className="text-xs" style={{ color: tokens.textMuted }}>
-                      💡 Your pricing is saved as draft. Submit it for admin review.
+                      💡 Your pricing is saved as draft. Submit it for admin
+                      review.
                     </p>
                   )}
-                  {pricingData.status === 'SUBMITTED' && (
+                  {pricingData.status === "SUBMITTED" && (
                     <p className="text-xs" style={{ color: tokens.textMuted }}>
-                      ⏳ Your pricing is under review. Admin will make a decision soon.
+                      ⏳ Your pricing is under review. Admin will make a
+                      decision soon.
                     </p>
                   )}
-                  {pricingData.status === 'ACTIVE' && (
-                    <p className="text-xs" style={{ color: tokens.successText }}>
+                  {pricingData.status === "ACTIVE" && (
+                    <p
+                      className="text-xs"
+                      style={{ color: tokens.successText }}
+                    >
                       ✓ Your pricing is active and applied to the marketplace.
                     </p>
                   )}
-                  {pricingData.status === 'REJECTED' && (
-                    <p className="text-xs" style={{ color: tokens.warningText }}>
+                  {pricingData.status === "REJECTED" && (
+                    <p
+                      className="text-xs"
+                      style={{ color: tokens.warningText }}
+                    >
                       ✕ Your pricing was rejected. Edit and resubmit.
                     </p>
                   )}
 
                   {/* Edit Button */}
-                  {(pricingData.status === 'DRAFT' || pricingData.status === 'CHANGES_REQUESTED' || pricingData.status === 'REJECTED') && (
+                  {(pricingData.status === "DRAFT" ||
+                    pricingData.status === "CHANGES_REQUESTED" ||
+                    pricingData.status === "REJECTED") && (
                     <Button
                       onClick={() => setShowPricingDialog(true)}
                       className="w-full text-sm"
-                      style={{ background: '#3b82f6', color: 'white' }}
+                      style={{ background: "#3b82f6", color: "white" }}
                     >
                       Edit Pricing
                     </Button>
@@ -1101,13 +1402,22 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Categories Card */}
             {(primaryCategory || secondaryCategories.length > 0) && (
-              <GlassCard className="p-4">
-                <SectionTitle icon={Layers} title="Categories" tokens={tokens} />
+              <GlassCard className="supplier-glass-card p-4">
+                <SectionTitle
+                  icon={Layers}
+                  title="Categories"
+                  tokens={tokens}
+                />
 
                 <div className="space-y-4">
                   {primaryCategory && (
                     <div>
-                      <p className="text-xs mb-2" style={{ color: tokens.textMuted }}>Primary</p>
+                      <p
+                        className="text-xs mb-2"
+                        style={{ color: tokens.textMuted }}
+                      >
+                        Primary
+                      </p>
                       <span
                         className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg"
                         style={{
@@ -1116,7 +1426,10 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                           border: `1px solid ${tokens.successBorder}`,
                         }}
                       >
-                        <BadgeCheck className="w-3.5 h-3.5" style={{ color: '#22c55e' }} />
+                        <BadgeCheck
+                          className="w-3.5 h-3.5"
+                          style={{ color: "#22c55e" }}
+                        />
                         {primaryCategory.name}
                       </span>
                     </div>
@@ -1124,7 +1437,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {secondaryCategories.length > 0 && (
                     <div>
-                      <p className="text-xs mb-2" style={{ color: tokens.textMuted }}>Secondary</p>
+                      <p
+                        className="text-xs mb-2"
+                        style={{ color: tokens.textMuted }}
+                      >
+                        Secondary
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {secondaryCategories.map((cat) => (
                           <span
@@ -1147,21 +1465,34 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Source Card */}
             {source && (
-              <GlassCard className="p-4">
-                <SectionTitle icon={Globe} title="Data Source" tokens={tokens} />
+              <GlassCard className="supplier-glass-card p-4">
+                <SectionTitle
+                  icon={Globe}
+                  title="Data Source"
+                  tokens={tokens}
+                />
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: tokens.textPrimary }}
+                    >
                       {source.name}
                     </span>
                     {source.isVerified && (
-                      <BadgeCheck className="w-4 h-4" style={{ color: '#22c55e' }} />
+                      <BadgeCheck
+                        className="w-4 h-4"
+                        style={{ color: "#22c55e" }}
+                      />
                     )}
                   </div>
 
                   {source.description && (
-                    <p className="text-xs" style={{ color: tokens.textSecondary }}>
+                    <p
+                      className="text-xs"
+                      style={{ color: tokens.textSecondary }}
+                    >
                       {source.description}
                     </p>
                   )}
@@ -1172,7 +1503,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs hover:underline"
-                      style={{ color: '#3b82f6' }}
+                      style={{ color: "#3b82f6" }}
                     >
                       <Link2 className="w-3 h-3" />
                       Visit Website
@@ -1184,8 +1515,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Verification Info Card */}
             {verification && (
-              <GlassCard className="p-4">
-                <SectionTitle icon={Shield} title="Verification" tokens={tokens} />
+              <GlassCard className="supplier-glass-card p-4">
+                <SectionTitle
+                  icon={Shield}
+                  title="Verification"
+                  tokens={tokens}
+                />
 
                 <div className="space-y-4">
                   <InfoItem
@@ -1205,11 +1540,20 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {/* Notes */}
                   {verification?.notes && (
-                    <div className="pt-2 border-t" style={{ borderColor: tokens.borderSubtle }}>
-                      <p className="text-xs font-medium mb-2" style={{ color: tokens.textMuted }}>
+                    <div
+                      className="pt-2 border-t"
+                      style={{ borderColor: tokens.borderSubtle }}
+                    >
+                      <p
+                        className="text-xs font-medium mb-2"
+                        style={{ color: tokens.textMuted }}
+                      >
                         Reviewer Notes
                       </p>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {verification.notes}
                       </p>
                     </div>
@@ -1217,11 +1561,20 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
                   {/* Rejection Reason */}
                   {verification?.rejectionReason && (
-                    <div className="pt-2 border-t" style={{ borderColor: tokens.errorBorder }}>
-                      <p className="text-xs font-medium mb-2" style={{ color: tokens.errorText }}>
+                    <div
+                      className="pt-2 border-t"
+                      style={{ borderColor: tokens.errorBorder }}
+                    >
+                      <p
+                        className="text-xs font-medium mb-2"
+                        style={{ color: tokens.errorText }}
+                      >
                         Rejection Reason
                       </p>
-                      <p className="text-sm leading-relaxed" style={{ color: tokens.textPrimary }}>
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ color: tokens.textPrimary }}
+                      >
                         {verification.rejectionReason}
                       </p>
                     </div>
@@ -1235,8 +1588,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Published File Card */}
             {publishedUpload && (
-              <GlassCard className="p-4">
-                <SectionTitle icon={FileText} title="Published File" tokens={tokens} />
+              <GlassCard className="supplier-glass-card p-4">
+                <SectionTitle
+                  icon={FileText}
+                  title="Published File"
+                  tokens={tokens}
+                />
 
                 <div className="space-y-4">
                   <InfoItem
@@ -1263,7 +1620,10 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   )}
                 </div>
 
-                <div className="mt-4 pt-4 border-t" style={{ borderColor: tokens.borderSubtle }}>
+                <div
+                  className="mt-4 pt-4 border-t"
+                  style={{ borderColor: tokens.borderSubtle }}
+                >
                   <DownloadButton
                     datasetId={dataset.id}
                     fileName={publishedUpload.originalFileName}
@@ -1275,36 +1635,44 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               </GlassCard>
             )}
 
-            {/* Timeline Card */}
-            <GlassCard className="p-4">
-              <SectionTitle icon={Calendar} title="Timeline" tokens={tokens} />
+            {/* Lifecycle History Card */}
+            <GlassCard className="supplier-glass-card p-4">
+              <SectionTitle
+                icon={History}
+                title="Lifecycle History"
+                tokens={tokens}
+              />
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span style={{ color: tokens.textMuted }}>Last Updated</span>
-                  <span style={{ color: tokens.textPrimary }}>{formatDate(dataset.updatedAt)}</span>
-                </div>
-
-                {dataset.publishedAt && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span style={{ color: tokens.textMuted }}>Published</span>
-                    <span style={{ color: tokens.textPrimary }}>{formatDate(dataset.publishedAt)}</span>
-                  </div>
-                )}
-
-                {dataset.archivedAt && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span style={{ color: tokens.textMuted }}>Archived</span>
-                    <span style={{ color: tokens.errorText }}>{formatDate(dataset.archivedAt)}</span>
-                  </div>
-                )}
-              </div>
+              <ol>
+                {lifecycleEvents.map((event, index) => (
+                  <li
+                    key={`${event.title}-${event.date}`}
+                    className="relative flex gap-3 pb-5 last:pb-0"
+                  >
+                    {index < lifecycleEvents.length - 1 && (
+                      <span className="absolute left-[7px] top-4 h-full w-px bg-border" />
+                    )}
+                    <span className="supplier-glass-input relative mt-1.5 size-4 shrink-0 rounded-full border-4 border-primary" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {event.title}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatDateTime(event.date)}
+                      </p>
+                      <p className="supplier-glass-input mt-2 rounded-lg p-2.5 text-xs leading-relaxed text-muted-foreground">
+                        {event.detail}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             </GlassCard>
-          </div>
+          </aside>
         </div>
 
         {/* Action Dialogs */}
-        {isVerified && !isPublished && (
+        {canPublish && (
           <PublishConfirmDialog
             isOpen={showPublishDialog}
             onClose={() => setShowPublishDialog(false)}
@@ -1316,33 +1684,31 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
           />
         )}
 
-        {((isVerified || isPublished) && !isArchived) && (
-          <>
-            <ChangeVisibilityDialog
-              isOpen={showVisibilityDialog}
-              onClose={() => setShowVisibilityDialog(false)}
-              datasetId={dataset.id}
-              currentVisibility={dataset.visibility || 'PUBLIC'}
-              onSuccess={fetchDataset}
-              isDark={tokens.isDark}
-            />
-
-            {pricingData && isVerified && (
-              <PricingEditDialog
-                isOpen={showPricingDialog}
-                onClose={() => setShowPricingDialog(false)}
-                datasetId={dataset.id}
-                currentPricing={pricingData}
-                onSuccess={fetchPricing}
-                isDark={tokens.isDark}
-                feedbackMessage={pricingData.rejectionReason || undefined}
-                pricingStatus={pricingData.status}
-              />
-            )}
-          </>
+        {canChangeVisibility && (
+          <ChangeVisibilityDialog
+            isOpen={showVisibilityDialog}
+            onClose={() => setShowVisibilityDialog(false)}
+            datasetId={dataset.id}
+            currentVisibility={dataset.visibility || "PUBLIC"}
+            onSuccess={fetchDataset}
+            isDark={tokens.isDark}
+          />
         )}
 
-        {(isPublished && !isArchived) && (
+        {pricingData && isVerified && (
+          <PricingEditDialog
+            isOpen={showPricingDialog}
+            onClose={() => setShowPricingDialog(false)}
+            datasetId={dataset.id}
+            currentPricing={pricingData}
+            onSuccess={fetchPricing}
+            isDark={tokens.isDark}
+            feedbackMessage={pricingData.rejectionReason || undefined}
+            pricingStatus={pricingData.status}
+          />
+        )}
+
+        {canDelist && (
           <DelistConfirmDialog
             isOpen={showDelistDialog}
             onClose={() => setShowDelistDialog(false)}
@@ -1352,7 +1718,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
           />
         )}
 
-        {(isPublished && !isArchived) && (
+        {canArchive && (
           <ArchiveConfirmDialog
             isOpen={showArchiveDialog}
             onClose={() => setShowArchiveDialog(false)}
@@ -1362,7 +1728,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
             isDark={tokens.isDark}
           />
         )}
-      </div>
-    </div>
+      </DatasetWorkspace>
+    </PageBackground>
   );
 }

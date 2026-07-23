@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
@@ -55,6 +55,15 @@ export function ChangeVisibilityDialog({
   const [saving, setSaving] = useState(false);
   const tokens = useSupplierTokens();
 
+  // Discard an unsubmitted selection when the dialog closes. Without this,
+  // cancelling and reopening could show (and subsequently save) a visibility
+  // value that was never applied to the dataset.
+  useEffect(() => {
+    if (isOpen) {
+      setVisibility(currentVisibility);
+    }
+  }, [currentVisibility, isOpen]);
+
   const handleSave = async () => {
     if (visibility === currentVisibility) {
       onClose();
@@ -71,10 +80,10 @@ export function ChangeVisibilityDialog({
       
       onClose();
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to change visibility:', error);
       toast.error('Failed to change visibility', {
-        description: error.message || 'Please try again later.',
+        description: error instanceof Error ? error.message : 'Please try again later.',
         duration: 6000,
       });
     } finally {

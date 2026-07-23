@@ -12,6 +12,7 @@ export { PageBackground } from "./PageBackground";
 export { FormContainer } from "./FormContainer";
 export { ContentCard } from "./ContentCard";
 export { GlassCard } from "./GlassCard";
+export { PaginationControls } from "./PaginationControls";
 
 // Header & Navigation
 export { LogoHeader } from "./LogoHeader";

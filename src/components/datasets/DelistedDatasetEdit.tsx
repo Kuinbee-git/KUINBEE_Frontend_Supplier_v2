@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Database,
@@ -10,14 +10,12 @@ import {
   FileText,
   Loader2,
   MapPin,
-  Send,
   Settings,
   Tag,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { PageBackground } from '@/components/shared';
-import { useSupplierTokens } from '@/hooks/useSupplierTokens';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PageBackground } from "@/components/shared";
+import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import {
   getDatasetDetails,
   getDatasetPricing,
@@ -28,30 +26,44 @@ import {
   upsertDatasetAboutInfo,
   upsertDatasetDataFormatInfo,
   upsertDatasetLocationInfo,
-} from '@/lib/api';
-import { PricingEditDialog } from './actions';
+} from "@/lib/api";
+import { PricingEditDialog } from "./actions";
 import {
   AboutDatasetForm,
   DataFormatForm,
   FeaturesForm,
   LocationTagsEditForm,
   SecondaryCategoriesForm,
-} from './forms';
-import { DatasetStatusBadge, EditableSection, PublishStatusBadge } from './shared';
+} from "./forms";
+import {
+  DatasetStatusBadge,
+  EditableSection,
+  PublishStatusBadge,
+} from "./shared";
 import {
   ChangesRequestedBanner,
   PricingSection,
+  SubmitForReviewSection,
   UpdateStatusBanner,
-} from './detail';
+} from "./detail";
+import {
+  canEditDatasetUpdate,
+  canSubmitDatasetUpdate,
+  DatasetEntityHeader,
+  DatasetWorkspace,
+} from "./workspace";
 import {
   AboutDisplay,
   LocationTagsDisplay,
   DataFormatDisplay,
   FeaturesDisplay,
   CategoriesDisplay,
-} from './detail/displays';
-import type { DatasetPricingVersion, VerificationStatus } from '@/types/dataset-proposal.types';
-import type { DatasetDetailsResponse } from '@/types/dataset.types';
+} from "./detail/displays";
+import type {
+  DatasetPricingVersion,
+  VerificationStatus,
+} from "@/types/dataset-proposal.types";
+import type { DatasetDetailsResponse } from "@/types/dataset.types";
 
 interface DelistedDatasetEditProps {
   datasetId: string;
@@ -61,8 +73,12 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   const router = useRouter();
   const tokens = useSupplierTokens();
 
-  const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(null);
-  const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(null);
+  const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(
+    null
+  );
+  const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const [showPricingDialog, setShowPricingDialog] = useState(false);
@@ -76,57 +92,82 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   });
   const [editingSection, setEditingSection] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const [details, pricing] = await Promise.all([
         getDatasetDetails(datasetId),
         getDatasetPricing(datasetId),
       ]);
       setDatasetData(details);
       setPricingData(pricing.pricing ?? null);
-    } catch (error: any) {
-      toast.error('Failed to load dataset', {
-        description: error?.message ?? 'Please try again.',
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Please try again.";
+      setLoadError(message);
+      toast.error("Failed to load dataset", {
+        description: message,
       });
-      router.push(`/dashboard/my-datasets/${datasetId}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [datasetId]);
 
   useEffect(() => {
-    fetchData();
-  }, [datasetId]);
+    void fetchData();
+  }, [fetchData]);
 
   // --- Derived state ---
   const canEdit = useMemo(() => {
     if (!datasetData?.verification) return false;
     const ds = datasetData.dataset.status;
     const vs = datasetData.verification.status as VerificationStatus;
-    return (
-      (ds === 'DELISTED' && (vs === 'PENDING' || vs === 'VERIFIED')) ||
-      (ds === 'SUBMITTED' && vs === 'CHANGES_REQUESTED')
-    );
+    return canEditDatasetUpdate(ds, vs);
   }, [datasetData]);
+
+  const activeEditingSection = canEdit ? editingSection : null;
 
   const missingPrerequisites = useMemo(() => {
     if (!datasetData) return [];
     const missing: string[] = [];
-    if (!datasetData.aboutDatasetInfo) missing.push('About Dataset information');
-    if (!datasetData.dataFormatInfo) missing.push('Data Format information');
-    if (!datasetData.features || datasetData.features.length === 0) missing.push('At least one feature/column');
-    if (!pricingData) missing.push('Pricing configuration');
-    if (pricingData?.isPaid && !['SUBMITTED', 'RESUBMITTED', 'UNDER_REVIEW', 'ACTIVE'].includes(pricingData.status)) {
-      missing.push('Pricing must be submitted (currently in draft)');
+    if (!datasetData.aboutDatasetInfo)
+      missing.push("About Dataset information");
+    if (!datasetData.dataFormatInfo) missing.push("Data Format information");
+    if (!datasetData.features || datasetData.features.length === 0)
+      missing.push("At least one feature/column");
+    if (!pricingData) missing.push("Pricing configuration");
+    if (
+      pricingData?.isPaid &&
+      !["SUBMITTED", "RESUBMITTED", "UNDER_REVIEW", "ACTIVE"].includes(
+        pricingData.status
+      )
+    ) {
+      missing.push("Pricing must be submitted (currently in draft)");
     }
     return missing;
   }, [datasetData, pricingData]);
 
   const handleSubmitUpdate = async () => {
+    if (
+      !datasetData?.verification ||
+      !canSubmitDatasetUpdate(
+        datasetData.dataset.status,
+        datasetData.verification.status as VerificationStatus
+      )
+    ) {
+      toast.error("This update is locked", {
+        description:
+          "Its review state changed. Refresh the page before trying again.",
+      });
+      return;
+    }
+
     if (missingPrerequisites.length > 0) {
-      toast.error('Cannot submit', {
-        description: `Please complete: ${missingPrerequisites.join(', ')}`,
+      toast.error("Cannot submit", {
+        description: `Please complete: ${missingPrerequisites.join(", ")}`,
         duration: 5000,
       });
       return;
@@ -135,13 +176,17 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
     setSubmittingUpdate(true);
     try {
       await submitDatasetUpdate(datasetId);
-      toast.success('Update submitted', {
-        description: 'Your dataset update request is now in the admin review queue.',
+      toast.success("Update submitted", {
+        description:
+          "Your dataset update request is now in the admin review queue.",
       });
       await fetchData();
-    } catch (error: any) {
-      toast.error('Failed to submit update', {
-        description: error?.message ?? 'Please review required sections and try again.',
+    } catch (error: unknown) {
+      toast.error("Failed to submit update", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Please review required sections and try again.",
       });
     } finally {
       setSubmittingUpdate(false);
@@ -154,7 +199,7 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
 
   const handleEditSuccess = () => {
     setEditingSection(null);
-    fetchData();
+    void fetchData();
   };
 
   const handleEditCancel = () => {
@@ -162,24 +207,55 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   // --- Loading ---
-  if (loading || !datasetData) {
+  if (loading) {
     return (
       <PageBackground withGrid>
-        <div className="max-w-[1100px] mx-auto p-8">
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: tokens.textSecondary }} />
+        <DatasetWorkspace className="max-w-[1380px]">
+          <div className="supplier-glass-card flex min-h-72 items-center justify-center rounded-2xl border">
+            <Loader2
+              className="w-8 h-8 animate-spin"
+              style={{ color: tokens.textSecondary }}
+            />
           </div>
-        </div>
+        </DatasetWorkspace>
+      </PageBackground>
+    );
+  }
+
+  if (loadError || !datasetData) {
+    return (
+      <PageBackground withGrid>
+        <DatasetWorkspace className="max-w-[1380px]">
+          <div className="supplier-glass-card rounded-2xl border p-6 sm:p-8">
+            <h1 className="text-xl font-semibold text-foreground">
+              Dataset update could not be loaded
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {loadError ?? "The dataset is unavailable."}
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button onClick={() => void fetchData()}>Try again</Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  router.push(`/dashboard/my-datasets/${datasetId}`)
+                }
+              >
+                Back to dataset
+              </Button>
+            </div>
+          </div>
+        </DatasetWorkspace>
       </PageBackground>
     );
   }
@@ -196,10 +272,10 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   } = datasetData;
 
   const isDark = tokens.isDark;
-  const verificationStatus = verification?.status ?? 'PENDING';
+  const verificationStatus = verification?.status ?? "PENDING";
 
   const sectionTokens = {
-    surfaceCard: isDark ? 'rgba(26, 34, 64, 0.68)' : '#ffffff',
+    surfaceCard: isDark ? "rgba(26, 34, 64, 0.68)" : "#ffffff",
     borderDefault: tokens.borderDefault,
     borderSubtle: tokens.borderSubtle,
     textPrimary: tokens.textPrimary,
@@ -211,385 +287,391 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
 
   return (
     <PageBackground withGrid>
-      <div className="relative z-10 max-w-[1100px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Back Button */}
+      <DatasetWorkspace className="max-w-[1380px]">
         <Button
           variant="ghost"
           onClick={() => router.push(`/dashboard/my-datasets/${datasetId}`)}
-          className="mb-6 flex items-center gap-2 -ml-2 transition-all duration-200 hover:translate-x-[-2px] group"
-          style={{
-            background: tokens.glassBg || 'transparent',
-            border: `1px solid ${tokens.glassBorder || tokens.borderSubtle}`,
-            color: tokens.textPrimary,
-          }}
+          className="-ml-3 mb-5 gap-2"
         >
-          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-          Back to Dataset
+          <ArrowLeft className="size-4" />
+          Back to dataset
         </Button>
 
-        {/* Title Card */}
-        <Card
-          className="border overflow-hidden mb-6"
-          style={{
-            background: sectionTokens.surfaceCard,
-            borderColor: tokens.borderDefault,
-            boxShadow: isDark
-              ? '0 8px 24px rgba(0, 0, 0, 0.2)'
-              : '0 8px 24px rgba(26, 34, 64, 0.06)',
-          }}
-        >
-          <div className="p-6">
-            <div className="flex items-center gap-4 mb-3">
-              <div
-                className="w-12 h-12 rounded-lg flex items-center justify-center"
-                style={{
-                  background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(26, 34, 64, 0.08)',
-                }}
-              >
-                <FileText className="w-6 h-6" style={{ color: tokens.textSecondary }} />
-              </div>
-              <div className="flex-1">
-                <h1 className="text-2xl font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                  {dataset.title}
-                </h1>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className="text-xs font-mono px-2.5 py-1 rounded-md"
-                    style={{ background: tokens.infoBg, color: tokens.textSecondary }}
-                  >
-                    {dataset.datasetUniqueId}
-                  </span>
-                  <PublishStatusBadge status={dataset.status} />
-                  <DatasetStatusBadge status={verificationStatus} isDark={isDark} />
-                </div>
-              </div>
-            </div>
-            <p className="text-sm" style={{ color: tokens.textSecondary }}>
-              Update metadata and pricing, then submit changes for admin review.
-            </p>
-          </div>
-        </Card>
-
-        {/* Status Banner */}
-        <UpdateStatusBanner
-          datasetStatus={dataset.status as any}
-          verificationStatus={verificationStatus}
-          rejectionReason={verification?.rejectionReason}
-          isDark={isDark}
-          tokens={tokens}
+        <DatasetEntityHeader
+          eyebrow="Dataset update workspace"
+          title={dataset.title}
+          identifier={dataset.datasetUniqueId}
+          description="Update the editable metadata and pricing below. Your current marketplace version remains unchanged until this update is approved and republished."
+          metadata={<>Last updated {formatDate(dataset.updatedAt)}</>}
+          badges={
+            <>
+              <PublishStatusBadge status={dataset.status} />
+              <DatasetStatusBadge status={verificationStatus} isDark={isDark} />
+            </>
+          }
         />
 
-        {/* Changes Requested Banner */}
-        {verificationStatus === 'CHANGES_REQUESTED' && verification?.notes && (
-          <ChangesRequestedBanner
-            notes={verification.notes}
+        <div className="mt-6">
+          <UpdateStatusBanner
+            datasetStatus={dataset.status}
+            verificationStatus={verificationStatus}
+            rejectionReason={verification?.rejectionReason}
             isDark={isDark}
             tokens={tokens}
           />
-        )}
 
-        {/* Editing Locked Banner */}
-        {!canEdit && !['DELISTED', 'SUBMITTED'].includes(dataset.status) && (
-          <div
-            className="mb-6 rounded-xl border px-6 py-4"
-            style={{
-              background: isDark ? 'rgba(234, 179, 8, 0.08)' : 'rgba(234, 179, 8, 0.1)',
-              borderColor: isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.35)',
-            }}
-          >
-            <p className="text-sm" style={{ color: isDark ? '#fbbf24' : '#b45309' }}>
-              Editing is currently locked. You can edit when status is DELISTED + PENDING/VERIFIED or SUBMITTED + CHANGES_REQUESTED.
-            </p>
-          </div>
-        )}
-
-        {/* Submit for Review Section */}
-        {canEdit && (
-          <Card
-            className="border overflow-hidden mb-6 transition-shadow duration-200 hover:shadow-md"
-            style={{
-              background: isDark
-                ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)'
-                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(16, 185, 129, 0.03) 100%)',
-              borderColor: tokens.borderDefault,
-            }}
-          >
-            <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h3 className="text-base font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                  {verificationStatus === 'CHANGES_REQUESTED' ? 'Resubmit for Review' : 'Submit Update for Review'}
-                </h3>
-                <p className="text-sm" style={{ color: tokens.textSecondary }}>
-                  {verificationStatus === 'CHANGES_REQUESTED'
-                    ? 'Address the admin feedback and resubmit when ready.'
-                    : 'Review your changes, then submit for admin review.'}
-                </p>
-                {missingPrerequisites.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs font-medium" style={{ color: isDark ? '#eab308' : '#b45309' }}>
-                      Missing: {missingPrerequisites.join(', ')}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <Button
-                onClick={handleSubmitUpdate}
-                disabled={submittingUpdate || missingPrerequisites.length > 0}
-                className="h-11 px-7 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 gap-2"
-                style={{
-                  background: submittingUpdate || missingPrerequisites.length > 0
-                    ? 'rgba(156, 163, 175, 0.2)'
-                    : tokens.glassBg || 'transparent',
-                  border: `1.5px solid ${submittingUpdate || missingPrerequisites.length > 0
-                    ? 'rgba(156, 163, 175, 0.3)'
-                    : tokens.glassBorder || tokens.borderSubtle
-                    }`,
-                  color: tokens.textPrimary,
-                }}
-              >
-                {submittingUpdate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {submittingUpdate
-                  ? 'Submitting...'
-                  : verificationStatus === 'CHANGES_REQUESTED'
-                    ? 'Resubmit for Review'
-                    : 'Submit for Review'}
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {/* Editable Sections */}
-        <div className="space-y-6">
-          {/* Section 1: Basic Metadata */}
-          <EditableSection
-            title="Basic Metadata"
-            icon={<Settings className="w-5 h-5" />}
-            subtitle="Title, source, category and license (read-only in update flow)"
-            isExpanded={expandedSections.metadata}
-            onToggle={() => toggleSection('metadata')}
-            isEditable={false}
-            isEditing={editingSection === 'metadata'}
-            onEditClick={() => setEditingSection('metadata')}
-            isEmpty={false}
-            emptyIcon={<Settings className="w-12 h-12" />}
-            emptyMessage=""
-            isDark={isDark}
-            tokens={sectionTokens}
-            displayContent={
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium" style={{ color: tokens.textSecondary }}>Title</p>
-                    <p className="text-sm" style={{ color: tokens.textPrimary }}>{dataset.title}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium" style={{ color: tokens.textSecondary }}>License</p>
-                    <p className="text-sm" style={{ color: tokens.textPrimary }}>{dataset.license}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium" style={{ color: tokens.textSecondary }}>Primary Category</p>
-                    <p className="text-sm" style={{ color: tokens.textPrimary }}>{datasetData.primaryCategory?.name ?? 'N/A'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium" style={{ color: tokens.textSecondary }}>Source</p>
-                    <p className="text-sm" style={{ color: tokens.textPrimary }}>{datasetData.source?.name ?? 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            }
-          />
-
-          {/* Section 2: About Dataset */}
-          <EditableSection
-            title="About Dataset"
-            icon={<FileText className="w-5 h-5" />}
-            isExpanded={expandedSections.about}
-            onToggle={() => toggleSection('about')}
-            isEditable={canEdit}
-            isEditing={editingSection === 'about'}
-            onEditClick={() => setEditingSection('about')}
-            isEmpty={!aboutDatasetInfo}
-            emptyIcon={<FileText className="w-12 h-12" />}
-            emptyMessage="No about information yet"
-            emptyActionLabel="Add About Info"
-            isDark={isDark}
-            tokens={sectionTokens}
-            displayContent={
-              aboutDatasetInfo ? (
-                <AboutDisplay
-                  about={aboutDatasetInfo as any}
-                  tokens={tokens}
-                  formatDate={formatDate}
-                />
-              ) : null
-            }
-            editContent={
-              <AboutDatasetForm
-                datasetId={datasetId}
-                initialData={aboutDatasetInfo ?? undefined}
+          {verificationStatus === "CHANGES_REQUESTED" &&
+            verification?.notes && (
+              <ChangesRequestedBanner
+                notes={verification.notes}
                 isDark={isDark}
-                onSubmitData={upsertDatasetAboutInfo}
-                onSuccess={handleEditSuccess}
-              />
-            }
-          />
-
-          {/* Section 3: Location & Tags */}
-          <EditableSection
-            title="Location & Tags"
-            icon={<MapPin className="w-5 h-5" />}
-            subtitle="Manage location details and discovery tags"
-            isExpanded={expandedSections.locationTags}
-            onToggle={() => toggleSection('locationTags')}
-            isEditable={canEdit}
-            isEditing={editingSection === 'locationTags'}
-            onEditClick={() => setEditingSection('locationTags')}
-            isEmpty={!locationInfo && tags.length === 0}
-            emptyIcon={<Tag className="w-12 h-12" />}
-            emptyMessage="No location or tags added"
-            emptyActionLabel="Add Location & Tags"
-            isDark={isDark}
-            tokens={sectionTokens}
-            displayContent={
-              <LocationTagsDisplay
-                proposal={{ locationInfo, tags } as any}
                 tokens={tokens}
               />
-            }
-            editContent={
-              <LocationTagsEditForm
-                datasetId={datasetId}
-                initialData={{ locationInfo, tags }}
-                isDark={isDark}
-                onUpsertLocation={upsertDatasetLocationInfo}
-                onSetTags={setDatasetTags}
-                onSuccess={handleEditSuccess}
-              />
-            }
-          />
+            )}
 
-          {/* Section 4: Data Format */}
-          <EditableSection
-            title="Data Format & Structure"
-            icon={<FileCode className="w-5 h-5" />}
-            isExpanded={expandedSections.dataFormat}
-            onToggle={() => toggleSection('dataFormat')}
-            isEditable={canEdit}
-            isEditing={editingSection === 'dataFormat'}
-            onEditClick={() => setEditingSection('dataFormat')}
-            isEmpty={!dataFormatInfo}
-            emptyIcon={<Database className="w-12 h-12" />}
-            emptyMessage="No data format information"
-            emptyActionLabel="Add Data Format"
-            isDark={isDark}
-            tokens={sectionTokens}
-            displayContent={
-              dataFormatInfo ? (
-                <DataFormatDisplay
-                  dataFormat={dataFormatInfo as any}
-                  tokens={tokens}
-                  formatDate={formatDate}
-                />
-              ) : null
-            }
-            editContent={
-              <DataFormatForm
-                datasetId={datasetId}
-                initialData={dataFormatInfo ?? undefined}
-                isDark={isDark}
-                onSubmitData={upsertDatasetDataFormatInfo}
-                onSuccess={handleEditSuccess}
-              />
-            }
-          />
-
-          {/* Section 5: Features */}
-          <EditableSection
-            title="Features / Columns"
-            subtitle={`${features.length} features defined`}
-            icon={<Database className="w-5 h-5" />}
-            isExpanded={expandedSections.features}
-            onToggle={() => toggleSection('features')}
-            isEditable={canEdit}
-            isEditing={editingSection === 'features'}
-            onEditClick={() => setEditingSection('features')}
-            isEmpty={features.length === 0}
-            emptyIcon={<Database className="w-12 h-12" />}
-            emptyMessage="No features added"
-            emptyActionLabel="Add Features"
-            isDark={isDark}
-            tokens={sectionTokens}
-            displayContent={
-              features.length > 0 ? (
-                <FeaturesDisplay
-                  features={features}
-                  tokens={tokens}
-                  isDark={isDark}
-                />
-              ) : null
-            }
-            editContent={
-              <FeaturesForm
-                datasetId={datasetId}
-                initialData={features}
-                isDark={isDark}
-                onSubmitData={replaceDatasetFeatures}
-                onSuccess={handleEditSuccess}
-              />
-            }
-          />
-
-          {/* Section 6: Secondary Categories */}
-          <EditableSection
-            title="Secondary Categories"
-            icon={<Tag className="w-5 h-5" />}
-            isExpanded={expandedSections.categories}
-            onToggle={() => toggleSection('categories')}
-            isEditable={canEdit}
-            isEditing={editingSection === 'categories'}
-            onEditClick={() => setEditingSection('categories')}
-            isEmpty={secondaryCategories.length === 0}
-            emptyIcon={<Tag className="w-12 h-12" />}
-            emptyMessage="No secondary categories"
-            emptyActionLabel="Add Categories"
-            isDark={isDark}
-            tokens={sectionTokens}
-            displayContent={
-              secondaryCategories.length > 0 ? (
-                <CategoriesDisplay
-                  categoryIds={secondaryCategories.map((c) => c.id)}
-                  tokens={tokens}
-                  isDark={isDark}
-                />
-              ) : null
-            }
-            editContent={
-              <SecondaryCategoriesForm
-                datasetId={datasetId}
-                initialCategories={secondaryCategories.map((c) => c.id)}
-                isDark={isDark}
-                onSubmitData={setDatasetSecondaryCategories}
-                onSuccess={handleEditSuccess}
-              />
-            }
-          />
-
-          {/* Section 7: Pricing */}
-          {pricingData && (
-            <PricingSection
-              pricingData={pricingData}
-              isSampleProposal={dataset.isSample === true}
-              onEditPricing={() => setShowPricingDialog(true)}
-              isDark={isDark}
-              tokens={tokens}
-            />
+          {!canEdit && !["DELISTED", "SUBMITTED"].includes(dataset.status) && (
+            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/[0.08] px-5 py-4">
+              <p className="text-sm leading-6 text-amber-700 dark:text-amber-300">
+                Editing is locked while this update is outside an editable
+                review state.
+              </p>
+            </div>
           )}
         </div>
-      </div>
+
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+          <main className="min-w-0 space-y-6">
+            {/* Section 1: Basic Metadata */}
+            <EditableSection
+              title="Basic Metadata"
+              icon={<Settings className="w-5 h-5" />}
+              subtitle="Title, source, category and license (read-only in update flow)"
+              isExpanded={expandedSections.metadata}
+              onToggle={() => toggleSection("metadata")}
+              isEditable={false}
+              isEditing={activeEditingSection === "metadata"}
+              onEditClick={() => setEditingSection("metadata")}
+              isEmpty={false}
+              emptyIcon={<Settings className="w-12 h-12" />}
+              emptyMessage=""
+              isDark={isDark}
+              tokens={sectionTokens}
+              displayContent={
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSecondary }}
+                      >
+                        Title
+                      </p>
+                      <p
+                        className="text-sm"
+                        style={{ color: tokens.textPrimary }}
+                      >
+                        {dataset.title}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSecondary }}
+                      >
+                        License
+                      </p>
+                      <p
+                        className="text-sm"
+                        style={{ color: tokens.textPrimary }}
+                      >
+                        {dataset.license}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSecondary }}
+                      >
+                        Primary Category
+                      </p>
+                      <p
+                        className="text-sm"
+                        style={{ color: tokens.textPrimary }}
+                      >
+                        {datasetData.primaryCategory?.name ?? "N/A"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p
+                        className="text-xs font-medium"
+                        style={{ color: tokens.textSecondary }}
+                      >
+                        Source
+                      </p>
+                      <p
+                        className="text-sm"
+                        style={{ color: tokens.textPrimary }}
+                      >
+                        {datasetData.source?.name ?? "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              }
+            />
+
+            {/* Section 2: About Dataset */}
+            <EditableSection
+              title="About Dataset"
+              icon={<FileText className="w-5 h-5" />}
+              isExpanded={expandedSections.about}
+              onToggle={() => toggleSection("about")}
+              isEditable={canEdit}
+              isEditing={activeEditingSection === "about"}
+              onEditClick={() => setEditingSection("about")}
+              isEmpty={!aboutDatasetInfo}
+              emptyIcon={<FileText className="w-12 h-12" />}
+              emptyMessage="No about information yet"
+              emptyActionLabel="Add About Info"
+              isDark={isDark}
+              tokens={sectionTokens}
+              displayContent={
+                aboutDatasetInfo ? (
+                  <AboutDisplay
+                    about={aboutDatasetInfo}
+                    tokens={tokens}
+                    formatDate={formatDate}
+                  />
+                ) : null
+              }
+              editContent={
+                <AboutDatasetForm
+                  datasetId={datasetId}
+                  initialData={aboutDatasetInfo ?? undefined}
+                  isDark={isDark}
+                  onSubmitData={upsertDatasetAboutInfo}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+            />
+
+            {/* Section 3: Location & Tags */}
+            <EditableSection
+              title="Location & Tags"
+              icon={<MapPin className="w-5 h-5" />}
+              subtitle="Manage location details and discovery tags"
+              isExpanded={expandedSections.locationTags}
+              onToggle={() => toggleSection("locationTags")}
+              isEditable={canEdit}
+              isEditing={activeEditingSection === "locationTags"}
+              onEditClick={() => setEditingSection("locationTags")}
+              isEmpty={!locationInfo && tags.length === 0}
+              emptyIcon={<Tag className="w-12 h-12" />}
+              emptyMessage="No location or tags added"
+              emptyActionLabel="Add Location & Tags"
+              isDark={isDark}
+              tokens={sectionTokens}
+              displayContent={
+                <LocationTagsDisplay
+                  proposal={{ locationInfo, tags }}
+                  tokens={tokens}
+                />
+              }
+              editContent={
+                <LocationTagsEditForm
+                  datasetId={datasetId}
+                  initialData={{ locationInfo, tags }}
+                  isDark={isDark}
+                  onUpsertLocation={upsertDatasetLocationInfo}
+                  onSetTags={setDatasetTags}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+            />
+
+            {/* Section 4: Data Format */}
+            <EditableSection
+              title="Data Format & Structure"
+              icon={<FileCode className="w-5 h-5" />}
+              isExpanded={expandedSections.dataFormat}
+              onToggle={() => toggleSection("dataFormat")}
+              isEditable={canEdit}
+              isEditing={activeEditingSection === "dataFormat"}
+              onEditClick={() => setEditingSection("dataFormat")}
+              isEmpty={!dataFormatInfo}
+              emptyIcon={<Database className="w-12 h-12" />}
+              emptyMessage="No data format information"
+              emptyActionLabel="Add Data Format"
+              isDark={isDark}
+              tokens={sectionTokens}
+              displayContent={
+                dataFormatInfo ? (
+                  <DataFormatDisplay
+                    dataFormat={dataFormatInfo}
+                    tokens={tokens}
+                    formatDate={formatDate}
+                  />
+                ) : null
+              }
+              editContent={
+                <DataFormatForm
+                  datasetId={datasetId}
+                  initialData={dataFormatInfo ?? undefined}
+                  isDark={isDark}
+                  onSubmitData={upsertDatasetDataFormatInfo}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+            />
+
+            {/* Section 5: Features */}
+            <EditableSection
+              title="Features / Columns"
+              subtitle={`${features.length} features defined`}
+              icon={<Database className="w-5 h-5" />}
+              isExpanded={expandedSections.features}
+              onToggle={() => toggleSection("features")}
+              isEditable={canEdit}
+              isEditing={activeEditingSection === "features"}
+              onEditClick={() => setEditingSection("features")}
+              isEmpty={features.length === 0}
+              emptyIcon={<Database className="w-12 h-12" />}
+              emptyMessage="No features added"
+              emptyActionLabel="Add Features"
+              isDark={isDark}
+              tokens={sectionTokens}
+              displayContent={
+                features.length > 0 ? (
+                  <FeaturesDisplay
+                    features={features}
+                    tokens={tokens}
+                    isDark={isDark}
+                  />
+                ) : null
+              }
+              editContent={
+                <FeaturesForm
+                  datasetId={datasetId}
+                  initialData={features}
+                  isDark={isDark}
+                  onSubmitData={replaceDatasetFeatures}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+            />
+
+            {/* Section 6: Secondary Categories */}
+            <EditableSection
+              title="Secondary Categories"
+              icon={<Tag className="w-5 h-5" />}
+              isExpanded={expandedSections.categories}
+              onToggle={() => toggleSection("categories")}
+              isEditable={canEdit}
+              isEditing={activeEditingSection === "categories"}
+              onEditClick={() => setEditingSection("categories")}
+              isEmpty={secondaryCategories.length === 0}
+              emptyIcon={<Tag className="w-12 h-12" />}
+              emptyMessage="No secondary categories"
+              emptyActionLabel="Add Categories"
+              isDark={isDark}
+              tokens={sectionTokens}
+              displayContent={
+                secondaryCategories.length > 0 ? (
+                  <CategoriesDisplay
+                    categoryIds={secondaryCategories.map((c) => c.id)}
+                    tokens={tokens}
+                    isDark={isDark}
+                  />
+                ) : null
+              }
+              editContent={
+                <SecondaryCategoriesForm
+                  datasetId={datasetId}
+                  initialCategories={secondaryCategories.map((c) => c.id)}
+                  isDark={isDark}
+                  onSubmitData={setDatasetSecondaryCategories}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+            />
+
+            {/* Section 7: Pricing */}
+            {pricingData && (
+              <PricingSection
+                pricingData={pricingData}
+                isSampleProposal={dataset.isSample === true}
+                onEditPricing={() => setShowPricingDialog(true)}
+                isDark={isDark}
+                tokens={tokens}
+              />
+            )}
+          </main>
+
+          <aside className="order-first space-y-4 xl:order-none xl:sticky xl:top-6">
+            {canEdit ? (
+              <SubmitForReviewSection
+                verificationStatus={verificationStatus}
+                missingPrerequisites={missingPrerequisites}
+                submitting={submittingUpdate}
+                onSubmit={() => void handleSubmitUpdate()}
+                isDark={isDark}
+                tokens={tokens}
+                eyebrow="Update readiness"
+                title={
+                  verificationStatus === "CHANGES_REQUESTED"
+                    ? "Ready to resubmit?"
+                    : "Ready for review?"
+                }
+                description={
+                  verificationStatus === "CHANGES_REQUESTED"
+                    ? "Address the reviewer feedback, confirm every required section, and return the update to the review queue."
+                    : "Complete the required information before sending this update to the admin review queue."
+                }
+                actionLabel={
+                  verificationStatus === "CHANGES_REQUESTED"
+                    ? "Resubmit update"
+                    : "Submit update"
+                }
+              />
+            ) : (
+              <section className="supplier-glass-panel rounded-xl border p-5">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Review state
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-foreground">
+                  Editing is unavailable
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  This update is currently locked by its lifecycle state. The
+                  editable sections remain visible for reference.
+                </p>
+              </section>
+            )}
+
+            <section className="supplier-glass-panel rounded-xl border p-5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                What this changes
+              </p>
+              <h2 className="mt-2 text-base font-semibold text-foreground">
+                A reviewed replacement version
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Submitting this form starts an admin review. It does not
+                immediately republish or replace the marketplace version.
+              </p>
+            </section>
+          </aside>
+        </div>
+      </DatasetWorkspace>
 
       {/* Pricing Edit Dialog */}
       <PricingEditDialog
-        isOpen={showPricingDialog}
+        isOpen={showPricingDialog && canEdit}
         onClose={() => setShowPricingDialog(false)}
         datasetId={datasetId}
         currentPricing={pricingData}
@@ -599,7 +681,7 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
         mode="dataset"
         onSuccess={() => {
           setShowPricingDialog(false);
-          fetchData();
+          void fetchData();
         }}
       />
     </PageBackground>

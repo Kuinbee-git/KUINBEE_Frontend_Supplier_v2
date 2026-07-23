@@ -1,16 +1,45 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { FileText, ArrowLeft, AlertCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, Upload, RotateCcw } from 'lucide-react';
-import { createDatasetProposal, upsertAboutInfo, upsertDataFormatInfo, replaceFeatures, upsertProposalPricing, getProposalDetails, upsertLocationInfo, setProposalTags } from '@/lib/api';
-import { BasicInfoStep, AboutStep, DataFormatStep, FeaturesStep, PricingStep } from './create-steps';
-import { DatasetUploadFlow } from './DatasetUploadFlow';
-import { useDraftProposal } from '@/hooks/useDraftProposal';
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import {
+  FileText,
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle,
+  ChevronRight,
+  ChevronLeft,
+  Loader2,
+  Upload,
+  RotateCcw,
+} from "lucide-react";
+import {
+  createDatasetProposal,
+  discardDraftProposal,
+  updateProposalMetadata,
+  upsertAboutInfo,
+  upsertDataFormatInfo,
+  replaceFeatures,
+  upsertProposalPricing,
+  getProposalDetails,
+  upsertLocationInfo,
+  setProposalTags,
+} from "@/lib/api";
+import {
+  BasicInfoStep,
+  AboutStep,
+  DataFormatStep,
+  FeaturesStep,
+  PricingStep,
+  ReviewStep,
+} from "./create-steps";
+import { DatasetUploadFlow } from "./DatasetUploadFlow";
+import { DatasetPageHeader, DatasetWorkspace } from "./workspace";
+import { useDraftProposal } from "@/hooks/useDraftProposal";
 import type {
   Currency,
   DatasetSuperType,
@@ -21,9 +50,8 @@ import type {
   Feature,
   FileFormat,
   UpsertPricingRequest,
-  DatasetPricingVersion,
-} from '@/types/dataset-proposal.types';
-import type { Source } from '@/types/catalog.types';
+} from "@/types/dataset-proposal.types";
+import type { Source } from "@/types/catalog.types";
 
 interface CreateDatasetProps {
   isDark?: boolean;
@@ -31,7 +59,7 @@ interface CreateDatasetProps {
 
 interface BasicFormData {
   title: string;
-  superType: DatasetSuperType | '';
+  superType: DatasetSuperType | "";
   primaryCategoryId: string;
   sourceId: string;
   license: string;
@@ -40,7 +68,7 @@ interface BasicFormData {
     whySample: string;
     actualDataSize: string;
     completeness: string;
-    deliveryMechanism: SampleDeliveryMechanism | '';
+    deliveryMechanism: SampleDeliveryMechanism | "";
     deliveryMechanismNotes: string;
   };
   actualPrice: string;
@@ -57,78 +85,117 @@ interface LocationFormData {
   coverage: string;
 }
 
+type FormatFormData = Omit<UpsertDataFormatRequest, "fileFormat"> & {
+  fileFormat: FileFormat | "";
+};
+
+type Step =
+  | "basic"
+  | "about"
+  | "format"
+  | "features"
+  | "pricing"
+  | "upload"
+  | "review";
+
+interface SavedDraftProposal {
+  basicData?: Partial<BasicFormData>;
+  aboutData?: UpsertAboutInfoRequest;
+  locationData?: Partial<LocationFormData>;
+  tagsText?: string;
+  formatData?: FormatFormData;
+  features?: Feature[];
+  pricingData?: UpsertPricingRequest;
+  createdProposalId?: string;
+  currentStep?: Step;
+  fileUploaded?: boolean;
+  sampleFileUploaded?: boolean;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  code?: string;
+}
+
+function asApiError(error: unknown): ApiErrorLike {
+  return error && typeof error === "object" ? (error as ApiErrorLike) : {};
+}
+
 const DEFAULT_BASIC_DATA: BasicFormData = {
-  title: '',
-  superType: '' as DatasetSuperType | '',
-  primaryCategoryId: '',
-  sourceId: '',
-  license: '',
+  title: "",
+  superType: "" as DatasetSuperType | "",
+  primaryCategoryId: "",
+  sourceId: "",
+  license: "",
   isSample: false,
   sampleNotes: {
-    whySample: '',
-    actualDataSize: '',
-    completeness: '',
-    deliveryMechanism: '',
-    deliveryMechanismNotes: '',
+    whySample: "",
+    actualDataSize: "",
+    completeness: "",
+    deliveryMechanism: "",
+    deliveryMechanismNotes: "",
   },
-  actualPrice: '',
-  actualPriceCurrency: 'USD',
+  actualPrice: "",
+  actualPriceCurrency: "USD",
   isNegotiable: null,
 };
 
 const DEFAULT_LOCATION_DATA: LocationFormData = {
-  country: '',
-  state: '',
-  city: '',
-  region: '',
-  coordinates: '',
-  coverage: '',
+  country: "",
+  state: "",
+  city: "",
+  region: "",
+  coordinates: "",
+  coverage: "",
 };
 
-function normalizeBasicData(input: any): BasicFormData {
-  const raw = input ?? {};
+function normalizeBasicData(input: unknown): BasicFormData {
+  const raw =
+    input && typeof input === "object"
+      ? (input as Partial<BasicFormData> & { actualPrice?: unknown })
+      : {};
 
   return {
     ...DEFAULT_BASIC_DATA,
     ...raw,
-    isSample: raw?.isSample === true,
+    isSample: raw.isSample === true,
     sampleNotes: {
       ...DEFAULT_BASIC_DATA.sampleNotes,
-      ...(raw?.sampleNotes ?? {}),
+      ...(raw.sampleNotes ?? {}),
     },
     actualPrice:
-      typeof raw?.actualPrice === 'string'
+      typeof raw.actualPrice === "string"
         ? raw.actualPrice
-        : raw?.actualPrice != null
+        : raw.actualPrice != null
           ? String(raw.actualPrice)
-          : '',
-    actualPriceCurrency: raw?.actualPriceCurrency ?? 'USD',
+          : "",
+    actualPriceCurrency: raw.actualPriceCurrency ?? "USD",
     isNegotiable:
-      raw?.isNegotiable === true
+      raw.isNegotiable === true
         ? true
-        : raw?.isNegotiable === false
+        : raw.isNegotiable === false
           ? false
           : null,
   };
 }
 
-type Step = 'basic' | 'about' | 'format' | 'features' | 'pricing' | 'upload';
-
 const SAMPLE_FREE_PRICING: UpsertPricingRequest = {
   isPaid: false,
   price: null,
-  currency: 'USD',
+  currency: "USD",
 };
 
 export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>('basic');
-  const [createdProposalId, setCreatedProposalId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<Step>("basic");
+  const [createdProposalId, setCreatedProposalId] = useState<string | null>(
+    null
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-   const [sampleUploadDialogOpen, setSampleUploadDialogOpen] = useState(false);
+  const [sampleUploadDialogOpen, setSampleUploadDialogOpen] = useState(false);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [sampleFileUploaded, setSampleFileUploaded] = useState(false);
 
@@ -137,41 +204,41 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   // Step 2: About Dataset
   const [aboutData, setAboutData] = useState<UpsertAboutInfoRequest>({
-    overview: '',
-    description: '',
-    dataQuality: '',
+    overview: "",
+    description: "",
+    dataQuality: "",
     useCases: null,
     limitations: null,
     methodology: null,
   });
-  const [locationData, setLocationData] = useState<LocationFormData>(DEFAULT_LOCATION_DATA);
-  const [tagsText, setTagsText] = useState('');
+  const [locationData, setLocationData] = useState<LocationFormData>(
+    DEFAULT_LOCATION_DATA
+  );
+  const [tagsText, setTagsText] = useState("");
 
   // Step 3: Data Format
-  const [formatData, setFormatData] = useState<Omit<UpsertDataFormatRequest, 'fileFormat'> & { fileFormat: FileFormat | '' }>({
-    fileFormat: '',
-    fileSize: '',
+  const [formatData, setFormatData] = useState<FormatFormData>({
+    fileFormat: "",
+    fileSize: "",
     rows: 0,
     cols: 0,
     compressionType: undefined,
-    encoding: 'UTF-8',
+    encoding: "UTF-8",
   });
 
   // Step 4: Features
   const [features, setFeatures] = useState<Feature[]>([
-    { name: '', dataType: '', description: null, isNullable: false }
+    { name: "", dataType: "", description: null, isNullable: false },
   ]);
 
   // Step 5: Pricing
   const [pricingData, setPricingData] = useState<UpsertPricingRequest>({
     isPaid: false,
     price: null,
-    currency: 'USD',
+    currency: "USD",
   });
-  const [pricingLoaded, setPricingLoaded] = useState(false);
-
   // Draft management
-  const { loadDraft, saveDraft, clearDraft, hasDraft } = useDraftProposal();
+  const { loadDraft, saveDraft, clearDraft } = useDraftProposal();
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   const tokens = getDatasetThemeTokens(isDark);
@@ -180,26 +247,34 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   useEffect(() => {
     if (draftLoaded) return;
 
-    const draft = loadDraft();
+    const draft = loadDraft() as SavedDraftProposal | null;
     if (draft) {
-      const restoreDraft = (d: any) => {
+      const restoreDraft = (d: SavedDraftProposal) => {
         if (d.basicData) setBasicData(normalizeBasicData(d.basicData));
-        if (d.aboutData) setAboutData(d.aboutData as any);
-        if (d.locationData) setLocationData({ ...DEFAULT_LOCATION_DATA, ...(d.locationData as any) });
-        if (typeof d.tagsText === 'string') setTagsText(d.tagsText);
-        if (d.formatData) setFormatData(d.formatData as any);
-        if (d.features && d.features.length > 0) setFeatures(d.features as any);
-        if (d.pricingData) setPricingData(d.pricingData as any);
+        if (d.aboutData) setAboutData(d.aboutData);
+        if (d.locationData)
+          setLocationData({
+            ...DEFAULT_LOCATION_DATA,
+            ...d.locationData,
+          });
+        if (typeof d.tagsText === "string") setTagsText(d.tagsText);
+        if (d.formatData) setFormatData(d.formatData);
+        if (d.features && d.features.length > 0) setFeatures(d.features);
+        if (d.pricingData) setPricingData(d.pricingData);
         if (d.createdProposalId) setCreatedProposalId(d.createdProposalId);
         if (d.currentStep) setCurrentStep(d.currentStep as Step);
         if (d.fileUploaded) setFileUploaded(d.fileUploaded);
         if (d.sampleFileUploaded) setSampleFileUploaded(d.sampleFileUploaded);
-        
+
         // Only show toast if the draft actually contains meaningful progress
-        if (d.createdProposalId || d.currentStep !== 'basic' || (d.basicData && d.basicData.title)) {
-          toast.success('Draft proposal restored!');
+        if (
+          d.createdProposalId ||
+          d.currentStep !== "basic" ||
+          (d.basicData && d.basicData.title)
+        ) {
+          toast.success("Draft proposal restored!");
         }
-        
+
         setDraftLoaded(true);
       };
 
@@ -207,7 +282,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         // Proactively verify the drafted dataset is still editable
         getProposalDetails(draft.createdProposalId)
           .then((res) => {
-            if (res.verification.status !== 'PENDING') {
+            if (res.verification.status !== "PENDING") {
               clearDraft();
               setDraftLoaded(true);
             } else {
@@ -215,7 +290,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
             }
           })
           .catch((err) => {
-            console.error('Failed to verify draft proposal. Clearing local draft.', err);
+            console.error(
+              "Failed to verify draft proposal. Clearing local draft.",
+              err
+            );
             clearDraft();
             setDraftLoaded(true);
           });
@@ -225,7 +303,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     } else {
       setDraftLoaded(true);
     }
-  }, []);
+  }, [clearDraft, draftLoaded, loadDraft]);
 
   // Auto-save draft whenever form data changes
   useEffect(() => {
@@ -246,34 +324,49 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     };
 
     saveDraft(draftData);
-  }, [draftLoaded, basicData, aboutData, locationData, tagsText, formatData, features, pricingData, createdProposalId, currentStep, fileUploaded, sampleFileUploaded, saveDraft]);
+  }, [
+    draftLoaded,
+    basicData,
+    aboutData,
+    locationData,
+    tagsText,
+    formatData,
+    features,
+    pricingData,
+    createdProposalId,
+    currentStep,
+    fileUploaded,
+    sampleFileUploaded,
+    saveDraft,
+  ]);
 
   const steps = [
-    { id: 'basic' as Step, label: 'Basic Info', number: 1 },
-    { id: 'about' as Step, label: 'About Dataset', number: 2 },
-    { id: 'format' as Step, label: 'Data Format', number: 3 },
-    { id: 'features' as Step, label: 'Features', number: 4 },
-    { id: 'pricing' as Step, label: 'Pricing', number: 5 },
-    { id: 'upload' as Step, label: 'Upload File', number: 6 },
+    { id: "basic" as Step, label: "Basic Info", number: 1 },
+    { id: "about" as Step, label: "About Dataset", number: 2 },
+    { id: "format" as Step, label: "Data Format", number: 3 },
+    { id: "features" as Step, label: "Features", number: 4 },
+    { id: "pricing" as Step, label: "Pricing", number: 5 },
+    { id: "upload" as Step, label: "Upload File", number: 6 },
+    { id: "review" as Step, label: "Review Draft", number: 7 },
   ];
 
-  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+  const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
   const isLastStep = currentStepIndex === steps.length - 1;
 
   const isBasicValid = () => {
-    const baseFieldsValid = (
-      basicData.title.trim() !== '' &&
-      basicData.superType !== '' &&
-      basicData.primaryCategoryId !== '' &&
-      basicData.sourceId !== '' &&
-      basicData.license !== ''
-    );
+    const baseFieldsValid =
+      basicData.title.trim() !== "" &&
+      basicData.superType !== "" &&
+      basicData.primaryCategoryId !== "" &&
+      basicData.sourceId !== "" &&
+      basicData.license !== "";
 
     if (!baseFieldsValid) return false;
     if (!basicData.isSample) return true;
 
     const parsedActualPrice = Number.parseInt(basicData.actualPrice, 10);
-    const hasValidActualPrice = Number.isInteger(parsedActualPrice) && parsedActualPrice >= 0;
+    const hasValidActualPrice =
+      Number.isInteger(parsedActualPrice) && parsedActualPrice >= 0;
     const deliveryMechanism = basicData.sampleNotes.deliveryMechanism;
 
     if (!basicData.sampleNotes.whySample.trim()) return false;
@@ -282,44 +375,55 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     if (!hasValidActualPrice) return false;
     if (!basicData.actualPriceCurrency) return false;
     if (basicData.isNegotiable === null) return false;
-    if (deliveryMechanism === 'OTHER' && !basicData.sampleNotes.deliveryMechanismNotes.trim()) return false;
+    if (
+      deliveryMechanism === "OTHER" &&
+      !basicData.sampleNotes.deliveryMechanismNotes.trim()
+    )
+      return false;
 
     return true;
   };
 
   const isAboutValid = () => {
     return (
-      (aboutData.overview?.trim() ?? '') !== '' &&
-      (aboutData.description?.trim() ?? '') !== '' &&
-      (aboutData.dataQuality?.trim() ?? '') !== '' &&
-      locationData.country.trim() !== ''
+      (aboutData.overview?.trim() ?? "") !== "" &&
+      (aboutData.description?.trim() ?? "") !== "" &&
+      (aboutData.dataQuality?.trim() ?? "") !== "" &&
+      locationData.country.trim() !== ""
     );
   };
 
   const isFormatValid = () => {
     return (
-      formatData.fileFormat !== '' &&
-      formatData.fileSize.trim() !== '' &&
+      formatData.fileFormat !== "" &&
+      formatData.fileSize.trim() !== "" &&
       formatData.rows > 0 &&
       formatData.cols > 0
     );
   };
 
   const isFeaturesValid = () => {
-    return features.length > 0 && features.every(f => f.name.trim() !== '' && f.dataType.trim() !== '');
+    return (
+      features.length > 0 &&
+      features.every((f) => f.name.trim() !== "" && f.dataType.trim() !== "")
+    );
   };
 
   const isPricingValid = () => {
     if (basicData.isSample) return true;
     if (!pricingData.isPaid) return true; // Free datasets don't need a price
-    return !!(pricingData.price && pricingData.price.trim() !== '');
+    return !!(pricingData.price && pricingData.price.trim() !== "");
   };
 
   useEffect(() => {
     if (!basicData.isSample) return;
 
     setPricingData((prev) => {
-      if (prev.isPaid === false && (prev.price == null || prev.price === '') && prev.currency === 'USD') {
+      if (
+        prev.isPaid === false &&
+        (prev.price == null || prev.price === "") &&
+        prev.currency === "USD"
+      ) {
         return prev;
       }
       return { ...SAMPLE_FREE_PRICING };
@@ -332,10 +436,13 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
   }, [basicData.isSample, pricingData.isPaid]);
 
-  const handleBasicChange = (field: string, value: any) => {
+  const handleBasicChange = (field: string, value: string | boolean | null) => {
     setBasicData((prev) => {
-      if (field.startsWith('sampleNotes.')) {
-        const nestedKey = field.replace('sampleNotes.', '') as keyof BasicFormData['sampleNotes'];
+      if (field.startsWith("sampleNotes.")) {
+        const nestedKey = field.replace(
+          "sampleNotes.",
+          ""
+        ) as keyof BasicFormData["sampleNotes"];
         return {
           ...prev,
           sampleNotes: {
@@ -345,7 +452,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         };
       }
 
-      if (field === 'isSample' && value === false) {
+      if (field === "isSample" && value === false) {
         return {
           ...prev,
           isSample: false,
@@ -368,26 +475,46 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     setTimeout(() => setSuccess(null), 3000);
   }, []);
 
-  const handleAboutChange = (field: keyof UpsertAboutInfoRequest, value: string) => {
+  const handleAboutChange = (
+    field: keyof UpsertAboutInfoRequest,
+    value: string
+  ) => {
     setAboutData((prev) => ({ ...prev, [field]: value || null }));
     setError(null);
   };
 
   const handleLocationChange = (field: string, value: string) => {
-    setLocationData((prev) => ({ ...prev, [field as keyof LocationFormData]: value }));
+    setLocationData((prev) => ({
+      ...prev,
+      [field as keyof LocationFormData]: value,
+    }));
     setError(null);
   };
 
   const parseTags = (raw: string) => {
-    return Array.from(new Set(raw.split(',').map((tag) => tag.trim()).filter(Boolean)));
+    return Array.from(
+      new Set(
+        raw
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      )
+    );
   };
 
-  const handleFormatChange = (field: string, value: any) => {
+  const handleFormatChange = (
+    field: string,
+    value: string | number | undefined
+  ) => {
     setFormatData((prev) => ({ ...prev, [field]: value }));
     setError(null);
   };
 
-  const handleFeatureChange = (index: number, field: keyof Feature, value: any) => {
+  const handleFeatureChange = (
+    index: number,
+    field: keyof Feature,
+    value: string | boolean | null
+  ) => {
     const updated = [...features];
     updated[index] = { ...updated[index], [field]: value };
     setFeatures(updated);
@@ -395,7 +522,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   };
 
   const addFeature = () => {
-    setFeatures([...features, { name: '', dataType: '', description: null, isNullable: false }]);
+    setFeatures([
+      ...features,
+      { name: "", dataType: "", description: null, isNullable: false },
+    ]);
   };
 
   const removeFeature = (index: number) => {
@@ -404,7 +534,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
   };
 
-  const handlePricingChange = (field: keyof UpsertPricingRequest, value: any) => {
+  const handlePricingChange = (
+    field: keyof UpsertPricingRequest,
+    value: string | boolean | null | undefined
+  ) => {
     if (basicData.isSample) {
       setPricingData({ ...SAMPLE_FREE_PRICING });
       setError(null);
@@ -418,13 +551,17 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     setError(null);
     setSuccess(null);
 
-    const handleApiError = (err: any, defaultMsg: string) => {
+    const handleApiError = (err: unknown, defaultMsg: string) => {
       console.error(defaultMsg, err);
-      const errorMsg = err.message || defaultMsg;
-      if (errorMsg.toLowerCase().includes('not editable') || err?.code === 'INVALID_STATE') {
-        setError('This draft proposal is no longer editable. We have reset your session so you can create a new proposal with your existing data. Please review your Basic Info and click "Next".');
-        setCreatedProposalId(null);
-        setCurrentStep('basic');
+      const apiError = asApiError(err);
+      const errorMsg = apiError.message || defaultMsg;
+      if (
+        errorMsg.toLowerCase().includes("not editable") ||
+        apiError.code === "INVALID_STATE"
+      ) {
+        setError(
+          "This proposal is no longer editable because it has entered review. Your existing proposal was not changed or discarded; open it from your proposals list to see its current status."
+        );
         return true;
       }
       setError(errorMsg);
@@ -432,63 +569,75 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     };
 
     // Step 1: Create the basic proposal (or navigate if already created)
-    if (currentStep === 'basic') {
+    if (currentStep === "basic") {
       if (!isBasicValid()) {
-        setError('Please fill in all required fields');
+        setError("Please fill in all required fields");
         return;
       }
 
-      // Smart check: If proposal already exists, just navigate forward
-      // This prevents duplicate proposals when user navigates back and clicks Next again
+      const parsedActualPrice = Number.parseInt(basicData.actualPrice, 10);
+      const basicPayload = {
+        title: basicData.title,
+        superType: basicData.superType as DatasetSuperType,
+        primaryCategoryId: basicData.primaryCategoryId,
+        sourceId: basicData.sourceId,
+        license: basicData.license,
+        isSample: basicData.isSample,
+        ...(basicData.isSample
+          ? {
+              sampleNotes: {
+                whySample: basicData.sampleNotes.whySample.trim(),
+                actualDataSize: basicData.sampleNotes.actualDataSize.trim(),
+                completeness:
+                  basicData.sampleNotes.completeness.trim() || undefined,
+                deliveryMechanism: basicData.sampleNotes
+                  .deliveryMechanism as SampleDeliveryMechanism,
+                deliveryMechanismNotes:
+                  basicData.sampleNotes.deliveryMechanism === "OTHER"
+                    ? basicData.sampleNotes.deliveryMechanismNotes.trim() ||
+                      undefined
+                    : undefined,
+              },
+              actualPrice: parsedActualPrice,
+              actualPriceCurrency: basicData.actualPriceCurrency,
+              isNegotiable: basicData.isNegotiable ?? false,
+            }
+          : {}),
+      };
+
+      // Reusing the existing draft must persist any edits made after navigating
+      // back to Basic Info. Otherwise the UI and server proposal diverge.
       if (createdProposalId) {
-        setSuccess('Continuing with existing proposal');
-        setTimeout(() => {
-          setSuccess(null);
-          setCurrentStep('about');
-        }, 500);
+        setSubmitting(true);
+        try {
+          await updateProposalMetadata(createdProposalId, basicPayload);
+          setSuccess("Basic information saved!");
+          setTimeout(() => {
+            setSuccess(null);
+            setCurrentStep("about");
+          }, 500);
+        } catch (err: unknown) {
+          handleApiError(err, "Failed to update basic information");
+        } finally {
+          setSubmitting(false);
+        }
         return;
       }
 
       // Only create new proposal if one doesn't exist yet
       setSubmitting(true);
       try {
-        const parsedActualPrice = Number.parseInt(basicData.actualPrice, 10);
-
-        const response = await createDatasetProposal({
-          title: basicData.title,
-          superType: basicData.superType as DatasetSuperType,
-          primaryCategoryId: basicData.primaryCategoryId,
-          sourceId: basicData.sourceId,
-          license: basicData.license,
-          isSample: basicData.isSample,
-          ...(basicData.isSample
-            ? {
-                sampleNotes: {
-                  whySample: basicData.sampleNotes.whySample.trim(),
-                  actualDataSize: basicData.sampleNotes.actualDataSize.trim(),
-                  completeness: basicData.sampleNotes.completeness.trim() || undefined,
-                  deliveryMechanism: basicData.sampleNotes.deliveryMechanism as SampleDeliveryMechanism,
-                  deliveryMechanismNotes:
-                    basicData.sampleNotes.deliveryMechanism === 'OTHER'
-                      ? basicData.sampleNotes.deliveryMechanismNotes.trim() || undefined
-                      : undefined,
-                },
-                actualPrice: parsedActualPrice,
-                actualPriceCurrency: basicData.actualPriceCurrency,
-                isNegotiable: basicData.isNegotiable ?? false,
-              }
-            : {}),
-        });
+        const response = await createDatasetProposal(basicPayload);
 
         setCreatedProposalId(response.dataset.id);
-        setSuccess('Proposal created successfully!');
+        setSuccess("Proposal created successfully!");
         setTimeout(() => {
           setSuccess(null);
-          setCurrentStep('about');
+          setCurrentStep("about");
         }, 1000);
-      } catch (err: any) {
-        console.error('Failed to create proposal:', err);
-        setError(err.message || 'Failed to create proposal');
+      } catch (err: unknown) {
+        console.error("Failed to create proposal:", err);
+        setError(asApiError(err).message || "Failed to create proposal");
       } finally {
         setSubmitting(false);
       }
@@ -496,14 +645,16 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
 
     // Step 2: Add About information
-    if (currentStep === 'about') {
+    if (currentStep === "about") {
       if (!isAboutValid()) {
-        setError('Please fill in all required fields (Overview, Description, Data Quality, Country)');
+        setError(
+          "Please fill in all required fields (Overview, Description, Data Quality, Country)"
+        );
         return;
       }
 
       if (!createdProposalId) {
-        setError('No proposal ID found');
+        setError("No proposal ID found");
         return;
       }
 
@@ -520,13 +671,13 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         };
         await upsertLocationInfo(createdProposalId, locationPayload);
         await setProposalTags(createdProposalId, { tags: parseTags(tagsText) });
-        setSuccess('About information saved!');
+        setSuccess("About information saved!");
         setTimeout(() => {
           setSuccess(null);
-          setCurrentStep('format');
+          setCurrentStep("format");
         }, 1000);
-      } catch (err: any) {
-        handleApiError(err, 'Failed to save about information');
+      } catch (err: unknown) {
+        handleApiError(err, "Failed to save about information");
       } finally {
         setSubmitting(false);
       }
@@ -534,14 +685,14 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
 
     // Step 3: Add Data Format information
-    if (currentStep === 'format') {
+    if (currentStep === "format") {
       if (!isFormatValid()) {
-        setError('Please fill in all required fields');
+        setError("Please fill in all required fields");
         return;
       }
 
       if (!createdProposalId) {
-        setError('No proposal ID found');
+        setError("No proposal ID found");
         return;
       }
 
@@ -549,15 +700,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
       try {
         await upsertDataFormatInfo(createdProposalId, {
           ...formatData,
-          fileFormat: formatData.fileFormat as FileFormat
+          fileFormat: formatData.fileFormat as FileFormat,
         });
-        setSuccess('Data format information saved!');
+        setSuccess("Data format information saved!");
         setTimeout(() => {
           setSuccess(null);
-          setCurrentStep('features');
+          setCurrentStep("features");
         }, 1000);
-      } catch (err: any) {
-        handleApiError(err, 'Failed to save data format information');
+      } catch (err: unknown) {
+        handleApiError(err, "Failed to save data format information");
       } finally {
         setSubmitting(false);
       }
@@ -565,27 +716,27 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
 
     // Step 4: Add Features and complete
-    if (currentStep === 'features') {
+    if (currentStep === "features") {
       if (!isFeaturesValid()) {
-        setError('Please define at least one feature with name and data type');
+        setError("Please define at least one feature with name and data type");
         return;
       }
 
       if (!createdProposalId) {
-        setError('No proposal ID found');
+        setError("No proposal ID found");
         return;
       }
 
       setSubmitting(true);
       try {
         await replaceFeatures(createdProposalId, { features });
-        setSuccess('Features saved!');
+        setSuccess("Features saved!");
         setTimeout(() => {
           setSuccess(null);
-          setCurrentStep('pricing');
+          setCurrentStep("pricing");
         }, 1000);
-      } catch (err: any) {
-        handleApiError(err, 'Failed to save features');
+      } catch (err: unknown) {
+        handleApiError(err, "Failed to save features");
       } finally {
         setSubmitting(false);
       }
@@ -593,52 +744,68 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
 
     // Step 5: Configure Pricing
-    if (currentStep === 'pricing') {
+    if (currentStep === "pricing") {
       if (!isPricingValid()) {
-        setError('Please enter a valid price for paid datasets');
+        setError("Please enter a valid price for paid datasets");
         return;
       }
 
       if (!createdProposalId) {
-        setError('No proposal ID found');
+        setError("No proposal ID found");
         return;
       }
 
       setSubmitting(true);
       try {
-        const pricingPayload = basicData.isSample ? SAMPLE_FREE_PRICING : pricingData;
+        const pricingPayload = basicData.isSample
+          ? SAMPLE_FREE_PRICING
+          : pricingData;
         await upsertProposalPricing(createdProposalId, pricingPayload);
-        setSuccess('Pricing saved!');
+        setSuccess("Pricing saved!");
         setTimeout(() => {
           setSuccess(null);
-          setCurrentStep('upload');
+          setCurrentStep("upload");
         }, 1000);
-      } catch (err: any) {
-        handleApiError(err, 'Failed to save pricing');
+      } catch (err: unknown) {
+        handleApiError(err, "Failed to save pricing");
       } finally {
         setSubmitting(false);
       }
       return;
     }
 
-    // Step 6: Upload file and complete
-    if (currentStep === 'upload') {
+    // Step 6: Confirm the required file exists, then show a non-submitting review.
+    if (currentStep === "upload") {
       if (!fileUploaded) {
-        setError('Please upload a file before completing');
+        setError("Please upload a file before completing");
         return;
       }
 
       if (!createdProposalId) {
-        setError('No proposal ID found');
+        setError("No proposal ID found");
         return;
       }
 
-      // Navigate to detail page
-      setSuccess('Proposal created successfully! Redirecting...');
-      clearDraft(); // Clear draft on successful completion
+      setCurrentStep("review");
+      setSuccess(
+        "Upload confirmed. Review your saved draft before continuing."
+      );
+      return;
+    }
+
+    // Step 7: Leave the creation flow. Moderation submission remains an explicit
+    // action on the proposal detail page and is never triggered from this wizard.
+    if (currentStep === "review") {
+      if (!createdProposalId) {
+        setError("No proposal ID found");
+        return;
+      }
+
+      setSuccess("Opening your proposal workspace...");
+      clearDraft();
       setTimeout(() => {
         router.push(`/dashboard/datasets/${createdProposalId}`);
-      }, 1500);
+      }, 500);
       return;
     }
   };
@@ -652,19 +819,54 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   };
 
   const canGoNext = () => {
-    if (currentStep === 'basic') return isBasicValid();
-    if (currentStep === 'about') return isAboutValid();
-    if (currentStep === 'format') return isFormatValid();
-    if (currentStep === 'features') return isFeaturesValid();
-    if (currentStep === 'pricing') return isPricingValid();
-    if (currentStep === 'upload') return fileUploaded;
+    if (currentStep === "basic") return isBasicValid();
+    if (currentStep === "about") return isAboutValid();
+    if (currentStep === "format") return isFormatValid();
+    if (currentStep === "features") return isFeaturesValid();
+    if (currentStep === "pricing") return isPricingValid();
+    if (currentStep === "upload") return fileUploaded;
+    if (currentStep === "review")
+      return Boolean(createdProposalId && fileUploaded);
     return false;
   };
 
-  const handleStartOver = () => {
-    if (confirm('Are you sure you want to start over? Your current progress will be cleared.')) {
+  const handleStartOver = async () => {
+    const message = createdProposalId
+      ? "Discard this draft and start over? The server draft and its uploaded files will be permanently deleted."
+      : "Start over? Your locally saved progress will be permanently cleared.";
+
+    if (!confirm(message)) return;
+
+    setError(null);
+    setSuccess(null);
+    setSubmitting(true);
+
+    try {
+      if (createdProposalId) {
+        await discardDraftProposal(createdProposalId);
+      }
       clearDraft();
       window.location.reload();
+    } catch (err: unknown) {
+      const apiError = err as {
+        status?: number;
+        code?: string;
+        message?: string;
+      };
+
+      if (apiError.status === 404) {
+        clearDraft();
+        window.location.reload();
+        return;
+      }
+
+      setError(
+        apiError.code === "INVALID_STATE"
+          ? "This proposal can no longer be discarded because it has already entered review. Open it from your proposals list to see its current status."
+          : apiError.message ||
+              "Failed to discard this draft. Your existing proposal has not been cleared."
+      );
+      setSubmitting(false);
     }
   };
 
@@ -672,66 +874,89 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   return (
     <>
-      <div className="min-h-screen px-6 py-8">
-        <div className="max-w-7xl mx-auto">
+      <DatasetWorkspace className="max-w-[1320px]">
+        <div className="space-y-7">
           {/* Back Button */}
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => router.back()}
-            className="flex items-center gap-2 mb-6 transition-all duration-200 hover:translate-x-[-4px] rounded-lg"
-            style={{
-              color: tokens.textSecondary,
-              padding: '0.625rem 1.25rem',
-              background: tokens.glassBg,
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              border: `1.5px solid ${tokens.glassBorder}`,
-              boxShadow: tokens.glassShadow,
-            }}
+            className="gap-2"
           >
             <ArrowLeft className="w-4 h-4 transition-transform duration-200" />
             Back to datasets
           </Button>
 
-          {/* Header */}
-          <div className="mb-8 flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: tokens.textPrimary }}>
-                Create new proposal
-              </h1>
-              <p className="text-base" style={{ color: tokens.textMuted }}>
-                Complete the steps to submit your dataset proposal for review
-              </p>
+          <DatasetPageHeader
+            title="Create a dataset proposal"
+            description="Build and save the proposal in seven clear steps. You will review the completed draft before deciding when to submit it for moderation."
+          />
+
+          <div className="supplier-glass-panel rounded-xl border p-4 lg:hidden">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Step {currentStepIndex + 1} of {steps.length}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {steps[currentStepIndex].label}
+                </p>
+              </div>
+              <span className="text-sm font-semibold text-primary">
+                {Math.round(((currentStepIndex + 1) / steps.length) * 100)}%
+              </span>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{
+                  width: `${((currentStepIndex + 1) / steps.length) * 100}%`,
+                }}
+              />
             </div>
           </div>
 
           {/* Two Column Layout */}
-          <div className="flex gap-8 items-start">
+          <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_18rem] xl:gap-10">
             {/* Left: Form Content (Wider) */}
-            <div className="flex-1 space-y-6">
+            <div className="min-w-0 space-y-5">
               {/* Error Message */}
               {error && (
                 <div
                   className="rounded-lg border px-4 py-3 flex items-start justify-between gap-3 animate-in fade-in duration-200"
                   style={{
-                    background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                    borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                    background: isDark
+                      ? "rgba(239, 68, 68, 0.1)"
+                      : "rgba(239, 68, 68, 0.05)",
+                    borderColor: isDark
+                      ? "rgba(239, 68, 68, 0.3)"
+                      : "rgba(239, 68, 68, 0.2)",
                   }}
                 >
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#DC2626' }} />
+                    <AlertCircle
+                      className="w-5 h-5 flex-shrink-0 mt-0.5"
+                      style={{ color: "#DC2626" }}
+                    />
                     <div className="space-y-1">
-                      <p className="text-sm font-medium" style={{ color: '#DC2626' }}>
+                      <p
+                        className="text-sm font-medium"
+                        style={{ color: "#DC2626" }}
+                      >
                         {error}
                       </p>
-                      {error.toLowerCase().includes('not editable') && (
-                        <p className="text-xs" style={{ color: '#DC2626', opacity: 0.8 }}>
-                          This draft might have been submitted already or is no longer editable. Click "Start Over" above to clear the draft.
+                      {error.toLowerCase().includes("not editable") && (
+                        <p
+                          className="text-xs"
+                          style={{ color: "#DC2626", opacity: 0.8 }}
+                        >
+                          This draft might have been submitted already or is no
+                          longer editable. Click &quot;Start Over&quot; above to
+                          clear the draft.
                         </p>
                       )}
                     </div>
                   </div>
-                  {error.toLowerCase().includes('not editable') && (
+                  {error.toLowerCase().includes("not editable") && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -749,37 +974,38 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                 <div
                   className="rounded-lg border px-4 py-3 flex items-start gap-3 animate-in fade-in duration-200"
                   style={{
-                    background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                    borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                    background: isDark
+                      ? "rgba(34, 197, 94, 0.1)"
+                      : "rgba(34, 197, 94, 0.05)",
+                    borderColor: isDark
+                      ? "rgba(34, 197, 94, 0.3)"
+                      : "rgba(34, 197, 94, 0.2)",
                   }}
                 >
-                  <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#22c55e' }} />
-                  <p className="text-sm" style={{ color: '#22c55e' }}>
+                  <CheckCircle
+                    className="w-4 h-4 flex-shrink-0 mt-0.5"
+                    style={{ color: "#22c55e" }}
+                  />
+                  <p className="text-sm" style={{ color: "#22c55e" }}>
                     {success}
                   </p>
                 </div>
               )}
 
               {/* Form Card */}
-              <Card
-                className="border overflow-hidden"
-                style={{
-                  background: tokens.surfaceCard,
-                  borderColor: tokens.borderDefault,
-                }}
-              >
-                <div className="p-8">
+              <Card className="supplier-glass-card overflow-hidden rounded-2xl border">
+                <div className="p-5 sm:p-7 lg:p-8">
                   <div className="mb-6">
-                    <h2 className="text-xl font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                      {steps[currentStepIndex].label}
-                    </h2>
-                    <p className="text-sm" style={{ color: tokens.textMuted }}>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
                       Step {currentStepIndex + 1} of {steps.length}
                     </p>
+                    <h2 className="text-xl font-semibold text-foreground sm:text-2xl">
+                      {steps[currentStepIndex].label}
+                    </h2>
                   </div>
 
                   <div className="space-y-6">
-                    {currentStep === 'basic' && (
+                    {currentStep === "basic" && (
                       <BasicInfoStep
                         data={basicData}
                         onChange={handleBasicChange}
@@ -790,7 +1016,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       />
                     )}
 
-                    {currentStep === 'about' && (
+                    {currentStep === "about" && (
                       <AboutStep
                         data={aboutData}
                         onChange={handleAboutChange}
@@ -803,7 +1029,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       />
                     )}
 
-                    {currentStep === 'format' && (
+                    {currentStep === "format" && (
                       <DataFormatStep
                         data={formatData}
                         onChange={handleFormatChange}
@@ -813,7 +1039,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       />
                     )}
 
-                    {currentStep === 'features' && (
+                    {currentStep === "features" && (
                       <FeaturesStep
                         features={features}
                         onChange={handleFeatureChange}
@@ -825,7 +1051,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       />
                     )}
 
-                    {currentStep === 'pricing' && (
+                    {currentStep === "pricing" && (
                       <PricingStep
                         data={pricingData}
                         onChange={handlePricingChange}
@@ -836,27 +1062,40 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       />
                     )}
 
-                    {currentStep === 'upload' && (
+                    {currentStep === "upload" && (
                       <div className="space-y-8 py-8">
                         <div className="text-center space-y-6">
                           <div
                             className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
                             style={{
-                              background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
-                              border: `2px dashed ${isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
+                              background: isDark
+                                ? "rgba(59, 130, 246, 0.1)"
+                                : "rgba(59, 130, 246, 0.05)",
+                              border: `2px dashed ${isDark ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.2)"}`,
                             }}
                           >
-                            <FileText className="w-10 h-10" style={{ color: tokens.textSecondary }} />
+                            <FileText
+                              className="w-10 h-10"
+                              style={{ color: tokens.textSecondary }}
+                            />
                           </div>
 
                           <div>
-                            <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-                              {fileUploaded ? 'File uploaded successfully!' : 'Upload your dataset file'}
-                            </h3>
-                            <p className="text-sm max-w-md mx-auto" style={{ color: tokens.textMuted }}>
+                            <h3
+                              className="text-xl font-semibold mb-2"
+                              style={{ color: tokens.textPrimary }}
+                            >
                               {fileUploaded
-                                ? 'Your file has been uploaded. Click Complete below to finish creating your proposal.'
-                                : 'Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX, ZIP.'}
+                                ? "File uploaded successfully!"
+                                : "Upload your dataset file"}
+                            </h3>
+                            <p
+                              className="text-sm max-w-md mx-auto"
+                              style={{ color: tokens.textMuted }}
+                            >
+                              {fileUploaded
+                                ? "Your file has been uploaded. Continue to review the complete saved draft."
+                                : "Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX, ZIP."}
                             </p>
                           </div>
 
@@ -864,8 +1103,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             <div
                               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg"
                               style={{
-                                background: 'rgba(34, 197, 94, 0.1)',
-                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                                background: "rgba(34, 197, 94, 0.1)",
+                                border: "1px solid rgba(34, 197, 94, 0.3)",
                               }}
                             >
                               <CheckCircle className="w-5 h-5 text-green-500" />
@@ -877,11 +1116,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             <Button
                               onClick={() => setUploadDialogOpen(true)}
                               size="lg"
-                              className="text-white gap-2 px-8 py-6 text-base rounded-lg transition-all duration-200 hover:shadow-lg active:scale-95"
-                              style={{
-                                background: '#1a2240',
-                                color: '#ffffff',
-                              }}
+                              className="gap-2 px-8 py-6 text-base"
                             >
                               <Upload className="w-5 h-5" />
                               Upload Dataset File
@@ -893,22 +1128,36 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                           <div
                             className="rounded-lg border p-5 max-w-md mx-auto"
                             style={{
-                              background: 'rgba(59, 130, 246, 0.05)',
-                              borderColor: 'rgba(59, 130, 246, 0.2)',
+                              background: "rgba(59, 130, 246, 0.05)",
+                              borderColor: "rgba(59, 130, 246, 0.2)",
                             }}
                           >
                             <div className="flex items-start gap-3">
                               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-500" />
-                              <div className="text-sm leading-relaxed" style={{ color: tokens.textSecondary }}>
-                                <p className="font-semibold mb-2" style={{ color: tokens.textPrimary }}>Upload requirements:</p>
+                              <div
+                                className="text-sm leading-relaxed"
+                                style={{ color: tokens.textSecondary }}
+                              >
+                                <p
+                                  className="font-semibold mb-2"
+                                  style={{ color: tokens.textPrimary }}
+                                >
+                                  Upload requirements:
+                                </p>
                                 <ul className="space-y-1.5 list-none">
                                   <li className="flex items-start gap-2">
                                     <span className="text-blue-500">•</span>
-                                    <span>Supported formats: CSV, JSON, Parquet, XLSX, ZIP</span>
+                                    <span>
+                                      Supported formats: CSV, JSON, Parquet,
+                                      XLSX, ZIP
+                                    </span>
                                   </li>
                                   <li className="flex items-start gap-2">
                                     <span className="text-blue-500">•</span>
-                                    <span>File upload is required to complete your proposal</span>
+                                    <span>
+                                      File upload is required to complete your
+                                      proposal
+                                    </span>
                                   </li>
                                 </ul>
                               </div>
@@ -920,17 +1169,24 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                           <div
                             className="rounded-lg border p-5 max-w-md mx-auto"
                             style={{
-                              background: 'rgba(34, 197, 94, 0.06)',
-                              borderColor: 'rgba(34, 197, 94, 0.25)',
+                              background: "rgba(34, 197, 94, 0.06)",
+                              borderColor: "rgba(34, 197, 94, 0.25)",
                             }}
                           >
                             <div className="text-center space-y-4">
                               <div>
-                                <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
+                                <p
+                                  className="text-sm font-semibold"
+                                  style={{ color: tokens.textPrimary }}
+                                >
                                   Optional: Upload sample file
                                 </p>
-                                <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
-                                  Buyers can download this sample file freely before purchasing.
+                                <p
+                                  className="text-xs mt-1"
+                                  style={{ color: tokens.textMuted }}
+                                >
+                                  Buyers can download this sample file freely
+                                  before purchasing.
                                 </p>
                               </div>
 
@@ -938,8 +1194,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 <div
                                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
                                   style={{
-                                    background: 'rgba(34, 197, 94, 0.12)',
-                                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                                    background: "rgba(34, 197, 94, 0.12)",
+                                    border: "1px solid rgba(34, 197, 94, 0.35)",
                                   }}
                                 >
                                   <CheckCircle className="w-4 h-4 text-green-500" />
@@ -953,54 +1209,56 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 onClick={() => setSampleUploadDialogOpen(true)}
                                 size="sm"
                                 variant="outline"
-                                className="gap-2 font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
-                                style={{
-                                  background: tokens.glassBg,
-                                  backdropFilter: 'blur(16px)',
-                                  WebkitBackdropFilter: 'blur(16px)',
-                                  border: `1.5px solid ${tokens.glassBorder}`,
-                                  boxShadow: tokens.glassShadow,
-                                  color: tokens.textPrimary,
-                                }}
+                                className="gap-2"
                               >
                                 <Upload className="w-4 h-4" />
-                                {sampleFileUploaded ? 'Replace sample file' : 'Upload sample file'}
+                                {sampleFileUploaded
+                                  ? "Replace sample file"
+                                  : "Upload sample file"}
                               </Button>
                             </div>
                           </div>
                         )}
                       </div>
                     )}
+
+                    {currentStep === "review" && (
+                      <ReviewStep
+                        title={basicData.title}
+                        superType={basicData.superType}
+                        country={locationData.country}
+                        fileFormat={formatData.fileFormat}
+                        fileSize={formatData.fileSize}
+                        featureCount={features.length}
+                        isSample={basicData.isSample}
+                        isPaid={pricingData.isPaid}
+                        price={pricingData.price ?? null}
+                        currency={pricingData.currency ?? "USD"}
+                        fileUploaded={fileUploaded}
+                        sampleFileUploaded={sampleFileUploaded}
+                        shouldShowSampleUpload={shouldShowSampleUpload}
+                        onEdit={setCurrentStep}
+                      />
+                    )}
                   </div>
                 </div>
 
                 {/* Navigation Buttons */}
-                <div
-                  className="px-8 py-6 border-t flex items-center justify-between gap-4"
-                  style={{ borderColor: tokens.borderDefault }}
-                >
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-col-reverse gap-3 border-t border-border/70 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                     {currentStepIndex > 0 && (
                       <Button
                         variant="outline"
                         onClick={handleBack}
                         disabled={submitting}
-                        className="gap-2 px-6 h-11 font-medium transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
-                        style={{
-                          background: tokens.glassBg,
-                          backdropFilter: "blur(16px)",
-                          WebkitBackdropFilter: "blur(16px)",
-                          border: `1.5px solid ${tokens.glassBorder}`,
-                          boxShadow: tokens.glassShadow,
-                          color: tokens.textPrimary,
-                        }}
+                        className="h-11 gap-2 px-5"
                       >
                         <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
                         Back
                       </Button>
                     )}
-                    
-                    {(createdProposalId || currentStep !== 'basic') && (
+
+                    {(createdProposalId || currentStep !== "basic") && (
                       <Button
                         variant="ghost"
                         onClick={handleStartOver}
@@ -1016,11 +1274,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                   <Button
                     onClick={handleNext}
                     disabled={!canGoNext() || submitting}
-                    className="gap-2 text-white px-8 h-11 font-medium transition-all duration-200 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
-                    style={{
-                      background: canGoNext() && !submitting ? '#1a2240' : '#9ca3af',
-                      color: '#ffffff',
-                    }}
+                    className="h-11 w-full gap-2 px-7 sm:w-auto"
                   >
                     {submitting ? (
                       <>
@@ -1028,13 +1282,18 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                         Saving...
                       </>
                     ) : isLastStep ? (
+                      <>
+                        Open proposal workspace
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    ) : currentStep === "upload" ? (
                       fileUploaded ? (
                         <>
-                          Complete & View Proposal
-                          <CheckCircle className="w-4 h-4" />
+                          Review saved draft
+                          <ChevronRight className="w-4 h-4" />
                         </>
                       ) : (
-                        'Upload file to continue'
+                        "Upload file to continue"
                       )
                     ) : (
                       <>
@@ -1048,52 +1307,68 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
             </div>
 
             {/* Right: Progress Stepper (Wider, Sticky) */}
-            <div className="w-96 flex-shrink-0">
-              <div className="sticky top-0 w-full flex flex-col px-6">
-                <h3 className="text-lg font-bold mb-10" style={{ color: tokens.textPrimary }}>
-                  Progress
+            <aside className="hidden lg:block">
+              <div className="supplier-glass-panel sticky top-6 w-full rounded-2xl border p-5">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Proposal progress
                 </h3>
-                <div className="space-y-14 w-full relative flex flex-col">
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Your work is saved after every completed step.
+                </p>
+                <div className="mt-6 flex w-full flex-col gap-5">
                   {steps.map((step, idx) => (
-                    <div key={step.id} className="flex flex-row items-start w-full relative">
+                    <div
+                      key={step.id}
+                      className="flex flex-row items-start w-full relative"
+                    >
                       {/* Step Circle */}
                       <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0 transition-all duration-300 relative z-10 shadow-md"
-                        style={{
-                          background: idx <= currentStepIndex
-                            ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 100%)'
-                            : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(26, 34, 64, 0.05)',
-                          color: idx <= currentStepIndex ? '#fff' : tokens.textMuted,
-                          border: idx === currentStepIndex ? '2px solid rgba(59, 130, 246, 0.5)' : 'none',
-                        }}
+                        className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
+                          idx <= currentStepIndex
+                            ? "border-primary/40 bg-primary text-primary-foreground"
+                            : "border-border bg-background/70 text-muted-foreground"
+                        }`}
                       >
-                        {idx < currentStepIndex ? '✓' : step.number}
+                        {idx < currentStepIndex ? "✓" : step.number}
                       </div>
 
                       {/* Step Label & Status */}
-                      <div className="ml-4 pt-1 flex flex-col">
+                      <div className="ml-3 flex min-w-0 flex-col">
                         <div
-                          className="text-lg font-semibold"
-                          style={{ color: idx <= currentStepIndex ? tokens.textPrimary : tokens.textMuted }}
+                          className="text-sm font-semibold"
+                          style={{
+                            color:
+                              idx <= currentStepIndex
+                                ? tokens.textPrimary
+                                : tokens.textMuted,
+                          }}
                         >
                           {step.label}
                         </div>
-                        <div className="text-base" style={{ color: tokens.textMuted }}>
-                          {idx < currentStepIndex ? 'Complete' : idx === currentStepIndex ? 'In progress' : 'Pending'}
+                        <div
+                          className="mt-0.5 text-xs"
+                          style={{ color: tokens.textMuted }}
+                        >
+                          {idx < currentStepIndex
+                            ? "Complete"
+                            : idx === currentStepIndex
+                              ? "In progress"
+                              : "Pending"}
                         </div>
                       </div>
 
                       {/* Connecting Line */}
                       {idx < steps.length - 1 && (
                         <div
-                          className="absolute w-1 transition-all duration-300"
+                          className="absolute w-px transition-all duration-300"
                           style={{
-                            left: '1.5rem',
-                            top: '3rem',
-                            height: '3.5rem',
-                            background: idx < currentStepIndex
-                              ? 'linear-gradient(to bottom, #1a2240, #2a3558)'
-                              : tokens.borderSubtle,
+                            left: "1.125rem",
+                            top: "2.25rem",
+                            height: "1.25rem",
+                            background:
+                              idx < currentStepIndex
+                                ? "linear-gradient(to bottom, #1a2240, #2a3558)"
+                                : tokens.borderSubtle,
                             zIndex: 0,
                           }}
                         />
@@ -1102,10 +1377,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                   ))}
                 </div>
               </div>
-            </div>
+            </aside>
           </div>
         </div>
-      </div>
+      </DatasetWorkspace>
 
       {/* Upload Dialog */}
       {createdProposalId && (
@@ -1114,10 +1389,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           onClose={() => setUploadDialogOpen(false)}
           datasetId={createdProposalId}
           isDark={isDark}
+          isEditable
           onUploadComplete={() => {
             setFileUploaded(true);
             setUploadDialogOpen(false);
-            setSuccess('File uploaded successfully!');
+            setSuccess("File uploaded successfully!");
             setTimeout(() => setSuccess(null), 2000);
           }}
         />
@@ -1129,11 +1405,12 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           onClose={() => setSampleUploadDialogOpen(false)}
           datasetId={createdProposalId}
           isDark={isDark}
+          isEditable
           uploadKind="sample"
           onUploadComplete={() => {
             setSampleFileUploaded(true);
             setSampleUploadDialogOpen(false);
-            setSuccess('Sample file uploaded successfully!');
+            setSuccess("Sample file uploaded successfully!");
             setTimeout(() => setSuccess(null), 2000);
           }}
         />

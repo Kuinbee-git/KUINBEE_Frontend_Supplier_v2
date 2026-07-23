@@ -1,11 +1,21 @@
 'use client';
 
 import { Label } from '@/components/ui/label';
-import type { AboutDatasetInfo } from '@/types/dataset-proposal.types';
+import type { DatasetDetailTokens } from '../detailTokens';
+
+interface AboutDisplayValue {
+  overview: string | null;
+  description: string | null;
+  dataQuality: string | null;
+  useCases?: string | null;
+  limitations?: string | null;
+  methodology?: string | null;
+  updatedAt?: string;
+}
 
 interface AboutDisplayProps {
-  about: AboutDatasetInfo;
-  tokens: any;
+  about: AboutDisplayValue;
+  tokens: DatasetDetailTokens;
   formatDate: (date: string) => string;
 }
 

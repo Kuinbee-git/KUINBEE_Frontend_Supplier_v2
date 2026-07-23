@@ -1,11 +1,21 @@
 'use client';
 
 import { Label } from '@/components/ui/label';
-import type { DataFormatInfo } from '@/types/dataset-proposal.types';
+import type { DatasetDetailTokens } from '../detailTokens';
+
+interface DataFormatDisplayValue {
+  fileFormat: string;
+  rows: number | null;
+  cols: number | null;
+  fileSize: string | null;
+  compressionType?: string | null;
+  encoding?: string | null;
+  updatedAt?: string;
+}
 
 interface DataFormatDisplayProps {
-  dataFormat: DataFormatInfo;
-  tokens: any;
+  dataFormat: DataFormatDisplayValue;
+  tokens: DatasetDetailTokens;
   formatDate: (date: string) => string;
 }
 
@@ -21,19 +31,19 @@ export function DataFormatDisplay({ dataFormat, tokens, formatDate }: DataFormat
       <div>
         <Label style={{ color: tokens.textSecondary }}>File Size</Label>
         <p className="text-sm" style={{ color: tokens.textPrimary }}>
-          {dataFormat.fileSize}
+          {dataFormat.fileSize || 'N/A'}
         </p>
       </div>
       <div>
         <Label style={{ color: tokens.textSecondary }}>Rows</Label>
         <p className="text-sm" style={{ color: tokens.textPrimary }}>
-          {dataFormat.rows.toLocaleString()}
+          {dataFormat.rows?.toLocaleString() ?? 'N/A'}
         </p>
       </div>
       <div>
         <Label style={{ color: tokens.textSecondary }}>Columns</Label>
         <p className="text-sm" style={{ color: tokens.textPrimary }}>
-          {dataFormat.cols.toLocaleString()}
+          {dataFormat.cols?.toLocaleString() ?? 'N/A'}
         </p>
       </div>
       {dataFormat.compressionType && (

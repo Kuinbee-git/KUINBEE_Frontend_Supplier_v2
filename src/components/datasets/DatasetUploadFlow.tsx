@@ -20,6 +20,7 @@ interface DatasetUploadFlowProps {
   onClose: () => void;
   datasetId: string;
   isDark?: boolean;
+  isEditable: boolean;
   uploadKind?: 'current' | 'sample';
   onUploadComplete?: (fileInfo: { fileName: string; fileSize: string }) => void;
 }
@@ -31,6 +32,7 @@ export function DatasetUploadFlow({
   onClose, 
   datasetId, 
   isDark = false,
+  isEditable,
   uploadKind = 'current',
   onUploadComplete 
 }: DatasetUploadFlowProps) {
@@ -71,6 +73,11 @@ export function DatasetUploadFlow({
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+    if (!isEditable) {
+      setErrorMessage('This proposal is no longer editable, so its files cannot be changed.');
+      setStep('error');
+      return;
+    }
 
     setStep('uploading');
     setUploadProgress(0);
@@ -246,7 +253,7 @@ export function DatasetUploadFlow({
                 </Button>
                 <Button
                   onClick={handleUpload}
-                  disabled={!selectedFile}
+                  disabled={!selectedFile || !isEditable}
                   className="text-white"
                   style={{
                     background: selectedFile

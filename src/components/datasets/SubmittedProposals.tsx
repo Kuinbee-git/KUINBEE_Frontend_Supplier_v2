@@ -1,26 +1,81 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { listMyProposals } from '@/lib/api';
-import { StatsCards } from './shared/StatsCards';
-import { SearchAndFilterBar } from './shared/SearchAndFilterBar';
-import { DatasetsTable, TableColumn } from './shared/DatasetsTable';
-import { DatasetStatusBadge } from './shared';
-import { 
-  AlertCircle,
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BadgeCheck,
   Database,
-  ChevronRight,
-} from 'lucide-react';
-import type { VerificationStatus } from '@/types/dataset-proposal.types';
+  Eye,
+  FileText,
+  MessageSquareWarning,
+  Send,
+} from "lucide-react";
+
+import { PaginationControls } from "@/components/shared";
+import { Button } from "@/components/ui/button";
+import { listMyProposals } from "@/lib/api";
+import type {
+  ListProposalsResponse,
+  VerificationStatus,
+} from "@/types/dataset-proposal.types";
+import { DatasetStatusBadge } from "./shared";
+import {
+  DatasetEmptyState,
+  DatasetErrorBanner,
+  DatasetFilterToolbar,
+  DatasetInventoryHeader,
+  DatasetListSkeleton,
+  DatasetMetricStrip,
+  DatasetMobileRecordCard,
+  DatasetPageHeader,
+  DatasetRecordIdentity,
+  DatasetRecordList,
+  DatasetWorkspace,
+  formatDatasetDate,
+  getProposalActionLabel,
+  type DatasetMetric,
+  type DatasetRecordColumn,
+} from "./workspace";
 
 interface SubmittedProposalsProps {
   isDark?: boolean;
 }
 
-type FilterStatus = 'ALL' | 'SUBMITTED' | 'UNDER_REVIEW' | 'CHANGES_REQUESTED' | 'RESUBMITTED' | 'REJECTED';
+type FilterStatus =
+  | "ALL"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "CHANGES_REQUESTED"
+  | "RESUBMITTED"
+  | "REJECTED"
+  | "VERIFIED";
+
+const PAGE_SIZE = 10;
+const FETCH_PAGE_SIZE = 100;
+const EMPTY_SUMMARY: NonNullable<ListProposalsResponse["summary"]> = {
+  total: 0,
+  draftsWithCurrentUpload: 0,
+  draftsWithoutCurrentUpload: 0,
+  byVerificationStatus: {
+    PENDING: 0,
+    SUBMITTED: 0,
+    CHANGES_REQUESTED: 0,
+    RESUBMITTED: 0,
+    UNDER_REVIEW: 0,
+    VERIFIED: 0,
+    REJECTED: 0,
+  },
+};
+const STATUS_OPTIONS = [
+  { label: "All statuses", value: "ALL" },
+  { label: "Submitted", value: "SUBMITTED" },
+  { label: "Under review", value: "UNDER_REVIEW" },
+  { label: "Changes requested", value: "CHANGES_REQUESTED" },
+  { label: "Resubmitted", value: "RESUBMITTED" },
+  { label: "Rejected", value: "REJECTED" },
+  { label: "Verified", value: "VERIFIED" },
+];
 
 interface ProposalItem {
   id: string;
@@ -28,264 +83,343 @@ interface ProposalItem {
   title: string;
   verificationStatus: VerificationStatus;
   updatedAt: string;
-  _index?: number;
 }
 
-export function SubmittedProposals({ isDark = false }: SubmittedProposalsProps) {
-  const router = useRouter();
-  const tokens = getDatasetThemeTokens(isDark);
-
+export function SubmittedProposals({
+  isDark = false,
+}: SubmittedProposalsProps) {
   const [proposals, setProposals] = useState<ProposalItem[]>([]);
+  const [totalProposals, setTotalProposals] = useState(0);
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
+  const requestIdRef = useRef(0);
 
-  const fetchProposals = async () => {
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const fetchProposals = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       setLoading(true);
       setError(null);
-
       const response = await listMyProposals({
-        verificationStatus: statusFilter !== 'ALL' ? statusFilter : undefined,
-        page: 1,
-        pageSize: 100,
+        q: debouncedSearchQuery || undefined,
+        scope: "SUBMITTED",
+        verificationStatus: statusFilter === "ALL" ? undefined : statusFilter,
+        page,
+        pageSize: PAGE_SIZE,
       });
+      if (requestId !== requestIdRef.current) return;
 
-      // Filter to only show submitted proposals (exclude PENDING)
-      const submittedOnly = response.items.filter(item => 
-        item.verificationStatus && 
-        item.verificationStatus !== 'PENDING'
-      ) as ProposalItem[];
+      if (response.summary) {
+        setProposals(toSubmittedItems(response.items || []));
+        setTotalProposals(response.total || 0);
+        setSummary(response.summary);
+        return;
+      }
 
-      setProposals(submittedOnly);
-    } catch (err: any) {
-      console.error('Failed to fetch proposals:', err);
-      setError(err.message || 'Failed to load proposals');
+      // A locally running pre-Part-3 API ignores q/scope and has no summary.
+      // Fall back to the previous exhaustive client filter until it is restarted.
+      const allItems: ProposalItem[] = [];
+      let legacyPage = 1;
+      let fetched = 0;
+      let legacyTotal = 0;
+      do {
+        const legacyResponse = await listMyProposals({
+          page: legacyPage,
+          pageSize: FETCH_PAGE_SIZE,
+        });
+        const items = legacyResponse.items || [];
+        allItems.push(...toSubmittedItems(items));
+        fetched += items.length;
+        legacyTotal = legacyResponse.total || 0;
+        legacyPage += 1;
+        if (items.length === 0) break;
+      } while (fetched < legacyTotal);
+
+      const query = debouncedSearchQuery.toLowerCase();
+      const filteredItems = allItems.filter((item) => {
+        const matchesStatus =
+          statusFilter === "ALL" || item.verificationStatus === statusFilter;
+        const matchesQuery =
+          !query ||
+          item.title.toLowerCase().includes(query) ||
+          item.datasetUniqueId.toLowerCase().includes(query);
+        return matchesStatus && matchesQuery;
+      });
+      setProposals(
+        filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+      );
+      setTotalProposals(filteredItems.length);
+      setSummary(buildLegacySummary(allItems));
+    } catch (loadError: unknown) {
+      console.error("Failed to fetch submitted proposals:", loadError);
+      if (requestId !== requestIdRef.current) return;
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Your submitted proposals could not be loaded."
+      );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  };
+  }, [debouncedSearchQuery, page, statusFilter]);
 
   useEffect(() => {
-    fetchProposals();
+    void fetchProposals();
+  }, [fetchProposals]);
+
+  useEffect(() => {
+    setPage(1);
   }, [statusFilter]);
 
-  // Filter proposals based on search
-  const filteredProposals = proposals.filter(proposal =>
-    proposal.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Stats for quick overview
-  const stats = [
-    { value: filteredProposals.length, label: 'Total Proposals', color: tokens.textPrimary },
-    { value: proposals.filter(p => p.verificationStatus === 'SUBMITTED').length, label: 'Submitted', color: '#3b82f6' },
-    { value: proposals.filter(p => p.verificationStatus === 'UNDER_REVIEW').length, label: 'Under Review', color: '#f59e0b' },
-    { value: proposals.filter(p => p.verificationStatus === 'CHANGES_REQUESTED').length, label: 'Changes Requested', color: '#ef4444' },
-    { value: proposals.filter(p => p.verificationStatus === 'RESUBMITTED').length, label: 'Resubmitted', color: '#8b5cf6' },
-    { value: proposals.filter(p => p.verificationStatus === 'REJECTED').length, label: 'Rejected', color: '#94a3b0' },
+  const metrics: DatasetMetric<FilterStatus>[] = [
+    {
+      label: "All proposals",
+      supportingText: "Complete review history",
+      value: summary.total - summary.byVerificationStatus.PENDING,
+      filterValue: "ALL",
+      icon: Database,
+      tone: "neutral",
+    },
+    {
+      label: "Submitted",
+      supportingText: "Waiting for review",
+      value: summary.byVerificationStatus.SUBMITTED,
+      filterValue: "SUBMITTED",
+      icon: Send,
+      tone: "blue",
+    },
+    {
+      label: "Under review",
+      supportingText: "Being assessed",
+      value: summary.byVerificationStatus.UNDER_REVIEW,
+      filterValue: "UNDER_REVIEW",
+      icon: Eye,
+      tone: "purple",
+    },
+    {
+      label: "Needs attention",
+      supportingText: "Changes requested",
+      value: summary.byVerificationStatus.CHANGES_REQUESTED,
+      filterValue: "CHANGES_REQUESTED",
+      icon: MessageSquareWarning,
+      tone: "amber",
+    },
+    {
+      label: "Verified",
+      supportingText: "Review completed",
+      value: summary.byVerificationStatus.VERIFIED,
+      filterValue: "VERIFIED",
+      icon: BadgeCheck,
+      tone: "green",
+    },
   ];
 
-  const handleViewProposal = (proposal: ProposalItem) => {
-    router.push(`/dashboard/datasets/${proposal.id}`);
+  const hasFilters = Boolean(searchQuery.trim()) || statusFilter !== "ALL";
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("ALL");
+    setPage(1);
   };
 
-  // Table columns configuration
-  const columns: TableColumn<ProposalItem>[] = [
+  const columns: DatasetRecordColumn<ProposalItem>[] = [
     {
-      header: 'No.',
-      accessor: (item) => (
-        <span className="font-medium" style={{ color: tokens.textMuted }}>
-          {(item._index || 0) + 1}
-        </span>
-      ),
-      headerClassName: 'text-center',
-      className: 'text-center',
-      minWidth: 'clamp(40px, 5vw, 60px)',
-    },
-    {
-      header: 'Proposal',
-      accessor: (item) => (
-        <div className="flex items-center gap-2 min-w-0">
-          <Database className="w-4 h-4 flex-shrink-0" style={{ color: tokens.textMuted }} />
-          <span
-            className="text-xs sm:text-sm truncate"
-            style={{
-              color: tokens.textPrimary,
-              fontWeight: '500',
-              lineHeight: '1.4',
-            }}
-          >
-            {item.title}
-          </span>
-        </div>
+      header: "Proposal",
+      headerClassName: "w-[38%]",
+      render: (proposal) => (
+        <DatasetRecordIdentity
+          href={`/dashboard/datasets/${proposal.id}`}
+          title={proposal.title}
+          identifier={proposal.datasetUniqueId}
+          icon={FileText}
+        />
       ),
     },
     {
-      header: 'ID',
-      accessor: (item) => (
-        <span
-          className="text-xs font-mono truncate"
-          style={{
-            color: tokens.textSecondary,
-            lineHeight: '1.4',
-          }}
-        >
-          {item.datasetUniqueId}
-        </span>
+      header: "Status",
+      render: (proposal) => (
+        <DatasetStatusBadge
+          status={proposal.verificationStatus}
+          isDark={isDark}
+        />
       ),
-      hidden: 'sm',
-      minWidth: 'clamp(100px, 12vw, 140px)',
     },
     {
-      header: 'Status',
-      accessor: (item) => (
-        <DatasetStatusBadge status={item.verificationStatus} isDark={isDark} />
-      ),
-      hidden: 'md',
-      minWidth: 'clamp(100px, 12vw, 160px)',
+      header: "What happens next",
+      className: "max-w-[220px] text-sm text-muted-foreground",
+      render: (proposal) => getProposalNextStep(proposal.verificationStatus),
     },
     {
-      header: 'Last Updated',
-      accessor: (item) => (
-        <span
-          className="text-xs sm:text-sm"
-          style={{
-            color: tokens.textSecondary,
-            lineHeight: '1.4',
-          }}
-        >
-          {new Date(item.updatedAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })}
-        </span>
-      ),
-      hidden: 'xl',
-      minWidth: 'clamp(140px, 18vw, 220px)',
+      header: "Last updated",
+      className: "whitespace-nowrap text-sm text-muted-foreground",
+      render: (proposal) => formatDatasetDate(proposal.updatedAt),
     },
     {
-      header: 'Actions',
-      accessor: (item) => (
-        <button
-          className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded text-xs transition-all duration-150"
-          style={{
-            color: tokens.textSecondary,
-            fontWeight: '500',
-            background: 'transparent',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isDark
-              ? 'rgba(255, 255, 255, 0.08)'
-              : 'rgba(26, 34, 64, 0.06)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleViewProposal(item);
-          }}
-        >
-          View
-          <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-        </button>
+      header: "Action",
+      headerClassName: "text-right",
+      className: "text-right",
+      render: (proposal) => (
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/dashboard/datasets/${proposal.id}`}>
+            {getProposalActionLabel(proposal.verificationStatus)} <ArrowRight />
+          </Link>
+        </Button>
       ),
-      headerClassName: 'text-right',
-      className: 'text-right',
-      minWidth: 'clamp(70px, 10vw, 110px)',
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="max-w-[1400px] mx-auto p-8">
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: tokens.textPrimary }}></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-[1400px] mx-auto p-8">
-        <div className="text-center py-20">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.warningText }} />
-          <h3 className="text-xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-            Failed to load proposals
-          </h3>
-          <p className="mb-6" style={{ color: tokens.textSecondary }}>
-            {error}
-          </p>
-          <Button onClick={fetchProposals}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-[1400px] mx-auto p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-semibold mb-2" style={{ color: tokens.textPrimary }}>
-              Submitted Proposals
-            </h1>
-            <p style={{ color: tokens.textSecondary }}>
-              Track your proposals that are under review or awaiting action
-            </p>
-          </div>
-        </div>
+    <DatasetWorkspace>
+      <DatasetPageHeader
+        title="Submitted Proposals"
+        description="Track each proposal through review, respond to requested changes, and see completed decisions."
+      />
 
-        {/* Stats Cards */}
-        <StatsCards stats={stats} tokens={tokens} isDark={isDark} />
-      </div>
+      <section aria-label="Proposal review overview" className="mt-7">
+        <DatasetMetricStrip
+          metrics={metrics}
+          activeValue={statusFilter}
+          onSelect={setStatusFilter}
+          loading={loading && proposals.length === 0}
+        />
+      </section>
 
-      {/* Search & Filter Controls */}
-      <SearchAndFilterBar
-        searchQuery={searchQuery}
+      <DatasetFilterToolbar
+        searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        searchPlaceholder="Search proposal title or dataset ID"
+        searchAriaLabel="Search submitted proposals"
         filters={[
           {
-            label: 'Proposal Status',
             value: statusFilter,
-            options: [
-              { label: 'All Statuses', value: 'ALL' },
-              { label: 'Submitted', value: 'SUBMITTED' },
-              { label: 'Under Review', value: 'UNDER_REVIEW' },
-              { label: 'Changes Requested', value: 'CHANGES_REQUESTED' },
-              { label: 'Resubmitted', value: 'RESUBMITTED' },
-              { label: 'Rejected', value: 'REJECTED' },
-            ],
-            onChange: (value) => setStatusFilter(value as FilterStatus),
+            onValueChange: (value) => setStatusFilter(value as FilterStatus),
+            options: STATUS_OPTIONS,
+            ariaLabel: "Filter proposals by review status",
           },
         ]}
-        activeFilterCount={statusFilter !== 'ALL' ? 1 : 0}
-        tokens={tokens}
+        activeFilterCount={statusFilter !== "ALL" ? 1 : 0}
+        onClear={clearFilters}
         isDark={isDark}
       />
 
-      {/* Proposals Table */}
-      <div className="space-y-4 pt-2">
-        <DatasetsTable
-          data={filteredProposals.map((p, i) => ({ ...p, _index: i }))}
-          columns={columns}
-          onRowClick={handleViewProposal}
-          emptyIcon={<Database className="w-16 h-16 mx-auto mb-4" style={{ color: tokens.textMuted }} />}
-          emptyTitle={searchQuery || statusFilter !== 'ALL' ? 'No proposals found' : 'No submitted proposals yet'}
-          emptyDescription={
-            searchQuery || statusFilter !== 'ALL'
-              ? 'Try adjusting your search or filters'
-              : 'Submit a draft proposal to see it here'
-          }
-          tokens={tokens}
-          isDark={isDark}
-          getRowKey={(item) => item.id}
+      {error && (
+        <DatasetErrorBanner
+          title="We could not load your proposals"
+          message={error}
+          onRetry={fetchProposals}
         />
-      </div>
-    </div>
+      )}
+
+      <section aria-labelledby="proposal-inventory-title" className="mt-5">
+        <DatasetInventoryHeader
+          id="proposal-inventory-title"
+          title="Review queue"
+          loading={loading}
+          total={totalProposals}
+          singularLabel="proposal"
+          pluralLabel="proposals"
+        />
+
+        {loading ? (
+          <DatasetListSkeleton />
+        ) : !error && proposals.length === 0 ? (
+          <DatasetEmptyState
+            filtered={hasFilters}
+            onClear={clearFilters}
+            title="No submitted proposals yet"
+            description="Submit a completed draft for review and its progress will appear here."
+            filteredTitle="No proposals match this view"
+            filteredDescription="Try another title, dataset ID, or review status."
+          />
+        ) : proposals.length > 0 ? (
+          <>
+            <DatasetRecordList
+              items={proposals}
+              columns={columns}
+              getKey={(proposal) => proposal.id}
+              renderMobile={(proposal) => (
+                <DatasetMobileRecordCard
+                  href={`/dashboard/datasets/${proposal.id}`}
+                  title={proposal.title}
+                  identifier={proposal.datasetUniqueId}
+                  icon={FileText}
+                  badges={
+                    <DatasetStatusBadge
+                      status={proposal.verificationStatus}
+                      isDark={isDark}
+                    />
+                  }
+                  supportingText={`Updated ${formatDatasetDate(proposal.updatedAt)}`}
+                  actionLabel={getProposalActionLabel(
+                    proposal.verificationStatus
+                  )}
+                />
+              )}
+            />
+            <PaginationControls
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={totalProposals}
+              itemLabel="proposals"
+              mutedColor="var(--muted-foreground)"
+              onPageChange={setPage}
+            />
+          </>
+        ) : null}
+      </section>
+    </DatasetWorkspace>
   );
+}
+
+function toSubmittedItems(
+  items: ListProposalsResponse["items"]
+): ProposalItem[] {
+  return items.filter(
+    (item): item is typeof item & { verificationStatus: VerificationStatus } =>
+      Boolean(item.verificationStatus) && item.verificationStatus !== "PENDING"
+  );
+}
+
+function buildLegacySummary(
+  items: ProposalItem[]
+): NonNullable<ListProposalsResponse["summary"]> {
+  const summary = {
+    ...EMPTY_SUMMARY,
+    total: items.length,
+    byVerificationStatus: { ...EMPTY_SUMMARY.byVerificationStatus },
+  };
+  for (const item of items) {
+    summary.byVerificationStatus[item.verificationStatus] += 1;
+  }
+  return summary;
+}
+
+function getProposalNextStep(status: VerificationStatus) {
+  switch (status) {
+    case "SUBMITTED":
+      return "Kuinbee will pick up the proposal for review.";
+    case "UNDER_REVIEW":
+      return "The proposal is currently being assessed.";
+    case "CHANGES_REQUESTED":
+      return "Review the feedback, update the proposal, and resubmit.";
+    case "RESUBMITTED":
+      return "The revised proposal is waiting for another review.";
+    case "REJECTED":
+      return "Open the proposal to review the final decision.";
+    case "VERIFIED":
+      return "The dataset can now move into marketplace management.";
+    default:
+      return "Open the proposal for its current status.";
+  }
 }
