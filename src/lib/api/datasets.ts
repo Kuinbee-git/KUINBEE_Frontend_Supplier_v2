@@ -22,6 +22,13 @@ import type {
   DatasetReviewsResponse,
 } from "@/types/dataset.types";
 import type {
+  CreateDiscountProposalRequest,
+  DiscountProposalListResponse,
+  DiscountProposalResponse,
+  DiscountProposalStatus,
+  DiscountTargetSurface,
+} from "@/types/discount.types";
+import type {
   UpsertAboutInfoRequest,
   UpsertAboutInfoResponse,
   UpsertLocationInfoRequest,
@@ -45,8 +52,10 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
-  
+  const url = endpoint.startsWith("http")
+    ? endpoint
+    : `${API_BASE_URL}${endpoint}`;
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -61,7 +70,7 @@ async function apiFetch<T>(
       // Try to parse error from response
       const errorData = await response.json().catch(() => null);
       const apiError = errorData?.error ?? errorData;
-      
+
       // Global auth failure handler - ONLY redirect for 401
       // 403 is NOT an auth error - it's a permission/business logic error
       // Let the component handle 403 appropriately
@@ -73,14 +82,14 @@ async function apiFetch<T>(
           window.location.href = "/auth/login";
         }
       }
-      
+
       const error: any = new Error(
         apiError?.message || `HTTP ${response.status}: ${response.statusText}`
       );
       error.status = response.status;
       error.code = apiError?.code || `HTTP_${response.status}`;
       error.data = errorData;
-      
+
       throw error;
     }
 
@@ -90,7 +99,7 @@ async function apiFetch<T>(
     if (err.status) {
       throw err;
     }
-    
+
     // Network error or other fetch error
     const error: any = new Error(err.message || "Network error");
     error.code = "NETWORK_ERROR";
@@ -108,20 +117,24 @@ export async function listMyDatasets(
   query?: ListDatasetsQuery
 ): Promise<ListDatasetsResponse> {
   const queryParams = new URLSearchParams();
-  
+
+  if (query?.q) queryParams.set("q", query.q);
   if (query?.status) queryParams.set("status", query.status);
   if (query?.visibility) queryParams.set("visibility", query.visibility);
   if (query?.page) queryParams.set("page", query.page.toString());
   if (query?.pageSize) queryParams.set("pageSize", query.pageSize.toString());
-  
-  const url = queryParams.toString() 
+
+  const url = queryParams.toString()
     ? `${DATASET_API.LIST}?${queryParams.toString()}`
     : DATASET_API.LIST;
-  
-  const response = await apiFetch<{ success: boolean; data: ListDatasetsResponse }>(url, {
+
+  const response = await apiFetch<{
+    success: boolean;
+    data: ListDatasetsResponse;
+  }>(url, {
     method: "GET",
   });
-  
+
   return response.data;
 }
 
@@ -134,12 +147,12 @@ export async function listMyDatasets(
 export async function getDatasetDetails(
   datasetId: string
 ): Promise<DatasetDetailsResponse> {
-  const response = await apiFetch<{ success: boolean; data: DatasetDetailsResponse }>(
-    DATASET_API.GET_DETAILS(datasetId),
-    {
-      method: "GET",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: DatasetDetailsResponse;
+  }>(DATASET_API.GET_DETAILS(datasetId), {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -152,12 +165,12 @@ export async function getDatasetDetails(
 export async function publishDataset(
   datasetId: string
 ): Promise<PublishDatasetResponse> {
-  const response = await apiFetch<{ success: boolean; data: PublishDatasetResponse }>(
-    DATASET_API.PUBLISH(datasetId),
-    {
-      method: "POST",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: PublishDatasetResponse;
+  }>(DATASET_API.PUBLISH(datasetId), {
+    method: "POST",
+  });
   return response.data;
 }
 
@@ -171,13 +184,13 @@ export async function changeDatasetVisibility(
   datasetId: string,
   data: ChangeVisibilityRequest
 ): Promise<ChangeVisibilityResponse> {
-  const response = await apiFetch<{ success: boolean; data: ChangeVisibilityResponse }>(
-    DATASET_API.CHANGE_VISIBILITY(datasetId),
-    {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: ChangeVisibilityResponse;
+  }>(DATASET_API.CHANGE_VISIBILITY(datasetId), {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -210,12 +223,12 @@ export async function requestPricingChange(
 export async function archiveDataset(
   datasetId: string
 ): Promise<ArchiveDatasetResponse> {
-  const response = await apiFetch<{ success: boolean; data: ArchiveDatasetResponse }>(
-    DATASET_API.ARCHIVE(datasetId),
-    {
-      method: "POST",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: ArchiveDatasetResponse;
+  }>(DATASET_API.ARCHIVE(datasetId), {
+    method: "POST",
+  });
   return response.data;
 }
 
@@ -228,12 +241,12 @@ export async function archiveDataset(
 export async function delistDataset(
   datasetId: string
 ): Promise<DelistDatasetResponse> {
-  const response = await apiFetch<{ success: boolean; data: DelistDatasetResponse }>(
-    DATASET_API.DELIST(datasetId),
-    {
-      method: "POST",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: DelistDatasetResponse;
+  }>(DATASET_API.DELIST(datasetId), {
+    method: "POST",
+  });
   return response.data;
 }
 
@@ -246,12 +259,12 @@ export async function delistDataset(
 export async function submitDatasetUpdate(
   datasetId: string
 ): Promise<SubmitDatasetUpdateResponse> {
-  const response = await apiFetch<{ success: boolean; data: SubmitDatasetUpdateResponse }>(
-    DATASET_API.SUBMIT_UPDATE(datasetId),
-    {
-      method: "POST",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: SubmitDatasetUpdateResponse;
+  }>(DATASET_API.SUBMIT_UPDATE(datasetId), {
+    method: "POST",
+  });
   return response.data;
 }
 
@@ -265,13 +278,13 @@ export async function upsertDatasetAboutInfo(
   datasetId: string,
   data: UpsertAboutInfoRequest
 ): Promise<UpsertAboutInfoResponse> {
-  const response = await apiFetch<{ success: boolean; data: UpsertAboutInfoResponse }>(
-    DATASET_API.UPSERT_ABOUT(datasetId),
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: UpsertAboutInfoResponse;
+  }>(DATASET_API.UPSERT_ABOUT(datasetId), {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -283,13 +296,13 @@ export async function upsertDatasetLocationInfo(
   datasetId: string,
   data: UpsertLocationInfoRequest
 ): Promise<UpsertLocationInfoResponse> {
-  const response = await apiFetch<{ success: boolean; data: UpsertLocationInfoResponse }>(
-    DATASET_API.UPSERT_LOCATION(datasetId),
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: UpsertLocationInfoResponse;
+  }>(DATASET_API.UPSERT_LOCATION(datasetId), {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -301,13 +314,13 @@ export async function upsertDatasetDataFormatInfo(
   datasetId: string,
   data: UpsertDataFormatRequest
 ): Promise<UpsertDataFormatResponse> {
-  const response = await apiFetch<{ success: boolean; data: UpsertDataFormatResponse }>(
-    DATASET_API.UPSERT_DATA_FORMAT(datasetId),
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: UpsertDataFormatResponse;
+  }>(DATASET_API.UPSERT_DATA_FORMAT(datasetId), {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -319,13 +332,13 @@ export async function replaceDatasetFeatures(
   datasetId: string,
   data: ReplaceFeaturesRequest
 ): Promise<ReplaceFeaturesResponse> {
-  const response = await apiFetch<{ success: boolean; data: ReplaceFeaturesResponse }>(
-    DATASET_API.REPLACE_FEATURES(datasetId),
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: ReplaceFeaturesResponse;
+  }>(DATASET_API.REPLACE_FEATURES(datasetId), {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -337,13 +350,13 @@ export async function setDatasetSecondaryCategories(
   datasetId: string,
   data: SetCategoriesRequest
 ): Promise<SetCategoriesResponse> {
-  const response = await apiFetch<{ success: boolean; data: SetCategoriesResponse }>(
-    DATASET_API.SET_CATEGORIES(datasetId),
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: SetCategoriesResponse;
+  }>(DATASET_API.SET_CATEGORIES(datasetId), {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -374,12 +387,12 @@ export async function setDatasetTags(
 export async function getPublishedFileDownloadUrl(
   datasetId: string
 ): Promise<DownloadUrlResponse> {
-  const response = await apiFetch<{ success: boolean; data: DownloadUrlResponse }>(
-    DATASET_API.DOWNLOAD_PUBLISHED(datasetId),
-    {
-      method: "GET",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: DownloadUrlResponse;
+  }>(DATASET_API.DOWNLOAD_PUBLISHED(datasetId), {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -389,13 +402,26 @@ export async function getPublishedFileDownloadUrl(
  */
 export async function getDatasetQuestions(
   datasetId: string,
+  query?: {
+    page?: number;
+    pageSize?: number;
+  }
 ): Promise<DatasetQuestionsResponse> {
-  const response = await apiFetch<{ success: boolean; data: DatasetQuestionsResponse }>(
-    DATASET_API.QUESTIONS(datasetId),
-    {
-      method: "GET",
-    }
-  );
+  const queryParams = new URLSearchParams();
+  if (query?.page) queryParams.set("page", query.page.toString());
+  if (query?.pageSize) queryParams.set("pageSize", query.pageSize.toString());
+
+  const endpoint = DATASET_API.QUESTIONS(datasetId);
+  const url = queryParams.toString()
+    ? `${endpoint}?${queryParams.toString()}`
+    : endpoint;
+
+  const response = await apiFetch<{
+    success: boolean;
+    data: DatasetQuestionsResponse;
+  }>(url, {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -405,15 +431,15 @@ export async function getDatasetQuestions(
  */
 export async function answerDatasetQuestion(
   questionId: string,
-  data: AnswerQuestionRequest,
+  data: AnswerQuestionRequest
 ): Promise<AnswerQuestionResponse> {
-  const response = await apiFetch<{ success: boolean; data: AnswerQuestionResponse }>(
-    DATASET_API.ANSWER_QUESTION(questionId),
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: AnswerQuestionResponse;
+  }>(DATASET_API.ANSWER_QUESTION(questionId), {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -423,13 +449,26 @@ export async function answerDatasetQuestion(
  */
 export async function getDatasetReviews(
   datasetId: string,
+  query?: {
+    page?: number;
+    pageSize?: number;
+  }
 ): Promise<DatasetReviewsResponse> {
-  const response = await apiFetch<{ success: boolean; data: DatasetReviewsResponse }>(
-    DATASET_API.REVIEWS(datasetId),
-    {
-      method: "GET",
-    }
-  );
+  const queryParams = new URLSearchParams();
+  if (query?.page) queryParams.set("page", query.page.toString());
+  if (query?.pageSize) queryParams.set("pageSize", query.pageSize.toString());
+
+  const endpoint = DATASET_API.REVIEWS(datasetId);
+  const url = queryParams.toString()
+    ? `${endpoint}?${queryParams.toString()}`
+    : endpoint;
+
+  const response = await apiFetch<{
+    success: boolean;
+    data: DatasetReviewsResponse;
+  }>(url, {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -442,12 +481,12 @@ export async function getDatasetReviews(
 export async function getDatasetPricing(
   datasetId: string
 ): Promise<GetPricingResponse> {
-  const response = await apiFetch<{ success: boolean; data: GetPricingResponse }>(
-    `${DATASET_API.GET_DETAILS(datasetId)}/pricing`,
-    {
-      method: "GET",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: GetPricingResponse;
+  }>(`${DATASET_API.GET_DETAILS(datasetId)}/pricing`, {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -459,13 +498,13 @@ export async function upsertDatasetPricing(
   datasetId: string,
   data: UpsertPricingRequest
 ): Promise<DatasetPricingVersion> {
-  const response = await apiFetch<{ success: boolean; data: { pricing: DatasetPricingVersion } }>(
-    `${DATASET_API.GET_DETAILS(datasetId)}/pricing`,
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: { pricing: DatasetPricingVersion };
+  }>(`${DATASET_API.GET_DETAILS(datasetId)}/pricing`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data.pricing;
 }
 
@@ -476,12 +515,74 @@ export async function upsertDatasetPricing(
 export async function submitDatasetPricing(
   datasetId: string
 ): Promise<SubmitPricingResponse> {
-  const response = await apiFetch<{ success: boolean; data: SubmitPricingResponse }>(
-    `${DATASET_API.GET_DETAILS(datasetId)}/pricing/submit`,
-    {
-      method: "POST",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: SubmitPricingResponse;
+  }>(`${DATASET_API.GET_DETAILS(datasetId)}/pricing/submit`, {
+    method: "POST",
+  });
   return response.data;
 }
 
+// ===== Discount Proposals =====
+
+export async function listDatasetDiscountProposals(
+  datasetId: string,
+  query?: {
+    status?: DiscountProposalStatus;
+    targetSurface?: DiscountTargetSurface;
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<DiscountProposalListResponse> {
+  const queryParams = new URLSearchParams();
+
+  if (query?.status) queryParams.set("status", query.status);
+  if (query?.targetSurface)
+    queryParams.set("targetSurface", query.targetSurface);
+  if (query?.page) queryParams.set("page", query.page.toString());
+  if (query?.pageSize) queryParams.set("pageSize", query.pageSize.toString());
+
+  const endpoint = DATASET_API.DISCOUNT_PROPOSALS(datasetId);
+  const url = queryParams.toString()
+    ? `${endpoint}?${queryParams.toString()}`
+    : endpoint;
+
+  const response = await apiFetch<{
+    success: boolean;
+    data: DiscountProposalListResponse;
+  }>(url, {
+    method: "GET",
+  });
+
+  return response.data;
+}
+
+export async function createDatasetDiscountProposal(
+  datasetId: string,
+  data: CreateDiscountProposalRequest
+): Promise<DiscountProposalResponse> {
+  const response = await apiFetch<{
+    success: boolean;
+    data: DiscountProposalResponse;
+  }>(DATASET_API.DISCOUNT_PROPOSALS(datasetId), {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  return response.data;
+}
+
+export async function cancelDatasetDiscountProposal(
+  datasetId: string,
+  discountProposalId: string
+): Promise<DiscountProposalResponse> {
+  const response = await apiFetch<{
+    success: boolean;
+    data: DiscountProposalResponse;
+  }>(DATASET_API.CANCEL_DISCOUNT_PROPOSAL(datasetId, discountProposalId), {
+    method: "POST",
+  });
+
+  return response.data;
+}

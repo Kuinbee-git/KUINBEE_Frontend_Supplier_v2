@@ -21,6 +21,10 @@ import type {
   SupplierProfileResponse,
   UpdateProfileRequest,
   UpdateProfileResponse,
+  PresignSupplierLogoRequest,
+  PresignSupplierLogoResponse,
+  CompleteSupplierLogoRequest,
+  CompleteSupplierLogoResponse,
   CompleteOnboardingResponse,
   PartialCompleteOnboardingResponse,
 } from "@/types/onboarding.types";
@@ -267,6 +271,32 @@ export async function updateSupplierProfile(
   return response.data;
 }
 
+export async function presignSupplierLogoUpload(
+  data: PresignSupplierLogoRequest
+): Promise<PresignSupplierLogoResponse> {
+  const response = await apiFetch<{ success: boolean; data: PresignSupplierLogoResponse }>(
+    SUPPLIER_API.PRESIGN_PROFILE_LOGO,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
+export async function completeSupplierLogoUpload(
+  data: CompleteSupplierLogoRequest
+): Promise<CompleteSupplierLogoResponse> {
+  const response = await apiFetch<{ success: boolean; data: CompleteSupplierLogoResponse }>(
+    SUPPLIER_API.COMPLETE_PROFILE_LOGO,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+  return response.data;
+}
+
 // ===== Complete Onboarding =====
 
 /**
@@ -321,4 +351,3 @@ export async function getSupplierStatus() {
     kycVerified: status.onboarding.steps.individualPan.status === "VERIFIED",
   };
 }
-
