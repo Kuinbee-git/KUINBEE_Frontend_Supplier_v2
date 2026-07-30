@@ -20,6 +20,7 @@ import {
   Star,
   BadgePercent,
   WandSparkles,
+  ClipboardPenLine,
   Menu,
   X,
 } from "lucide-react";
@@ -126,6 +127,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
       label: "Custom Collection",
       icon: WandSparkles,
       path: "/dashboard/custom-collection-services",
+      disabled: false,
+    },
+    {
+      id: "data-requirement",
+      label: "Submit Requirement",
+      icon: ClipboardPenLine,
+      path: "/dashboard/data-requirements/submit",
       disabled: false,
     },
     {
