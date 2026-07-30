@@ -13,21 +13,29 @@ interface PageBackgroundProps {
  * Reusable page background with optional grid pattern
  * Eliminates duplicate background/grid code across 6+ components
  */
-export function PageBackground({ children, withGrid = true, className = "" }: PageBackgroundProps) {
+export function PageBackground({
+  children,
+  withGrid = true,
+  className = "",
+}: PageBackgroundProps) {
   const tokens = useSupplierTokens();
 
   return (
-    <div className={`relative min-h-screen w-full overflow-hidden ${className}`}>
+    <div
+      className={`relative min-h-screen w-full overflow-hidden ${className}`}
+    >
       {/* Unified background */}
       <div
-        className="absolute inset-0 transition-all duration-500"
+        className="pointer-events-none absolute inset-0 z-0 transition-all duration-500"
+        aria-hidden="true"
         style={{ background: tokens.surfaceUnified }}
       />
 
       {/* Optional grid pattern overlay */}
       {withGrid && (
         <div
-          className="absolute inset-0 transition-opacity duration-500"
+          className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-500"
+          aria-hidden="true"
           style={{
             backgroundImage: tokens.isDark
               ? `linear-gradient(${tokens.borderSubtle} 1px, transparent 1px), linear-gradient(90deg, ${tokens.borderSubtle} 1px, transparent 1px)`
@@ -39,7 +47,7 @@ export function PageBackground({ children, withGrid = true, className = "" }: Pa
       )}
 
       {/* Content */}
-      {children}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
