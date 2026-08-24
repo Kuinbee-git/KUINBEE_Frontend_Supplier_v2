@@ -1,13 +1,14 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { updateProposalMetadata } from '@/lib/api/dataset-proposals';
-import { toast } from 'sonner';
+import { useState } from "react";
+import { updateProposalMetadata } from "@/lib/api/dataset-proposals";
+import { toast } from "sonner";
 import type {
   ProposalDetailsResponse,
   Currency,
   SampleDeliveryMechanism,
-} from '@/types/dataset-proposal.types';
+} from "@/types/dataset-proposal.types";
+import { toDatasetUiError } from "../shared/datasetUiError";
 
 interface UseSampleToggleOptions {
   proposal: ProposalDetailsResponse;
@@ -15,19 +16,29 @@ interface UseSampleToggleOptions {
   onRefresh?: () => void;
 }
 
-export function useSampleToggle({ proposal, isEditable, onRefresh }: UseSampleToggleOptions) {
+export function useSampleToggle({
+  proposal,
+  isEditable,
+  onRefresh,
+}: UseSampleToggleOptions) {
   const [sampleConfirmOpen, setSampleConfirmOpen] = useState(false);
   const [sampleToggleSubmitting, setSampleToggleSubmitting] = useState(false);
-  const [pendingSampleValue, setPendingSampleValue] = useState<boolean | null>(null);
-  const [sampleToggleError, setSampleToggleError] = useState<string | null>(null);
-  const [sampleWhy, setSampleWhy] = useState('');
-  const [sampleSize, setSampleSize] = useState('');
-  const [sampleCompleteness, setSampleCompleteness] = useState('');
-  const [sampleDelivery, setSampleDelivery] = useState<SampleDeliveryMechanism>('API');
-  const [sampleDeliveryNotes, setSampleDeliveryNotes] = useState('');
-  const [sampleActualPrice, setSampleActualPrice] = useState('');
-  const [sampleActualPriceCurrency, setSampleActualPriceCurrency] = useState<Currency>('USD');
-  const [sampleNegotiable, setSampleNegotiable] = useState<'yes' | 'no'>('no');
+  const [pendingSampleValue, setPendingSampleValue] = useState<boolean | null>(
+    null
+  );
+  const [sampleToggleError, setSampleToggleError] = useState<string | null>(
+    null
+  );
+  const [sampleWhy, setSampleWhy] = useState("");
+  const [sampleSize, setSampleSize] = useState("");
+  const [sampleCompleteness, setSampleCompleteness] = useState("");
+  const [sampleDelivery, setSampleDelivery] =
+    useState<SampleDeliveryMechanism>("API");
+  const [sampleDeliveryNotes, setSampleDeliveryNotes] = useState("");
+  const [sampleActualPrice, setSampleActualPrice] = useState("");
+  const [sampleActualPriceCurrency, setSampleActualPriceCurrency] =
+    useState<Currency>("USD");
+  const [sampleNegotiable, setSampleNegotiable] = useState<"yes" | "no">("no");
 
   const isValidSamplePrice = (value: string) => {
     if (!value.trim()) return false;
@@ -36,14 +47,16 @@ export function useSampleToggle({ proposal, isEditable, onRefresh }: UseSampleTo
   };
 
   const resetSampleDialogFields = () => {
-    setSampleWhy('');
-    setSampleSize('');
-    setSampleCompleteness('');
-    setSampleDelivery('API');
-    setSampleDeliveryNotes('');
-    setSampleActualPrice('');
-    setSampleActualPriceCurrency((proposal.dataset.actualPriceCurrency as Currency | undefined) ?? 'USD');
-    setSampleNegotiable('no');
+    setSampleWhy("");
+    setSampleSize("");
+    setSampleCompleteness("");
+    setSampleDelivery("API");
+    setSampleDeliveryNotes("");
+    setSampleActualPrice("");
+    setSampleActualPriceCurrency(
+      (proposal.dataset.actualPriceCurrency as Currency | undefined) ?? "USD"
+    );
+    setSampleNegotiable("no");
     setSampleToggleError(null);
   };
 
@@ -54,14 +67,28 @@ export function useSampleToggle({ proposal, isEditable, onRefresh }: UseSampleTo
     setSampleToggleError(null);
 
     if (nextValue) {
-      setSampleWhy(proposal.dataset.sampleNotes?.whySample ?? '');
-      setSampleSize(proposal.dataset.sampleNotes?.actualDataSize ?? '');
-      setSampleCompleteness(proposal.dataset.sampleNotes?.completeness ?? '');
-      setSampleDelivery((proposal.dataset.sampleNotes?.deliveryMechanism as SampleDeliveryMechanism | undefined) ?? 'API');
-      setSampleDeliveryNotes(proposal.dataset.sampleNotes?.deliveryMechanismNotes ?? '');
-      setSampleActualPrice(proposal.dataset.actualPrice != null ? String(proposal.dataset.actualPrice) : '');
-      setSampleActualPriceCurrency((proposal.dataset.actualPriceCurrency as Currency | undefined) ?? 'USD');
-      setSampleNegotiable(proposal.dataset.isNegotiable === true ? 'yes' : 'no');
+      setSampleWhy(proposal.dataset.sampleNotes?.whySample ?? "");
+      setSampleSize(proposal.dataset.sampleNotes?.actualDataSize ?? "");
+      setSampleCompleteness(proposal.dataset.sampleNotes?.completeness ?? "");
+      setSampleDelivery(
+        (proposal.dataset.sampleNotes?.deliveryMechanism as
+          | SampleDeliveryMechanism
+          | undefined) ?? "API"
+      );
+      setSampleDeliveryNotes(
+        proposal.dataset.sampleNotes?.deliveryMechanismNotes ?? ""
+      );
+      setSampleActualPrice(
+        proposal.dataset.actualPrice != null
+          ? String(proposal.dataset.actualPrice)
+          : ""
+      );
+      setSampleActualPriceCurrency(
+        (proposal.dataset.actualPriceCurrency as Currency | undefined) ?? "USD"
+      );
+      setSampleNegotiable(
+        proposal.dataset.isNegotiable === true ? "yes" : "no"
+      );
     } else {
       resetSampleDialogFields();
     }
@@ -74,19 +101,21 @@ export function useSampleToggle({ proposal, isEditable, onRefresh }: UseSampleTo
 
     if (pendingSampleValue) {
       if (!sampleWhy.trim()) {
-        setSampleToggleError('Why sample is required');
+        setSampleToggleError("Why sample is required");
         return;
       }
       if (!sampleSize.trim()) {
-        setSampleToggleError('Actual dataset size is required');
+        setSampleToggleError("Actual dataset size is required");
         return;
       }
       if (!isValidSamplePrice(sampleActualPrice)) {
-        setSampleToggleError('Actual full price must be a valid non-negative integer');
+        setSampleToggleError(
+          "Actual full price must be a valid non-negative integer"
+        );
         return;
       }
-      if (sampleDelivery === 'OTHER' && !sampleDeliveryNotes.trim()) {
-        setSampleToggleError('Delivery mechanism notes are required for OTHER');
+      if (sampleDelivery === "OTHER" && !sampleDeliveryNotes.trim()) {
+        setSampleToggleError("Delivery mechanism notes are required for OTHER");
         return;
       }
     }
@@ -101,15 +130,17 @@ export function useSampleToggle({ proposal, isEditable, onRefresh }: UseSampleTo
           sampleNotes: {
             whySample: sampleWhy.trim(),
             actualDataSize: sampleSize.trim(),
-            ...(sampleCompleteness.trim() ? { completeness: sampleCompleteness.trim() } : {}),
+            ...(sampleCompleteness.trim()
+              ? { completeness: sampleCompleteness.trim() }
+              : {}),
             deliveryMechanism: sampleDelivery,
-            ...(sampleDelivery === 'OTHER' && sampleDeliveryNotes.trim()
+            ...(sampleDelivery === "OTHER" && sampleDeliveryNotes.trim()
               ? { deliveryMechanismNotes: sampleDeliveryNotes.trim() }
               : {}),
           },
           actualPrice: Number.parseInt(sampleActualPrice, 10),
           actualPriceCurrency: sampleActualPriceCurrency,
-          isNegotiable: sampleNegotiable === 'yes',
+          isNegotiable: sampleNegotiable === "yes",
         });
       } else {
         await updateProposalMetadata(proposal.dataset.id, { isSample: false });
@@ -117,18 +148,19 @@ export function useSampleToggle({ proposal, isEditable, onRefresh }: UseSampleTo
 
       toast.success(
         pendingSampleValue
-          ? 'Sample mode enabled for this proposal'
-          : 'Sample mode disabled for this proposal'
+          ? "Sample mode enabled for this proposal"
+          : "Sample mode disabled for this proposal"
       );
 
       setSampleConfirmOpen(false);
       setPendingSampleValue(null);
       resetSampleDialogFields();
       onRefresh?.();
-    } catch (error: any) {
-      const message = error?.message || 'Failed to update sample mode';
+    } catch (error: unknown) {
+      const apiError = toDatasetUiError(error);
+      const message = apiError.message || "Failed to update sample mode";
       setSampleToggleError(message);
-      toast.error('Failed to update sample mode', { description: message });
+      toast.error("Failed to update sample mode", { description: message });
     } finally {
       setSampleToggleSubmitting(false);
     }
