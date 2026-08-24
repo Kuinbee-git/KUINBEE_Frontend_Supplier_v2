@@ -11,15 +11,20 @@ import {
 } from "lucide-react";
 import { type FieldPath, useForm, useWatch } from "react-hook-form";
 
-import { StyledSelect } from "@/components/datasets/shared/StyledSelect";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import {
+  DashboardButton as Button,
+  DashboardCheckbox,
+  DashboardFormActions,
+  DashboardInput as Input,
+  DashboardSelect,
+  DashboardSelectContent,
+  DashboardSelectItem,
+  DashboardSelectTrigger,
+  DashboardSelectValue,
+  DashboardTextarea as Textarea,
+} from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 import { listCategories } from "@/lib/api/catalog";
-import { useThemeStore } from "@/store";
 import type { CustomCollectionRevisionInput } from "@/types/custom-collection.types";
 import {
   COLLECTION_METHOD_OPTIONS,
@@ -111,8 +116,6 @@ export function CustomCollectionForm({
   loadCategories = true,
   onSubmit,
 }: CustomCollectionFormProps) {
-  const { isDark } = useThemeStore();
-  const tokens = getDatasetThemeTokens(isDark);
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState(categoryOptions);
   const [categoriesLoading, setCategoriesLoading] = useState(loadCategories);
@@ -219,7 +222,7 @@ export function CustomCollectionForm({
     >
       <nav
         aria-label="Service form progress"
-        className="grid gap-2 sm:grid-cols-3"
+        className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
       >
         {STEPS.map((item, index) => {
           const active = index === step;
@@ -232,8 +235,8 @@ export function CustomCollectionForm({
               className={cn(
                 "rounded-xl border p-3 text-left transition-colors",
                 active
-                  ? "border-primary bg-primary/5"
-                  : "supplier-glass-input hover:bg-accent/60"
+                  ? "border-[var(--dashboard-focus-ring)] bg-primary/5 shadow-sm"
+                  : "dashboard-glass-control border-border hover:border-[var(--dashboard-control-border-strong)] hover:bg-muted/55"
               )}
               aria-current={active ? "step" : undefined}
             >
@@ -258,7 +261,7 @@ export function CustomCollectionForm({
         })}
       </nav>
 
-      <div className="supplier-glass-panel rounded-2xl border p-4 sm:p-6">
+      <div className="dashboard-glass-card rounded-xl border border-border p-4 sm:p-6">
         {step === 0 && (
           <div className="space-y-6">
             <SectionHeading
@@ -328,31 +331,41 @@ export function CustomCollectionForm({
                 }
                 required
               >
-                <StyledSelect
-                  value={primaryCategoryId}
+                <DashboardSelect
+                  value={primaryCategoryId || undefined}
                   onValueChange={(value) =>
                     setValue("primaryCategoryId", value, {
                       shouldDirty: true,
                       shouldValidate: true,
                     })
                   }
-                  options={categories.map(({ id, name }) => ({
-                    value: id,
-                    label: name,
-                  }))}
-                  placeholder={
-                    categoriesLoading
-                      ? "Loading categories…"
-                      : categoriesError
-                        ? "Categories unavailable"
-                        : "Select a category"
-                  }
                   disabled={categoriesLoading || Boolean(categoriesError)}
-                  triggerId="primaryCategoryId"
-                  ariaLabel="Primary category"
-                  isDark={isDark}
-                  tokens={tokens}
-                />
+                >
+                  <DashboardSelectTrigger
+                    id="primaryCategoryId"
+                    aria-label="Primary category"
+                    aria-invalid={Boolean(
+                      errors.primaryCategoryId?.message || categoriesError
+                    )}
+                  >
+                    <DashboardSelectValue
+                      placeholder={
+                        categoriesLoading
+                          ? "Loading categories…"
+                          : categoriesError
+                            ? "Categories unavailable"
+                            : "Select a category"
+                      }
+                    />
+                  </DashboardSelectTrigger>
+                  <DashboardSelectContent>
+                    {categories.map(({ id, name }) => (
+                      <DashboardSelectItem key={id} value={id}>
+                        {name}
+                      </DashboardSelectItem>
+                    ))}
+                  </DashboardSelectContent>
+                </DashboardSelect>
               </TextField>
 
               <fieldset className="space-y-2">
@@ -362,7 +375,7 @@ export function CustomCollectionForm({
                 <p className="text-xs text-muted-foreground">
                   Optional. Select up to 10 additional relevant categories.
                 </p>
-                <div className="supplier-glass-input max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
+                <div className="dashboard-scroll-region max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--dashboard-control-border)] bg-input-background p-2">
                   {secondaryCategories.length ? (
                     secondaryCategories.map((category) => {
                       const checked = secondaryCategoryIds.includes(
@@ -379,11 +392,10 @@ export function CustomCollectionForm({
                               "cursor-not-allowed opacity-50"
                           )}
                         >
-                          <input
-                            type="checkbox"
+                          <DashboardCheckbox
                             checked={checked}
                             disabled={!checked && atLimit}
-                            onChange={() => {
+                            onCheckedChange={() => {
                               setValue(
                                 "secondaryCategoryIds",
                                 checked
@@ -767,47 +779,48 @@ export function CustomCollectionForm({
         )}
       </div>
 
-      <div className="supplier-glass-panel sticky bottom-0 z-10 flex flex-col-reverse gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {isDirty
+      <DashboardFormActions
+        sticky
+        className="rounded-xl border border-border px-4"
+        status={
+          isDirty
             ? "You have unsaved changes."
-            : "All displayed changes are saved."}
-        </p>
-        <div className="flex gap-2">
-          {step > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 sm:flex-none"
-              onClick={() => setStep((current) => current - 1)}
-              disabled={busy}
-            >
-              <ChevronLeft /> Previous
-            </Button>
-          )}
-          {step < STEPS.length - 1 ? (
-            <Button
-              key="next-step"
-              type="button"
-              className="flex-1 sm:flex-none"
-              onClick={moveNext}
-              disabled={busy || categoriesLoading || Boolean(categoriesError)}
-            >
-              Next <ChevronRight />
-            </Button>
-          ) : (
-            <Button
-              key="save-draft"
-              type="submit"
-              className="flex-1 sm:flex-none"
-              disabled={busy}
-            >
-              {busy && <Loader2 className="animate-spin" />}
-              {submitLabel}
-            </Button>
-          )}
-        </div>
-      </div>
+            : "All displayed changes are saved."
+        }
+      >
+        {step > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 sm:flex-none"
+            onClick={() => setStep((current) => current - 1)}
+            disabled={busy}
+          >
+            <ChevronLeft /> Previous
+          </Button>
+        )}
+        {step < STEPS.length - 1 ? (
+          <Button
+            key="next-step"
+            type="button"
+            className="flex-1 sm:flex-none"
+            onClick={moveNext}
+            disabled={busy || categoriesLoading || Boolean(categoriesError)}
+          >
+            Next <ChevronRight />
+          </Button>
+        ) : (
+          <Button
+            key="save-draft"
+            type="submit"
+            className="flex-1 sm:flex-none"
+            disabled={busy}
+          >
+            {busy && <Loader2 className="animate-spin" />}
+            {submitLabel}
+          </Button>
+        )}
+      </DashboardFormActions>
     </form>
   );
 }
@@ -845,9 +858,9 @@ function TextField({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-1">
-        <Label htmlFor={id}>
+        <label htmlFor={id} className="text-sm font-medium text-foreground">
           {label} {required && <span className="text-destructive">*</span>}
-        </Label>
+        </label>
         {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
       </div>
       {children}
@@ -885,10 +898,10 @@ function ReviewSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="supplier-glass-card overflow-hidden rounded-xl border">
-      <div className="flex items-center justify-between gap-3 border-b bg-white/25 px-4 py-3 dark:bg-white/[0.025] sm:px-5">
+    <section className="dashboard-glass-card overflow-hidden rounded-xl border border-border">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/35 px-4 py-3 sm:px-5">
         <h3 className="font-semibold">{title}</h3>
-        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+        <Button type="button" variant="ghost" size="compact" onClick={onEdit}>
           <PencilLine /> Edit
         </Button>
       </div>
@@ -990,7 +1003,7 @@ function MultiChoiceField({
                 "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors",
                 selected
                   ? "border-primary bg-primary/5 text-foreground"
-                  : "supplier-glass-input hover:bg-accent/60"
+                  : "dashboard-glass-control border-[var(--dashboard-control-border)] hover:bg-muted/55"
               )}
             >
               <span
@@ -1011,7 +1024,12 @@ function MultiChoiceField({
       {error && <FieldError>Select at least one option.</FieldError>}
       {values.includes("OTHER") && (
         <div className="max-w-xl space-y-2">
-          <Label htmlFor={`${name}-other`}>Describe the other option</Label>
+          <label
+            htmlFor={`${name}-other`}
+            className="text-sm font-medium text-foreground"
+          >
+            Describe the other option
+          </label>
           <Input
             id={`${name}-other`}
             maxLength={200}

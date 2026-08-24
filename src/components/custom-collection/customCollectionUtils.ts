@@ -244,55 +244,39 @@ export const revisionToInput = (
 
 export const STATUS_CONFIG: Record<
   CustomCollectionRevisionStatus,
-  { label: string; className: string; description: string }
+  { label: string; description: string }
 > = {
   DRAFT: {
     label: "Draft",
-    className:
-      "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200",
     description: "Complete the service details and submit when it is ready.",
   },
   SUBMITTED: {
     label: "Submitted",
-    className:
-      "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200",
     description: "Your service is waiting to be assigned to a reviewer.",
   },
   UNDER_REVIEW: {
     label: "Under review",
-    className:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200",
     description: "A Kuinbee reviewer is checking this revision.",
   },
   CHANGES_REQUESTED: {
     label: "Changes requested",
-    className:
-      "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200",
     description: "Review the feedback, update the draft, and resubmit it.",
   },
   RESUBMITTED: {
     label: "Resubmitted",
-    className:
-      "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-200",
     description: "Your updated revision is waiting for another review.",
   },
   APPROVED: {
     label: "Approved",
-    className:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
     description:
       "This revision is approved. Choose whether to publish it in the marketplace.",
   },
   REJECTED: {
     label: "Rejected",
-    className:
-      "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200",
     description: "This revision was not approved for publication.",
   },
   SUPERSEDED: {
     label: "Previous version",
-    className:
-      "border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
     description: "A newer approved revision has replaced this version.",
   },
 };
