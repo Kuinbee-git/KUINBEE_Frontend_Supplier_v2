@@ -1,83 +1,100 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import { getSupplierStats } from "@/lib/api/stats";
-import { GlassCard } from "@/components/shared";
+
+import {
+  DashboardErrorState,
+  DashboardLoadingState,
+} from "@/components/dashboard";
 import { BuyerInsightsPanel } from "@/components/dashboard/stats/BuyerInsightsPanel";
-import type { StatsTimeRange, BuyerInsights, DatasetPerformanceItem } from "@/types/supplier-stats.types";
-import { Users } from "lucide-react";
+import { getSupplierStats } from "@/lib/api/stats";
+import type {
+  BuyerInsights,
+  DatasetPerformanceItem,
+  StatsTimeRange,
+} from "@/types/supplier-stats.types";
+
+const EMPTY_INSIGHTS: BuyerInsights = {
+  totalBuyers: 0,
+  totalNonBuyingUsers: 0,
+  topBuyers: [],
+  highIntentNonBuyers: [],
+};
+
+const VALID_RANGES: StatsTimeRange[] = ["7d", "30d", "90d", "1y", "lifetime"];
+
+function getTimeRange(value: string | null): StatsTimeRange {
+  return VALID_RANGES.includes(value as StatsTimeRange)
+    ? (value as StatsTimeRange)
+    : "30d";
+}
 
 function BuyersContent() {
-    const tokens = useSupplierTokens();
-    const searchParams = useSearchParams();
-    const range = (searchParams.get("range") as StatsTimeRange) || "30d";
-    const [insights, setInsights] = useState<BuyerInsights | null>(null);
-    const [datasetPerformance, setDatasetPerformance] = useState<DatasetPerformanceItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const range = getTimeRange(searchParams.get("range"));
+  const [insights, setInsights] = useState<BuyerInsights | null>(null);
+  const [datasetPerformance, setDatasetPerformance] = useState<
+    DatasetPerformanceItem[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const fetchData = useCallback(async (selectedRange: StatsTimeRange) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await getSupplierStats(selectedRange);
-            setInsights(data.buyerInsights);
-            setDatasetPerformance(data.datasetPerformance);
-        } catch (error) {
-            console.error("Failed to fetch buyer insights:", error);
-            setError(error instanceof Error ? error.message : "Failed to fetch buyer insights");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  const fetchData = useCallback(async (selectedRange: StatsTimeRange) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getSupplierStats(selectedRange);
+      setInsights(data.buyerInsights);
+      setDatasetPerformance(data.datasetPerformance);
+    } catch (requestError: unknown) {
+      setInsights(null);
+      setDatasetPerformance([]);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Buyer analytics could not be loaded."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        fetchData(range);
-    }, [range, fetchData]);
+  useEffect(() => {
+    void fetchData(range);
+  }, [fetchData, range]);
 
+  if (error) {
     return (
-        <div style={{ animation: "fadeIn 0.5s ease-out" }}>
-            {error && (
-                <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "rgb(239, 68, 68)" }}>
-                    <p className="text-sm font-medium">{error}</p>
-                </div>
-            )}
-            <GlassCard>
-                <div className="p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Users className="w-5 h-5" style={{ color: tokens.textPrimary }} />
-                        <h2 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
-                            Buyer Insights
-                        </h2>
-                    </div>
-                    <BuyerInsightsPanel
-                        insights={
-                            insights || {
-                                totalBuyers: 0,
-                                totalNonBuyingUsers: 0,
-                                topBuyers: [],
-                                highIntentNonBuyers: [],
-                            }
-                        }
-                        datasetPerformance={datasetPerformance}
-                        loading={loading}
-                    />
-                </div>
-            </GlassCard>
-        </div>
+      <DashboardErrorState
+        title="Buyer analytics could not be loaded"
+        message={error}
+        onRetry={() => void fetchData(range)}
+      />
     );
+  }
+
+  return (
+    <BuyerInsightsPanel
+      insights={insights ?? EMPTY_INSIGHTS}
+      datasetPerformance={datasetPerformance}
+      loading={loading}
+    />
+  );
 }
 
 export default function BuyersPage() {
-    return (
-        <Suspense
-            fallback={
-                <div className="rounded-xl animate-pulse h-96" style={{ background: "var(--muted)" }} />
-            }
-        >
-            <BuyersContent />
-        </Suspense>
-    );
+  return (
+    <Suspense
+      fallback={
+        <DashboardLoadingState
+          label="Loading buyer analytics"
+          variant="skeleton"
+          rows={5}
+        />
+      }
+    >
+      <BuyersContent />
+    </Suspense>
+  );
 }

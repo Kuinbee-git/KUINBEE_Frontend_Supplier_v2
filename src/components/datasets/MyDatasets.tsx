@@ -13,8 +13,7 @@ import {
   Plus,
 } from "lucide-react";
 
-import { PaginationControls } from "@/components/shared";
-import { Button } from "@/components/ui/button";
+import { DashboardButton, DashboardPagination } from "@/components/dashboard";
 import { listMyDatasets } from "@/lib/api";
 import type {
   DatasetStatus,
@@ -261,11 +260,11 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
       headerClassName: "text-right",
       className: "text-right",
       render: (dataset) => (
-        <Button asChild variant="outline" size="sm">
+        <DashboardButton asChild variant="outline" size="compact">
           <Link href={`/dashboard/my-datasets/${dataset.id}`}>
             {getDatasetActionLabel(dataset.status)} <ArrowRight />
           </Link>
-        </Button>
+        </DashboardButton>
       ),
     },
   ];
@@ -276,15 +275,15 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
         title="My Datasets"
         description="Manage verified datasets, control marketplace visibility, and keep published listings current."
         action={
-          <Button asChild className="h-10 w-full px-5 sm:w-auto">
+          <DashboardButton asChild className="w-full sm:w-auto">
             <Link href="/dashboard/datasets/create">
               <Plus /> Create dataset
             </Link>
-          </Button>
+          </DashboardButton>
         }
       />
 
-      <section aria-label="Dataset lifecycle overview" className="mt-7">
+      <section aria-label="Dataset lifecycle overview">
         <DatasetMetricStrip
           metrics={metrics}
           activeValue={statusFilter}
@@ -329,7 +328,7 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
         />
       )}
 
-      <section aria-labelledby="dataset-inventory-title" className="mt-5">
+      <section aria-labelledby="dataset-inventory-title">
         <DatasetInventoryHeader
           id="dataset-inventory-title"
           title="Dataset inventory"
@@ -339,7 +338,7 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
           pluralLabel="datasets"
         />
 
-        {loading ? (
+        {loading && datasets.length === 0 ? (
           <DatasetListSkeleton />
         ) : !error && datasets.length === 0 ? (
           <DatasetEmptyState
@@ -350,17 +349,19 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
             filteredTitle="No datasets match this view"
             filteredDescription="Try another title, dataset ID, status, or visibility setting."
             action={
-              <Button asChild>
+              <DashboardButton asChild>
                 <Link href="/dashboard/datasets/create">
                   <Plus /> Create dataset
                 </Link>
-              </Button>
+              </DashboardButton>
             }
           />
         ) : datasets.length > 0 ? (
           <>
             <DatasetRecordList
               items={datasets}
+              busy={loading}
+              caption="Supplier datasets"
               columns={columns}
               getKey={(dataset) => dataset.id}
               renderMobile={(dataset) => (
@@ -379,13 +380,13 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
                 />
               )}
             />
-            <PaginationControls
+            <DashboardPagination
               page={page}
               pageSize={PAGE_SIZE}
-              total={totalDatasets}
+              totalItems={totalDatasets}
               itemLabel="datasets"
-              mutedColor="var(--muted-foreground)"
               onPageChange={setPage}
+              className="pt-4"
             />
           </>
         ) : null}

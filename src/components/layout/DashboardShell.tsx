@@ -1,672 +1,571 @@
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
+import { flushSync } from "react-dom";
 import Image from "next/image";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  LayoutDashboard,
+  BadgePercent,
   BarChart3,
-  FileText,
-  User,
-  Settings,
-  LogOut,
-  Moon,
-  Sun,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Database,
-  MessageSquare,
-  Star,
-  BadgePercent,
-  WandSparkles,
   ClipboardPenLine,
+  Database,
+  FileText,
+  LayoutDashboard,
+  LogOut,
   Menu,
-  X,
+  MessageSquare,
+  Moon,
+  Settings,
+  Star,
+  Sun,
+  User,
+  WandSparkles,
+  type LucideIcon,
 } from "lucide-react";
-import { useThemeStore } from "@/store";
-import { useAuthStore } from "@/store";
+
+import {
+  DashboardButton,
+  DashboardDropdownMenu,
+  DashboardDropdownMenuContent,
+  DashboardDropdownMenuItem,
+  DashboardDropdownMenuLabel,
+  DashboardDropdownMenuSeparator,
+  DashboardDropdownMenuTrigger,
+  DashboardSheet,
+  DashboardSheetContent,
+  DashboardSheetTrigger,
+  DashboardTooltip,
+  DashboardTooltipContent,
+  DashboardTooltipProvider,
+  DashboardTooltipTrigger,
+} from "@/components/dashboard";
+import { cn } from "@/lib/utils/cn";
+import { useAuthStore, useThemeStore } from "@/store";
 
 interface DashboardShellProps {
   children: React.ReactNode;
 }
 
+interface DashboardViewTransition {
+  finished: Promise<void>;
+}
+
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => DashboardViewTransition;
+};
+
+interface NavigationItem {
+  icon: LucideIcon;
+  id: string;
+  label: string;
+  path: string;
+}
+
+interface NavigationGroup {
+  id: string;
+  items: readonly NavigationItem[];
+  label: string;
+}
+
+const navigationGroups: readonly NavigationGroup[] = [
+  {
+    id: "workspace",
+    label: "Workspace",
+    items: [
+      {
+        id: "overview",
+        label: "Overview",
+        icon: LayoutDashboard,
+        path: "/dashboard",
+      },
+      {
+        id: "stats",
+        label: "Analytics",
+        icon: BarChart3,
+        path: "/dashboard/stats",
+      },
+    ],
+  },
+  {
+    id: "data-catalogue",
+    label: "Data catalogue",
+    items: [
+      {
+        id: "datasets",
+        label: "My datasets",
+        icon: Database,
+        path: "/dashboard/my-datasets",
+      },
+      {
+        id: "drafts",
+        label: "My drafts",
+        icon: FileText,
+        path: "/dashboard/datasets",
+      },
+      {
+        id: "proposals",
+        label: "Submitted proposals",
+        icon: FileText,
+        path: "/dashboard/proposals",
+      },
+      {
+        id: "delisted-edits",
+        label: "Delisted edits",
+        icon: Database,
+        path: "/dashboard/my-datasets?status=DELISTED",
+      },
+    ],
+  },
+  {
+    id: "supplier-tools",
+    label: "Supplier tools",
+    items: [
+      {
+        id: "custom-collection-services",
+        label: "Custom collection services",
+        icon: WandSparkles,
+        path: "/dashboard/custom-collection-services",
+      },
+      {
+        id: "discount-campaigns",
+        label: "Dataset promotions",
+        icon: BadgePercent,
+        path: "/dashboard/discount-campaigns",
+      },
+    ],
+  },
+  {
+    id: "data-sourcing",
+    label: "Data sourcing",
+    items: [
+      {
+        id: "data-requirement",
+        label: "Submit a data requirement",
+        icon: ClipboardPenLine,
+        path: "/dashboard/data-requirements/submit",
+      },
+    ],
+  },
+  {
+    id: "engagement",
+    label: "Engagement",
+    items: [
+      {
+        id: "questions",
+        label: "Questions",
+        icon: MessageSquare,
+        path: "/dashboard/questions",
+      },
+      {
+        id: "reviews",
+        label: "Reviews",
+        icon: Star,
+        path: "/dashboard/reviews",
+      },
+    ],
+  },
+];
+
+function isNavigationItemActive(
+  item: NavigationItem,
+  pathname: string,
+  delistedView: boolean
+) {
+  if (item.id === "delisted-edits") return delistedView;
+
+  if (item.id === "datasets") {
+    return pathname.startsWith("/dashboard/my-datasets") && !delistedView;
+  }
+
+  const itemPathname = item.path.split("?")[0];
+  return (
+    pathname === itemPathname ||
+    (itemPathname !== "/dashboard" && pathname.startsWith(itemPathname))
+  );
+}
+
+interface DashboardNavigationProps {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}
+
+function DashboardNavigation({
+  collapsed = false,
+  onNavigate,
+}: DashboardNavigationProps) {
+  const pathname = usePathname() ?? "/dashboard";
+  const searchParams = useSearchParams();
+  const delistedView =
+    pathname === "/dashboard/my-datasets" &&
+    searchParams.get("status") === "DELISTED";
+
+  return (
+    <nav aria-label="Supplier dashboard" className="space-y-5 px-3 py-4">
+      {navigationGroups.map((group) => (
+        <div key={group.id} className="space-y-1">
+          <p
+            className={cn(
+              "px-2 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80",
+              collapsed && "sr-only"
+            )}
+          >
+            {group.label}
+          </p>
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            const active = isNavigationItemActive(item, pathname, delistedView);
+            const link = (
+              <Link
+                href={item.path}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                aria-label={collapsed ? item.label : undefined}
+                className={cn(
+                  "dashboard-nav-item relative flex h-10 min-w-0 items-center gap-3 rounded-lg border border-transparent py-2 pl-5 pr-3 text-sm font-medium text-muted-foreground outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  "focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]",
+                  "motion-reduce:transition-none",
+                  active &&
+                    "dashboard-nav-active font-semibold text-foreground",
+                  active &&
+                    !collapsed &&
+                    "before:absolute before:left-2 before:h-4 before:w-0.5 before:rounded-full before:bg-[var(--dashboard-action)] before:content-['']",
+                  collapsed && "justify-center px-0"
+                )}
+              >
+                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                {collapsed ? null : (
+                  <span className="truncate">{item.label}</span>
+                )}
+              </Link>
+            );
+
+            if (!collapsed)
+              return <React.Fragment key={item.id}>{link}</React.Fragment>;
+
+            return (
+              <DashboardTooltip key={item.id}>
+                <DashboardTooltipTrigger asChild>
+                  {link}
+                </DashboardTooltipTrigger>
+                <DashboardTooltipContent side="right">
+                  {item.label}
+                </DashboardTooltipContent>
+              </DashboardTooltip>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function DashboardBrand({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link
+      href="/dashboard"
+      aria-label="Kuinbee dashboard"
+      className={cn(
+        "flex h-16 items-center gap-3 rounded-md px-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]",
+        compact && "justify-center px-0"
+      )}
+    >
+      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden">
+        <Image
+          src="/logo-light.png"
+          alt=""
+          width={32}
+          height={32}
+          className="size-8 scale-[2.4] object-contain dark:hidden"
+          priority
+        />
+        <Image
+          src="/logo-dark.png"
+          alt=""
+          width={32}
+          height={32}
+          className="hidden size-8 scale-[2.4] object-contain dark:block"
+          priority
+        />
+      </span>
+      {compact ? null : (
+        <span className="truncate text-base font-semibold tracking-tight text-foreground">
+          Kuinbee
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function getUserInitials(name?: string, email?: string) {
+  const source = name?.trim() || email?.trim() || "Supplier";
+  const segments = source.split(/[\s@._-]+/).filter(Boolean);
+
+  return segments
+    .slice(0, 2)
+    .map((segment) => segment[0]?.toUpperCase())
+    .join("");
+}
+
 export function DashboardShell({ children }: DashboardShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { isDark, toggleTheme } = useThemeStore();
+  const { isDark, setTheme } = useThemeStore();
   const { user, logout } = useAuthStore();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = React.useState(false);
+  const mainContentRef = React.useRef<HTMLElement>(null);
+  const activeThemeTransition = React.useRef<DashboardViewTransition | null>(
+    null
+  );
+  const initials = getUserInitials(user?.name, user?.email);
 
-  // Design tokens
-  const tokens = {
-    surfaceUnified: isDark
-      ? "linear-gradient(135deg, #1a2240 0%, #2a3250 50%, #1f2847 100%)"
-      : "linear-gradient(135deg, #ffffff 0%, #f9fafb 50%, #f5f7fb 100%)",
-    glassBg: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.88)",
-    glassBorder: isDark
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(255, 255, 255, 0.5)",
-    textPrimary: isDark ? "#ffffff" : "#1a2240",
-    textSecondary: isDark ? "rgba(255, 255, 255, 0.6)" : "#525d6f",
-    textMuted: isDark ? "rgba(255, 255, 255, 0.5)" : "#7a8494",
-    borderDefault: isDark ? "rgba(255, 255, 255, 0.1)" : "#dde3f0",
-    borderSubtle: isDark
-      ? "rgba(255, 255, 255, 0.04)"
-      : "rgba(26, 34, 64, 0.06)",
-    sidebarBg: isDark
-      ? "rgba(255, 255, 255, 0.04)"
-      : "rgba(255, 255, 255, 0.6)",
-    navItemHover: isDark
-      ? "rgba(255, 255, 255, 0.08)"
-      : "rgba(26, 34, 64, 0.08)",
-    navItemActive: isDark
-      ? "linear-gradient(135deg, rgba(26, 34, 64, 0.4), rgba(42, 50, 80, 0.3))"
-      : "linear-gradient(135deg, rgba(26, 34, 64, 0.12), rgba(26, 34, 64, 0.06))",
-    navItemShadow: isDark
-      ? "none"
-      : "0 2px 8px rgba(26, 34, 64, 0.08), 0 4px 16px rgba(26, 34, 64, 0.06)",
-    navItemActiveBorder: isDark
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(26, 34, 64, 0.15)",
-    // Grid tokens
-    gridPattern: isDark
-      ? "rgba(255, 255, 255, 0.04)"
-      : "rgba(26, 34, 64, 0.15)",
-    gridOpacity: isDark ? 0.6 : 0.4,
-  };
+  React.useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      mainContentRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
 
-  const navItems = [
-    {
-      id: "overview",
-      label: "Overview",
-      icon: LayoutDashboard,
-      path: "/dashboard",
-      disabled: false,
-    },
-    {
-      id: "stats",
-      label: "Stats",
-      icon: BarChart3,
-      path: "/dashboard/stats",
-      disabled: false,
-    },
-    {
-      id: "proposals",
-      label: "My Drafts",
-      icon: FileText,
-      path: "/dashboard/datasets",
-      disabled: false,
-    },
-    {
-      id: "submitted-proposals",
-      label: "Submitted Proposals",
-      icon: FileText,
-      path: "/dashboard/proposals",
-      disabled: false,
-    },
-    {
-      id: "my-datasets",
-      label: "My Datasets",
-      icon: Database,
-      path: "/dashboard/my-datasets",
-      disabled: false,
-    },
-    {
-      id: "discount-campaigns",
-      label: "Discount Campaigns",
-      icon: BadgePercent,
-      path: "/dashboard/discount-campaigns",
-      disabled: false,
-    },
-    {
-      id: "custom-collection-services",
-      label: "Custom Collection",
-      icon: WandSparkles,
-      path: "/dashboard/custom-collection-services",
-      disabled: false,
-    },
-    {
-      id: "data-requirement",
-      label: "Submit Requirement",
-      icon: ClipboardPenLine,
-      path: "/dashboard/data-requirements/submit",
-      disabled: false,
-    },
-    {
-      id: "questions",
-      label: "Questions",
-      icon: MessageSquare,
-      path: "/dashboard/questions",
-      disabled: false,
-    },
-    {
-      id: "reviews",
-      label: "Reviews",
-      icon: Star,
-      path: "/dashboard/reviews",
-      disabled: false,
-    },
-    {
-      id: "delisted-edits",
-      label: "Delisted Edits",
-      icon: Database,
-      path: "/dashboard/my-datasets?status=DELISTED",
-      disabled: false,
-    },
-    {
-      id: "account",
-      label: "Account",
-      icon: Settings,
-      path: "/dashboard/account",
-      disabled: false,
-    },
-  ];
-
-  const handleNavClick = (path: string, disabled: boolean) => {
-    if (!disabled) {
-      setMobileSidebarOpen(false);
-      router.push(path);
-    }
-  };
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
 
   const handleLogout = () => {
     logout();
     router.push("/auth/login");
   };
 
+  const handleThemeToggle = React.useCallback(() => {
+    if (activeThemeTransition.current) return;
+
+    const nextTheme = isDark ? "light" : "dark";
+    const root = document.documentElement;
+    const viewTransitionDocument = document as ViewTransitionDocument;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    const applyTheme = () => {
+      // Keep the theme class, Zustand subscribers, logos, and icon in the same
+      // paint so the compositor crossfades two complete dashboard frames.
+      flushSync(() => setTheme(nextTheme));
+    };
+
+    root.dataset.dashboardThemeTransition = "true";
+
+    if (reduceMotion || !viewTransitionDocument.startViewTransition) {
+      applyTheme();
+      window.requestAnimationFrame(() => {
+        delete root.dataset.dashboardThemeTransition;
+      });
+      return;
+    }
+
+    let transition: DashboardViewTransition;
+
+    try {
+      transition = viewTransitionDocument.startViewTransition(applyTheme);
+    } catch {
+      applyTheme();
+      delete root.dataset.dashboardThemeTransition;
+      return;
+    }
+
+    activeThemeTransition.current = transition;
+
+    const finishThemeTransition = () => {
+      if (activeThemeTransition.current === transition) {
+        activeThemeTransition.current = null;
+      }
+      delete root.dataset.dashboardThemeTransition;
+    };
+
+    // A view transition can reject when the browser skips it (for example,
+    // when the tab becomes hidden). Both outcomes need the same cleanup.
+    void transition.finished.then(finishThemeTransition, finishThemeTransition);
+  }, [isDark, setTheme]);
+
   return (
-    <div className="relative h-screen w-full overflow-hidden">
-      {/* Background */}
+    <DashboardTooltipProvider delayDuration={250}>
       <div
-        className="absolute inset-0 transition-all duration-500"
-        style={{ background: tokens.surfaceUnified }}
-      />
-
-      {/* Grid pattern overlay */}
-      <div
-        className="absolute inset-0 transition-opacity duration-500"
-        style={{
-          backgroundImage: isDark
-            ? `linear-gradient(${tokens.borderSubtle} 1px, transparent 1px), linear-gradient(90deg, ${tokens.borderSubtle} 1px, transparent 1px)`
-            : `linear-gradient(${tokens.gridPattern} 1px, transparent 1px), linear-gradient(90deg, ${tokens.gridPattern} 1px, transparent 1px)`,
-          backgroundSize: "32px 32px",
-          opacity: tokens.gridOpacity,
-        }}
-      />
-
-      <div className="relative z-10 flex h-screen">
-        {/* Sidebar */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 h-screen w-64 flex-shrink-0 overflow-y-auto border-r transition-all duration-300 lg:relative lg:z-auto ${
-            sidebarCollapsed ? "lg:w-20" : "lg:w-64"
-          } ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
-          style={{
-            background: tokens.sidebarBg,
-            borderColor: tokens.borderDefault,
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-          }}
+        className="supplier-dashboard dashboard-canvas flex h-dvh min-h-0 w-full overflow-hidden text-foreground"
+        data-ui-scope="supplier-dashboard"
+      >
+        <a
+          href="#supplier-dashboard-main"
+          className="sr-only fixed left-4 top-4 z-[var(--dashboard-layer-tooltip)] rounded-lg bg-popover px-3 py-2 text-sm font-medium text-popover-foreground shadow-lg focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-[var(--dashboard-focus-ring)]"
         >
-          {/* Logo */}
-          <div
-            className="flex h-20 items-center justify-center border-b transition-all duration-300 lg:h-24"
-            style={{
-              borderColor: tokens.borderDefault,
-              paddingLeft: sidebarCollapsed ? "0" : "16px",
-              paddingRight: sidebarCollapsed ? "0" : "16px",
-              background: isDark
-                ? "rgba(255, 255, 255, 0.02)"
-                : "rgba(255, 255, 255, 0.4)",
-            }}
-          >
-            <div className="flex items-center justify-center gap-3 w-full">
-              <div
-                className="border rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-105 cursor-pointer"
-                style={{
-                  height: "48px",
-                  width: "54px",
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.1)"
-                    : "rgba(255, 255, 255, 0.95)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: `1.5px solid ${isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(26, 34, 64, 0.12)"}`,
-                  boxShadow: isDark
-                    ? "0 4px 12px rgba(0, 0, 0, 0.3)"
-                    : "0 2px 8px rgba(26, 34, 64, 0.08), 0 4px 16px rgba(26, 34, 64, 0.06)",
-                }}
-              >
-                <Image
-                  src={isDark ? "/logo-dark.png" : "/logo-light.png"}
-                  alt="Kuinbee"
-                  width={96}
-                  height={96}
-                  className="h-24 w-24 object-contain"
-                  style={{ opacity: isDark ? 0.9 : 1 }}
-                />
-              </div>
-              {!sidebarCollapsed && (
-                <span
-                  className="text-lg font-bold whitespace-nowrap transition-all duration-300 ease-out"
-                  style={{
-                    color: tokens.textPrimary,
-                    opacity: sidebarCollapsed ? 0 : 1,
-                    visibility: sidebarCollapsed ? "hidden" : "visible",
-                    transform: sidebarCollapsed
-                      ? "translateX(-10px)"
-                      : "translateX(0)",
-                  }}
-                >
-                  Kuinbee
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setMobileSidebarOpen(false)}
-                className="absolute right-3 top-5 flex size-10 items-center justify-center rounded-lg lg:hidden"
-                style={{ color: tokens.textSecondary }}
-                aria-label="Close navigation"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-          </div>
+          Skip to content
+        </a>
 
-          {/* Collapse Toggle Button */}
+        <aside
+          className={cn(
+            "dashboard-shell-sidebar hidden h-dvh shrink-0 flex-col border-r border-border transition-[width] duration-200 motion-reduce:transition-none lg:flex",
+            sidebarCollapsed
+              ? "w-[var(--dashboard-sidebar-collapsed-width)]"
+              : "w-[var(--dashboard-sidebar-width)]"
+          )}
+        >
+          <div className="border-b border-border px-3">
+            <DashboardBrand compact={sidebarCollapsed} />
+          </div>
           <div
-            className="hidden border-b px-4 py-3 lg:flex lg:justify-center"
-            style={{ borderColor: tokens.borderDefault }}
+            id="supplier-dashboard-desktop-navigation"
+            className="dashboard-scroll-region min-h-0 flex-1 overflow-y-auto"
           >
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`w-full rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-[1.02] active:scale-95${sidebarCollapsed ? "" : " gap-2 px-5 py-2 border"}`}
-              style={{
-                height: "40px",
-                background: isDark
-                  ? "rgba(255, 255, 255, 0.08)"
-                  : "rgba(255, 255, 255, 0.9)",
-                border: `1.5px solid ${isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(26, 34, 64, 0.12)"}`,
-                color: tokens.textSecondary,
-                boxShadow: isDark
-                  ? "none"
-                  : "0 2px 6px rgba(26, 34, 64, 0.08), 0 4px 12px rgba(26, 34, 64, 0.05)",
-                fontWeight: "600",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                  ? "rgba(255, 255, 255, 0.12)"
-                  : "rgba(255, 255, 255, 1)";
-                e.currentTarget.style.color = tokens.textPrimary;
-                if (!isDark) {
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 12px rgba(26, 34, 64, 0.1), 0 8px 24px rgba(26, 34, 64, 0.08)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDark
-                  ? "rgba(255, 255, 255, 0.08)"
-                  : "rgba(255, 255, 255, 0.9)";
-                e.currentTarget.style.color = tokens.textSecondary;
-                if (!isDark) {
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 6px rgba(26, 34, 64, 0.08), 0 4px 12px rgba(26, 34, 64, 0.05)";
-                }
-              }}
+            <DashboardNavigation collapsed={sidebarCollapsed} />
+          </div>
+          <div className="border-t border-border p-3">
+            <DashboardButton
+              variant="outline"
+              size="compact"
+              className={cn(
+                "dashboard-glass-control w-full border",
+                sidebarCollapsed && "px-0"
+              )}
+              aria-label={
+                sidebarCollapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              aria-controls="supplier-dashboard-desktop-navigation"
+              aria-expanded={!sidebarCollapsed}
+              onClick={() => setSidebarCollapsed((current) => !current)}
             >
               {sidebarCollapsed ? (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight aria-hidden="true" />
               ) : (
                 <>
-                  <span
-                    className="text-xs font-semibold tracking-wide"
-                    style={{ letterSpacing: "0.02em" }}
-                  >
-                    Collapse
-                  </span>
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft aria-hidden="true" />
+                  <span>Collapse navigation</span>
                 </>
               )}
-            </button>
+            </DashboardButton>
           </div>
-
-          {/* Navigation */}
-          <nav className="p-4 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              // Only one item should be active at a time
-              const isDelistedEditsItem = item.id === "delisted-edits";
-              const isMyDatasetsItem = item.id === "my-datasets";
-              const isDelistedEditingView =
-                pathname === "/dashboard/my-datasets" &&
-                searchParams.get("status") === "DELISTED";
-
-              let isActive = false;
-              if (isDelistedEditsItem) {
-                isActive = isDelistedEditingView;
-              } else if (isMyDatasetsItem) {
-                isActive =
-                  pathname === "/dashboard/my-datasets" &&
-                  !isDelistedEditingView;
-              } else {
-                isActive =
-                  pathname === item.path ||
-                  (item.path !== "/dashboard" &&
-                    pathname?.startsWith(item.path));
-              }
-              const isDisabled = item.disabled;
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.path, isDisabled)}
-                  disabled={isDisabled}
-                  className={`w-full rounded-lg transition-all duration-300 ease-out flex items-center${sidebarCollapsed ? " justify-center" : ""}`}
-                  style={{
-                    padding: sidebarCollapsed ? "12px" : "12px 16px",
-                    background: isActive ? tokens.navItemActive : "transparent",
-                    border: `1px solid ${isActive ? tokens.navItemActiveBorder : "transparent"}`,
-                    boxShadow:
-                      isActive && !isDark ? tokens.navItemShadow : "none",
-                    color: isDisabled ? tokens.textMuted : tokens.textPrimary,
-                    opacity: isDisabled ? 0.5 : 1,
-                    cursor: isDisabled ? "not-allowed" : "pointer",
-                    minWidth: "0",
-                    fontWeight: isActive ? "600" : "500",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isDisabled && !isActive) {
-                      e.currentTarget.style.background = tokens.navItemHover;
-                      if (!isDark) {
-                        e.currentTarget.style.boxShadow =
-                          "0 1px 4px rgba(26, 34, 64, 0.06)";
-                      }
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.boxShadow = "none";
-                    }
-                  }}
-                >
-                  <span className="flex items-center justify-center w-6 h-6">
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                  </span>
-                  <span
-                    className="text-sm font-medium transition-all duration-300 ease-out overflow-hidden whitespace-nowrap"
-                    style={{
-                      opacity: sidebarCollapsed ? 0 : 1,
-                      visibility: sidebarCollapsed ? "hidden" : "visible",
-                      width: sidebarCollapsed ? "0" : "auto",
-                      transform: sidebarCollapsed
-                        ? "translateX(-10px)"
-                        : "translateX(0)",
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
         </aside>
 
-        {mobileSidebarOpen && (
-          <button
-            type="button"
-            className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden"
-            onClick={() => setMobileSidebarOpen(false)}
-            aria-label="Close navigation"
-          />
-        )}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="dashboard-shell-topbar h-[var(--dashboard-topbar-height)] shrink-0 border-b border-border">
+            <div className="mx-auto flex h-full w-full max-w-[var(--dashboard-content-max-width)] items-center justify-between px-[var(--dashboard-page-padding-inline)]">
+              <div className="flex min-w-0 items-center gap-3">
+                <DashboardSheet
+                  open={mobileNavigationOpen}
+                  onOpenChange={setMobileNavigationOpen}
+                >
+                  <DashboardSheetTrigger asChild>
+                    <DashboardButton
+                      variant="outline"
+                      size="icon"
+                      aria-label="Open navigation"
+                      className="dashboard-glass-control lg:hidden"
+                    >
+                      <Menu aria-hidden="true" />
+                    </DashboardButton>
+                  </DashboardSheetTrigger>
+                  <DashboardSheetContent
+                    side="left"
+                    title="Kuinbee"
+                    description="Supplier workspace navigation"
+                    className="dashboard-glass-popover w-[min(18rem,calc(100%-1rem))]"
+                  >
+                    <DashboardNavigation
+                      onNavigate={() => setMobileNavigationOpen(false)}
+                    />
+                  </DashboardSheetContent>
+                </DashboardSheet>
 
-        {/* Main Content */}
-        <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
-          {/* Top Bar */}
-          <header
-            className="flex h-20 flex-shrink-0 items-center justify-between border-b px-4 sm:px-6 lg:h-24 lg:px-10"
-            style={{ borderColor: tokens.borderDefault }}
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setSidebarCollapsed(false);
-                  setMobileSidebarOpen(true);
-                }}
-                className="flex size-10 shrink-0 items-center justify-center rounded-lg border lg:hidden"
-                style={{
-                  borderColor: tokens.borderDefault,
-                  background: tokens.glassBg,
-                  color: tokens.textPrimary,
-                }}
-                aria-label="Open navigation"
-              >
-                <Menu className="size-5" />
-              </button>
-              <div className="min-w-0">
-                <h1
-                  className="truncate text-lg transition-colors duration-300 sm:text-xl lg:text-2xl"
-                  style={{
-                    color: tokens.textPrimary,
-                    fontWeight: "600",
-                    lineHeight: "1.3",
-                  }}
-                >
-                  Supplier Panel
-                </h1>
-                <p
-                  className="mt-1 hidden text-sm sm:block"
-                  style={{ color: tokens.textSecondary, lineHeight: "1.4" }}
-                >
-                  Manage your datasets and account
+                <div className="lg:hidden">
+                  <DashboardBrand compact />
+                </div>
+                <p className="hidden text-sm font-medium text-muted-foreground lg:block">
+                  Supplier workspace
                 </p>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 sm:gap-4">
-              {/* Dark Mode Toggle */}
-              <button
-                onClick={toggleTheme}
-                className="w-11 h-11 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95"
-                style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.1)"
-                    : "rgba(255, 255, 255, 0.95)",
-                  backdropFilter: "blur(16px)",
-                  WebkitBackdropFilter: "blur(16px)",
-                  border: `1.5px solid ${isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(26, 34, 64, 0.15)"}`,
-                  color: tokens.textPrimary,
-                  boxShadow: isDark
-                    ? "0 4px 12px rgba(0, 0, 0, 0.3)"
-                    : "0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDark
-                    ? "rgba(255, 255, 255, 0.15)"
-                    : "rgba(255, 255, 255, 1)";
-                  if (!isDark) {
-                    e.currentTarget.style.boxShadow =
-                      "0 4px 16px rgba(26, 34, 64, 0.12), 0 8px 32px rgba(26, 34, 64, 0.1)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = isDark
-                    ? "rgba(255, 255, 255, 0.1)"
-                    : "rgba(255, 255, 255, 0.95)";
-                  if (!isDark) {
-                    e.currentTarget.style.boxShadow =
-                      "0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)";
-                  }
-                }}
-                aria-label="Toggle dark mode"
-              >
-                {isDark ? (
-                  <Sun className="w-5 h-5" />
-                ) : (
-                  <Moon className="w-5 h-5" />
-                )}
-              </button>
-
-              {/* User Menu Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex h-11 items-center gap-2 rounded-lg px-3 transition-all duration-300 hover:scale-105 active:scale-95 sm:px-5"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(255, 255, 255, 0.95)",
-                    backdropFilter: "blur(16px)",
-                    WebkitBackdropFilter: "blur(16px)",
-                    border: `1.5px solid ${isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(26, 34, 64, 0.15)"}`,
-                    color: tokens.textSecondary,
-                    boxShadow: isDark
-                      ? "0 4px 12px rgba(0, 0, 0, 0.3)"
-                      : "0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? "rgba(255, 255, 255, 0.15)"
-                      : "rgba(255, 255, 255, 1)";
-                    e.currentTarget.style.color = tokens.textPrimary;
-                    if (!isDark) {
-                      e.currentTarget.style.boxShadow =
-                        "0 4px 16px rgba(26, 34, 64, 0.12), 0 8px 32px rgba(26, 34, 64, 0.1)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = isDark
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "rgba(255, 255, 255, 0.95)";
-                    e.currentTarget.style.color = tokens.textSecondary;
-                    if (!isDark) {
-                      e.currentTarget.style.boxShadow =
-                        "0 2px 10px rgba(26, 34, 64, 0.1), 0 4px 20px rgba(26, 34, 64, 0.08)";
-                    }
-                  }}
+              <div className="flex shrink-0 items-center gap-2">
+                <DashboardButton
+                  variant="outline"
+                  size="icon"
+                  aria-label={isDark ? "Use light theme" : "Use dark theme"}
+                  onClick={handleThemeToggle}
+                  className="dashboard-glass-control"
                 >
-                  <User className="w-5 h-5" />
-                  <span className="hidden max-w-48 truncate text-base md:inline">
-                    {user?.email || "User"}
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
+                  {isDark ? (
+                    <Sun aria-hidden="true" />
+                  ) : (
+                    <Moon aria-hidden="true" />
+                  )}
+                </DashboardButton>
 
-                {/* Dropdown Menu */}
-                {userMenuOpen && (
-                  <>
-                    {/* Backdrop to close menu */}
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setUserMenuOpen(false)}
-                    />
-
-                    {/* Menu Items */}
-                    <div
-                      className="absolute right-0 mt-2 w-56 rounded-lg shadow-lg z-50 overflow-hidden"
-                      style={{
-                        background: tokens.glassBg,
-                        backdropFilter: "blur(16px)",
-                        WebkitBackdropFilter: "blur(16px)",
-                        border: `1px solid ${tokens.glassBorder}`,
-                        boxShadow: isDark
-                          ? "0 8px 24px rgba(0, 0, 0, 0.4)"
-                          : "0 4px 16px rgba(26, 34, 64, 0.12), 0 8px 32px rgba(26, 34, 64, 0.08)",
-                      }}
+                <DashboardDropdownMenu>
+                  <DashboardDropdownMenuTrigger asChild>
+                    <DashboardButton
+                      variant="outline"
+                      size="default"
+                      aria-label="Open account menu"
+                      className="dashboard-glass-control max-w-60 gap-2 px-2 sm:px-3"
                     >
-                      <div className="py-1">
-                        {/* Profile */}
-                        <button
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            router.push("/dashboard/profile");
-                          }}
-                          className="w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors duration-200"
-                          style={{
-                            color: tokens.textPrimary,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background =
-                              tokens.navItemHover;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
-                          }}
-                        >
-                          <User className="w-4 h-4" />
-                          <span className="text-sm">Profile</span>
-                        </button>
-
-                        {/* Account Settings */}
-                        <button
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            router.push("/dashboard/account");
-                          }}
-                          className="w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors duration-200"
-                          style={{
-                            color: tokens.textPrimary,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background =
-                              tokens.navItemHover;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
-                          }}
-                        >
-                          <Settings className="w-4 h-4" />
-                          <span className="text-sm">Account Settings</span>
-                        </button>
-
-                        {/* Divider */}
-                        <div
-                          className="my-1 h-px"
-                          style={{ background: tokens.borderDefault }}
-                        />
-
-                        {/* Logout */}
-                        <button
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            handleLogout();
-                          }}
-                          className="w-full px-4 py-2.5 text-left flex items-center gap-3 transition-colors duration-200"
-                          style={{
-                            color: tokens.textSecondary,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background =
-                              tokens.navItemHover;
-                            e.currentTarget.style.color = "#ef4444";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
-                            e.currentTarget.style.color = tokens.textSecondary;
-                          }}
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span className="text-sm">Logout</span>
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                      <span className="dashboard-tone-info flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+                        {initials}
+                      </span>
+                      <span className="hidden max-w-40 truncate sm:inline">
+                        {user?.name || user?.email || "Supplier"}
+                      </span>
+                      <ChevronDown
+                        className="hidden text-muted-foreground sm:block"
+                        aria-hidden="true"
+                      />
+                    </DashboardButton>
+                  </DashboardDropdownMenuTrigger>
+                  <DashboardDropdownMenuContent
+                    align="end"
+                    className="dashboard-glass-popover w-60"
+                  >
+                    <DashboardDropdownMenuLabel className="normal-case">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {user?.name || "Supplier account"}
+                      </span>
+                      <span className="mt-0.5 block truncate font-normal">
+                        {user?.email || "Account settings"}
+                      </span>
+                    </DashboardDropdownMenuLabel>
+                    <DashboardDropdownMenuSeparator />
+                    <DashboardDropdownMenuItem asChild>
+                      <Link href="/dashboard/profile">
+                        <User aria-hidden="true" />
+                        Profile
+                      </Link>
+                    </DashboardDropdownMenuItem>
+                    <DashboardDropdownMenuItem asChild>
+                      <Link href="/dashboard/account">
+                        <Settings aria-hidden="true" />
+                        Account settings
+                      </Link>
+                    </DashboardDropdownMenuItem>
+                    <DashboardDropdownMenuSeparator />
+                    <DashboardDropdownMenuItem
+                      variant="destructive"
+                      onSelect={handleLogout}
+                    >
+                      <LogOut aria-hidden="true" />
+                      Sign out
+                    </DashboardDropdownMenuItem>
+                  </DashboardDropdownMenuContent>
+                </DashboardDropdownMenu>
               </div>
             </div>
           </header>
 
-          {/* Main Content Area */}
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main
+            ref={mainContentRef}
+            id="supplier-dashboard-main"
+            tabIndex={-1}
+            className="dashboard-scroll-region min-h-0 flex-1 overflow-y-auto bg-transparent outline-none"
+          >
+            {children}
+          </main>
         </div>
       </div>
-    </div>
+    </DashboardTooltipProvider>
   );
 }

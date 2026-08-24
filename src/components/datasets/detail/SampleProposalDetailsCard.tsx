@@ -1,24 +1,30 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardStatusBadge,
+} from "@/components/dashboard";
+import type { DatasetDetailTokens } from "./detailTokens";
 
 interface SampleProposalDetailsCardProps {
   actualPrice: number | null | undefined;
   actualPriceCurrency: string | undefined;
   isNegotiable: boolean | null | undefined;
-  sampleNotes: {
-    whySample: string;
-    actualDataSize: string;
-    completeness?: string;
-    deliveryMechanism: string;
-    deliveryMechanismNotes?: string;
-  } | null | undefined;
+  sampleNotes:
+    | {
+        whySample: string;
+        actualDataSize: string;
+        completeness?: string;
+        deliveryMechanism: string;
+        deliveryMechanismNotes?: string;
+      }
+    | null
+    | undefined;
   isEditable: boolean;
   onEditClick: () => void;
   isDark: boolean;
-  tokens: any;
+  tokens: DatasetDetailTokens;
 }
 
 export function SampleProposalDetailsCard({
@@ -28,93 +34,85 @@ export function SampleProposalDetailsCard({
   sampleNotes,
   isEditable,
   onEditClick,
-  isDark,
-  tokens,
 }: SampleProposalDetailsCardProps) {
   return (
-    <Card
-      className="border overflow-hidden"
-      style={{
-        background: isDark
-          ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(30, 64, 175, 0.10) 100%)'
-          : 'linear-gradient(135deg, rgba(59, 130, 246, 0.10) 0%, rgba(30, 64, 175, 0.06) 100%)',
-        borderColor: '#3b82f6',
-      }}
-    >
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-            Sample Proposal Details
+    <DashboardCard className="overflow-hidden">
+      <div className="space-y-4 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-foreground">
+            Sample proposal details
           </h3>
           <div className="flex items-center gap-2">
-            <span
-              className="px-3 py-1 rounded-full text-xs font-semibold"
-              style={{
-                background: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.14)',
-                color: '#2563eb',
-                border: '1px solid rgba(59, 130, 246, 0.4)',
-              }}
-            >
-              SAMPLE
-            </span>
-            {isEditable && (
-              <Button
-                size="sm"
+            <DashboardStatusBadge tone="info" status="sample">
+              Sample
+            </DashboardStatusBadge>
+            {isEditable ? (
+              <DashboardButton
+                size="compact"
                 variant="outline"
                 onClick={onEditClick}
-                className="font-semibold"
-                style={{
-                  background: isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.4)',
-                  color: '#1d4ed8',
-                }}
               >
                 Edit
-              </Button>
-            )}
+              </DashboardButton>
+            ) : null}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label style={{ color: tokens.textSecondary }}>Actual Price</Label>
-            <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-              {actualPrice ?? 0} {actualPriceCurrency ?? ''}
-            </p>
+            <dt className="text-sm font-medium text-muted-foreground">
+              Actual price
+            </dt>
+            <dd className="text-sm font-medium text-foreground">
+              {actualPrice ?? 0} {actualPriceCurrency ?? ""}
+            </dd>
           </div>
           <div className="space-y-2">
-            <Label style={{ color: tokens.textSecondary }}>Negotiable</Label>
-            <p className="text-sm" style={{ color: tokens.textPrimary }}>
-              {isNegotiable === true ? 'Yes' : isNegotiable === false ? 'No' : 'N/A'}
-            </p>
+            <dt className="text-sm font-medium text-muted-foreground">
+              Negotiable
+            </dt>
+            <dd className="text-sm text-foreground">
+              {isNegotiable === true
+                ? "Yes"
+                : isNegotiable === false
+                  ? "No"
+                  : "N/A"}
+            </dd>
           </div>
-        </div>
+        </dl>
 
-        {sampleNotes && (
-          <div className="space-y-2 rounded-lg border p-4" style={{ borderColor: 'rgba(59, 130, 246, 0.35)' }}>
-            <Label style={{ color: tokens.textSecondary }}>Sample Notes</Label>
-            <p className="text-sm" style={{ color: tokens.textPrimary }}>
-              <span className="font-medium">Why sample:</span> {sampleNotes.whySample}
+        {sampleNotes ? (
+          <div className="space-y-2 rounded-lg border border-border bg-[var(--dashboard-surface-muted)] p-4">
+            <p className="text-sm font-medium text-muted-foreground">
+              Sample notes
             </p>
-            <p className="text-sm" style={{ color: tokens.textPrimary }}>
-              <span className="font-medium">Actual data size:</span> {sampleNotes.actualDataSize}
+            <p className="text-sm text-foreground">
+              <span className="font-medium">Why sample:</span>{" "}
+              {sampleNotes.whySample}
             </p>
-            {sampleNotes.completeness && (
-              <p className="text-sm" style={{ color: tokens.textPrimary }}>
-                <span className="font-medium">Completeness:</span> {sampleNotes.completeness}
+            <p className="text-sm text-foreground">
+              <span className="font-medium">Actual data size:</span>{" "}
+              {sampleNotes.actualDataSize}
+            </p>
+            {sampleNotes.completeness ? (
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Completeness:</span>{" "}
+                {sampleNotes.completeness}
               </p>
-            )}
-            <p className="text-sm" style={{ color: tokens.textPrimary }}>
-              <span className="font-medium">Delivery mechanism:</span> {sampleNotes.deliveryMechanism}
+            ) : null}
+            <p className="text-sm text-foreground">
+              <span className="font-medium">Delivery mechanism:</span>{" "}
+              {sampleNotes.deliveryMechanism}
             </p>
-            {sampleNotes.deliveryMechanismNotes && (
-              <p className="text-sm" style={{ color: tokens.textPrimary }}>
-                <span className="font-medium">Delivery notes:</span> {sampleNotes.deliveryMechanismNotes}
+            {sampleNotes.deliveryMechanismNotes ? (
+              <p className="text-sm text-foreground">
+                <span className="font-medium">Delivery notes:</span>{" "}
+                {sampleNotes.deliveryMechanismNotes}
               </p>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
-    </Card>
+    </DashboardCard>
   );
 }

@@ -12,6 +12,7 @@ export * from "./kdts";
 
 // Explicit re-exports for profile functions
 export { getSupplierProfile, updateSupplierProfile } from "./supplier";
+export { submitSupplierDataRequirement } from "./data-requirements";
 
 // Stats
 export * from "./stats";

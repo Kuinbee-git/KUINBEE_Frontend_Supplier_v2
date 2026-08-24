@@ -1,13 +1,20 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
-import { setProposalTags, upsertLocationInfo } from '@/lib/api';
-import type { LocationInfo, SetTagsRequest, UpsertLocationInfoRequest } from '@/types/dataset-proposal.types';
+import { useState } from "react";
+import { DashboardButton } from "@/components/dashboard";
+import { DashboardInput } from "@/components/dashboard";
+import { Label } from "@/components/ui/label";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import { Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { setProposalTags, upsertLocationInfo } from "@/lib/api";
+import type {
+  LocationInfo,
+  SetTagsRequest,
+  SetTagsResponse,
+  UpsertLocationInfoRequest,
+  UpsertLocationInfoResponse,
+} from "@/types/dataset-proposal.types";
+import { toDatasetUiError } from "../shared/datasetUiError";
 
 interface LocationFormData {
   country: string;
@@ -27,33 +34,41 @@ interface LocationTagsEditFormProps {
   isDark?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
-  onUpsertLocation?: (datasetId: string, data: UpsertLocationInfoRequest) => Promise<any>;
-  onSetTags?: (datasetId: string, data: SetTagsRequest) => Promise<any>;
+  onUpsertLocation?: (
+    datasetId: string,
+    data: UpsertLocationInfoRequest
+  ) => Promise<UpsertLocationInfoResponse>;
+  onSetTags?: (
+    datasetId: string,
+    data: SetTagsRequest
+  ) => Promise<SetTagsResponse>;
 }
 
 const DEFAULT_LOCATION_INFO: LocationFormData = {
-  country: '',
-  state: '',
-  city: '',
-  region: '',
-  coordinates: '',
-  coverage: '',
+  country: "",
+  state: "",
+  city: "",
+  region: "",
+  coordinates: "",
+  coverage: "",
 };
 
-const normalizeLocationInfo = (location?: LocationFormData | LocationInfo | null): LocationFormData => ({
-  country: (location?.country ?? '').trim(),
-  state: (location?.state ?? '').trim(),
-  city: (location?.city ?? '').trim(),
-  region: (location?.region ?? '').trim(),
-  coordinates: (location?.coordinates ?? '').trim(),
-  coverage: (location?.coverage ?? '').trim(),
+const normalizeLocationInfo = (
+  location?: LocationFormData | LocationInfo | null
+): LocationFormData => ({
+  country: (location?.country ?? "").trim(),
+  state: (location?.state ?? "").trim(),
+  city: (location?.city ?? "").trim(),
+  region: (location?.region ?? "").trim(),
+  coordinates: (location?.coordinates ?? "").trim(),
+  coverage: (location?.coverage ?? "").trim(),
 });
 
 const parseTagsText = (value: string) => {
   const unique = new Map<string, string>();
 
   value
-    .split(',')
+    .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean)
     .forEach((tag) => {
@@ -80,13 +95,21 @@ export function LocationTagsEditForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const initialLocation = normalizeLocationInfo(initialData?.locationInfo ?? DEFAULT_LOCATION_INFO);
-  const initialTags = parseTagsText((initialData?.tags ?? []).join(', '));
+  const initialLocation = normalizeLocationInfo(
+    initialData?.locationInfo ?? DEFAULT_LOCATION_INFO
+  );
+  const initialTags = parseTagsText((initialData?.tags ?? []).join(", "));
 
-  const [locationInfo, setLocationInfo] = useState<LocationFormData>(initialLocation);
-  const [tagsText, setTagsText] = useState((initialData?.tags ?? []).join(', '));
+  const [locationInfo, setLocationInfo] =
+    useState<LocationFormData>(initialLocation);
+  const [tagsText, setTagsText] = useState(
+    (initialData?.tags ?? []).join(", ")
+  );
 
-  const handleLocationChange = (field: keyof LocationFormData, value: string) => {
+  const handleLocationChange = (
+    field: keyof LocationFormData,
+    value: string
+  ) => {
     setLocationInfo((prev) => ({ ...prev, [field]: value }));
     setError(null);
     setSuccess(false);
@@ -107,7 +130,7 @@ export function LocationTagsEditForm({
     e.preventDefault();
 
     if (!isFormValid()) {
-      setError('Country is required when location fields are provided');
+      setError("Country is required when location fields are provided");
       return;
     }
 
@@ -131,35 +154,53 @@ export function LocationTagsEditForm({
         nextTags.some((tag, index) => tag !== initialTags[index]);
 
       if (!locationChanged && !tagsChanged) {
-        setError('No changes detected');
+        setError("No changes detected");
         setSubmitting(false);
         return;
       }
 
-      const tasks: Promise<any>[] = [];
+      const tasks: Array<
+        Promise<UpsertLocationInfoResponse | SetTagsResponse>
+      > = [];
 
       if (locationChanged) {
         if (!normalizedLocation.country) {
-          setError('Country is required to save location details');
+          setError("Country is required to save location details");
           setSubmitting(false);
           return;
         }
 
         const locationPayload: UpsertLocationInfoRequest = {
           country: normalizedLocation.country,
-          ...(normalizedLocation.state ? { state: normalizedLocation.state } : {}),
+          ...(normalizedLocation.state
+            ? { state: normalizedLocation.state }
+            : {}),
           ...(normalizedLocation.city ? { city: normalizedLocation.city } : {}),
-          ...(normalizedLocation.region ? { region: normalizedLocation.region } : {}),
-          ...(normalizedLocation.coordinates ? { coordinates: normalizedLocation.coordinates } : {}),
-          ...(normalizedLocation.coverage ? { coverage: normalizedLocation.coverage } : {}),
+          ...(normalizedLocation.region
+            ? { region: normalizedLocation.region }
+            : {}),
+          ...(normalizedLocation.coordinates
+            ? { coordinates: normalizedLocation.coordinates }
+            : {}),
+          ...(normalizedLocation.coverage
+            ? { coverage: normalizedLocation.coverage }
+            : {}),
         };
 
-        tasks.push(onUpsertLocation ? onUpsertLocation(datasetId, locationPayload) : upsertLocationInfo(datasetId, locationPayload));
+        tasks.push(
+          onUpsertLocation
+            ? onUpsertLocation(datasetId, locationPayload)
+            : upsertLocationInfo(datasetId, locationPayload)
+        );
       }
 
       if (tagsChanged) {
         const tagsPayload: SetTagsRequest = { tags: nextTags };
-        tasks.push(onSetTags ? onSetTags(datasetId, tagsPayload) : setProposalTags(datasetId, tagsPayload));
+        tasks.push(
+          onSetTags
+            ? onSetTags(datasetId, tagsPayload)
+            : setProposalTags(datasetId, tagsPayload)
+        );
       }
 
       await Promise.all(tasks);
@@ -168,9 +209,10 @@ export function LocationTagsEditForm({
       setTimeout(() => {
         onSuccess?.();
       }, 1200);
-    } catch (err: any) {
-      console.error('Failed to update location/tags:', err);
-      setError(err.message || 'Failed to update location and tags');
+    } catch (err: unknown) {
+      console.error("Failed to update location/tags:", err);
+      const apiError = toDatasetUiError(err);
+      setError(apiError.message || "Failed to update location and tags");
     } finally {
       setSubmitting(false);
     }
@@ -184,14 +226,32 @@ export function LocationTagsEditForm({
             <div
               className="rounded-xl border px-4 py-3 flex items-center gap-3"
               style={{
-                background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                background: isDark
+                  ? "color-mix(in srgb, var(--dashboard-danger) 10%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-danger) 5%, transparent)",
+                borderColor: isDark
+                  ? "color-mix(in srgb, var(--dashboard-danger) 30%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-danger) 20%, transparent)",
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
-                <AlertCircle className="w-4 h-4" style={{ color: '#DC2626' }} />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--dashboard-danger) 15%, transparent)",
+                }}
+              >
+                <AlertCircle
+                  className="w-4 h-4"
+                  style={{ color: "var(--dashboard-danger-foreground)" }}
+                />
               </div>
-              <p className="text-sm font-medium" style={{ color: '#DC2626' }}>{error}</p>
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--dashboard-danger-foreground)" }}
+              >
+                {error}
+              </p>
             </div>
           )}
 
@@ -199,14 +259,32 @@ export function LocationTagsEditForm({
             <div
               className="rounded-xl border px-4 py-3 flex items-center gap-3"
               style={{
-                background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                background: isDark
+                  ? "color-mix(in srgb, var(--dashboard-success) 10%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-success) 5%, transparent)",
+                borderColor: isDark
+                  ? "color-mix(in srgb, var(--dashboard-success) 30%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-success) 20%, transparent)",
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
-                <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--dashboard-success) 15%, transparent)",
+                }}
+              >
+                <CheckCircle
+                  className="w-4 h-4"
+                  style={{ color: "var(--dashboard-success-foreground)" }}
+                />
               </div>
-              <p className="text-sm font-medium" style={{ color: '#22c55e' }}>Location and tags updated successfully!</p>
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--dashboard-success-foreground)" }}
+              >
+                Location and tags updated successfully!
+              </p>
             </div>
           )}
         </div>
@@ -220,7 +298,12 @@ export function LocationTagsEditForm({
         }}
       >
         <div>
-          <h4 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>Location</h4>
+          <h4
+            className="text-sm font-semibold"
+            style={{ color: tokens.textPrimary }}
+          >
+            Location
+          </h4>
           <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
             Geographic details for dataset coverage and discovery.
           </p>
@@ -228,78 +311,116 @@ export function LocationTagsEditForm({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2">
-            <Label htmlFor="country" style={{ color: tokens.textPrimary }}>Country</Label>
-            <Input
+            <Label htmlFor="country" style={{ color: tokens.textPrimary }}>
+              Country
+            </Label>
+            <DashboardInput
               id="country"
               value={locationInfo.country}
-              onChange={(e) => handleLocationChange('country', e.target.value)}
+              onChange={(e) => handleLocationChange("country", e.target.value)}
               placeholder="e.g., India"
               disabled={submitting}
-              style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+              style={{
+                background: tokens.inputBg,
+                borderColor: tokens.inputBorder,
+                color: tokens.textPrimary,
+              }}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="state" style={{ color: tokens.textPrimary }}>State</Label>
-            <Input
+            <Label htmlFor="state" style={{ color: tokens.textPrimary }}>
+              State
+            </Label>
+            <DashboardInput
               id="state"
               value={locationInfo.state}
-              onChange={(e) => handleLocationChange('state', e.target.value)}
+              onChange={(e) => handleLocationChange("state", e.target.value)}
               placeholder="e.g., Karnataka"
               disabled={submitting}
-              style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+              style={{
+                background: tokens.inputBg,
+                borderColor: tokens.inputBorder,
+                color: tokens.textPrimary,
+              }}
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2">
-            <Label htmlFor="city" style={{ color: tokens.textPrimary }}>City</Label>
-            <Input
+            <Label htmlFor="city" style={{ color: tokens.textPrimary }}>
+              City
+            </Label>
+            <DashboardInput
               id="city"
               value={locationInfo.city}
-              onChange={(e) => handleLocationChange('city', e.target.value)}
+              onChange={(e) => handleLocationChange("city", e.target.value)}
               placeholder="e.g., Bengaluru"
               disabled={submitting}
-              style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+              style={{
+                background: tokens.inputBg,
+                borderColor: tokens.inputBorder,
+                color: tokens.textPrimary,
+              }}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="region" style={{ color: tokens.textPrimary }}>Region</Label>
-            <Input
+            <Label htmlFor="region" style={{ color: tokens.textPrimary }}>
+              Region
+            </Label>
+            <DashboardInput
               id="region"
               value={locationInfo.region}
-              onChange={(e) => handleLocationChange('region', e.target.value)}
+              onChange={(e) => handleLocationChange("region", e.target.value)}
               placeholder="e.g., South Asia"
               disabled={submitting}
-              style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+              style={{
+                background: tokens.inputBg,
+                borderColor: tokens.inputBorder,
+                color: tokens.textPrimary,
+              }}
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2">
-            <Label htmlFor="coordinates" style={{ color: tokens.textPrimary }}>Coordinates</Label>
-            <Input
+            <Label htmlFor="coordinates" style={{ color: tokens.textPrimary }}>
+              Coordinates
+            </Label>
+            <DashboardInput
               id="coordinates"
               value={locationInfo.coordinates}
-              onChange={(e) => handleLocationChange('coordinates', e.target.value)}
+              onChange={(e) =>
+                handleLocationChange("coordinates", e.target.value)
+              }
               placeholder="e.g., 12.9716,77.5946"
               disabled={submitting}
-              style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+              style={{
+                background: tokens.inputBg,
+                borderColor: tokens.inputBorder,
+                color: tokens.textPrimary,
+              }}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="coverage" style={{ color: tokens.textPrimary }}>Coverage</Label>
-            <Input
+            <Label htmlFor="coverage" style={{ color: tokens.textPrimary }}>
+              Coverage
+            </Label>
+            <DashboardInput
               id="coverage"
               value={locationInfo.coverage}
-              onChange={(e) => handleLocationChange('coverage', e.target.value)}
+              onChange={(e) => handleLocationChange("coverage", e.target.value)}
               placeholder="e.g., Pan-India"
               disabled={submitting}
-              style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+              style={{
+                background: tokens.inputBg,
+                borderColor: tokens.inputBorder,
+                color: tokens.textPrimary,
+              }}
             />
           </div>
         </div>
@@ -313,15 +434,22 @@ export function LocationTagsEditForm({
         }}
       >
         <div>
-          <h4 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>Tags</h4>
+          <h4
+            className="text-sm font-semibold"
+            style={{ color: tokens.textPrimary }}
+          >
+            Tags
+          </h4>
           <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
             Comma-separated tags. New tags are created automatically if missing.
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="tagsText" style={{ color: tokens.textPrimary }}>Tags</Label>
-          <Input
+          <Label htmlFor="tagsText" style={{ color: tokens.textPrimary }}>
+            Tags
+          </Label>
+          <DashboardInput
             id="tagsText"
             value={tagsText}
             onChange={(e) => {
@@ -331,40 +459,50 @@ export function LocationTagsEditForm({
             }}
             placeholder="e.g., finance, time-series, consumer-data"
             disabled={submitting}
-            style={{ background: tokens.inputBg, borderColor: tokens.inputBorder, color: tokens.textPrimary }}
+            style={{
+              background: tokens.inputBg,
+              borderColor: tokens.inputBorder,
+              color: tokens.textPrimary,
+            }}
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-3 pt-4 border-t" style={{ borderColor: tokens.borderSubtle || tokens.inputBorder }}>
-        <Button
+      <div
+        className="flex items-center gap-3 pt-4 border-t"
+        style={{ borderColor: tokens.borderSubtle || tokens.inputBorder }}
+      >
+        <DashboardButton
           type="submit"
           disabled={!isFormValid() || submitting}
           className="h-11 px-6 font-medium"
           style={{
-            background: isFormValid() && !submitting ? '#2a3558' : 'rgba(156, 163, 175, 0.3)',
-            color: '#fff',
+            background:
+              isFormValid() && !submitting
+                ? "var(--dashboard-button-primary-background)"
+                : "color-mix(in srgb, var(--dashboard-text-muted) 30%, transparent)",
+            color: "var(--dashboard-button-primary-foreground)",
           }}
         >
           <Save className="w-4 h-4 mr-2" />
-          {submitting ? 'Saving...' : 'Save Changes'}
-        </Button>
+          {submitting ? "Saving..." : "Save Changes"}
+        </DashboardButton>
 
-        <Button
+        <DashboardButton
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={submitting}
           className="h-11 px-5 font-medium"
           style={{
-            background: tokens.glassBg || 'transparent',
+            background: tokens.glassBg || "transparent",
             border: `1px solid ${tokens.glassBorder || tokens.inputBorder}`,
             color: tokens.textPrimary,
           }}
         >
           <X className="w-4 h-4 mr-2" />
           Cancel
-        </Button>
+        </DashboardButton>
       </div>
     </form>
   );

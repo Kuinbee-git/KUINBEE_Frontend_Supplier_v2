@@ -1,0 +1,933 @@
+/*
+ * Authenticated supplier UI boundary.
+ *
+ * This stylesheet is loaded by the dashboard layout only. Every selector added
+ * during the supplier dashboard refresh must remain under `.supplier-dashboard`
+ * so authentication and onboarding keep their current presentation.
+ *
+ * Colour aliases intentionally point to the existing Kuinbee semantic tokens in
+ * globals.css. This scope must not introduce a second palette.
+ */
+
+/* Theme changes are captured as two complete frames and crossfaded by the
+   compositor. Disabling descendant colour transitions during the capture keeps
+   hundreds of glass and text nodes from repainting independently. */
+html[data-dashboard-theme-transition="true"] body,
+html[data-dashboard-theme-transition="true"] .supplier-dashboard,
+html[data-dashboard-theme-transition="true"] .supplier-dashboard *,
+html[data-dashboard-theme-transition="true"] .supplier-dashboard *::before,
+html[data-dashboard-theme-transition="true"] .supplier-dashboard *::after,
+html[data-dashboard-theme-transition="true"] .supplier-dashboard-portal,
+html[data-dashboard-theme-transition="true"] .supplier-dashboard-portal *,
+html[data-dashboard-theme-transition="true"]
+  .supplier-dashboard-portal
+  *::before,
+html[data-dashboard-theme-transition="true"]
+  .supplier-dashboard-portal
+  *::after {
+  transition: none !important;
+}
+
+html[data-dashboard-theme-transition="true"]::view-transition-group(root) {
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-dashboard-theme-transition="true"]::view-transition-old(root) {
+  animation: dashboard-theme-fade-out 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
+  animation: dashboard-theme-fade-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dashboard-theme-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dashboard-theme-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dashboard-theme-transition="true"]::view-transition-group(root),
+  html[data-dashboard-theme-transition="true"]::view-transition-old(root),
+  html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+.supplier-dashboard,
+.supplier-dashboard-portal {
+  /* Existing Kuinbee colour language */
+  --dashboard-canvas: linear-gradient(
+    135deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 72%, var(--background)) 50%,
+    var(--background) 100%
+  );
+  --dashboard-surface: var(--card);
+  --dashboard-surface-muted: var(--muted);
+  --dashboard-popover: var(--popover);
+  --dashboard-border: color-mix(
+    in srgb,
+    var(--border-default) 82%,
+    var(--brand-primary)
+  );
+  --dashboard-text: var(--foreground);
+  --dashboard-text-muted: var(--text-secondary);
+  --dashboard-action: var(--primary);
+  --dashboard-action-foreground: var(--primary-foreground);
+  --dashboard-focus-ring: var(--ring);
+  --dashboard-success: var(--semantic-success);
+  --dashboard-warning: var(--semantic-warning);
+  --dashboard-danger: var(--semantic-error);
+
+  /* Retained Kuinbee background and glass language. The values are derived
+     from the existing global palette so the dashboard remains a scoped visual
+     treatment rather than introducing a second colour system. */
+  --dashboard-grid-line: color-mix(
+    in srgb,
+    var(--brand-primary) 18%,
+    transparent
+  );
+  --dashboard-grid-opacity: 0.5;
+  --dashboard-glass-background: color-mix(
+    in srgb,
+    var(--dashboard-surface) 88%,
+    transparent
+  );
+  --dashboard-glass-background-soft: color-mix(
+    in srgb,
+    var(--dashboard-surface) 60%,
+    transparent
+  );
+  --dashboard-shell-background: color-mix(
+    in srgb,
+    var(--dashboard-glass-background-soft) 76%,
+    var(--background)
+  );
+  --dashboard-glass-background-strong: color-mix(
+    in srgb,
+    var(--dashboard-surface) 94%,
+    transparent
+  );
+  --dashboard-glass-border: color-mix(
+    in srgb,
+    var(--dashboard-border) 88%,
+    var(--dashboard-surface)
+  );
+  --dashboard-glass-shadow:
+    0 8px 16px color-mix(in srgb, var(--dashboard-text) 8%, transparent),
+    0 20px 60px color-mix(in srgb, var(--dashboard-text) 10%, transparent),
+    0 40px 100px color-mix(in srgb, var(--dashboard-text) 7%, transparent);
+  --dashboard-glass-blur: 24px;
+  --dashboard-shell-blur: 16px;
+  --dashboard-control-background: color-mix(
+    in srgb,
+    var(--dashboard-surface) 72%,
+    transparent
+  );
+  --dashboard-control-background-hover: color-mix(
+    in srgb,
+    var(--dashboard-surface) 88%,
+    transparent
+  );
+  --dashboard-nav-active: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dashboard-action) 8%, transparent),
+    color-mix(in srgb, var(--dashboard-action) 4%, transparent)
+  );
+  --dashboard-rim-light: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--dashboard-text) 12%, transparent),
+    transparent
+  );
+
+  /* Modern authenticated button system. Light mode keeps the established deep
+     navy action; supporting actions sit on the shared glass surface. */
+  --dashboard-button-primary-background: var(--brand-primary);
+  --dashboard-button-primary-background-hover: color-mix(
+    in srgb,
+    var(--brand-primary) 88%,
+    var(--brand-secondary)
+  );
+  --dashboard-button-primary-background-active: color-mix(
+    in srgb,
+    var(--brand-primary) 90%,
+    var(--dashboard-text)
+  );
+  --dashboard-button-primary-foreground: var(--primary-foreground);
+  --dashboard-button-primary-border: color-mix(
+    in srgb,
+    var(--brand-primary) 88%,
+    var(--dashboard-text)
+  );
+  --dashboard-button-primary-shadow:
+    0 1px 2px color-mix(in srgb, var(--dashboard-text) 18%, transparent),
+    0 8px 18px color-mix(in srgb, var(--brand-primary) 15%, transparent);
+  --dashboard-button-secondary-background: color-mix(
+    in srgb,
+    var(--dashboard-surface) 74%,
+    transparent
+  );
+  --dashboard-button-secondary-background-hover: color-mix(
+    in srgb,
+    var(--dashboard-surface) 94%,
+    transparent
+  );
+  --dashboard-button-secondary-foreground: var(--dashboard-text);
+  --dashboard-button-secondary-border: var(--dashboard-glass-border);
+  --dashboard-button-outline-border-hover: color-mix(
+    in srgb,
+    var(--dashboard-action) 24%,
+    var(--dashboard-glass-border)
+  );
+  --dashboard-button-ghost-hover: color-mix(
+    in srgb,
+    var(--dashboard-action) 7%,
+    transparent
+  );
+  --dashboard-button-destructive-background: color-mix(
+    in srgb,
+    var(--dashboard-danger) 84%,
+    var(--dashboard-text)
+  );
+  --dashboard-button-destructive-background-hover: color-mix(
+    in srgb,
+    var(--dashboard-danger) 92%,
+    var(--dashboard-text)
+  );
+  --dashboard-button-destructive-foreground: var(--destructive-foreground);
+  --dashboard-button-link: var(--dashboard-action);
+
+  /* Accessible applications of the existing palette. */
+  --dashboard-action-solid: var(--dashboard-action);
+  --dashboard-info-foreground: color-mix(
+    in srgb,
+    var(--dashboard-action) 80%,
+    var(--dashboard-text)
+  );
+  --dashboard-success-foreground: color-mix(
+    in srgb,
+    var(--dashboard-success) 60%,
+    var(--dashboard-text)
+  );
+  --dashboard-warning-foreground: color-mix(
+    in srgb,
+    var(--dashboard-warning) 55%,
+    var(--dashboard-text)
+  );
+  --dashboard-danger-foreground: color-mix(
+    in srgb,
+    var(--dashboard-danger) 75%,
+    var(--dashboard-text)
+  );
+  --dashboard-danger-solid: color-mix(
+    in srgb,
+    var(--dashboard-danger) 72%,
+    var(--dashboard-text)
+  );
+  --dashboard-control-border: color-mix(
+    in srgb,
+    var(--dashboard-text) 47%,
+    var(--dashboard-surface)
+  );
+  --dashboard-indicator: var(--dashboard-action);
+  --dashboard-switch-track: var(--dashboard-control-border);
+  --dashboard-switch-thumb: var(--dashboard-surface);
+  --dashboard-overlay: color-mix(
+    in srgb,
+    var(--dashboard-text) 60%,
+    transparent
+  );
+
+  /* Keep secondary dashboard copy readable without changing the Kuinbee palette. */
+  --muted-foreground: var(--dashboard-text-muted);
+  /* Tailwind's border utilities consume `--border`. Strengthen that token only
+     inside the authenticated light dashboard so structural dividers remain
+     distinct from the decorative background grid. */
+  --border: var(--dashboard-border);
+
+  /* Authenticated application geometry */
+  --dashboard-sidebar-width: 16rem;
+  --dashboard-sidebar-collapsed-width: 5rem;
+  --dashboard-topbar-height: 4rem;
+  --dashboard-content-max-width: 87.5rem;
+  --dashboard-page-padding-inline: 1rem;
+  --dashboard-page-padding-block: 1.5rem;
+  --dashboard-section-gap: 1.5rem;
+  --dashboard-grid-gap: 1rem;
+  --dashboard-control-height: 2.5rem;
+  --dashboard-radius: var(--radius);
+  --dashboard-radius-large: calc(var(--radius) + 0.25rem);
+
+  /* Shared portal stacking. Modal descendants opt into the modal layer. */
+  --dashboard-layer-popover: 70;
+  /* Overlay and content deliberately share a layer. Each Radix portal appends
+     overlay then content, so a nested modal's later portal covers its parent. */
+  --dashboard-layer-dialog-overlay: 80;
+  --dashboard-layer-dialog: 80;
+  --dashboard-layer-modal-popover: 90;
+  --dashboard-layer-tooltip: 95;
+
+  /* Geist is loaded globally as variables but is applied only in this scope. */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-sans);
+}
+
+.supplier-dashboard:is(.dark *),
+.supplier-dashboard-portal:is(.dark *) {
+  --dashboard-border: var(--border-default);
+  --dashboard-text-muted: color-mix(
+    in srgb,
+    var(--foreground) 74%,
+    var(--surface-elevated)
+  );
+  --dashboard-canvas: linear-gradient(
+    135deg,
+    var(--secondary) 0%,
+    color-mix(in srgb, var(--secondary) 92%, var(--dashboard-text)) 50%,
+    color-mix(in srgb, var(--secondary) 97%, var(--dashboard-text)) 100%
+  );
+  --dashboard-grid-line: color-mix(
+    in srgb,
+    var(--primary-foreground) 4%,
+    transparent
+  );
+  --dashboard-grid-opacity: 0.6;
+  --dashboard-glass-background: color-mix(
+    in srgb,
+    var(--primary-foreground) 8%,
+    transparent
+  );
+  --dashboard-glass-background-soft: color-mix(
+    in srgb,
+    var(--primary-foreground) 4%,
+    transparent
+  );
+  --dashboard-glass-background-strong: color-mix(
+    in srgb,
+    var(--surface-elevated) 94%,
+    transparent
+  );
+  --dashboard-glass-border: color-mix(
+    in srgb,
+    var(--primary-foreground) 10%,
+    transparent
+  );
+  --dashboard-glass-shadow:
+    0 8px 16px color-mix(in srgb, var(--background) 75%, transparent),
+    0 20px 40px color-mix(in srgb, var(--background) 68%, transparent),
+    0 40px 80px color-mix(in srgb, var(--background) 55%, transparent);
+  --dashboard-control-background: color-mix(
+    in srgb,
+    var(--primary-foreground) 8%,
+    transparent
+  );
+  --dashboard-control-background-hover: color-mix(
+    in srgb,
+    var(--primary-foreground) 12%,
+    transparent
+  );
+  --dashboard-nav-active: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--secondary) 40%, transparent),
+    color-mix(in srgb, var(--secondary) 30%, transparent)
+  );
+  --dashboard-rim-light: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--primary-foreground) 15%, transparent),
+    transparent
+  );
+  /* A near-ivory primary action is calmer and more legible than the global
+     bright blue when placed on Kuinbee's dark navy glass canvas. */
+  --dashboard-button-primary-background: color-mix(
+    in srgb,
+    var(--foreground) 94%,
+    var(--surface-elevated)
+  );
+  --dashboard-button-primary-background-hover: color-mix(
+    in srgb,
+    var(--foreground) 98%,
+    var(--surface-elevated)
+  );
+  --dashboard-button-primary-background-active: color-mix(
+    in srgb,
+    var(--foreground) 86%,
+    var(--surface-elevated)
+  );
+  --dashboard-button-primary-foreground: var(--secondary);
+  --dashboard-button-primary-border: color-mix(
+    in srgb,
+    var(--foreground) 68%,
+    transparent
+  );
+  --dashboard-button-primary-shadow:
+    0 1px 2px color-mix(in srgb, var(--background) 82%, transparent),
+    0 8px 22px color-mix(in srgb, var(--background) 52%, transparent);
+  --dashboard-button-secondary-background: color-mix(
+    in srgb,
+    var(--foreground) 10%,
+    transparent
+  );
+  --dashboard-button-secondary-background-hover: color-mix(
+    in srgb,
+    var(--foreground) 14%,
+    transparent
+  );
+  --dashboard-button-secondary-foreground: var(--dashboard-text);
+  --dashboard-button-secondary-border: color-mix(
+    in srgb,
+    var(--foreground) 12%,
+    transparent
+  );
+  --dashboard-button-outline-border-hover: color-mix(
+    in srgb,
+    var(--foreground) 20%,
+    transparent
+  );
+  --dashboard-button-ghost-hover: color-mix(
+    in srgb,
+    var(--foreground) 8%,
+    transparent
+  );
+  --dashboard-button-destructive-background: color-mix(
+    in srgb,
+    var(--dashboard-danger) 78%,
+    var(--background)
+  );
+  --dashboard-button-destructive-background-hover: color-mix(
+    in srgb,
+    var(--dashboard-danger) 86%,
+    var(--background)
+  );
+  --dashboard-button-link: var(--dashboard-text);
+  --dashboard-action-solid: color-mix(
+    in srgb,
+    var(--dashboard-action) 65%,
+    var(--background)
+  );
+  --dashboard-danger-solid: color-mix(
+    in srgb,
+    var(--dashboard-danger) 72%,
+    var(--background)
+  );
+  --dashboard-overlay: color-mix(in srgb, var(--background) 78%, transparent);
+}
+
+.supplier-dashboard.dashboard-canvas {
+  position: relative;
+  isolation: isolate;
+  background: var(--dashboard-canvas);
+}
+
+.supplier-dashboard.dashboard-canvas::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--dashboard-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--dashboard-grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  content: "";
+  opacity: var(--dashboard-grid-opacity);
+  pointer-events: none;
+}
+
+.supplier-dashboard .dashboard-shell-sidebar,
+.supplier-dashboard .dashboard-shell-topbar,
+.supplier-dashboard-portal.dashboard-shell-sidebar,
+.supplier-dashboard-portal.dashboard-shell-topbar {
+  background: var(--dashboard-shell-background);
+  backdrop-filter: blur(var(--dashboard-shell-blur));
+  -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+}
+
+.supplier-dashboard .dashboard-glass-card,
+.supplier-dashboard-portal.dashboard-glass-card,
+.supplier-dashboard-portal .dashboard-glass-card {
+  position: relative;
+  background: var(--dashboard-glass-background);
+  border-color: var(--dashboard-glass-border);
+  box-shadow: var(--dashboard-glass-shadow);
+  backdrop-filter: blur(var(--dashboard-glass-blur));
+  -webkit-backdrop-filter: blur(var(--dashboard-glass-blur));
+}
+
+.supplier-dashboard .dashboard-glass-card::before,
+.supplier-dashboard-portal.dashboard-glass-card::before,
+.supplier-dashboard-portal .dashboard-glass-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: var(--dashboard-rim-light);
+  content: "";
+  pointer-events: none;
+}
+
+.supplier-dashboard .dashboard-glass-popover,
+.supplier-dashboard-portal.dashboard-glass-popover,
+.supplier-dashboard-portal .dashboard-glass-popover {
+  background: var(--dashboard-glass-background-strong);
+  border-color: var(--dashboard-glass-border);
+  box-shadow: var(--dashboard-glass-shadow);
+  backdrop-filter: blur(var(--dashboard-shell-blur));
+  -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+}
+
+.supplier-dashboard .dashboard-glass-control,
+.supplier-dashboard-portal.dashboard-glass-control,
+.supplier-dashboard-portal .dashboard-glass-control {
+  background: var(--dashboard-control-background);
+  border-color: var(--dashboard-glass-border);
+  backdrop-filter: blur(var(--dashboard-shell-blur));
+  -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+}
+
+.supplier-dashboard .dashboard-glass-control:hover,
+.supplier-dashboard-portal.dashboard-glass-control:hover,
+.supplier-dashboard-portal .dashboard-glass-control:hover {
+  background: var(--dashboard-control-background-hover);
+}
+
+/* Inputs and select triggers share a slightly firmer edge than shell controls.
+   This keeps mixed search/filter toolbars visually level without introducing
+   an opaque field colour in dark mode. */
+.supplier-dashboard .dashboard-field-control,
+.supplier-dashboard-portal.dashboard-field-control,
+.supplier-dashboard-portal .dashboard-field-control {
+  background: var(--dashboard-control-background);
+  border-color: var(--dashboard-control-border);
+}
+
+.supplier-dashboard .dashboard-field-control:hover:not(:disabled),
+.supplier-dashboard-portal.dashboard-field-control:hover:not(:disabled),
+.supplier-dashboard-portal .dashboard-field-control:hover:not(:disabled) {
+  background: var(--dashboard-control-background-hover);
+}
+
+.supplier-dashboard .dashboard-form-actions,
+.supplier-dashboard-portal.dashboard-form-actions,
+.supplier-dashboard-portal .dashboard-form-actions {
+  background: var(--dashboard-glass-background-soft);
+  backdrop-filter: blur(var(--dashboard-shell-blur));
+  -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+}
+
+@media (hover: hover) {
+  /* Light surfaces need a firmer response than the dark glass canvas. Keep the
+     motion small, but make the background, edge, and elevation change clear. */
+  .supplier-dashboard:not(:is(.dark *))
+    .dashboard-nav-item:not(.dashboard-nav-active):hover {
+    background: color-mix(
+      in srgb,
+      var(--dashboard-action) 12%,
+      var(--dashboard-glass-background-soft)
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--dashboard-action) 30%,
+      var(--dashboard-glass-border)
+    );
+    box-shadow: 0 6px 16px
+      color-mix(in srgb, var(--dashboard-text) 13%, transparent);
+    color: var(--dashboard-text);
+    transform: translateX(4px);
+  }
+
+  .supplier-dashboard:not(:is(.dark *))
+    .dashboard-glass-control:not(:disabled):hover,
+  .supplier-dashboard-portal.dashboard-glass-control:not(:is(.dark *)):not(
+      :disabled
+    ):hover,
+  .supplier-dashboard-portal:not(:is(.dark *))
+    .dashboard-glass-control:not(:disabled):hover {
+    border-color: color-mix(
+      in srgb,
+      var(--dashboard-action) 36%,
+      var(--dashboard-glass-border)
+    );
+    box-shadow: 0 8px 20px
+      color-mix(in srgb, var(--dashboard-text) 15%, transparent);
+  }
+
+  .supplier-dashboard:not(:is(.dark *)) .dashboard-button:not(:disabled):hover,
+  .supplier-dashboard-portal.dashboard-button:not(:is(.dark *)):not(
+      :disabled
+    ):hover,
+  .supplier-dashboard-portal:not(:is(.dark *))
+    .dashboard-button:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+
+  .supplier-dashboard:not(:is(.dark *)) .dashboard-interactive-row:hover {
+    background: color-mix(
+      in srgb,
+      var(--dashboard-action) 10%,
+      var(--dashboard-surface)
+    );
+  }
+}
+
+.supplier-dashboard .dashboard-nav-active,
+.supplier-dashboard-portal .dashboard-nav-active {
+  background: var(--dashboard-nav-active);
+  border-color: var(--dashboard-glass-border);
+  box-shadow: 0 2px 8px
+    color-mix(in srgb, var(--dashboard-text) 8%, transparent);
+}
+
+.supplier-dashboard .dashboard-button,
+.supplier-dashboard-portal.dashboard-button,
+.supplier-dashboard-portal .dashboard-button {
+  border-color: transparent;
+  box-shadow: 0 1px 2px
+    color-mix(in srgb, var(--dashboard-text) 10%, transparent);
+  transform: translateY(0);
+}
+
+.supplier-dashboard .dashboard-button:not(:disabled):hover,
+.supplier-dashboard-portal.dashboard-button:not(:disabled):hover,
+.supplier-dashboard-portal .dashboard-button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.supplier-dashboard .dashboard-button:not(:disabled):active,
+.supplier-dashboard-portal.dashboard-button:not(:disabled):active,
+.supplier-dashboard-portal .dashboard-button:not(:disabled):active {
+  box-shadow: 0 1px 2px
+    color-mix(in srgb, var(--dashboard-text) 12%, transparent);
+  transform: translateY(0);
+}
+
+.supplier-dashboard .dashboard-button:disabled,
+.supplier-dashboard-portal.dashboard-button:disabled,
+.supplier-dashboard-portal .dashboard-button:disabled {
+  box-shadow: none;
+  transform: none;
+}
+
+.supplier-dashboard .dashboard-button-primary,
+.supplier-dashboard-portal.dashboard-button-primary,
+.supplier-dashboard-portal .dashboard-button-primary {
+  background: var(--dashboard-button-primary-background);
+  border-color: var(--dashboard-button-primary-border);
+  color: var(--dashboard-button-primary-foreground);
+  box-shadow: var(--dashboard-button-primary-shadow);
+}
+
+.supplier-dashboard .dashboard-button-primary:not(:disabled):hover,
+.supplier-dashboard-portal.dashboard-button-primary:not(:disabled):hover,
+.supplier-dashboard-portal .dashboard-button-primary:not(:disabled):hover {
+  background: var(--dashboard-button-primary-background-hover);
+  box-shadow:
+    var(--dashboard-button-primary-shadow),
+    inset 0 1px
+      color-mix(
+        in srgb,
+        var(--dashboard-button-primary-foreground) 16%,
+        transparent
+      );
+}
+
+.supplier-dashboard .dashboard-button-primary:not(:disabled):active,
+.supplier-dashboard-portal.dashboard-button-primary:not(:disabled):active,
+.supplier-dashboard-portal .dashboard-button-primary:not(:disabled):active {
+  background: var(--dashboard-button-primary-background-active);
+}
+
+.supplier-dashboard .dashboard-button-secondary,
+.supplier-dashboard-portal.dashboard-button-secondary,
+.supplier-dashboard-portal .dashboard-button-secondary {
+  background: var(--dashboard-button-secondary-background);
+  border-color: var(--dashboard-button-secondary-border);
+  color: var(--dashboard-button-secondary-foreground);
+  backdrop-filter: blur(var(--dashboard-shell-blur));
+  -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+}
+
+.supplier-dashboard .dashboard-button-secondary:not(:disabled):hover,
+.supplier-dashboard-portal.dashboard-button-secondary:not(:disabled):hover,
+.supplier-dashboard-portal .dashboard-button-secondary:not(:disabled):hover {
+  background: var(--dashboard-button-secondary-background-hover);
+}
+
+.supplier-dashboard .dashboard-button-outline,
+.supplier-dashboard-portal.dashboard-button-outline,
+.supplier-dashboard-portal .dashboard-button-outline {
+  background: var(--dashboard-control-background);
+  border-color: var(--dashboard-glass-border);
+  color: var(--dashboard-text);
+}
+
+.supplier-dashboard .dashboard-button-outline:not(:disabled):hover,
+.supplier-dashboard-portal.dashboard-button-outline:not(:disabled):hover,
+.supplier-dashboard-portal .dashboard-button-outline:not(:disabled):hover {
+  background: var(--dashboard-control-background-hover);
+  border-color: var(--dashboard-button-outline-border-hover);
+}
+
+.supplier-dashboard .dashboard-button-ghost,
+.supplier-dashboard-portal.dashboard-button-ghost,
+.supplier-dashboard-portal .dashboard-button-ghost {
+  background: transparent;
+  box-shadow: none;
+  color: var(--dashboard-text-muted);
+}
+
+.supplier-dashboard .dashboard-button-ghost:not(:disabled):hover,
+.supplier-dashboard-portal.dashboard-button-ghost:not(:disabled):hover,
+.supplier-dashboard-portal .dashboard-button-ghost:not(:disabled):hover {
+  background: var(--dashboard-button-ghost-hover);
+  color: var(--dashboard-text);
+}
+
+.supplier-dashboard .dashboard-button-destructive,
+.supplier-dashboard-portal.dashboard-button-destructive,
+.supplier-dashboard-portal .dashboard-button-destructive {
+  background: var(--dashboard-button-destructive-background);
+  border-color: color-mix(in srgb, var(--dashboard-danger) 64%, transparent);
+  color: var(--dashboard-button-destructive-foreground);
+}
+
+.supplier-dashboard .dashboard-button-destructive:not(:disabled):hover,
+.supplier-dashboard-portal.dashboard-button-destructive:not(:disabled):hover,
+.supplier-dashboard-portal .dashboard-button-destructive:not(:disabled):hover {
+  background: var(--dashboard-button-destructive-background-hover);
+}
+
+.supplier-dashboard .dashboard-button-link,
+.supplier-dashboard-portal.dashboard-button-link,
+.supplier-dashboard-portal .dashboard-button-link {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--dashboard-button-link);
+}
+
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .supplier-dashboard .dashboard-shell-sidebar,
+  .supplier-dashboard .dashboard-shell-topbar,
+  .supplier-dashboard .dashboard-glass-card,
+  .supplier-dashboard .dashboard-glass-popover,
+  .supplier-dashboard .dashboard-glass-control,
+  .supplier-dashboard .dashboard-form-actions,
+  .supplier-dashboard .dashboard-button-secondary,
+  .supplier-dashboard-portal.dashboard-shell-sidebar,
+  .supplier-dashboard-portal.dashboard-shell-topbar,
+  .supplier-dashboard-portal.dashboard-glass-card,
+  .supplier-dashboard-portal.dashboard-glass-popover,
+  .supplier-dashboard-portal.dashboard-glass-control,
+  .supplier-dashboard-portal.dashboard-form-actions,
+  .supplier-dashboard-portal .dashboard-form-actions,
+  .supplier-dashboard-portal.dashboard-button-secondary {
+    background: var(--dashboard-surface);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .supplier-dashboard .dashboard-shell-sidebar,
+  .supplier-dashboard .dashboard-shell-topbar,
+  .supplier-dashboard .dashboard-glass-card,
+  .supplier-dashboard .dashboard-glass-popover,
+  .supplier-dashboard .dashboard-glass-control,
+  .supplier-dashboard .dashboard-form-actions,
+  .supplier-dashboard .dashboard-button-secondary,
+  .supplier-dashboard-portal.dashboard-shell-sidebar,
+  .supplier-dashboard-portal.dashboard-shell-topbar,
+  .supplier-dashboard-portal.dashboard-glass-card,
+  .supplier-dashboard-portal.dashboard-glass-popover,
+  .supplier-dashboard-portal.dashboard-glass-control,
+  .supplier-dashboard-portal.dashboard-form-actions,
+  .supplier-dashboard-portal .dashboard-form-actions,
+  .supplier-dashboard-portal.dashboard-button-secondary {
+    background: var(--dashboard-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supplier-dashboard .dashboard-button,
+  .supplier-dashboard .dashboard-button:hover,
+  .supplier-dashboard .dashboard-button:active,
+  .supplier-dashboard-portal.dashboard-button,
+  .supplier-dashboard-portal.dashboard-button:hover,
+  .supplier-dashboard-portal.dashboard-button:active,
+  .supplier-dashboard-portal .dashboard-button,
+  .supplier-dashboard-portal .dashboard-button:hover,
+  .supplier-dashboard-portal .dashboard-button:active {
+    transform: none;
+  }
+}
+
+@media (min-width: 48rem) {
+  .supplier-dashboard {
+    --dashboard-page-padding-inline: 1.5rem;
+    --dashboard-page-padding-block: 2rem;
+    --dashboard-grid-gap: 1.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .supplier-dashboard {
+    --dashboard-page-padding-inline: 2rem;
+  }
+}
+
+.supplier-dashboard .dashboard-tone-neutral,
+.supplier-dashboard-portal.dashboard-tone-neutral,
+.supplier-dashboard-portal .dashboard-tone-neutral {
+  color: var(--dashboard-text-muted);
+  background: var(--dashboard-surface-muted);
+  border-color: var(--dashboard-border);
+}
+
+.supplier-dashboard .dashboard-tone-info,
+.supplier-dashboard-portal.dashboard-tone-info,
+.supplier-dashboard-portal .dashboard-tone-info {
+  color: var(--dashboard-info-foreground);
+  background: color-mix(
+    in srgb,
+    var(--dashboard-action) 10%,
+    var(--dashboard-surface)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--dashboard-action) 28%,
+    var(--dashboard-border)
+  );
+}
+
+.supplier-dashboard .dashboard-tone-success,
+.supplier-dashboard-portal.dashboard-tone-success,
+.supplier-dashboard-portal .dashboard-tone-success {
+  color: var(--dashboard-success-foreground);
+  background: color-mix(
+    in srgb,
+    var(--dashboard-success) 10%,
+    var(--dashboard-surface)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--dashboard-success) 28%,
+    var(--dashboard-border)
+  );
+}
+
+.supplier-dashboard .dashboard-tone-warning,
+.supplier-dashboard-portal.dashboard-tone-warning,
+.supplier-dashboard-portal .dashboard-tone-warning {
+  color: var(--dashboard-warning-foreground);
+  background: color-mix(
+    in srgb,
+    var(--dashboard-warning) 10%,
+    var(--dashboard-surface)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--dashboard-warning) 32%,
+    var(--dashboard-border)
+  );
+}
+
+.supplier-dashboard .dashboard-tone-danger,
+.supplier-dashboard-portal.dashboard-tone-danger,
+.supplier-dashboard-portal .dashboard-tone-danger {
+  color: var(--dashboard-danger-foreground);
+  background: color-mix(
+    in srgb,
+    var(--dashboard-danger) 9%,
+    var(--dashboard-surface)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--dashboard-danger) 28%,
+    var(--dashboard-border)
+  );
+}
+
+.supplier-dashboard .dashboard-scroll-region,
+.supplier-dashboard-portal.dashboard-scroll-region,
+.supplier-dashboard-portal .dashboard-scroll-region {
+  scrollbar-color: var(--dashboard-border) transparent;
+  scrollbar-width: thin;
+}
+
+.supplier-dashboard .dashboard-scroll-region::-webkit-scrollbar,
+.supplier-dashboard-portal.dashboard-scroll-region::-webkit-scrollbar,
+.supplier-dashboard-portal .dashboard-scroll-region::-webkit-scrollbar {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+.supplier-dashboard .dashboard-scroll-region::-webkit-scrollbar-thumb,
+.supplier-dashboard-portal.dashboard-scroll-region::-webkit-scrollbar-thumb,
+.supplier-dashboard-portal .dashboard-scroll-region::-webkit-scrollbar-thumb {
+  background: var(--dashboard-border);
+  border-radius: var(--dashboard-radius);
+}
+
+/* Gate 4 dataset workflows previously supplied per-route inline field and
+   dialog colours. Keep their behaviour while making every authenticated
+   control use the same Gate 3 surface in light and dark modes. */
+.supplier-dashboard
+  .dataset-workspace-scope
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="search"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="date"],
+    textarea
+  ),
+.supplier-dashboard-portal.dataset-dialog-surface
+  :is(
+    input:not([type]),
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="search"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="date"],
+    textarea
+  ) {
+  background: var(--dashboard-control-background) !important;
+  border-color: var(--dashboard-control-border) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.supplier-dashboard-portal.dataset-dialog-surface {
+  background: var(--dashboard-glass-background-strong) !important;
+  border-color: var(--dashboard-glass-border) !important;
+  box-shadow: var(--dashboard-glass-shadow) !important;
+}
+
+.supplier-dashboard-portal.dataset-dialog-surface .dashboard-button-primary {
+  background: var(--dashboard-button-primary-background) !important;
+  border-color: var(--dashboard-button-primary-border) !important;
+  color: var(--dashboard-button-primary-foreground) !important;
+  box-shadow: var(--dashboard-button-primary-shadow) !important;
+}
+
+.supplier-dashboard-portal.dataset-dialog-surface .dashboard-button-outline {
+  background: var(--dashboard-control-background) !important;
+  border-color: var(--dashboard-glass-border) !important;
+  color: var(--dashboard-text) !important;
+}

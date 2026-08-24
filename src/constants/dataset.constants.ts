@@ -1,77 +1,81 @@
 /**
  * Design tokens for dataset components
  */
-export function getDatasetThemeTokens(isDark: boolean) {
+export function getDatasetThemeTokens(_isDark: boolean) {
   return {
-    // Surface colors
-    surfaceCard: isDark ? 'rgba(26, 34, 64, 0.4)' : '#ffffff',
-    
-    // Input colors
-    inputBg: isDark ? 'rgba(26, 34, 64, 0.6)' : '#f3f5fb',
-    inputBorder: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e3e6f3',
-    
-    // Border colors
-    borderDefault: isDark ? 'rgba(255, 255, 255, 0.1)' : '#dde3f0',
-    borderSubtle: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(26, 34, 64, 0.06)',
-    
-    // Text colors
-    textPrimary: isDark ? '#ffffff' : '#1a2240',
-    textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#525d6f',
-    textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#7a8494',
-    
-    // Interactive colors
-    rowHover: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(26, 34, 64, 0.02)',
-    
-    // Dropzone colors
-    dropzoneBg: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(26, 34, 64, 0.03)',
-    dropzoneBorder: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(26, 34, 64, 0.15)',
-    dropzoneHover: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(26, 34, 64, 0.06)',
-    
-    // Status colors
-    infoBg: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)',
-    infoBorder: 'rgba(59, 130, 246, 0.3)',
-    infoText: '#3b82f6',
-    
-    successBg: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.08)',
-    successBorder: 'rgba(34, 197, 94, 0.3)',
-    successText: '#22c55e',
-    
-    // Banner colors (success)
-    bannerBg: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.08)',
-    bannerBorder: 'rgba(34, 197, 94, 0.3)',
-    bannerText: '#22c55e',
-    
-    // Warning/Error colors
-    warningBg: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
-    warningBorder: 'rgba(239, 68, 68, 0.3)',
-    warningText: '#ef4444',
-    
-    // Shadows
-    shadowCard: isDark
-      ? '0 8px 24px rgba(0, 0, 0, 0.4)'
-      : '0 8px 24px rgba(26, 34, 64, 0.12)',
-    // Glass morphism (align with supplier tokens)
-    glassBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)',
-    glassBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
-    glassShadow: isDark
-      ? '0 8px 24px rgba(0, 0, 0, 0.3)'
-      : '0 8px 24px rgba(26, 34, 64, 0.08)',
+    // Compatibility aliases for dataset workflows that now render inside the
+    // authenticated dashboard. Values deliberately reference the scoped
+    // dashboard system so nested editors cannot create a second palette.
+    surfaceCard: "var(--dashboard-glass-background)",
+
+    inputBg: "var(--dashboard-control-background)",
+    inputBorder: "var(--dashboard-control-border)",
+
+    borderDefault: "var(--dashboard-border)",
+    borderSubtle: "var(--dashboard-glass-border)",
+
+    textPrimary: "var(--dashboard-text)",
+    textSecondary: "var(--dashboard-text-muted)",
+    textMuted: "var(--dashboard-text-muted)",
+
+    rowHover: "var(--dashboard-control-background-hover)",
+
+    dropzoneBg: "var(--dashboard-control-background)",
+    dropzoneBorder: "var(--dashboard-control-border)",
+    dropzoneHover: "var(--dashboard-control-background-hover)",
+
+    infoBg:
+      "color-mix(in srgb, var(--dashboard-action) 10%, var(--dashboard-surface))",
+    infoBorder:
+      "color-mix(in srgb, var(--dashboard-action) 28%, var(--dashboard-border))",
+    infoText: "var(--dashboard-info-foreground)",
+
+    successBg:
+      "color-mix(in srgb, var(--dashboard-success) 10%, var(--dashboard-surface))",
+    successBorder:
+      "color-mix(in srgb, var(--dashboard-success) 28%, var(--dashboard-border))",
+    successText: "var(--dashboard-success-foreground)",
+
+    bannerBg:
+      "color-mix(in srgb, var(--dashboard-success) 10%, var(--dashboard-surface))",
+    bannerBorder:
+      "color-mix(in srgb, var(--dashboard-success) 28%, var(--dashboard-border))",
+    bannerText: "var(--dashboard-success-foreground)",
+
+    warningBg:
+      "color-mix(in srgb, var(--dashboard-danger) 9%, var(--dashboard-surface))",
+    warningBorder:
+      "color-mix(in srgb, var(--dashboard-danger) 28%, var(--dashboard-border))",
+    warningText: "var(--dashboard-danger-foreground)",
+    errorBg:
+      "color-mix(in srgb, var(--dashboard-danger) 9%, var(--dashboard-surface))",
+    errorBorder:
+      "color-mix(in srgb, var(--dashboard-danger) 28%, var(--dashboard-border))",
+    errorText: "var(--dashboard-danger-foreground)",
+
+    shadowCard: "var(--dashboard-glass-shadow)",
+    glassBg: "var(--dashboard-glass-background)",
+    glassBorder: "var(--dashboard-glass-border)",
+    glassShadow: "var(--dashboard-glass-shadow)",
+    isDark: _isDark,
   };
 }
+
+export type DatasetThemeTokens = ReturnType<typeof getDatasetThemeTokens>;
 
 /**
  * File upload constraints
  */
 export const FILE_UPLOAD_CONSTRAINTS = {
   MAX_SIZE: 500 * 1024 * 1024, // 500MB
-  ALLOWED_EXTENSIONS: ['.csv', '.json', '.parquet', '.xlsx', '.zip'],
+  ALLOWED_EXTENSIONS: [".csv", ".json", ".parquet", ".xlsx", ".zip"],
   ALLOWED_MIME_TYPES: [
-    'text/csv',
-    'application/json',
-    'application/vnd.apache.parquet',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/zip',
-    'application/x-zip-compressed',
+    "text/csv",
+    "application/json",
+    "application/vnd.apache.parquet",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/zip",
+    "application/x-zip-compressed",
   ],
 } as const;
 
@@ -79,52 +83,52 @@ export const FILE_UPLOAD_CONSTRAINTS = {
  * Dataset type (superType) options - API enum values
  */
 export const DATASET_TYPES = [
-  { value: 'CROSS_SECTIONAL', label: 'Cross-Sectional' },
-  { value: 'TIME_SERIES', label: 'Time Series' },
-  { value: 'PANEL', label: 'Panel Data' },
-  { value: 'POOLED_CROSS_SECTIONAL', label: 'Pooled Cross-Sectional' },
-  { value: 'REPEATED_CROSS_SECTIONS', label: 'Repeated Cross-Sections' },
-  { value: 'SPATIAL', label: 'Spatial Data' },
-  { value: 'SPATIO_TEMPORAL', label: 'Spatio-Temporal' },
-  { value: 'EXPERIMENTAL', label: 'Experimental' },
-  { value: 'OBSERVATIONAL', label: 'Observational' },
-  { value: 'BIG_DATA', label: 'Big Data' },
-  { value: 'EVENT_HISTORY_SURVIVAL', label: 'Event History / Survival' },
-  { value: 'HIERARCHICAL_MULTILEVEL', label: 'Hierarchical / Multilevel' },
+  { value: "CROSS_SECTIONAL", label: "Cross-Sectional" },
+  { value: "TIME_SERIES", label: "Time Series" },
+  { value: "PANEL", label: "Panel Data" },
+  { value: "POOLED_CROSS_SECTIONAL", label: "Pooled Cross-Sectional" },
+  { value: "REPEATED_CROSS_SECTIONS", label: "Repeated Cross-Sections" },
+  { value: "SPATIAL", label: "Spatial Data" },
+  { value: "SPATIO_TEMPORAL", label: "Spatio-Temporal" },
+  { value: "EXPERIMENTAL", label: "Experimental" },
+  { value: "OBSERVATIONAL", label: "Observational" },
+  { value: "BIG_DATA", label: "Big Data" },
+  { value: "EVENT_HISTORY_SURVIVAL", label: "Event History / Survival" },
+  { value: "HIERARCHICAL_MULTILEVEL", label: "Hierarchical / Multilevel" },
 ] as const;
 
 /**
  * Category options for dataset creation
  */
 export const DATASET_CATEGORIES = [
-  { value: 'cat_financial', label: 'Financial Data' },
-  { value: 'cat_research', label: 'Market Research' },
-  { value: 'cat_analytics', label: 'Consumer Analytics' },
-  { value: 'cat_logistics', label: 'Logistics' },
-  { value: 'cat_sales', label: 'Sales' },
+  { value: "cat_financial", label: "Financial Data" },
+  { value: "cat_research", label: "Market Research" },
+  { value: "cat_analytics", label: "Consumer Analytics" },
+  { value: "cat_logistics", label: "Logistics" },
+  { value: "cat_sales", label: "Sales" },
 ] as const;
 
 /**
  * Update frequency options
  */
 export const UPDATE_FREQUENCIES = [
-  { value: 'realtime', label: 'Real-time' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'yearly', label: 'Yearly' },
+  { value: "realtime", label: "Real-time" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
 ] as const;
 
 /**
  * Pricing model options
  */
 export const PRICING_MODELS = [
-  { value: 'free', label: 'Free' },
-  { value: 'one_time', label: 'One-time Purchase' },
-  { value: 'subscription', label: 'Subscription' },
-  { value: 'usage_based', label: 'Usage-based' },
-  { value: 'contact', label: 'Contact for Pricing' },
+  { value: "free", label: "Free" },
+  { value: "one_time", label: "One-time Purchase" },
+  { value: "subscription", label: "Subscription" },
+  { value: "usage_based", label: "Usage-based" },
+  { value: "contact", label: "Contact for Pricing" },
 ] as const;
 
 /**
@@ -132,52 +136,58 @@ export const PRICING_MODELS = [
  */
 export const PRICING_STATUS_CONFIG = {
   DRAFT: {
-    label: 'Draft',
-    color: '#6b7280',
-    bgColor: 'rgba(107, 114, 128, 0.1)',
-    icon: '📝',
+    label: "Draft",
+    color: "var(--dashboard-text-muted)",
+    bgColor: "var(--dashboard-surface-muted)",
+    icon: "📝",
   },
   SUBMITTED: {
-    label: 'Submitted',
-    color: '#3b82f6',
-    bgColor: 'rgba(59, 130, 246, 0.1)',
-    icon: '⏳',
+    label: "Submitted",
+    color: "var(--dashboard-info-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-action) 10%, var(--dashboard-surface))",
+    icon: "⏳",
   },
   CHANGES_REQUESTED: {
-    label: 'Changes Requested',
-    color: '#ef4444',
-    bgColor: 'rgba(239, 68, 68, 0.1)',
-    icon: '🔄',
+    label: "Changes Requested",
+    color: "var(--dashboard-danger-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-danger) 9%, var(--dashboard-surface))",
+    icon: "🔄",
   },
   RESUBMITTED: {
-    label: 'Resubmitted',
-    color: '#8b5cf6',
-    bgColor: 'rgba(139, 92, 246, 0.1)',
-    icon: '📤',
+    label: "Resubmitted",
+    color: "var(--dashboard-info-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-action) 10%, var(--dashboard-surface))",
+    icon: "📤",
   },
   UNDER_REVIEW: {
-    label: 'Under Review',
-    color: '#f59e0b',
-    bgColor: 'rgba(245, 158, 11, 0.1)',
-    icon: '👀',
+    label: "Under Review",
+    color: "var(--dashboard-warning-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-warning) 10%, var(--dashboard-surface))",
+    icon: "👀",
   },
   ACTIVE: {
-    label: 'Active',
-    color: '#22c55e',
-    bgColor: 'rgba(34, 197, 94, 0.1)',
-    icon: '✓',
+    label: "Active",
+    color: "var(--dashboard-success-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-success) 10%, var(--dashboard-surface))",
+    icon: "✓",
   },
   REJECTED: {
-    label: 'Rejected',
-    color: '#ef4444',
-    bgColor: 'rgba(239, 68, 68, 0.1)',
-    icon: '✕',
+    label: "Rejected",
+    color: "var(--dashboard-danger-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-danger) 9%, var(--dashboard-surface))",
+    icon: "✕",
   },
   INACTIVE: {
-    label: 'Inactive',
-    color: '#9ca3af',
-    bgColor: 'rgba(156, 163, 175, 0.1)',
-    icon: '🔒',
+    label: "Inactive",
+    color: "var(--dashboard-text-muted)",
+    bgColor: "var(--dashboard-surface-muted)",
+    icon: "🔒",
   },
 } as const;
 
@@ -185,8 +195,8 @@ export const PRICING_STATUS_CONFIG = {
  * Currency options
  */
 export const CURRENCY_OPTIONS = [
-  { value: 'USD', label: 'USD ($)', symbol: '$' },
-  { value: 'INR', label: 'INR (₹)', symbol: '₹' },
-  { value: 'EUR', label: 'EUR (€)', symbol: '€' },
-  { value: 'GBP', label: 'GBP (£)', symbol: '£' },
+  { value: "USD", label: "USD ($)", symbol: "$" },
+  { value: "INR", label: "INR (₹)", symbol: "₹" },
+  { value: "EUR", label: "EUR (€)", symbol: "€" },
+  { value: "GBP", label: "GBP (£)", symbol: "£" },
 ] as const;

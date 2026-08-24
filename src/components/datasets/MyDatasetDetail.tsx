@@ -2,8 +2,20 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { GlassCard, PageBackground } from "@/components/shared";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardDropdownMenu,
+  DashboardDropdownMenuContent,
+  DashboardDropdownMenuItem,
+  DashboardDropdownMenuSeparator,
+  DashboardDropdownMenuTrigger,
+  DashboardErrorState,
+  DashboardInlineAlert,
+  DashboardLoadingState,
+  DashboardPageHeader,
+  DashboardStatusBadge,
+} from "@/components/dashboard";
 import {
   canArchiveDataset,
   canChangeDatasetVisibility,
@@ -14,7 +26,6 @@ import {
   DatasetWorkspace,
 } from "./workspace";
 import { PublishStatusBadge } from "./shared";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import { getDatasetDetails, getDatasetPricing } from "@/lib/api/datasets";
 import {
   PublishConfirmDialog,
@@ -24,7 +35,10 @@ import {
   DelistConfirmDialog,
   DownloadButton,
 } from "./actions";
-import { PRICING_STATUS_CONFIG } from "@/constants/dataset.constants";
+import {
+  getDatasetThemeTokens,
+  PRICING_STATUS_CONFIG,
+} from "@/constants/dataset.constants";
 import { KdtsScoreCard } from "./shared/KdtsScoreCard";
 import type {
   DatasetPricingVersion,
@@ -61,9 +75,9 @@ import {
   FileType2,
   Layers,
   BadgeCheck,
-  RefreshCw,
   Download,
   History,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import type { DatasetDetailsResponse } from "@/types/dataset.types";
@@ -88,55 +102,55 @@ const VERIFICATION_STATUS_CONFIG: Record<
     label: "Pending Submission",
     description:
       "This dataset is still in draft mode and has not been submitted for review.",
-    color: "#f59e0b",
+    color: "var(--dashboard-warning-foreground)",
     icon: Clock,
   },
   SUBMITTED: {
     label: "Submitted for Review",
     description:
       "Your dataset has been submitted and is waiting for the review process to begin.",
-    color: "#3b82f6",
+    color: "var(--dashboard-info-foreground)",
     icon: FileText,
   },
   CHANGES_REQUESTED: {
     label: "Changes Requested",
     description:
       "The reviewer has requested changes to your dataset. Please review the feedback below.",
-    color: "#ef4444",
+    color: "var(--dashboard-danger-foreground)",
     icon: AlertCircle,
   },
   RESUBMITTED: {
     label: "Resubmitted for Review",
     description:
       "Your revised dataset has been resubmitted and is awaiting review.",
-    color: "#8b5cf6",
+    color: "var(--dashboard-info-foreground)",
     icon: Clock,
   },
   UNDER_REVIEW: {
     label: "Under Review",
     description:
       "Your dataset is currently being reviewed by our verification team.",
-    color: "#f59e0b",
+    color: "var(--dashboard-warning-foreground)",
     icon: Clock,
   },
   VERIFIED: {
     label: "Verified",
     description:
       "Your dataset has been verified and approved. It is ready for publication.",
-    color: "#22c55e",
+    color: "var(--dashboard-success-foreground)",
     icon: CheckCircle,
   },
   REJECTED: {
     label: "Rejected",
     description:
       "Your dataset submission has been rejected. Please review the feedback below.",
-    color: "#ef4444",
+    color: "var(--dashboard-danger-foreground)",
     icon: XCircle,
   },
   UNKNOWN: {
     label: "Verification unavailable",
     description: "Verification information is not available for this dataset.",
-    color: "#6b7280",
+    color: "var(--dashboard-text-muted)",
     icon: AlertCircle,
   },
 };
@@ -147,38 +161,44 @@ const DATASET_STATUS_CONFIG: Record<
 > = {
   SUBMITTED: {
     label: "Submitted",
-    color: "#3b82f6",
-    bgColor: "rgba(59, 130, 246, 0.15)",
+    color: "var(--dashboard-info-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-action) 10%, var(--dashboard-surface))",
   },
   UNDER_REVIEW: {
     label: "Under Review",
-    color: "#8b5cf6",
-    bgColor: "rgba(139, 92, 246, 0.15)",
+    color: "var(--dashboard-info-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-action) 10%, var(--dashboard-surface))",
   },
   VERIFIED: {
     label: "Verified",
-    color: "#22c55e",
-    bgColor: "rgba(34, 197, 94, 0.15)",
+    color: "var(--dashboard-success-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-success) 10%, var(--dashboard-surface))",
   },
   PUBLISHED: {
     label: "Published",
-    color: "#3b82f6",
-    bgColor: "rgba(59, 130, 246, 0.15)",
+    color: "var(--dashboard-info-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-action) 10%, var(--dashboard-surface))",
   },
   DELISTED: {
     label: "Delisted",
-    color: "#f59e0b",
-    bgColor: "rgba(245, 158, 11, 0.15)",
+    color: "var(--dashboard-warning-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-warning) 10%, var(--dashboard-surface))",
   },
   ARCHIVED: {
     label: "Archived",
-    color: "#6b7280",
-    bgColor: "rgba(107, 114, 128, 0.15)",
+    color: "var(--dashboard-text-muted)",
+    bgColor: "var(--dashboard-surface-muted)",
   },
   REJECTED: {
     label: "Rejected",
-    color: "#ef4444",
-    bgColor: "rgba(239, 68, 68, 0.15)",
+    color: "var(--dashboard-danger-foreground)",
+    bgColor:
+      "color-mix(in srgb, var(--dashboard-danger) 9%, var(--dashboard-surface))",
   },
 };
 
@@ -186,9 +206,21 @@ const VISIBILITY_CONFIG: Record<
   string,
   { label: string; icon: LucideIcon; color: string }
 > = {
-  PUBLIC: { label: "Public", icon: Eye, color: "#22c55e" },
-  PRIVATE: { label: "Private", icon: Lock, color: "#ef4444" },
-  UNLISTED: { label: "Unlisted", icon: EyeOff, color: "#f59e0b" },
+  PUBLIC: {
+    label: "Public",
+    icon: Eye,
+    color: "var(--dashboard-success-foreground)",
+  },
+  PRIVATE: {
+    label: "Private",
+    icon: Lock,
+    color: "var(--dashboard-danger-foreground)",
+  },
+  UNLISTED: {
+    label: "Unlisted",
+    icon: EyeOff,
+    color: "var(--dashboard-warning-foreground)",
+  },
 };
 
 // Helper component for info items
@@ -202,7 +234,7 @@ function InfoItem({
   icon: LucideIcon;
   label: string;
   value: ReactNode;
-  tokens: ReturnType<typeof useSupplierTokens>;
+  tokens: ReturnType<typeof getDatasetThemeTokens>;
   valueColor?: string;
 }) {
   return (
@@ -238,7 +270,7 @@ function SectionTitle({
   icon: LucideIcon;
   title: string;
   badge?: ReactNode;
-  tokens: ReturnType<typeof useSupplierTokens>;
+  tokens: ReturnType<typeof getDatasetThemeTokens>;
 }) {
   return (
     <div className="flex items-center justify-between mb-5">
@@ -256,9 +288,12 @@ function SectionTitle({
   );
 }
 
-export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
+export function MyDatasetDetail({
+  datasetId,
+  isDark = false,
+}: MyDatasetDetailProps) {
   const router = useRouter();
-  const tokens = useSupplierTokens();
+  const tokens = getDatasetThemeTokens(isDark);
 
   const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(
     null
@@ -270,6 +305,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(
     null
   );
+  const [pricingError, setPricingError] = useState<string | null>(null);
   // Dialog states
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
@@ -278,14 +314,15 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const [showDelistDialog, setShowDelistDialog] = useState(false);
 
   const fetchPricing = useCallback(async () => {
+    setPricingError(null);
     try {
       const response = await getDatasetPricing(datasetId);
-      if (response.pricing) {
-        setPricingData(response.pricing);
-      }
+      setPricingData(response.pricing ?? null);
     } catch (error: unknown) {
       console.error("Failed to fetch pricing:", error);
-      // Pricing is supplementary to the dataset detail request.
+      setPricingError(
+        "Pricing information could not be loaded. Try again to refresh it."
+      );
     }
   }, [datasetId]);
 
@@ -313,56 +350,45 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   // Loading state
   if (loading) {
     return (
-      <PageBackground withGrid>
-        <DatasetWorkspace className="max-w-[1380px]">
-          <div className="supplier-glass-panel min-h-80 animate-pulse rounded-2xl border p-6">
-            <div className="h-4 w-32 rounded bg-foreground/[0.07]" />
-            <div className="mt-5 h-9 w-2/3 rounded bg-foreground/[0.08]" />
-            <div className="mt-4 h-5 w-52 rounded bg-foreground/[0.06]" />
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-28 rounded-xl bg-foreground/[0.05]"
-                />
-              ))}
-            </div>
-          </div>
-        </DatasetWorkspace>
-      </PageBackground>
+      <DatasetWorkspace>
+        <DashboardPageHeader
+          title="Dataset details"
+          description="Loading the dataset workspace and marketplace state."
+        />
+        <DashboardLoadingState
+          label="Loading dataset workspace"
+          rows={7}
+          variant="skeleton"
+        />
+      </DatasetWorkspace>
     );
   }
 
   // Error state
   if (error || !datasetData) {
     return (
-      <PageBackground withGrid>
-        <DatasetWorkspace className="max-w-3xl">
-          <div className="supplier-glass-panel rounded-2xl border px-6 py-12 text-center">
-            <AlertCircle className="mx-auto size-11 text-destructive" />
-            <h3 className="mt-4 text-xl font-semibold text-foreground">
-              Failed to load dataset
-            </h3>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-              {error ||
-                "Dataset not found or you may not have permission to view it."}
-            </p>
-            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-              <Button
-                variant="outline"
-                onClick={() => void fetchDataset()}
-                className="gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Retry
-              </Button>
-              <Button onClick={() => router.push("/dashboard/my-datasets")}>
-                Back to My Datasets
-              </Button>
-            </div>
-          </div>
-        </DatasetWorkspace>
-      </PageBackground>
+      <DatasetWorkspace className="max-w-3xl">
+        <DashboardPageHeader
+          title="Dataset details"
+          description="Review and manage this supplier dataset."
+        />
+        <DashboardErrorState
+          title="Failed to load dataset"
+          message={
+            error ||
+            "Dataset not found or you may not have permission to view it."
+          }
+          onRetry={() => void fetchDataset()}
+        />
+        <div className="flex justify-center">
+          <DashboardButton
+            variant="ghost"
+            onClick={() => router.push("/dashboard/my-datasets")}
+          >
+            Back to My Datasets
+          </DashboardButton>
+        </div>
+      </DatasetWorkspace>
     );
   }
 
@@ -398,6 +424,11 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   const canChangeVisibility = canChangeDatasetVisibility(dataset.status);
   const canDelist = canDelistDataset(dataset.status);
   const canArchive = canArchiveDataset(dataset.status);
+  const hasMoreActions =
+    canChangeVisibility ||
+    (isVerified && !isArchived && !isDelisted) ||
+    canDelist ||
+    canArchive;
 
   // Format helpers
   const formatDate = (dateStr: string) =>
@@ -459,17 +490,17 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
   });
 
   return (
-    <PageBackground withGrid>
-      <DatasetWorkspace className="max-w-[1380px]">
+    <>
+      <DatasetWorkspace>
         <div className="space-y-6">
-          <Button
+          <DashboardButton
             variant="ghost"
             onClick={() => router.push("/dashboard/my-datasets")}
             className="-ml-3 gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to My Datasets
-          </Button>
+          </DashboardButton>
 
           <DatasetEntityHeader
             eyebrow="Dataset workspace"
@@ -492,9 +523,9 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   visibility={dataset.visibility || "PUBLIC"}
                 />
                 {dataset.isSample && (
-                  <span className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <DashboardStatusBadge tone="warning">
                     Sample dataset
-                  </span>
+                  </DashboardStatusBadge>
                 )}
               </>
             }
@@ -502,78 +533,89 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               isVerified || isPublished || isDelisted || isArchived ? (
                 <>
                   {canPublish && (
-                    <Button
+                    <DashboardButton
                       onClick={() => setShowPublishDialog(true)}
                       className="flex-1 gap-2 sm:flex-none"
                     >
                       <Upload className="size-4" />{" "}
                       {isDelisted ? "Republish dataset" : "Publish dataset"}
-                    </Button>
+                    </DashboardButton>
                   )}
                   {isDelisted && (
-                    <Button
+                    <DashboardButton
                       onClick={() =>
                         router.push(`/dashboard/my-datasets/${dataset.id}/edit`)
                       }
-                      variant="outline"
                       className="flex-1 gap-2 sm:flex-none"
                     >
                       <FileText className="size-4" /> Edit dataset
-                    </Button>
-                  )}
-                  {canChangeVisibility && (
-                    <Button
-                      onClick={() => setShowVisibilityDialog(true)}
-                      variant="outline"
-                      className="flex-1 gap-2 sm:flex-none"
-                    >
-                      <Eye className="size-4" /> Visibility
-                    </Button>
-                  )}
-                  {isVerified && !isArchived && !isDelisted && (
-                    <Button
-                      onClick={() => setShowPricingDialog(true)}
-                      variant="outline"
-                      className="flex-1 gap-2 sm:flex-none"
-                    >
-                      <DollarSign className="size-4" /> Pricing
-                    </Button>
-                  )}
-                  {canDelist && (
-                    <Button
-                      onClick={() => setShowDelistDialog(true)}
-                      variant="outline"
-                      className="flex-1 gap-2 border-amber-500/35 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400 sm:flex-none"
-                    >
-                      <Archive className="size-4" /> Delist
-                    </Button>
-                  )}
-                  {canArchive && (
-                    <Button
-                      onClick={() => setShowArchiveDialog(true)}
-                      variant="outline"
-                      className="supplier-action-danger flex-1 gap-2 sm:flex-none"
-                    >
-                      <Archive className="size-4" /> Archive
-                    </Button>
+                    </DashboardButton>
                   )}
                   {publishedUpload ? (
                     <DownloadButton
                       datasetId={dataset.id}
                       fileName={publishedUpload.originalFileName}
                       variant="outline"
-                      size="sm"
+                      size="compact"
                       className="flex-1 gap-2 sm:flex-none"
                     />
                   ) : (
-                    <Button
+                    <DashboardButton
                       disabled
                       variant="outline"
                       className="flex-1 gap-2 sm:flex-none"
                       title="Download will be available once a file is published"
                     >
                       <Download className="size-4" /> Download
-                    </Button>
+                    </DashboardButton>
+                  )}
+                  {hasMoreActions && (
+                    <DashboardDropdownMenu>
+                      <DashboardDropdownMenuTrigger asChild>
+                        <DashboardButton
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                        >
+                          More <MoreHorizontal aria-hidden="true" />
+                        </DashboardButton>
+                      </DashboardDropdownMenuTrigger>
+                      <DashboardDropdownMenuContent align="end">
+                        {canChangeVisibility && (
+                          <DashboardDropdownMenuItem
+                            onSelect={() => setShowVisibilityDialog(true)}
+                          >
+                            <Eye aria-hidden="true" /> Change visibility
+                          </DashboardDropdownMenuItem>
+                        )}
+                        {isVerified && !isArchived && !isDelisted && (
+                          <DashboardDropdownMenuItem
+                            onSelect={() => setShowPricingDialog(true)}
+                          >
+                            <DollarSign aria-hidden="true" /> Edit pricing
+                          </DashboardDropdownMenuItem>
+                        )}
+                        {(canDelist || canArchive) &&
+                          (canChangeVisibility ||
+                            (isVerified && !isArchived && !isDelisted)) && (
+                            <DashboardDropdownMenuSeparator />
+                          )}
+                        {canDelist && (
+                          <DashboardDropdownMenuItem
+                            onSelect={() => setShowDelistDialog(true)}
+                          >
+                            <Archive aria-hidden="true" /> Delist dataset
+                          </DashboardDropdownMenuItem>
+                        )}
+                        {canArchive && (
+                          <DashboardDropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setShowArchiveDialog(true)}
+                          >
+                            <Archive aria-hidden="true" /> Archive dataset
+                          </DashboardDropdownMenuItem>
+                        )}
+                      </DashboardDropdownMenuContent>
+                    </DashboardDropdownMenu>
                   )}
                 </>
               ) : null
@@ -587,7 +629,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
           <main className="min-w-0 space-y-6">
             {/* Archived Notice */}
             {isArchived && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <div
                   className="flex items-center gap-3 p-4 rounded-xl"
                   style={{
@@ -616,11 +658,11 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </p>
                   </div>
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {isDelisted && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <div
                   className="flex items-center gap-3 p-4 rounded-xl"
                   style={{
@@ -648,7 +690,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </p>
                   </div>
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Sample, Location & Tags */}
@@ -658,7 +700,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
               dataset.isNegotiable !== undefined ||
               locationInfo ||
               (tags && tags.length > 0)) && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <SectionTitle
                   icon={Tag}
                   title="Sample, Location & Tags"
@@ -841,12 +883,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </div>
                   )}
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* About Dataset */}
             {aboutDatasetInfo && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <SectionTitle
                   icon={Info}
                   title="Marketplace Content"
@@ -969,12 +1011,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </p>
                   )}
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Location */}
             {locationInfo && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <SectionTitle icon={MapPin} title="Location" tokens={tokens} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1015,12 +1057,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     tokens={tokens}
                   />
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Data Format Information */}
             {dataFormatInfo && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <SectionTitle
                   icon={FileCode}
                   title="Data Format"
@@ -1076,12 +1118,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     tokens={tokens}
                   />
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Features / Schema */}
             {features && features.length > 0 && (
-              <GlassCard className="supplier-glass-card p-5">
+              <DashboardCard className="p-5">
                 <SectionTitle
                   icon={Table2}
                   title="Features / Schema"
@@ -1174,7 +1216,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                                 className="text-xs px-2 py-0.5 rounded"
                                 style={{
                                   background: tokens.warningBg,
-                                  color: "#f59e0b",
+                                  color: "var(--dashboard-warning-foreground)",
                                 }}
                               >
                                 Yes
@@ -1184,7 +1226,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                                 className="text-xs px-2 py-0.5 rounded"
                                 style={{
                                   background: tokens.successBg,
-                                  color: "#22c55e",
+                                  color: "var(--dashboard-success-foreground)",
                                 }}
                               >
                                 No
@@ -1196,14 +1238,14 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </tbody>
                   </table>
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
           </main>
 
           {/* Right Column - Sidebar */}
-          <aside className="order-first space-y-5 xl:order-none xl:sticky xl:top-6">
+          <aside className="space-y-5 xl:sticky xl:top-6">
             {/* Dataset Details Card */}
-            <GlassCard className="supplier-glass-card p-4">
+            <DashboardCard className="p-4">
               <SectionTitle
                 icon={Database}
                 title="Dataset Details"
@@ -1273,11 +1315,29 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   </p>
                 </div>
               </div>
-            </GlassCard>
+            </DashboardCard>
+
+            {pricingError && (
+              <DashboardInlineAlert
+                tone="danger"
+                title="Pricing unavailable"
+                message={pricingError}
+                action={
+                  <DashboardButton
+                    type="button"
+                    variant="outline"
+                    size="compact"
+                    onClick={() => void fetchPricing()}
+                  >
+                    Try again
+                  </DashboardButton>
+                }
+              />
+            )}
 
             {/* Pricing Card */}
             {pricingData && isVerified && (
-              <GlassCard className="supplier-glass-card p-4">
+              <DashboardCard className="p-4">
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <DollarSign
@@ -1297,7 +1357,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       background:
                         PRICING_STATUS_CONFIG[pricingData.status].bgColor,
                       color: PRICING_STATUS_CONFIG[pricingData.status].color,
-                      border: `1px solid ${PRICING_STATUS_CONFIG[pricingData.status].color}33`,
+                      border: `1px solid color-mix(in srgb, ${PRICING_STATUS_CONFIG[pricingData.status].color} 20%, transparent)`,
                     }}
                   >
                     {PRICING_STATUS_CONFIG[pricingData.status].label}
@@ -1388,21 +1448,20 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                   {(pricingData.status === "DRAFT" ||
                     pricingData.status === "CHANGES_REQUESTED" ||
                     pricingData.status === "REJECTED") && (
-                    <Button
+                    <DashboardButton
                       onClick={() => setShowPricingDialog(true)}
                       className="w-full text-sm"
-                      style={{ background: "#3b82f6", color: "white" }}
                     >
                       Edit Pricing
-                    </Button>
+                    </DashboardButton>
                   )}
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Categories Card */}
             {(primaryCategory || secondaryCategories.length > 0) && (
-              <GlassCard className="supplier-glass-card p-4">
+              <DashboardCard className="p-4">
                 <SectionTitle
                   icon={Layers}
                   title="Categories"
@@ -1428,7 +1487,9 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       >
                         <BadgeCheck
                           className="w-3.5 h-3.5"
-                          style={{ color: "#22c55e" }}
+                          style={{
+                            color: "var(--dashboard-success-foreground)",
+                          }}
                         />
                         {primaryCategory.name}
                       </span>
@@ -1460,12 +1521,12 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </div>
                   )}
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Source Card */}
             {source && (
-              <GlassCard className="supplier-glass-card p-4">
+              <DashboardCard className="p-4">
                 <SectionTitle
                   icon={Globe}
                   title="Data Source"
@@ -1483,7 +1544,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     {source.isVerified && (
                       <BadgeCheck
                         className="w-4 h-4"
-                        style={{ color: "#22c55e" }}
+                        style={{ color: "var(--dashboard-success-foreground)" }}
                       />
                     )}
                   </div>
@@ -1503,19 +1564,19 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs hover:underline"
-                      style={{ color: "#3b82f6" }}
+                      style={{ color: "var(--dashboard-info-foreground)" }}
                     >
                       <Link2 className="w-3 h-3" />
                       Visit Website
                     </a>
                   )}
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Verification Info Card */}
             {verification && (
-              <GlassCard className="supplier-glass-card p-4">
+              <DashboardCard className="p-4">
                 <SectionTitle
                   icon={Shield}
                   title="Verification"
@@ -1580,7 +1641,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     </div>
                   )}
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* KDTS Score Card */}
@@ -1588,7 +1649,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
 
             {/* Published File Card */}
             {publishedUpload && (
-              <GlassCard className="supplier-glass-card p-4">
+              <DashboardCard className="p-4">
                 <SectionTitle
                   icon={FileText}
                   title="Published File"
@@ -1628,15 +1689,15 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     datasetId={dataset.id}
                     fileName={publishedUpload.originalFileName}
                     variant="default"
-                    size="sm"
+                    size="compact"
                     className="w-full"
                   />
                 </div>
-              </GlassCard>
+              </DashboardCard>
             )}
 
             {/* Lifecycle History Card */}
-            <GlassCard className="supplier-glass-card p-4">
+            <DashboardCard className="p-4">
               <SectionTitle
                 icon={History}
                 title="Lifecycle History"
@@ -1652,7 +1713,7 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                     {index < lifecycleEvents.length - 1 && (
                       <span className="absolute left-[7px] top-4 h-full w-px bg-border" />
                     )}
-                    <span className="supplier-glass-input relative mt-1.5 size-4 shrink-0 rounded-full border-4 border-primary" />
+                    <span className="dashboard-glass-control relative mt-1.5 size-4 shrink-0 rounded-full border-4 border-primary" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">
                         {event.title}
@@ -1660,14 +1721,14 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {formatDateTime(event.date)}
                       </p>
-                      <p className="supplier-glass-input mt-2 rounded-lg p-2.5 text-xs leading-relaxed text-muted-foreground">
+                      <p className="dashboard-glass-control mt-2 rounded-lg border p-2.5 text-xs leading-relaxed text-muted-foreground">
                         {event.detail}
                       </p>
                     </div>
                   </li>
                 ))}
               </ol>
-            </GlassCard>
+            </DashboardCard>
           </aside>
         </div>
 
@@ -1729,6 +1790,6 @@ export function MyDatasetDetail({ datasetId }: MyDatasetDetailProps) {
           />
         )}
       </DatasetWorkspace>
-    </PageBackground>
+    </>
   );
 }

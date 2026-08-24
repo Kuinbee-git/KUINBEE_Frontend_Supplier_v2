@@ -15,7 +15,6 @@ import {
   Globe2,
   ImagePlus,
   Loader2,
-  RefreshCw,
   RotateCcw,
   Send,
   ShieldCheck,
@@ -24,18 +23,23 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+  DashboardButton as Button,
+  DashboardCard as Card,
+  DashboardCardContent as CardContent,
+  DashboardCardHeader as CardHeader,
+  DashboardCardTitle as CardTitle,
+  DashboardDialog as Dialog,
+  DashboardDialogContent as DialogContent,
+  DashboardErrorState,
+  DashboardInlineAlert,
+  DashboardLoadingState,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardStatusBadge,
+  DashboardTextarea as Textarea,
+  type DashboardTone,
+} from "@/components/dashboard";
 import { getSupplierProfile } from "@/lib/api/supplier";
 import { customCollectionApi } from "@/lib/api/custom-collection";
 import { cn } from "@/lib/utils";
@@ -64,6 +68,19 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_COVER_SIZE = 5 * 1024 * 1024;
 
 type RevisionView = "working" | "published";
+
+const STATUS_TONES: Partial<
+  Record<CustomCollectionRevision["status"], DashboardTone>
+> = {
+  DRAFT: "neutral",
+  SUBMITTED: "info",
+  UNDER_REVIEW: "warning",
+  CHANGES_REQUESTED: "warning",
+  RESUBMITTED: "info",
+  APPROVED: "success",
+  REJECTED: "danger",
+  SUPERSEDED: "neutral",
+};
 
 export function CustomCollectionServiceDetail({
   serviceId,
@@ -319,23 +336,22 @@ export function CustomCollectionServiceDetail({
 
   if (!service || !revision) {
     return (
-      <div className="custom-collection-scope mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center p-6 text-center">
-        <XCircle className="mb-4 size-10 text-destructive" />
-        <h1 className="text-xl font-semibold">Service unavailable</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {error || "The requested service could not be found."}
-        </p>
-        <div className="mt-5 flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/dashboard/custom-collection-services">
-              Back to services
-            </Link>
-          </Button>
-          <Button onClick={() => void load()}>
-            <RefreshCw /> Try again
-          </Button>
-        </div>
-      </div>
+      <DashboardPage width="standard">
+        <DashboardPageHeader
+          title="Custom collection service"
+          description="Review and manage this supplier service."
+        />
+        <DashboardErrorState
+          title="Service unavailable"
+          message={error || "The requested service could not be found."}
+          onRetry={() => void load()}
+        />
+        <Button asChild variant="outline" className="self-center">
+          <Link href="/dashboard/custom-collection-services">
+            Back to services
+          </Link>
+        </Button>
+      </DashboardPage>
     );
   }
 
@@ -347,9 +363,9 @@ export function CustomCollectionServiceDetail({
     "http://localhost:5175";
 
   return (
-    <div className="custom-collection-scope mx-auto w-full max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
+    <DashboardPage width="wide">
       <header className="space-y-4">
-        <Button asChild variant="ghost" size="sm" className="-ml-3">
+        <Button asChild variant="ghost" size="compact" className="-ml-3">
           <Link href="/dashboard/custom-collection-services">
             <ArrowLeft /> Back to services
           </Link>
@@ -357,38 +373,27 @@ export function CustomCollectionServiceDetail({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                  status.className
-                )}
+              <DashboardStatusBadge
+                status={revision.status}
+                tone={STATUS_TONES[revision.status] ?? "neutral"}
               >
                 {status.label}
-              </span>
+              </DashboardStatusBadge>
               <span className="text-xs text-muted-foreground">
                 Revision v{revision.version}
               </span>
               {service.publishedRevision && !service.archivedAt && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
-                    service.isPublished
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200"
-                      : "border-slate-300 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70"
-                  )}
+                <DashboardStatusBadge
+                  icon={service.isPublished ? Globe2 : EyeOff}
+                  tone={service.isPublished ? "success" : "neutral"}
                 >
-                  {service.isPublished ? (
-                    <Globe2 className="size-3" />
-                  ) : (
-                    <EyeOff className="size-3" />
-                  )}
                   {service.isPublished ? "Public" : "Private"}
-                </span>
+                </DashboardStatusBadge>
               )}
               {service.archivedAt && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-                  <Archive className="size-3" /> Archived
-                </span>
+                <DashboardStatusBadge icon={Archive} tone="neutral">
+                  Archived
+                </DashboardStatusBadge>
               )}
             </div>
             <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -448,7 +453,7 @@ export function CustomCollectionServiceDetail({
             {!service.archivedAt && (
               <Button
                 variant="outline"
-                className="supplier-action-danger"
+                className="text-[var(--dashboard-danger-foreground)]"
                 onClick={() => {
                   setArchiveReason("");
                   setAction("archive");
@@ -462,29 +467,30 @@ export function CustomCollectionServiceDetail({
       </header>
 
       {error && (
-        <Alert variant="destructive">
-          <AlertTriangle />
-          <AlertTitle>Some information could not be refreshed</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <DashboardInlineAlert
+          tone="danger"
+          icon={AlertTriangle}
+          title="Some information could not be refreshed"
+          message={error}
+        />
       )}
 
       {!service.archivedAt &&
         service.publishedRevision &&
         !service.isPublished && (
-          <Alert className="border-blue-300 bg-blue-50 text-blue-950 backdrop-blur-lg dark:border-blue-400/20 dark:bg-blue-400/[0.07] dark:text-blue-100">
-            <Globe2 />
-            <AlertTitle>Approved and ready to publish</AlertTitle>
-            <AlertDescription>
-              This service is private and cannot be discovered or receive new
-              buyer requests. Publish it when you are ready to make the approved
-              revision public.
-            </AlertDescription>
-          </Alert>
+          <DashboardInlineAlert
+            tone="info"
+            icon={Globe2}
+            title="Approved and ready to publish"
+          >
+            This service is private and cannot be discovered or receive new
+            buyer requests. Publish it when you are ready to make the approved
+            revision public.
+          </DashboardInlineAlert>
         )}
 
       {service.workingRevision && service.publishedRevision && (
-        <div className="supplier-glass-card inline-flex w-full rounded-xl border p-1 sm:w-auto">
+        <div className="dashboard-glass-card inline-flex w-full rounded-xl border border-border p-1 sm:w-auto">
           <RevisionTab
             active={revisionView === "working"}
             onClick={() => {
@@ -507,31 +513,32 @@ export function CustomCollectionServiceDetail({
       )}
 
       {service.archivedAt && (
-        <Alert>
-          <Archive />
-          <AlertTitle>This service is archived</AlertTitle>
-          <AlertDescription>
-            It is no longer visible to buyers and cannot accept new requests or
-            revisions. Archived on {formatDate(service.archivedAt)}.
-          </AlertDescription>
-        </Alert>
+        <DashboardInlineAlert
+          tone="neutral"
+          icon={Archive}
+          title="This service is archived"
+        >
+          It is no longer visible to buyers and cannot accept new requests or
+          revisions. Archived on {formatDate(service.archivedAt)}.
+        </DashboardInlineAlert>
       )}
 
       {revision.status === "CHANGES_REQUESTED" && feedback && (
-        <Alert className="border-orange-300 bg-orange-50 text-orange-950 backdrop-blur-lg dark:border-orange-400/20 dark:bg-orange-400/[0.07] dark:text-orange-100">
-          <AlertTriangle />
-          <AlertTitle>Reviewer changes requested</AlertTitle>
-          <AlertDescription className="whitespace-pre-wrap">
-            {feedback}
-          </AlertDescription>
-        </Alert>
+        <DashboardInlineAlert
+          tone="warning"
+          icon={AlertTriangle}
+          title="Reviewer changes requested"
+          message={<span className="whitespace-pre-wrap">{feedback}</span>}
+        />
       )}
 
       {revision.status === "REJECTED" && (
-        <Alert variant="destructive">
-          <XCircle />
-          <AlertTitle>This revision was rejected</AlertTitle>
-          <AlertDescription className="space-y-2">
+        <DashboardInlineAlert
+          tone="danger"
+          icon={XCircle}
+          title="This revision was rejected"
+        >
+          <div className="space-y-2">
             {feedback && <p className="whitespace-pre-wrap">{feedback}</p>}
             {service.publishedRevision ? (
               <p>
@@ -544,8 +551,8 @@ export function CustomCollectionServiceDetail({
                 revision if you want to address the decision and submit again.
               </p>
             )}
-          </AlertDescription>
-        </Alert>
+          </div>
+        </DashboardInlineAlert>
       )}
 
       {editing && draftEditable ? (
@@ -614,20 +621,30 @@ export function CustomCollectionServiceDetail({
         open={action === "submit"}
         onOpenChange={(open) => !open && setAction(null)}
       >
-        <DialogContent className="custom-collection-dialog">
-          <DialogHeader>
-            <DialogTitle>
-              {revision.status === "CHANGES_REQUESTED"
-                ? "Resubmit this revision?"
-                : "Submit this service for review?"}
-            </DialogTitle>
-            <DialogDescription>
-              Revision v{revision.version} will become read-only while the
-              Kuinbee team reviews it. Your existing approved revision, if any,
-              keeps its current public or private visibility.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="supplier-glass-input space-y-2 rounded-lg border p-3 text-sm">
+        <DialogContent
+          title={
+            revision.status === "CHANGES_REQUESTED"
+              ? "Resubmit this revision?"
+              : "Submit this service for review?"
+          }
+          description={`Revision v${revision.version} will become read-only while the Kuinbee team reviews it. Your existing approved revision, if any, keeps its current public or private visibility.`}
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setAction(null)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={submit} disabled={!submitReady || saving}>
+                {saving && <Loader2 className="animate-spin" />}
+                Confirm submission
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2 rounded-lg border border-border bg-muted/35 p-3 text-sm">
             <ChecklistItem complete={Boolean(revision.coverImage)}>
               Cover image added
             </ChecklistItem>
@@ -635,19 +652,6 @@ export function CustomCollectionServiceDetail({
               Offline supplier contract completed
             </ChecklistItem>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAction(null)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={submit} disabled={!submitReady || saving}>
-              {saving && <Loader2 className="animate-spin" />}
-              Confirm submission
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -655,58 +659,72 @@ export function CustomCollectionServiceDetail({
         open={action === "publish" || action === "unpublish"}
         onOpenChange={(open) => !open && setAction(null)}
       >
-        <DialogContent className="custom-collection-dialog">
-          <DialogHeader>
-            <DialogTitle>
-              {action === "publish"
-                ? "Publish this service?"
-                : "Unpublish this service?"}
-            </DialogTitle>
-            <DialogDescription>
-              {action === "publish"
-                ? "The approved revision will become discoverable in the marketplace and buyers will be able to submit new requests."
-                : "The service will be hidden from marketplace discovery and its public page will stop accepting new requests. You can publish it again later."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAction(null)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={action === "unpublish" ? "outline" : "default"}
-              onClick={() => void changeVisibility(action === "publish")}
-              disabled={saving}
-            >
-              {saving ? (
-                <Loader2 className="animate-spin" />
-              ) : action === "publish" ? (
-                <Globe2 />
-              ) : (
-                <EyeOff />
-              )}
-              {action === "publish" ? "Publish service" : "Unpublish service"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent
+          title={
+            action === "publish"
+              ? "Publish this service?"
+              : "Unpublish this service?"
+          }
+          description={
+            action === "publish"
+              ? "The approved revision will become discoverable in the marketplace and buyers will be able to submit new requests."
+              : "The service will be hidden from marketplace discovery and its public page will stop accepting new requests. You can publish it again later."
+          }
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setAction(null)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={action === "unpublish" ? "outline" : "default"}
+                onClick={() => void changeVisibility(action === "publish")}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="animate-spin" />
+                ) : action === "publish" ? (
+                  <Globe2 />
+                ) : (
+                  <EyeOff />
+                )}
+                {action === "publish" ? "Publish service" : "Unpublish service"}
+              </Button>
+            </>
+          }
+        />
       </Dialog>
 
       <Dialog
         open={action === "archive"}
         onOpenChange={(open) => !open && setAction(null)}
       >
-        <DialogContent className="custom-collection-dialog">
-          <DialogHeader>
-            <DialogTitle>Archive this service?</DialogTitle>
-            <DialogDescription>
-              The service will disappear from the marketplace and stop accepting
-              new buyer requests. This action is intentionally not offered as a
-              temporary visibility switch.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent
+          title="Archive this service?"
+          description="The service will disappear from the marketplace and stop accepting new buyer requests. This action is intentionally not offered as a temporary visibility switch."
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setAction(null)}
+                disabled={saving}
+              >
+                Keep service
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={archive}
+                disabled={archiveReason.trim().length < 3 || saving}
+              >
+                {saving && <Loader2 className="animate-spin" />}
+                Archive service
+              </Button>
+            </>
+          }
+        >
           <div className="space-y-2">
             <label htmlFor="archiveReason" className="text-sm font-medium">
               Reason for archiving <span className="text-destructive">*</span>
@@ -720,23 +738,6 @@ export function CustomCollectionServiceDetail({
               placeholder="Explain why this service is no longer offered."
             />
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAction(null)}
-              disabled={saving}
-            >
-              Keep service
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={archive}
-              disabled={archiveReason.trim().length < 3 || saving}
-            >
-              {saving && <Loader2 className="animate-spin" />}
-              Archive service
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -744,33 +745,31 @@ export function CustomCollectionServiceDetail({
         open={action === "revision"}
         onOpenChange={(open) => !open && setAction(null)}
       >
-        <DialogContent className="custom-collection-dialog">
-          <DialogHeader>
-            <DialogTitle>Start a new draft revision?</DialogTitle>
-            <DialogDescription>
-              We will copy the latest service details into a new editable
-              revision.
-              {service.publishedRevision
-                ? " The current approved version keeps its existing visibility until the new revision is approved."
-                : " The rejected revision remains unchanged in the review history."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAction(null)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={createRevision} disabled={saving}>
-              {saving && <Loader2 className="animate-spin" />}
-              Create draft revision
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent
+          title="Start a new draft revision?"
+          description={`We will copy the latest service details into a new editable revision.${
+            service.publishedRevision
+              ? " The current approved version keeps its existing visibility until the new revision is approved."
+              : " The rejected revision remains unchanged in the review history."
+          }`}
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setAction(null)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={createRevision} disabled={saving}>
+                {saving && <Loader2 className="animate-spin" />}
+                Create draft revision
+              </Button>
+            </>
+          }
+        />
       </Dialog>
-    </div>
+    </DashboardPage>
   );
 }
 
@@ -788,8 +787,8 @@ function CoverCard({
   onUpload: (file?: File) => void;
 }) {
   return (
-    <Card className="supplier-glass-card overflow-hidden">
-      <div className="supplier-glass-input relative aspect-[16/7] min-h-52">
+    <Card className="overflow-hidden">
+      <div className="relative aspect-[16/7] min-h-52 border-b border-border bg-muted/45">
         {revision.coverImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -804,8 +803,8 @@ function CoverCard({
               Add a service cover image
             </p>
             <p className="mt-1 max-w-md text-sm">
-              Use a clear, relevant 16:9-style image. JPEG, PNG, or WebP up to
-              5 MB.
+              Use a clear, relevant 16:9-style image. JPEG, PNG, or WebP up to 5
+              MB.
             </p>
           </div>
         )}
@@ -840,7 +839,7 @@ function CoverCard({
 
 function ServicePreview({ revision }: { revision: CustomCollectionRevision }) {
   return (
-    <Card className="supplier-glass-card">
+    <Card>
       <CardHeader>
         <CardTitle>Marketplace content</CardTitle>
       </CardHeader>
@@ -942,7 +941,7 @@ function SubmissionReadiness({
   onUpload: () => void;
 }) {
   return (
-    <Card className="supplier-glass-card">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldCheck className="size-5 text-primary" /> Submission readiness
@@ -962,7 +961,7 @@ function SubmissionReadiness({
         {!hasCover && (
           <Button
             variant="outline"
-            size="sm"
+            size="compact"
             className="mt-2 w-full"
             onClick={onUpload}
           >
@@ -987,7 +986,7 @@ function SubmissionReadiness({
 
 function RevisionSummary({ revision }: { revision: CustomCollectionRevision }) {
   return (
-    <Card className="supplier-glass-card">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock3 className="size-5 text-primary" /> Revision details
@@ -1027,11 +1026,11 @@ function VisibilitySummary({ service }: { service: CustomCollectionService }) {
       : "Private";
 
   return (
-    <Card className="supplier-glass-card">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {service.isPublished && !service.archivedAt ? (
-            <Globe2 className="size-5 text-emerald-600 dark:text-emerald-400" />
+            <Globe2 className="size-5 text-[var(--semantic-success)]" />
           ) : (
             <EyeOff className="size-5 text-primary" />
           )}
@@ -1063,7 +1062,7 @@ function ReviewTimeline({
   selectedRevisionId: string;
 }) {
   return (
-    <Card className="supplier-glass-card">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <History className="size-5 text-primary" /> Review history
@@ -1090,8 +1089,8 @@ function ReviewTimeline({
                     className={cn(
                       "relative mt-1.5 size-4 shrink-0 rounded-full border-4",
                       selected
-                        ? "border-primary supplier-glass-input"
-                        : "border-muted supplier-glass-input"
+                        ? "border-primary bg-input-background"
+                        : "border-border bg-input-background"
                     )}
                   />
                   <div className="min-w-0">
@@ -1107,7 +1106,7 @@ function ReviewTimeline({
                       {formatDate(event.createdAt)} · {event.actorNameSnapshot}
                     </p>
                     {event.note && (
-                      <p className="supplier-glass-input mt-2 whitespace-pre-wrap rounded-lg p-2.5 text-xs leading-relaxed">
+                      <p className="mt-2 whitespace-pre-wrap rounded-lg border border-border bg-muted/35 p-2.5 text-xs leading-relaxed">
                         {event.note}
                       </p>
                     )}
@@ -1138,7 +1137,7 @@ function RevisionTab({
       className={cn(
         "flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:flex-none sm:text-sm",
         active
-          ? "supplier-glass-input text-foreground shadow-sm"
+          ? "dashboard-glass-control border-border text-foreground shadow-sm"
           : "text-muted-foreground"
       )}
     >
@@ -1161,9 +1160,9 @@ function ChecklistItem({
       {pending ? (
         <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-muted-foreground" />
       ) : complete ? (
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--semantic-success)]" />
       ) : (
-        <XCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <XCircle className="mt-0.5 size-4 shrink-0 text-[var(--semantic-warning)]" />
       )}
       <span className={complete ? "text-foreground" : "text-muted-foreground"}>
         {children}
@@ -1181,7 +1180,7 @@ function InfoGroup({ title, values }: { title: string; values: string[] }) {
           {values.map((value) => (
             <span
               key={value}
-              className="supplier-glass-input rounded-full px-2.5 py-1 text-xs"
+              className="rounded-full border border-border bg-muted/45 px-2.5 py-1 text-xs"
             >
               {value}
             </span>
@@ -1216,14 +1215,17 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 function DetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
-      <div className="supplier-glass-input h-8 w-32 animate-pulse rounded" />
-      <div className="supplier-glass-card h-24 animate-pulse rounded-xl" />
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="supplier-glass-card h-[620px] animate-pulse rounded-2xl" />
-        <div className="supplier-glass-card h-96 animate-pulse rounded-2xl" />
-      </div>
-    </div>
+    <DashboardPage width="wide">
+      <DashboardPageHeader
+        title="Custom collection service"
+        description="Loading the service workspace and its latest revision."
+      />
+      <DashboardLoadingState
+        label="Loading custom collection service"
+        variant="skeleton"
+        rows={8}
+      />
+    </DashboardPage>
   );
 }
 

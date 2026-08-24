@@ -3,10 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ImagePlus, Info, Sparkles } from "lucide-react";
+import { ArrowLeft, ImagePlus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import {
+  DashboardButton,
+  DashboardInlineAlert,
+  DashboardPage,
+  DashboardPageHeader,
+} from "@/components/dashboard";
 import { customCollectionApi } from "@/lib/api/custom-collection";
 import type { CustomCollectionRevisionInput } from "@/types/custom-collection.types";
 import { CustomCollectionForm } from "./CustomCollectionForm";
@@ -35,50 +40,48 @@ export function CustomCollectionCreateView() {
   };
 
   return (
-    <div className="custom-collection-scope mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <header>
-        <Button asChild variant="ghost" size="sm" className="-ml-3 mb-3">
-          <Link href="/dashboard/custom-collection-services">
-            <ArrowLeft /> Back to services
-          </Link>
-        </Button>
-        <div className="flex items-start gap-3">
-          <span className="mt-1 hidden size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:flex">
-            <Sparkles className="size-5" />
+    <DashboardPage width="standard">
+      <DashboardPageHeader
+        breadcrumbs={
+          <DashboardButton
+            asChild
+            variant="ghost"
+            size="compact"
+            className="-ml-3"
+          >
+            <Link href="/dashboard/custom-collection-services">
+              <ArrowLeft aria-hidden="true" /> Back to services
+            </Link>
+          </DashboardButton>
+        }
+        title="Create a custom collection service"
+        description="Describe a capability your team can deliver consistently. You can add the cover image and review the marketplace presentation after creating the draft."
+        meta={
+          <span className="inline-flex items-center gap-2">
+            <Sparkles className="size-4" aria-hidden="true" /> Private draft
           </span>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Create a custom collection service
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground sm:text-base">
-              Describe a capability your team can deliver consistently. You can
-              add the cover image and review the marketplace presentation after
-              creating the draft.
-            </p>
-          </div>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="grid gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-sm text-blue-900 backdrop-blur-lg dark:border-blue-400/20 dark:bg-blue-400/[0.07] dark:text-blue-100 sm:grid-cols-[auto_1fr]">
-        <Info className="mt-0.5 size-4" />
+      <DashboardInlineAlert tone="info" title="This creates a private draft">
         <div>
-          <p className="font-medium">This creates a private draft.</p>
-          <p className="mt-1 text-blue-800/80 dark:text-blue-200/80">
+          <p>
             A JPEG, PNG, or WebP cover image under 5 MB is required before
             submission. Your service becomes public only after Kuinbee approves
             it.
           </p>
           <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium">
-            <ImagePlus className="size-3.5" /> Cover setup comes next
+            <ImagePlus className="size-3.5" aria-hidden="true" /> Cover setup
+            comes next
           </p>
         </div>
-      </div>
+      </DashboardInlineAlert>
 
       <CustomCollectionForm
         submitLabel="Create draft"
         busy={saving}
         onSubmit={create}
       />
-    </div>
+    </DashboardPage>
   );
 }

@@ -3,21 +3,23 @@
  * Dropdown for selecting a category (read-only, admin managed)
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { StyledSelect } from '@/components/datasets/shared';
-import { listCategories } from '@/lib/api/catalog';
-import type { Category } from '@/types/catalog.types';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useId } from "react";
+import { DashboardInlineAlert } from "@/components/dashboard";
+import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
+import { listCategories } from "@/lib/api/catalog";
+import type { Category } from "@/types/catalog.types";
+import { Loader2 } from "lucide-react";
 
 interface CategoriesSelectProps {
   value: string;
   onValueChange: (categoryId: string) => void;
   disabled?: boolean;
   error?: string | null;
+  triggerId?: string;
   isDark?: boolean;
-  tokens?: any;
+  tokens?: unknown;
 }
 
 export function CategoriesSelect({
@@ -25,9 +27,10 @@ export function CategoriesSelect({
   onValueChange,
   disabled = false,
   error = null,
-  isDark = false,
-  tokens,
+  triggerId,
 }: CategoriesSelectProps) {
+  const generatedTriggerId = useId();
+  const resolvedTriggerId = triggerId ?? generatedTriggerId;
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -38,9 +41,13 @@ export function CategoriesSelect({
       setFetchError(null);
       const response = await listCategories({ pageSize: 100 });
       setCategories(response.items || []);
-    } catch (err: any) {
-      console.error('Failed to fetch categories:', err);
-      setFetchError(err.message || 'Failed to load categories');
+    } catch (err: unknown) {
+      console.error("Failed to fetch categories:", err);
+      setFetchError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to load categories"
+      );
       setCategories([]);
     } finally {
       setLoading(false);
@@ -56,26 +63,47 @@ export function CategoriesSelect({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium" style={{ color: tokens?.textPrimary }}>
-          Primary Category <span className="text-red-500">*</span>
+        <label
+          htmlFor={resolvedTriggerId}
+          className="text-sm font-medium text-foreground"
+        >
+          Primary category
+          <span
+            className="ml-1 text-[var(--dashboard-danger-foreground)]"
+            aria-hidden="true"
+          >
+            *
+          </span>
+          <span className="sr-only"> (required)</span>
         </label>
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {loading && (
+          <span role="status" className="inline-flex items-center">
+            <Loader2
+              className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading categories</span>
+          </span>
+        )}
       </div>
 
-      <StyledSelect
+      <DatasetSelect
         value={value}
         onValueChange={onValueChange}
-        options={categories.map(cat => ({ label: cat.name, value: cat.id }))}
-        placeholder={loading ? 'Loading categories...' : 'Select a category'}
-        isDark={isDark}
-        tokens={tokens}
+        triggerId={resolvedTriggerId}
+        options={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+        placeholder={loading ? "Loading categories..." : "Select a category"}
+        ariaLabel="Primary category"
+        disabled={disabled || loading}
       />
 
       {displayError && (
-        <div className="flex items-center gap-2 text-sm text-red-500">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{displayError}</span>
-        </div>
+        <DashboardInlineAlert
+          tone="danger"
+          title="Categories unavailable"
+          message={displayError}
+          className="py-2.5"
+        />
       )}
     </div>
   );

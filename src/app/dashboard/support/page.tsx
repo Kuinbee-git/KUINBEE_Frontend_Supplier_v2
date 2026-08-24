@@ -1,205 +1,203 @@
-'use client';
+import Link from "next/link";
+import {
+  ArrowRight,
+  BadgePercent,
+  Database,
+  Mail,
+  Phone,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 
-import { HelpCircle, MessageCircle, FileText, ExternalLink, Mail, Phone } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useThemeStore } from '@/store';
-import { GlassCard } from '@/components/shared';
-import { useSupplierTokens } from '@/hooks/useSupplierTokens';
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardCardContent,
+  DashboardCardDescription,
+  DashboardCardHeader,
+  DashboardCardTitle,
+  DashboardInlineAlert,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardSection,
+  DashboardStatusBadge,
+} from "@/components/dashboard";
 
-const helpArticles = [
+const workspaceGuides = [
   {
-    id: '1',
-    title: 'Getting Started as a Supplier',
-    description: 'Learn how to set up your supplier profile and start listing datasets.',
-    category: 'Onboarding',
+    href: "/dashboard/profile",
+    title: "Supplier profile",
+    description:
+      "Review business identity, contact details, contract status, and marketplace logo.",
+    icon: UserRound,
   },
   {
-    id: '2',
-    title: 'Dataset Upload Guidelines',
-    description: 'Best practices for formatting and uploading your datasets.',
-    category: 'Datasets',
+    href: "/dashboard/datasets/create",
+    title: "Create a dataset proposal",
+    description:
+      "Start a structured proposal and prepare dataset details for marketplace review.",
+    icon: Database,
   },
   {
-    id: '3',
-    title: 'Understanding KYC Verification',
-    description: 'Learn about the verification process and required documents.',
-    category: 'Verification',
+    href: "/dashboard/account",
+    title: "Account and verification",
+    description:
+      "Check onboarding progress, account state, email verification, and session security.",
+    icon: ShieldCheck,
   },
   {
-    id: '4',
-    title: 'Pricing Your Datasets',
-    description: 'Guidelines for setting competitive prices for your data.',
-    category: 'Monetization',
+    href: "/dashboard/discount-campaigns",
+    title: "Dataset promotions",
+    description:
+      "Review eligible datasets and manage approved marketplace promotions.",
+    icon: BadgePercent,
   },
 ];
 
 export default function SupportPage() {
-  const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
-  const tokens = useSupplierTokens();
-
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-[900px] mx-auto p-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1
-            className="text-3xl mb-2"
-            style={{
-              color: tokens.textPrimary,
-              fontWeight: '600',
-              lineHeight: '1.2',
-            }}
-          >
-            Support
-          </h1>
-          <p className="text-sm" style={{ color: tokens.textSecondary, lineHeight: '1.5' }}>
-            Get help with your supplier account and find answers to common questions.
-          </p>
-        </div>
+    <DashboardPage width="standard">
+      <DashboardPageHeader
+        title="Support"
+        description="Get help with the supplier portal through verified Kuinbee support channels."
+        meta={
+          <DashboardStatusBadge tone="success">
+            Verified contact details
+          </DashboardStatusBadge>
+        }
+      />
 
-        {/* Contact Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <GlassCard className="p-6">
-            <div className="flex items-start gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }}
-              >
-                <MessageCircle className="w-6 h-6" style={{ color: '#3b82f6' }} />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                  Live Chat
-                </h3>
-                <p className="text-sm mb-3" style={{ color: tokens.textSecondary }}>
-                  Chat with our support team for quick assistance.
-                </p>
-                <Button
-                  size="sm"
-                  className="text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, #1a2240 0%, #2a3250 100%)',
-                  }}
-                >
-                  Start Chat
-                </Button>
-              </div>
-            </div>
-          </GlassCard>
+      <DashboardInlineAlert
+        tone="info"
+        title="Include useful context"
+        message="When contacting support, include your supplier email, the affected dataset or proposal ID, and a short description of what you expected to happen. Do not send passwords or OTP codes."
+      />
 
-          <GlassCard className="p-6">
-            <div className="flex items-start gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }}
-              >
-                <Mail className="w-6 h-6" style={{ color: '#10b981' }} />
+      <DashboardSection
+        surface="plain"
+        title="Contact Kuinbee"
+        description="Use email for detailed requests or call during business hours for urgent account and security issues."
+      >
+        <div className="grid gap-[var(--dashboard-grid-gap)] md:grid-cols-2">
+          <DashboardCard>
+            <DashboardCardHeader className="sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <DashboardCardTitle>Email support</DashboardCardTitle>
+                <DashboardCardDescription>
+                  Best for account, dataset, proposal, and technical questions.
+                </DashboardCardDescription>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1" style={{ color: tokens.textPrimary }}>
-                  Email Support
-                </h3>
-                <p className="text-sm mb-3" style={{ color: tokens.textSecondary }}>
-                  Send us an email for detailed inquiries.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  style={{
-                    borderColor: tokens.borderDefault,
-                    color: tokens.textPrimary,
-                  }}
-                >
+              <span className="dashboard-tone-info flex size-10 shrink-0 items-center justify-center rounded-lg border">
+                <Mail className="size-5" aria-hidden="true" />
+              </span>
+            </DashboardCardHeader>
+            <DashboardCardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">
                   support@kuinbee.com
-                </Button>
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Email responses are generally provided within 24 hours.
+                </p>
               </div>
-            </div>
-          </GlassCard>
+              <DashboardButton asChild>
+                <a href="mailto:support@kuinbee.com?subject=Supplier%20portal%20support">
+                  <Mail aria-hidden="true" />
+                  Email support
+                </a>
+              </DashboardButton>
+            </DashboardCardContent>
+          </DashboardCard>
+
+          <DashboardCard>
+            <DashboardCardHeader className="sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <DashboardCardTitle>Phone support</DashboardCardTitle>
+                <DashboardCardDescription>
+                  Verified UK and India contact numbers for urgent help.
+                </DashboardCardDescription>
+              </div>
+              <span className="dashboard-tone-neutral flex size-10 shrink-0 items-center justify-center rounded-lg border">
+                <Phone className="size-5" aria-hidden="true" />
+              </span>
+            </DashboardCardHeader>
+            <DashboardCardContent className="space-y-4">
+              <div className="space-y-1 text-sm">
+                <p className="text-foreground">UK: +44 7825 600683</p>
+                <p className="text-foreground">India: +91 77961 37098</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <DashboardButton asChild variant="outline">
+                  <a href="tel:+447825600683">Call UK</a>
+                </DashboardButton>
+                <DashboardButton asChild variant="outline">
+                  <a href="tel:+917796137098">Call India</a>
+                </DashboardButton>
+              </div>
+            </DashboardCardContent>
+          </DashboardCard>
         </div>
+      </DashboardSection>
 
-        {/* Help Articles */}
-        <GlassCard className="overflow-hidden mb-8">
-          <div
-            className="px-6 py-4 border-b"
-            style={{
-              borderColor: tokens.borderDefault,
-              background: isDark ? 'rgba(26, 34, 64, 0.3)' : 'rgba(248, 249, 250, 0.6)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5" style={{ color: tokens.textSecondary }} />
-              <h2
-                className="text-lg"
-                style={{
-                  color: tokens.textPrimary,
-                  fontWeight: '600',
-                }}
+      <DashboardSection
+        surface="plain"
+        title="Workspace guides"
+        description="Go directly to the part of the supplier portal related to your question."
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          {workspaceGuides.map((guide) => {
+            const Icon = guide.icon;
+            return (
+              <Link
+                key={guide.href}
+                href={guide.href}
+                className="dashboard-glass-card group flex min-w-0 items-start gap-4 rounded-xl border border-border p-4 outline-none transition-[background-color,border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-[var(--dashboard-control-border-strong)] hover:shadow-[var(--dashboard-card-hover-shadow)] focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transform-none motion-reduce:transition-none"
               >
-                Help Articles
-              </h2>
-            </div>
-          </div>
-
-          <div className="divide-y" style={{ borderColor: tokens.borderDefault }}>
-            {helpArticles.map((article) => (
-              <button
-                key={article.id}
-                className="w-full px-6 py-4 flex items-center justify-between text-left transition-colors hover:bg-opacity-50"
-                style={{
-                  background: 'transparent',
-                }}
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-medium" style={{ color: tokens.textPrimary }}>
-                      {article.title}
-                    </p>
-                    <span
-                      className="px-2 py-0.5 rounded text-xs"
-                      style={{
-                        background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(26, 34, 64, 0.08)',
-                        color: tokens.textMuted,
-                      }}
-                    >
-                      {article.category}
-                    </span>
-                  </div>
-                  <p className="text-sm" style={{ color: tokens.textSecondary }}>
-                    {article.description}
-                  </p>
-                </div>
-                <ExternalLink className="w-4 h-4 shrink-0" style={{ color: tokens.textMuted }} />
-              </button>
-            ))}
-          </div>
-        </GlassCard>
-
-        {/* Emergency Contact */}
-        <div
-          className="rounded-xl border p-5"
-          style={{
-            background: isDark ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)',
-            borderColor: 'rgba(245, 158, 11, 0.2)',
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <Phone className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#f59e0b' }} />
-            <div>
-              <p className="text-sm mb-1 font-medium" style={{ color: tokens.textPrimary }}>
-                Urgent Issues?
-              </p>
-              <p className="text-sm" style={{ color: tokens.textSecondary }}>
-                For urgent account or security issues, call us at{' '}
-                <span className="font-medium" style={{ color: tokens.textPrimary }}>
-                  +1 (555) 123-4567
-                </span>{' '}
-                (Mon-Fri, 9AM-6PM IST)
-              </p>
-            </div>
-          </div>
+                <span className="dashboard-tone-neutral flex size-10 shrink-0 items-center justify-center rounded-lg border">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-foreground">
+                    {guide.title}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    {guide.description}
+                  </span>
+                </span>
+                <ArrowRight
+                  className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </Link>
+            );
+          })}
         </div>
-      </div>
-    </div>
+      </DashboardSection>
+
+      <DashboardCard>
+        <DashboardCardHeader>
+          <DashboardCardTitle>Before you contact support</DashboardCardTitle>
+          <DashboardCardDescription>
+            A few details help the team diagnose an issue faster.
+          </DashboardCardDescription>
+        </DashboardCardHeader>
+        <DashboardCardContent>
+          <ul className="grid gap-3 text-sm leading-6 text-muted-foreground sm:grid-cols-2">
+            <li className="rounded-lg border border-border bg-card/35 px-4 py-3">
+              Copy the dataset, proposal, campaign, or requirement reference.
+            </li>
+            <li className="rounded-lg border border-border bg-card/35 px-4 py-3">
+              Note the page and the action that failed.
+            </li>
+            <li className="rounded-lg border border-border bg-card/35 px-4 py-3">
+              Include the exact error message and when it occurred.
+            </li>
+            <li className="rounded-lg border border-border bg-card/35 px-4 py-3">
+              Remove passwords, OTPs, and sensitive dataset content.
+            </li>
+          </ul>
+        </DashboardCardContent>
+      </DashboardCard>
+    </DashboardPage>
   );
 }

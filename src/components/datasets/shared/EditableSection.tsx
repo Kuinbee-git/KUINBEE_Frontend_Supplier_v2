@@ -1,8 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { DashboardButton, DashboardCard } from "@/components/dashboard";
 import { ChevronDown, Edit2 } from "lucide-react";
 
 interface EditableSectionProps {
@@ -57,41 +56,41 @@ export function EditableSection({
   emptyActionLabel,
   editContent,
   displayContent,
-  isDark = false,
-  tokens,
 }: EditableSectionProps) {
   return (
-    <Card className="supplier-glass-card overflow-hidden rounded-xl border transition-shadow duration-200 hover:shadow-sm">
+    <DashboardCard className="overflow-hidden transition-shadow duration-200 hover:shadow-sm">
       {/* Header */}
       <div
-        onClick={onToggle}
-        className="flex w-full cursor-pointer items-center justify-between border-b px-4 py-4 transition-colors duration-200 hover:bg-foreground/[0.025] sm:px-5"
-        style={{
-          borderColor: isExpanded ? tokens.borderSubtle : "transparent",
-        }}
+        className={`flex w-full items-center justify-between gap-3 px-4 py-2 sm:px-5 ${
+          isExpanded ? "border-b border-border" : ""
+        }`}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <span>{icon}</span>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-2 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <div className="dashboard-tone-neutral flex size-9 shrink-0 items-center justify-center rounded-lg border">
+            {icon}
           </div>
-          <div className="text-left">
-            <h3
-              className="text-sm font-semibold"
-              style={{ color: tokens.textPrimary }}
-            >
-              {title}
-            </h3>
+          <div className="min-w-0 flex-1 text-left">
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             {subtitle && (
-              <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
-                {subtitle}
-              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
-        </div>
+          <ChevronDown
+            className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
+              isExpanded ? "rotate-180" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </button>
         <div className="flex items-center gap-3">
           {isEditable && isExpanded && !isEditing && !isEmpty && (
-            <Button
-              size="sm"
+            <DashboardButton
+              size="compact"
               variant="outline"
               onClick={(e) => {
                 e.stopPropagation();
@@ -101,22 +100,8 @@ export function EditableSection({
             >
               <Edit2 className="size-3.5" />
               <span className="hidden sm:inline">Edit</span>
-            </Button>
+            </DashboardButton>
           )}
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-200"
-            style={{
-              background: isDark
-                ? "rgba(255, 255, 255, 0.03)"
-                : "rgba(26, 34, 64, 0.03)",
-              transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-            }}
-          >
-            <ChevronDown
-              className="w-4 h-4"
-              style={{ color: tokens.textMuted }}
-            />
-          </div>
         </div>
       </div>
 
@@ -127,33 +112,22 @@ export function EditableSection({
             editContent
           ) : isEmpty ? (
             <div className="text-center py-10">
-              <div
-                className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: isDark
-                    ? "rgba(255, 255, 255, 0.03)"
-                    : "rgba(26, 34, 64, 0.03)",
-                  color: tokens.textMuted,
-                }}
-              >
+              <div className="dashboard-tone-neutral mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl border">
                 {emptyIcon}
               </div>
-              <p
-                className="text-sm mb-5 font-medium"
-                style={{ color: tokens.textMuted }}
-              >
+              <p className="mb-5 text-sm font-medium text-muted-foreground">
                 {emptyMessage}
               </p>
               {isEditable && emptyActionLabel && (
-                <Button
-                  size="sm"
+                <DashboardButton
+                  size="compact"
                   onClick={onEditClick}
                   className="h-10 gap-2 px-5"
                   variant="outline"
                 >
                   <Edit2 className="w-4 h-4" />
                   {emptyActionLabel}
-                </Button>
+                </DashboardButton>
               )}
             </div>
           ) : (
@@ -161,6 +135,6 @@ export function EditableSection({
           )}
         </div>
       )}
-    </Card>
+    </DashboardCard>
   );
 }

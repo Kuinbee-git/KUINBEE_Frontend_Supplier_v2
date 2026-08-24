@@ -1,218 +1,347 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Building2, User, Briefcase, Mail, Globe, ImageIcon, Upload } from 'lucide-react';
-import { useSupplierTokens } from '@/hooks/useSupplierTokens';
-import { SectionHeader, StatusMessage } from '@/components/shared';
-import { ProfileSection, FormField } from './shared';
-import { completeSupplierLogoUpload, getSupplierProfile, presignSupplierLogoUpload, updateSupplierProfile, getOnboardingStatus, uploadFileToS3 } from '@/lib/api';
+import * as React from "react";
 import {
-  SupplierType,
-  UpdateProfileRequest,
-  SupplierLogoContentType,
-} from '@/types/onboarding.types';
-import type { SupplierProfile as SupplierProfileType } from '@/types/onboarding.types';
+  Building2,
+  FileCheck2,
+  LockKeyhole,
+  Upload,
+  UserRound,
+} from "lucide-react";
+
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardCardContent,
+  DashboardCardDescription,
+  DashboardCardHeader,
+  DashboardCardTitle,
+  DashboardChoiceField,
+  DashboardChoiceGroupField,
+  DashboardErrorState,
+  DashboardField,
+  DashboardFormActions,
+  DashboardFormErrorSummary,
+  DashboardFormGrid,
+  DashboardFormLayout,
+  DashboardInlineAlert,
+  DashboardInput,
+  DashboardLoadingState,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardRadioGroup,
+  DashboardRadioGroupItem,
+  DashboardSection,
+  DashboardStatusBadge,
+  DashboardTextarea,
+} from "@/components/dashboard";
+import {
+  completeSupplierLogoUpload,
+  getOnboardingStatus,
+  getSupplierProfile,
+  presignSupplierLogoUpload,
+  updateSupplierProfile,
+  uploadFileToS3,
+} from "@/lib/api";
+import {
+  BUSINESS_DOMAINS,
+  type SupplierLogoContentType,
+  type SupplierProfile as SupplierProfileType,
+  type SupplierType,
+  type UpdateProfileRequest,
+} from "@/types/onboarding.types";
 
 interface SupplierProfileProps {
   onSave?: (profile: SupplierProfileType) => void;
 }
 
-const LOGO_ALLOWED_TYPES: SupplierLogoContentType[] = ['image/png', 'image/jpeg', 'image/webp'];
+interface ProfileFormState {
+  supplierType: SupplierType;
+  individualName: string;
+  companyName: string;
+  websiteUrl: string;
+  contactPersonName: string;
+  businessDomains: string;
+  primaryDomain: string;
+  naturesOfDataProvided: string;
+}
+
+type ProfileField = keyof ProfileFormState;
+type ProfileFieldErrors = Partial<Record<ProfileField, string>>;
+
+const LOGO_ALLOWED_TYPES: SupplierLogoContentType[] = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+];
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 const LOGO_MIN_DIMENSION = 256;
 const LOGO_MAX_DIMENSION = 2048;
+const BUSINESS_DOMAIN_SET = new Set<string>(BUSINESS_DOMAINS);
 
-const getSupplierInitials = (name: string) => {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
+const PROFILE_FIELD_IDS: Record<ProfileField, string> = {
+  supplierType: "profile-supplier-type",
+  individualName: "profile-individual-name",
+  companyName: "profile-company-name",
+  websiteUrl: "profile-website-url",
+  contactPersonName: "profile-contact-name",
+  businessDomains: "profile-business-domains",
+  primaryDomain: "profile-primary-domain",
+  naturesOfDataProvided: "profile-data-nature",
 };
 
-const readImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
+const EMPTY_FORM: ProfileFormState = {
+  supplierType: "COMPANY",
+  individualName: "",
+  companyName: "",
+  websiteUrl: "",
+  contactPersonName: "",
+  businessDomains: "",
+  primaryDomain: "",
+  naturesOfDataProvided: "",
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code)
+    : null;
+}
+
+function getSupplierInitials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+}
+
+function formFromProfile(profile: SupplierProfileType): ProfileFormState {
+  return {
+    supplierType: profile.supplierType,
+    individualName: profile.individualName ?? "",
+    companyName: profile.companyName ?? "",
+    websiteUrl: profile.websiteUrl ?? "",
+    contactPersonName: profile.contactPersonName,
+    businessDomains: profile.businessDomains.join(", "),
+    primaryDomain: profile.primaryDomain ?? "",
+    naturesOfDataProvided: profile.naturesOfDataProvided ?? "",
+  };
+}
+
+function parseBusinessDomains(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(",")
+        .map((domain) => domain.trim().toUpperCase())
+        .filter(Boolean)
+    )
+  );
+}
+
+function readImageDimensions(
+  file: File
+): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const image = new Image();
+
     image.onload = () => {
       URL.revokeObjectURL(url);
       resolve({ width: image.naturalWidth, height: image.naturalHeight });
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Could not read image dimensions'));
+      reject(new Error("Could not read image dimensions"));
     };
     image.src = url;
   });
-};
+}
 
-const getErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+function formatDate(value: string | null | undefined) {
+  if (!value) return "Not available";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
 
-const getErrorCode = (error: unknown) =>
-  typeof error === 'object' && error !== null && 'code' in error
-    ? String((error as { code?: unknown }).code)
-    : null;
-
-/**
- * Supplier Profile Component
- * Handles supplier profile creation/update for onboarding flow
- * Supports both INDIVIDUAL and COMPANY supplier types
- */
 export function SupplierProfile({ onSave }: SupplierProfileProps) {
-  const tokens = useSupplierTokens();
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const localLogoUrlRef = React.useRef<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [requestError, setRequestError] = React.useState<string | null>(null);
+  const [statusWarning, setStatusWarning] = React.useState<string | null>(null);
+  const [logoError, setLogoError] = React.useState<string | null>(null);
+  const [logoSuccess, setLogoSuccess] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
+  const [validationAttempt, setValidationAttempt] = React.useState(0);
+  const [profile, setProfile] = React.useState<SupplierProfileType | null>(
+    null
+  );
+  const [logoPreviewUrl, setLogoPreviewUrl] = React.useState<string | null>(
+    null
+  );
+  const [isOnboardingComplete, setIsOnboardingComplete] = React.useState(false);
+  const [form, setForm] = React.useState<ProfileFormState>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = React.useState<ProfileFieldErrors>({});
+  const [hasChanges, setHasChanges] = React.useState(false);
 
-  // Loading & Error States
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // Profile Data
-  const [profile, setProfile] = useState<SupplierProfileType | null>(null);
-  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
-  
-  // Form State
-  const [supplierType, setSupplierType] = useState<SupplierType>('COMPANY');
-  const [individualName, setIndividualName] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [contactPersonName, setContactPersonName] = useState('');
-  const [businessDomains, setBusinessDomains] = useState<string[]>([]);
-  const [primaryDomain, setPrimaryDomain] = useState('');
-  const [naturesOfDataProvided, setNaturesOfDataProvided] = useState('');
-
-  const [hasChanges, setHasChanges] = useState(false);
-
-  // Load profile on mount
-  useEffect(() => {
-    loadProfile();
+  const releaseLocalLogoUrl = React.useCallback(() => {
+    if (localLogoUrlRef.current) {
+      URL.revokeObjectURL(localLogoUrlRef.current);
+      localLogoUrlRef.current = null;
+    }
   }, []);
 
-  const loadProfile = async () => {
+  React.useEffect(() => releaseLocalLogoUrl, [releaseLocalLogoUrl]);
+
+  const loadProfile = React.useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    setLoadError(null);
+    setStatusWarning(null);
 
     try {
-      // Fetch onboarding status first
       try {
         const statusResponse = await getOnboardingStatus();
-        setIsOnboardingComplete(statusResponse.onboarding.nextStep === 'DONE');
-      } catch (err: unknown) {
-        console.error('Failed to check onboarding status:', err);
+        setIsOnboardingComplete(statusResponse.onboarding.nextStep === "DONE");
+      } catch (error) {
+        console.error("Failed to check onboarding status:", error);
+        setStatusWarning(
+          "We could not confirm whether this profile is locked. Editing remains available, but the server will protect a finalized profile."
+        );
       }
 
-      // Fetch profile
       const response = await getSupplierProfile();
-      
       if (response.profile) {
-        const p = response.profile;
-        setProfile(p);
-        setSupplierType(p.supplierType);
-        setIndividualName(p.individualName || '');
-        setCompanyName(p.companyName || '');
-        setWebsiteUrl(p.websiteUrl || '');
-        setContactPersonName(p.contactPersonName);
-        setBusinessDomains(p.businessDomains);
-        setPrimaryDomain(p.primaryDomain || '');
-        setNaturesOfDataProvided(p.naturesOfDataProvided || '');
-        setLogoPreviewUrl(p.logoUrl || null);
+        setProfile(response.profile);
+        setForm(formFromProfile(response.profile));
+        setLogoPreviewUrl(response.profile.logoUrl ?? null);
+      } else {
+        setProfile(null);
+        setForm(EMPTY_FORM);
+        setLogoPreviewUrl(null);
       }
-    } catch (err: unknown) {
-      console.error('Failed to load profile:', err);
-      setError(getErrorMessage(err, 'Failed to load profile'));
+      setHasChanges(false);
+    } catch (error) {
+      console.error("Failed to load profile:", error);
+      setLoadError(getErrorMessage(error, "Failed to load supplier profile."));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleFieldChange = <T,>(setter: (value: T) => void) => (value: T) => {
-    setter(value);
-    setHasChanges(true);
+  React.useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  const updateField = <Key extends ProfileField>(
+    field: Key,
+    value: ProfileFormState[Key]
+  ) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+    setRequestError(null);
     setSaveSuccess(false);
-  };
-
-  const handleBusinessDomainsChange = (value: string) => {
-    const domains = value.split(',').map(d => d.trim()).filter(Boolean);
-    setBusinessDomains(domains);
     setHasChanges(true);
-    setSaveSuccess(false);
   };
 
-  const validateForm = (): string | null => {
-    if (supplierType === 'INDIVIDUAL') {
-      if (!individualName.trim()) {
-        return 'Individual name is required';
+  const validateForm = () => {
+    const errors: ProfileFieldErrors = {};
+    const domains = parseBusinessDomains(form.businessDomains);
+
+    if (form.supplierType === "INDIVIDUAL") {
+      if (!form.individualName.trim()) {
+        errors.individualName = "Enter the individual supplier's full name.";
       }
     } else {
-      if (!companyName.trim()) {
-        return 'Company name is required';
+      if (!form.companyName.trim()) {
+        errors.companyName = "Enter the registered company name.";
       }
-      if (!contactPersonName.trim()) {
-        return 'Contact person name is required for companies';
+      if (!form.contactPersonName.trim()) {
+        errors.contactPersonName = "Enter the primary contact person's name.";
       }
     }
 
-    if (businessDomains.length === 0) {
-      return 'At least one business domain is required';
+    if (domains.length === 0) {
+      errors.businessDomains = "Add at least one business domain.";
+    } else {
+      const unsupported = domains.filter(
+        (domain) => !BUSINESS_DOMAIN_SET.has(domain)
+      );
+      if (unsupported.length > 0) {
+        errors.businessDomains = `Use supported domain values only. Check: ${unsupported.join(", ")}.`;
+      }
     }
 
-    return null;
-  };
+    if (form.websiteUrl.trim()) {
+      try {
+        const website = new URL(form.websiteUrl.trim());
+        if (!new Set(["http:", "https:"]).has(website.protocol)) {
+          errors.websiteUrl = "Use a complete http or https website address.";
+        }
+      } catch {
+        errors.websiteUrl =
+          "Use a complete website address, such as https://example.com.";
+      }
+    }
 
-  const getSupplierDisplayName = () => {
-    if (supplierType === 'COMPANY') return companyName.trim() || profile?.companyName || 'Supplier';
-    return individualName.trim() || profile?.individualName || profile?.contactPersonName || 'Supplier';
+    setFieldErrors(errors);
+    return { errors, domains };
   };
 
   const validateLogoFile = async (file: File): Promise<string | null> => {
     if (!LOGO_ALLOWED_TYPES.includes(file.type as SupplierLogoContentType)) {
-      return 'Logo must be a PNG, JPEG, or WebP image.';
+      return "Logo must be a PNG, JPEG, or WebP image.";
     }
-
     if (file.size > LOGO_MAX_BYTES) {
-      return 'Logo must be 2 MB or smaller.';
+      return "Logo must be 2 MB or smaller.";
     }
 
     const dimensions = await readImageDimensions(file);
     if (dimensions.width !== dimensions.height) {
-      return 'Logo must be square. Use a padded square canvas for wide logos.';
+      return "Logo must be square. Use a padded square canvas for wide logos.";
     }
-
     if (
       dimensions.width < LOGO_MIN_DIMENSION ||
       dimensions.height < LOGO_MIN_DIMENSION ||
       dimensions.width > LOGO_MAX_DIMENSION ||
       dimensions.height > LOGO_MAX_DIMENSION
     ) {
-      return 'Logo dimensions must be between 256x256 and 2048x2048 pixels.';
+      return "Logo dimensions must be between 256x256 and 2048x2048 pixels.";
     }
-
     return null;
   };
 
-  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
+    event.target.value = "";
     if (!file) return;
 
     setLogoError(null);
-
+    setLogoSuccess(false);
     if (!profile) {
-      setLogoError('Save your supplier profile before uploading a logo.');
+      setLogoError("Save your supplier profile before uploading a logo.");
       return;
     }
 
     setIsUploadingLogo(true);
-    const localPreview = URL.createObjectURL(file);
-
     try {
       const validationError = await validateLogoFile(file);
       if (validationError) {
-        URL.revokeObjectURL(localPreview);
         setLogoError(validationError);
         return;
       }
@@ -221,478 +350,544 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
         originalFileName: file.name,
         contentType: file.type as SupplierLogoContentType,
       });
-
       await uploadFileToS3(presign.putUrl, file);
       const complete = await completeSupplierLogoUpload({
         s3Key: presign.s3Key,
         sizeBytes: file.size.toString(),
       });
 
+      releaseLocalLogoUrl();
+      if (complete.profile.logoUrl) {
+        setLogoPreviewUrl(complete.profile.logoUrl);
+      } else {
+        const localPreview = URL.createObjectURL(file);
+        localLogoUrlRef.current = localPreview;
+        setLogoPreviewUrl(localPreview);
+      }
       setProfile(complete.profile);
-      setLogoPreviewUrl(complete.profile.logoUrl || localPreview);
-      if (complete.profile.logoUrl) URL.revokeObjectURL(localPreview);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: unknown) {
-      URL.revokeObjectURL(localPreview);
-      console.error('Failed to upload supplier logo:', err);
-      setLogoError(getErrorMessage(err, 'Failed to upload logo'));
+      setLogoSuccess(true);
+    } catch (error) {
+      console.error("Failed to upload supplier logo:", error);
+      setLogoError(getErrorMessage(error, "Failed to upload logo."));
     } finally {
       setIsUploadingLogo(false);
     }
   };
 
-  const handleSave = async () => {
-    setError(null);
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRequestError(null);
     setSaveSuccess(false);
 
-    // Validate
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
+    const { errors, domains } = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setValidationAttempt((current) => current + 1);
       return;
     }
 
     setIsSaving(true);
-
     try {
       let requestData: UpdateProfileRequest;
-
-      if (supplierType === 'INDIVIDUAL') {
+      if (form.supplierType === "INDIVIDUAL") {
         requestData = {
-          supplierType: 'INDIVIDUAL',
-          individualName: individualName.trim(),
-          contactPersonName: contactPersonName.trim() || individualName.trim(),
-          businessDomains,
-          primaryDomain: primaryDomain.trim() || null,
-          naturesOfDataProvided: naturesOfDataProvided.trim() || null,
+          supplierType: "INDIVIDUAL",
+          individualName: form.individualName.trim(),
+          contactPersonName:
+            form.contactPersonName.trim() || form.individualName.trim(),
+          businessDomains: domains,
+          primaryDomain: form.primaryDomain.trim() || null,
+          naturesOfDataProvided: form.naturesOfDataProvided.trim() || null,
         };
       } else {
         requestData = {
-          supplierType: 'COMPANY',
-          companyName: companyName.trim(),
-          websiteUrl: websiteUrl.trim() || null,
-          contactPersonName: contactPersonName.trim(),
-          businessDomains,
-          primaryDomain: primaryDomain.trim() || null,
-          naturesOfDataProvided: naturesOfDataProvided.trim() || null,
+          supplierType: "COMPANY",
+          companyName: form.companyName.trim(),
+          websiteUrl: form.websiteUrl.trim() || null,
+          contactPersonName: form.contactPersonName.trim(),
+          businessDomains: domains,
+          primaryDomain: form.primaryDomain.trim() || null,
+          naturesOfDataProvided: form.naturesOfDataProvided.trim() || null,
         };
       }
 
       const response = await updateSupplierProfile(requestData);
       setProfile(response.profile);
+      setForm(formFromProfile(response.profile));
       setHasChanges(false);
+      setFieldErrors({});
       setSaveSuccess(true);
-
-      if (onSave) {
-        onSave(response.profile);
-      }
-
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err: unknown) {
-      console.error('Failed to save profile:', err);
-      
-      if (getErrorCode(err) === 'ONBOARDING_ALREADY_COMPLETED') {
-        setError('Your onboarding has been completed and finalized. Profile cannot be modified.');
+      onSave?.(response.profile);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+      if (getErrorCode(error) === "ONBOARDING_ALREADY_COMPLETED") {
+        setRequestError(
+          "Your onboarding is finalized, so this profile can no longer be modified."
+        );
         setIsOnboardingComplete(true);
       } else {
-        setError(getErrorMessage(err, 'Failed to save profile'));
+        setRequestError(getErrorMessage(error, "Failed to save profile."));
       }
     } finally {
       setIsSaving(false);
     }
   };
 
+  const displayName =
+    form.supplierType === "COMPANY"
+      ? form.companyName.trim() || profile?.companyName || "Supplier"
+      : form.individualName.trim() ||
+        profile?.individualName ||
+        profile?.contactPersonName ||
+        "Supplier";
+  const profileLocked = isOnboardingComplete;
+  const validationErrors = Object.entries(fieldErrors).map(
+    ([field, message]) => ({
+      fieldId: PROFILE_FIELD_IDS[field as ProfileField],
+      message: message as string,
+    })
+  );
+
   if (isLoading) {
     return (
-      <div className="h-full overflow-auto">
-        <div className="max-w-[1200px] mx-auto p-8">
-          <SectionHeader
-            title="Profile"
-            subtitle="Loading your profile..."
-            className="mb-8"
-          />
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center" style={{ color: tokens.textMuted }}>
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mx-auto mb-4" />
-              <p>Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DashboardPage width="standard">
+        <DashboardPageHeader
+          title="Supplier profile"
+          description="Manage the identity and business details shown across your supplier workspace."
+        />
+        <DashboardLoadingState label="Loading supplier profile" />
+      </DashboardPage>
     );
   }
 
-  return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-[1200px] mx-auto p-8">
-        {/* Page Header */}
-        <SectionHeader
-          title="Supplier Profile"
-          subtitle="Complete your profile to start the onboarding process."
-          className="mb-8"
+  if (loadError) {
+    return (
+      <DashboardPage width="standard">
+        <DashboardPageHeader
+          title="Supplier profile"
+          description="Manage the identity and business details shown across your supplier workspace."
         />
+        <DashboardErrorState
+          title="Profile could not be loaded"
+          message={loadError}
+          onRetry={() => void loadProfile()}
+        />
+      </DashboardPage>
+    );
+  }
 
-        {/* Offline Contract Status Banner */}
-        {profile && (
-          <div
-            className="rounded-lg p-4 border mb-6"
-            style={{
-              background: profile.isOfflineContractDone
-                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(22, 163, 74, 0.05))'
-                : 'linear-gradient(135deg, rgba(251, 146, 60, 0.1), rgba(249, 115, 22, 0.05))',
-              borderColor: profile.isOfflineContractDone
-                ? 'rgba(34, 197, 94, 0.3)'
-                : 'rgba(251, 146, 60, 0.3)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{
-                  background: profile.isOfflineContractDone ? '#22c55e' : '#fb923c',
-                  boxShadow: profile.isOfflineContractDone
-                    ? '0 0 8px rgba(34, 197, 94, 0.6)'
-                    : '0 0 8px rgba(251, 146, 60, 0.6)',
-                }}
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="text-sm font-semibold"
-                    style={{
-                      color: profile.isOfflineContractDone ? '#22c55e' : '#fb923c',
-                    }}
-                  >
-                    {profile.isOfflineContractDone ? '✓ Offline Contract Completed' : 'Offline Contract Pending'}
-                  </span>
-                </div>
-                <p
-                  className="text-xs"
-                  style={{
-                    color: tokens.textMuted,
-                  }}
-                >
-                  {profile.isOfflineContractDone
-                    ? 'Your offline contract documentation has been completed and verified.'
-                    : 'Please complete your offline contract documentation to proceed with full onboarding.'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Onboarding Complete - Profile Locked Banner */}
-        {isOnboardingComplete && (
-          <div
-            className="rounded-lg p-4 border mb-6"
-            style={{
-              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(139, 92, 246, 0.05))',
-              borderColor: 'rgba(168, 85, 247, 0.3)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{
-                  background: '#a855f7',
-                  boxShadow: '0 0 8px rgba(168, 85, 247, 0.6)',
-                }}
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="text-sm font-semibold"
-                    style={{
-                      color: '#a855f7',
-                    }}
-                  >
-                    🔒 Profile Locked
-                  </span>
-                </div>
-                <p
-                  className="text-xs"
-                  style={{
-                    color: tokens.textMuted,
-                  }}
-                >
-                  Your onboarding has been completed and finalized. Your profile information is now locked and cannot be modified for data integrity. Contact support if you need to make changes.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <StatusMessage variant="error" message={error} className="mb-6" />
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT COLUMN */}
-          <div className="space-y-6">
-            <ProfileSection
-              icon={ImageIcon}
-              title="Marketplace Logo"
-              subtitle="This logo appears on dataset discovery cards."
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                <div
-                  className="w-24 h-24 rounded-xl border flex items-center justify-center overflow-hidden flex-shrink-0"
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
-                >
-                  {logoPreviewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={logoPreviewUrl}
-                      alt={`${getSupplierDisplayName()} logo`}
-                      className="h-full w-full object-contain p-3"
-                    />
-                  ) : (
-                    <span className="text-2xl font-semibold">
-                      {getSupplierInitials(getSupplierDisplayName())}
-                    </span>
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium mb-1" style={{ color: tokens.textPrimary }}>
-                    Supplier logo
-                  </p>
-                  <p className="text-xs leading-relaxed mb-4" style={{ color: tokens.textMuted }}>
-                    Upload a square PNG, JPEG, or WebP logo. Recommended 512x512 px, accepted 256x256 to 2048x2048 px, max 2 MB.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <input
-                      id="supplier-logo-upload"
-                      type="file"
-                      accept={LOGO_ALLOWED_TYPES.join(',')}
-                      className="hidden"
-                      onChange={handleLogoFileChange}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!profile || isUploadingLogo}
-                      onClick={() => document.getElementById('supplier-logo-upload')?.click()}
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {isUploadingLogo ? 'Uploading...' : logoPreviewUrl ? 'Replace Logo' : 'Upload Logo'}
-                    </Button>
-                    {!profile && (
-                      <span className="text-xs" style={{ color: tokens.textMuted }}>
-                        Save profile first
-                      </span>
-                    )}
-                  </div>
-                  {profile?.logoUpdatedAt && (
-                    <p className="text-xs mt-3" style={{ color: tokens.textMuted }}>
-                      Updated: {new Date(profile.logoUpdatedAt).toLocaleDateString()}
-                    </p>
-                  )}
-                  {logoError && (
-                    <p className="text-xs mt-3" style={{ color: '#ef4444' }}>
-                      {logoError}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </ProfileSection>
-
-            {/* Supplier Type & Identity */}
-            <ProfileSection
-              icon={supplierType === 'COMPANY' ? Building2 : User}
-              title="Supplier Identity"
-              subtitle="Select your supplier type and provide identity details"
-            >
-              {/* Type Toggle */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                    Supplier Type
-                  </label>
-                  {profile && (
-                    <span className="text-xs px-2 py-1 rounded font-medium" style={{ background: tokens.isDark ? 'rgba(217, 119, 6, 0.35)' : 'rgba(217, 119, 6, 0.15)', color: tokens.isDark ? '#fcd34d' : '#b45309' }}>
-                      Cannot change
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {(['COMPANY', 'INDIVIDUAL'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => !profile && handleFieldChange(setSupplierType)(type)}
-                      disabled={!!profile}
-                      className="flex-1 rounded-lg p-3 transition-all font-medium"
-                      style={{
-                        background: supplierType === type 
-                          ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))'
-                          : tokens.inputBg,
-                        border: `2px solid ${supplierType === type ? '#3b82f6' : tokens.inputBorder}`,
-                        color: supplierType === type ? '#3b82f6' : (profile ? tokens.textMuted : tokens.textPrimary),
-                        opacity: profile ? 0.6 : 1,
-                        cursor: profile ? 'not-allowed' : 'pointer',
-                        boxShadow: supplierType === type ? '0 0 12px rgba(59, 130, 246, 0.3)' : 'none',
-                      }}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        {type === 'COMPANY' ? <Building2 className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                        <span className="text-sm">{type === 'COMPANY' ? 'Company' : 'Individual'}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Conditional Fields based on Type */}
-              {supplierType === 'COMPANY' ? (
-                <>
-                  <FormField
-                    label="Company Name *"
-                    value={companyName}
-                    onChange={handleFieldChange(setCompanyName)}
-                    placeholder="Enter your company name"
-                  />
-                  <FormField
-                    label="Website URL"
-                    value={websiteUrl}
-                    onChange={handleFieldChange(setWebsiteUrl)}
-                    placeholder="https://example.com"
-                    type="url"
-                    hint="Optional"
-                  />
-                </>
+  const profileAside = (
+    <>
+      <DashboardCard>
+        <DashboardCardHeader>
+          <DashboardCardTitle>Marketplace logo</DashboardCardTitle>
+          <DashboardCardDescription>
+            This mark appears with your datasets in marketplace discovery.
+          </DashboardCardDescription>
+        </DashboardCardHeader>
+        <DashboardCardContent className="space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/50 text-xl font-semibold text-foreground">
+              {logoPreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoPreviewUrl}
+                  alt={`${displayName} logo`}
+                  className="h-full w-full object-contain p-2"
+                />
               ) : (
-                <FormField
-                  label="Full Name *"
-                  value={individualName}
-                  onChange={handleFieldChange(setIndividualName)}
-                  placeholder="Enter your full name"
-                />
+                <span>{getSupplierInitials(displayName)}</span>
               )}
-
-              {profile && (
-                <div className="flex items-center gap-3 mt-4 text-xs" style={{ color: tokens.textMuted }}>
-                  <span>Created: {new Date(profile.createdAt).toLocaleDateString()}</span>
-                  {profile.updatedAt && (
-                    <>
-                      <span>•</span>
-                      <span>Updated: {new Date(profile.updatedAt).toLocaleDateString()}</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </ProfileSection>
-
-            {/* Business Information */}
-            <ProfileSection icon={Briefcase} title="Business Information">
-              <div className="space-y-4">
-                <FormField
-                  label="Business Domains *"
-                  value={businessDomains.join(', ')}
-                  onChange={handleBusinessDomainsChange}
-                  placeholder="e.g., HEALTHCARE, FINANCE, EDUCATION"
-                  hint="Comma-separated. Available: HEALTHCARE, FINANCE, EDUCATION, ECOMMERCE, AGRICULTURE, TECHNOLOGY, GOVERNMENT, RESEARCH, MARKETING, SOCIAL_MEDIA, OTHER"
-                  type="textarea"
-                  rows={3}
-                />
-                <FormField
-                  label="Primary Domain"
-                  value={primaryDomain}
-                  onChange={handleFieldChange(setPrimaryDomain)}
-                  placeholder="Your main business domain"
-                  hint="Optional"
-                />
-                <FormField
-                  label="Nature of Data Provided"
-                  value={naturesOfDataProvided}
-                  onChange={handleFieldChange(setNaturesOfDataProvided)}
-                  placeholder="Describe the nature of data you provide"
-                  type="textarea"
-                  rows={3}
-                  hint="Optional"
-                />
-              </div>
-            </ProfileSection>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="space-y-6">
-            {/* Contact Information */}
-            <ProfileSection icon={Mail} title="Contact Information">
-              <div className="space-y-4">
-                <FormField
-                  label={supplierType === 'COMPANY' ? 'Contact Person Name *' : 'Contact Person Name'}
-                  value={contactPersonName}
-                  onChange={handleFieldChange(setContactPersonName)}
-                  placeholder={supplierType === 'COMPANY' ? 'Name of primary contact person' : 'Optional - defaults to your name'}
-                  hint={supplierType === 'INDIVIDUAL' ? 'Optional - will default to your name if not provided' : undefined}
-                />
-                <FormField
-                  label="Contact Email"
-                  value={profile?.contactEmail || 'Loading...'}
-                  disabled
-                  hint="This is your login email and cannot be changed here"
-                />
-              </div>
-            </ProfileSection>
-
-            {/* Info Card */}
-            <div
-              className="rounded-lg p-6 border"
-              style={{
-                background: tokens.glassBg,
-                borderColor: tokens.glassBorder,
-                backdropFilter: 'blur(16px)',
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <Globe className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: tokens.textSecondary }} />
-                <div>
-                  <h4 className="text-sm font-medium mb-2" style={{ color: tokens.textPrimary }}>
-                    Profile Completion
-                  </h4>
-                  <p className="text-xs leading-relaxed" style={{ color: tokens.textMuted }}>
-                    Complete your profile to proceed with onboarding. Required fields are marked with *. 
-                    Your profile can be updated anytime before onboarding is marked as complete.
-                  </p>
-                </div>
-              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">
+                {displayName}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                PNG, JPEG, or WebP. Square, 256–2048 px, maximum 2 MB.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Save Button */}
-        <div className="mt-8 flex items-center gap-4">
-          <Button 
-            onClick={handleSave} 
-            disabled={!hasChanges || isSaving || isOnboardingComplete}
-            size="lg"
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept={LOGO_ALLOWED_TYPES.join(",")}
+            className="sr-only"
+            aria-label="Choose supplier logo"
+            onChange={handleLogoFileChange}
+          />
+          <DashboardButton
+            variant="outline"
+            className="w-full"
+            disabled={!profile || isUploadingLogo}
+            onClick={() => logoInputRef.current?.click()}
           >
-            {isSaving ? 'Saving...' : 'Save Profile'}
-          </Button>
-          
-          {isOnboardingComplete && (
-            <span className="text-sm px-3 py-1 rounded font-medium" style={{ background: tokens.isDark ? 'rgba(168, 85, 247, 0.4)' : 'rgba(168, 85, 247, 0.15)', color: tokens.isDark ? '#e9d5ff' : '#9333ea' }}>
-              Profile is locked - onboarding complete
+            <Upload aria-hidden="true" />
+            {isUploadingLogo
+              ? "Uploading…"
+              : logoPreviewUrl
+                ? "Replace logo"
+                : "Upload logo"}
+          </DashboardButton>
+          {!profile ? (
+            <p className="text-xs text-muted-foreground">
+              Save the profile before uploading a logo.
+            </p>
+          ) : null}
+          {profile?.logoUpdatedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Logo updated {formatDate(profile.logoUpdatedAt)}
+            </p>
+          ) : null}
+          {logoError ? (
+            <DashboardInlineAlert tone="danger" message={logoError} />
+          ) : null}
+          {logoSuccess ? (
+            <DashboardInlineAlert
+              tone="success"
+              title="Logo updated"
+              message="The new logo is ready for marketplace surfaces."
+            />
+          ) : null}
+        </DashboardCardContent>
+      </DashboardCard>
+
+      <DashboardCard>
+        <DashboardCardHeader>
+          <DashboardCardTitle>Profile status</DashboardCardTitle>
+          <DashboardCardDescription>
+            Current account and document state.
+          </DashboardCardDescription>
+        </DashboardCardHeader>
+        <DashboardCardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Editing</span>
+            <DashboardStatusBadge
+              icon={profileLocked ? LockKeyhole : FileCheck2}
+              tone={profileLocked ? "neutral" : "success"}
+            >
+              {profileLocked ? "Locked" : "Available"}
+            </DashboardStatusBadge>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">
+              Offline contract
             </span>
-          )}
-          
-          {saveSuccess && (
-            <StatusMessage variant="success" message="Profile saved successfully!" />
-          )}
-          
-          {hasChanges && !saveSuccess && !isOnboardingComplete && (
-            <span className="text-sm" style={{ color: tokens.textMuted }}>
-              You have unsaved changes
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+            <DashboardStatusBadge
+              tone={profile?.isOfflineContractDone ? "success" : "warning"}
+            >
+              {profile?.isOfflineContractDone ? "Completed" : "Pending"}
+            </DashboardStatusBadge>
+          </div>
+          <div className="border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
+            <p>Created: {formatDate(profile?.createdAt)}</p>
+            <p>Last updated: {formatDate(profile?.updatedAt)}</p>
+          </div>
+        </DashboardCardContent>
+      </DashboardCard>
+    </>
+  );
+
+  return (
+    <DashboardPage width="standard">
+      <DashboardPageHeader
+        title="Supplier profile"
+        description="Manage the identity and business details shown across your supplier workspace."
+        meta={
+          <DashboardStatusBadge
+            icon={form.supplierType === "COMPANY" ? Building2 : UserRound}
+            tone="neutral"
+          >
+            {form.supplierType === "COMPANY" ? "Company" : "Individual"}
+          </DashboardStatusBadge>
+        }
+      />
+
+      {statusWarning ? (
+        <DashboardInlineAlert
+          tone="warning"
+          title="Profile status unavailable"
+          message={statusWarning}
+        />
+      ) : null}
+      {profileLocked ? (
+        <DashboardInlineAlert
+          tone="info"
+          icon={LockKeyhole}
+          title="Profile editing is locked"
+          message="Onboarding is finalized. Contact support if these business details need to change. Logo replacement remains available."
+        />
+      ) : null}
+      {profile ? (
+        <DashboardInlineAlert
+          tone={profile.isOfflineContractDone ? "success" : "warning"}
+          title={
+            profile.isOfflineContractDone
+              ? "Offline contract completed"
+              : "Offline contract pending"
+          }
+          message={
+            profile.isOfflineContractDone
+              ? "Your offline contract documentation is recorded as complete."
+              : "Complete the offline contract documentation before the account can finish onboarding."
+          }
+        />
+      ) : null}
+
+      <form onSubmit={handleSave} noValidate>
+        <DashboardFormLayout aside={profileAside} stickyAside>
+          {requestError ? (
+            <DashboardInlineAlert
+              tone="danger"
+              title="Profile was not saved"
+              message={requestError}
+            />
+          ) : null}
+          {saveSuccess ? (
+            <DashboardInlineAlert
+              tone="success"
+              title="Profile saved"
+              message="Your supplier details are up to date."
+            />
+          ) : null}
+          <DashboardFormErrorSummary
+            errors={validationErrors}
+            focusKey={validationAttempt}
+            focusOnMount
+          />
+
+          <DashboardSection
+            title="Supplier identity"
+            description="Choose the account type and provide the legal identity used for supplier records."
+          >
+            <div className="space-y-5">
+              <DashboardChoiceGroupField
+                label="Supplier type"
+                description={
+                  profile
+                    ? "Supplier type cannot be changed after the profile is created."
+                    : "Choose the structure that owns and supplies the data."
+                }
+                required
+              >
+                {(groupProps) => (
+                  <DashboardRadioGroup
+                    {...groupProps}
+                    id={PROFILE_FIELD_IDS.supplierType}
+                    value={form.supplierType}
+                    disabled={Boolean(profile) || profileLocked}
+                    className="grid gap-3 sm:grid-cols-2"
+                    onValueChange={(value) =>
+                      updateField("supplierType", value as SupplierType)
+                    }
+                  >
+                    <DashboardChoiceField
+                      className="rounded-xl border border-border bg-muted/30 p-4"
+                      control={<DashboardRadioGroupItem value="COMPANY" />}
+                      label="Company"
+                      description="A registered business or organisation."
+                    />
+                    <DashboardChoiceField
+                      className="rounded-xl border border-border bg-muted/30 p-4"
+                      control={<DashboardRadioGroupItem value="INDIVIDUAL" />}
+                      label="Individual"
+                      description="A person supplying data directly."
+                    />
+                  </DashboardRadioGroup>
+                )}
+              </DashboardChoiceGroupField>
+
+              {form.supplierType === "COMPANY" ? (
+                <DashboardFormGrid>
+                  <DashboardField
+                    id={PROFILE_FIELD_IDS.companyName}
+                    label="Company name"
+                    required
+                    error={fieldErrors.companyName}
+                  >
+                    {(controlProps) => (
+                      <DashboardInput
+                        {...controlProps}
+                        value={form.companyName}
+                        disabled={profileLocked}
+                        placeholder="Registered company name"
+                        onChange={(event) =>
+                          updateField("companyName", event.target.value)
+                        }
+                      />
+                    )}
+                  </DashboardField>
+                  <DashboardField
+                    id={PROFILE_FIELD_IDS.websiteUrl}
+                    label="Website"
+                    description="Optional"
+                    error={fieldErrors.websiteUrl}
+                  >
+                    {(controlProps) => (
+                      <DashboardInput
+                        {...controlProps}
+                        type="url"
+                        value={form.websiteUrl}
+                        disabled={profileLocked}
+                        placeholder="https://example.com"
+                        onChange={(event) =>
+                          updateField("websiteUrl", event.target.value)
+                        }
+                      />
+                    )}
+                  </DashboardField>
+                </DashboardFormGrid>
+              ) : (
+                <DashboardField
+                  id={PROFILE_FIELD_IDS.individualName}
+                  label="Full name"
+                  required
+                  error={fieldErrors.individualName}
+                >
+                  {(controlProps) => (
+                    <DashboardInput
+                      {...controlProps}
+                      value={form.individualName}
+                      disabled={profileLocked}
+                      placeholder="Full legal name"
+                      onChange={(event) =>
+                        updateField("individualName", event.target.value)
+                      }
+                    />
+                  )}
+                </DashboardField>
+              )}
+            </div>
+          </DashboardSection>
+
+          <DashboardSection
+            title="Business information"
+            description="Describe the areas and data capabilities represented by this supplier account."
+          >
+            <div className="space-y-5">
+              <DashboardField
+                id={PROFILE_FIELD_IDS.businessDomains}
+                label="Business domains"
+                required
+                error={fieldErrors.businessDomains}
+                description={`Comma-separated values: ${BUSINESS_DOMAINS.join(", ")}`}
+              >
+                {(controlProps) => (
+                  <DashboardTextarea
+                    {...controlProps}
+                    value={form.businessDomains}
+                    disabled={profileLocked}
+                    placeholder="TECHNOLOGY, RESEARCH"
+                    onChange={(event) =>
+                      updateField("businessDomains", event.target.value)
+                    }
+                  />
+                )}
+              </DashboardField>
+              <DashboardField
+                id={PROFILE_FIELD_IDS.primaryDomain}
+                label="Primary domain"
+                description="Optional"
+              >
+                {(controlProps) => (
+                  <DashboardInput
+                    {...controlProps}
+                    value={form.primaryDomain}
+                    disabled={profileLocked}
+                    placeholder="Main business domain"
+                    onChange={(event) =>
+                      updateField("primaryDomain", event.target.value)
+                    }
+                  />
+                )}
+              </DashboardField>
+              <DashboardField
+                id={PROFILE_FIELD_IDS.naturesOfDataProvided}
+                label="Nature of data provided"
+                description="Optional"
+              >
+                {(controlProps) => (
+                  <DashboardTextarea
+                    {...controlProps}
+                    value={form.naturesOfDataProvided}
+                    disabled={profileLocked}
+                    placeholder="Describe the data categories, collection methods, and coverage you provide."
+                    onChange={(event) =>
+                      updateField("naturesOfDataProvided", event.target.value)
+                    }
+                  />
+                )}
+              </DashboardField>
+            </div>
+          </DashboardSection>
+
+          <DashboardSection
+            title="Contact information"
+            description="This contact is used for supplier operations and account communication."
+          >
+            <DashboardFormGrid>
+              <DashboardField
+                id={PROFILE_FIELD_IDS.contactPersonName}
+                label="Contact person"
+                required={form.supplierType === "COMPANY"}
+                error={fieldErrors.contactPersonName}
+                description={
+                  form.supplierType === "INDIVIDUAL"
+                    ? "Optional; defaults to the individual name."
+                    : undefined
+                }
+              >
+                {(controlProps) => (
+                  <DashboardInput
+                    {...controlProps}
+                    value={form.contactPersonName}
+                    disabled={profileLocked}
+                    placeholder="Primary contact name"
+                    onChange={(event) =>
+                      updateField("contactPersonName", event.target.value)
+                    }
+                  />
+                )}
+              </DashboardField>
+              <DashboardField
+                label="Contact email"
+                description="This is the login email and cannot be changed here."
+              >
+                {(controlProps) => (
+                  <DashboardInput
+                    {...controlProps}
+                    type="email"
+                    value={profile?.contactEmail ?? ""}
+                    placeholder="Available after the profile is created"
+                    disabled
+                    readOnly
+                  />
+                )}
+              </DashboardField>
+            </DashboardFormGrid>
+          </DashboardSection>
+
+          <DashboardFormActions
+            sticky
+            status={
+              profileLocked
+                ? "Profile editing is locked."
+                : saveSuccess
+                  ? "All changes are saved."
+                  : hasChanges
+                    ? "You have unsaved changes."
+                    : "No unsaved changes."
+            }
+          >
+            <DashboardButton
+              type="submit"
+              disabled={!hasChanges || isSaving || profileLocked}
+            >
+              {isSaving ? "Saving…" : "Save profile"}
+            </DashboardButton>
+          </DashboardFormActions>
+        </DashboardFormLayout>
+      </form>
+    </DashboardPage>
   );
 }

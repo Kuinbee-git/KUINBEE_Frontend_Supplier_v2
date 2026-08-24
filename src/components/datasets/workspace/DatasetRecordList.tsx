@@ -4,8 +4,12 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Database, type LucideIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  DashboardButton,
+  DashboardDataTable,
+  DashboardMobileRecordCard,
+  type DashboardTableColumn,
+} from "@/components/dashboard";
 
 export interface DatasetRecordColumn<TItem> {
   header: string;
@@ -19,54 +23,36 @@ export function DatasetRecordList<TItem>({
   columns,
   getKey,
   renderMobile,
+  busy = false,
+  caption = "Datasets",
 }: {
   items: TItem[];
   columns: DatasetRecordColumn<TItem>[];
   getKey: (item: TItem) => string;
   renderMobile: (item: TItem) => ReactNode;
+  busy?: boolean;
+  caption?: string;
 }) {
+  const dashboardColumns: DashboardTableColumn<TItem>[] = columns.map(
+    (column, index) => ({
+      id: `${column.header}-${index}`,
+      header: column.header,
+      cell: column.render,
+      className: column.className,
+      headerClassName: column.headerClassName,
+      rowHeader: index === 0,
+    })
+  );
+
   return (
-    <>
-      <div className="supplier-glass-panel hidden overflow-hidden rounded-2xl border md:block">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-border bg-foreground/[0.025] text-left">
-              {columns.map((column) => (
-                <th
-                  key={column.header}
-                  scope="col"
-                  className={cn(
-                    "px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
-                    column.headerClassName
-                  )}
-                >
-                  {column.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr
-                key={getKey(item)}
-                className="border-b border-border/70 transition-colors last:border-b-0 hover:bg-foreground/[0.025]"
-              >
-                {columns.map((column) => (
-                  <td key={column.header} className={cn("px-5 py-4", column.className)}>
-                    {column.render(item)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="grid gap-3 md:hidden">
-        {items.map((item) => (
-          <div key={getKey(item)}>{renderMobile(item)}</div>
-        ))}
-      </div>
-    </>
+    <DashboardDataTable
+      caption={caption}
+      busy={busy}
+      items={items}
+      columns={dashboardColumns}
+      getRowId={getKey}
+      renderMobileItem={renderMobile}
+    />
   );
 }
 
@@ -119,14 +105,17 @@ export function DatasetMobileRecordCard({
   actionLabel: string;
 }) {
   return (
-    <article className="supplier-glass-card overflow-hidden rounded-xl border p-4">
+    <DashboardMobileRecordCard>
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="size-4" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold text-foreground">
-            <Link href={href} className="underline-offset-4 hover:text-primary hover:underline">
+            <Link
+              href={href}
+              className="underline-offset-4 hover:text-primary hover:underline"
+            >
               {title}
             </Link>
           </h3>
@@ -142,12 +131,17 @@ export function DatasetMobileRecordCard({
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {supportingText}
         </span>
-        <Button asChild variant="ghost" size="sm" className="-mr-2 shrink-0">
+        <DashboardButton
+          asChild
+          variant="ghost"
+          size="compact"
+          className="-mr-2 shrink-0"
+        >
           <Link href={href}>
             {actionLabel} <ArrowRight />
           </Link>
-        </Button>
+        </DashboardButton>
       </div>
-    </article>
+    </DashboardMobileRecordCard>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { DashboardCard } from "@/components/dashboard";
+import { DashboardButton } from "@/components/dashboard";
 import { Label } from "@/components/ui/label";
 import { Upload, FileText } from "lucide-react";
 import type { DatasetDetailTokens } from "./detailTokens";
@@ -36,11 +36,14 @@ export function SampleUploadSection({
   formatFileSize,
 }: SampleUploadSectionProps) {
   return (
-    <Card className="supplier-glass-card overflow-hidden rounded-xl border">
+    <DashboardCard className="overflow-hidden rounded-xl border">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5" style={{ color: "#22c55e" }} />
+            <FileText
+              className="w-5 h-5"
+              style={{ color: "var(--dashboard-success-foreground)" }}
+            />
             <div>
               <h3
                 className="text-sm font-semibold"
@@ -54,15 +57,15 @@ export function SampleUploadSection({
             </div>
           </div>
           {isEditable && (
-            <Button
-              size="sm"
+            <DashboardButton
+              size="compact"
               variant="outline"
               onClick={onUploadClick}
               className="h-10 gap-2 px-4"
             >
               <Upload className="w-4 h-4" />
               {sampleUpload ? "Replace sample file" : "Upload sample file"}
-            </Button>
+            </DashboardButton>
           )}
         </div>
 
@@ -71,8 +74,8 @@ export function SampleUploadSection({
             className="p-4 rounded-lg border"
             style={{
               background: isDark
-                ? "rgba(255, 255, 255, 0.02)"
-                : "rgba(26, 34, 64, 0.02)",
+                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
+                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
               borderColor: tokens.borderSubtle,
             }}
           >
@@ -94,20 +97,20 @@ export function SampleUploadSection({
                   style={{
                     background:
                       sampleUpload.status === "UPLOADED"
-                        ? "rgba(34, 197, 94, 0.1)"
+                        ? "color-mix(in srgb, var(--dashboard-success) 10%, transparent)"
                         : sampleUpload.status === "UPLOADING"
-                          ? "rgba(234, 179, 8, 0.1)"
+                          ? "color-mix(in srgb, var(--dashboard-warning) 10%, transparent)"
                           : sampleUpload.status === "FAILED"
-                            ? "rgba(239, 68, 68, 0.1)"
-                            : "rgba(59, 130, 246, 0.1)",
+                            ? "color-mix(in srgb, var(--dashboard-danger) 10%, transparent)"
+                            : "color-mix(in srgb, var(--dashboard-action) 10%, transparent)",
                     color:
                       sampleUpload.status === "UPLOADED"
-                        ? "#22c55e"
+                        ? "var(--dashboard-success-foreground)"
                         : sampleUpload.status === "UPLOADING"
-                          ? "#eab308"
+                          ? "var(--dashboard-warning-foreground)"
                           : sampleUpload.status === "FAILED"
-                            ? "#ef4444"
-                            : "#3b82f6",
+                            ? "var(--dashboard-danger-foreground)"
+                            : "var(--dashboard-info-foreground)",
                   }}
                 >
                   {sampleUpload.status}
@@ -149,6 +152,6 @@ export function SampleUploadSection({
           </div>
         )}
       </div>
-    </Card>
+    </DashboardCard>
   );
 }

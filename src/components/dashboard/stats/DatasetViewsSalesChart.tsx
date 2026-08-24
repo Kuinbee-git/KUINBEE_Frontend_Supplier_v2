@@ -1,6 +1,5 @@
 "use client";
 
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import type { DatasetTimePoint } from "@/types/supplier-stats.types";
 import {
   Area,
@@ -12,6 +11,8 @@ import {
   YAxis,
 } from "recharts";
 import { BarChart3 } from "lucide-react";
+
+import { DashboardEmptyState, DashboardSkeleton } from "@/components/dashboard";
 
 interface DatasetViewsSalesChartProps {
   data: DatasetTimePoint[];
@@ -45,39 +46,24 @@ export function DatasetViewsSalesChart({
   data,
   loading,
 }: DatasetViewsSalesChartProps) {
-  const tokens = useSupplierTokens();
-
   if (loading) {
-    return (
-      <div
-        className="rounded-xl animate-pulse"
-        style={{ background: "var(--muted)", height: "280px" }}
-      />
-    );
+    return <DashboardSkeleton className="h-64 sm:h-72" />;
   }
 
   if (data.length === 0) {
     return (
-      <div className="flex h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border/80 px-6 text-center">
-        <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <BarChart3 className="size-5" aria-hidden="true" />
-        </span>
-        <p className="mt-3 text-sm font-medium text-foreground">
-          No view or sales activity
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Try a longer time range or check again after buyers visit this
-          dataset.
-        </p>
-      </div>
+      <DashboardEmptyState
+        surface="plain"
+        icon={BarChart3}
+        title="No view or sales activity"
+        description="Try a longer time range or check again after buyers visit this dataset."
+      />
     );
   }
 
-  const viewsColor = tokens.isDark ? "#4a90e2" : "#1a2240";
-  const salesColor = "#10b981";
-  const gridColor = tokens.isDark
-    ? "rgba(255,255,255,0.06)"
-    : "rgba(26,34,64,0.08)";
+  const viewsColor = "var(--dashboard-action)";
+  const salesColor = "var(--semantic-success)";
+  const gridColor = "var(--dashboard-glass-border)";
 
   return (
     <div
@@ -108,36 +94,34 @@ export function DatasetViewsSalesChart({
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fill: tokens.textMuted, fontSize: 11 }}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
             axisLine={{ stroke: gridColor }}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={40}
           />
           <YAxis
-            tick={{ fill: tokens.textMuted, fontSize: 11 }}
+            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             width={45}
           />
           <Tooltip
             contentStyle={{
-              background: tokens.isDark
-                ? "rgba(20, 27, 54, 0.95)"
-                : "rgba(255, 255, 255, 0.95)",
-              border: `1px solid ${tokens.borderDefault}`,
-              borderRadius: "12px",
+              background: "var(--dashboard-glass-background-strong)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
               backdropFilter: "blur(16px)",
-              boxShadow: tokens.glassShadow,
+              boxShadow: "var(--dashboard-glass-shadow)",
               padding: "12px 16px",
             }}
             labelStyle={{
-              color: tokens.textSecondary,
+              color: "var(--muted-foreground)",
               fontSize: 12,
               marginBottom: 4,
             }}
             itemStyle={{
-              color: tokens.textPrimary,
+              color: "var(--foreground)",
               fontSize: 12,
               fontWeight: 600,
             }}
@@ -154,7 +138,7 @@ export function DatasetViewsSalesChart({
             activeDot={{
               r: 4,
               fill: viewsColor,
-              stroke: tokens.isDark ? "#0f1428" : "#fff",
+              stroke: "var(--dashboard-surface)",
               strokeWidth: 2,
             }}
           />
@@ -169,7 +153,7 @@ export function DatasetViewsSalesChart({
             activeDot={{
               r: 4,
               fill: salesColor,
-              stroke: tokens.isDark ? "#0f1428" : "#fff",
+              stroke: "var(--dashboard-surface)",
               strokeWidth: 2,
             }}
           />

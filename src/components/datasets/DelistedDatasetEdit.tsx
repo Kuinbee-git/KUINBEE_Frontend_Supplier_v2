@@ -8,14 +8,19 @@ import {
   Database,
   FileCode,
   FileText,
-  Loader2,
   MapPin,
   Settings,
   Tag,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PageBackground } from "@/components/shared";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardErrorState,
+  DashboardInlineAlert,
+  DashboardLoadingState,
+  DashboardPageHeader,
+} from "@/components/dashboard";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
 import {
   getDatasetDetails,
   getDatasetPricing,
@@ -71,7 +76,7 @@ interface DelistedDatasetEditProps {
 
 export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   const router = useRouter();
-  const tokens = useSupplierTokens();
+  const tokens = getDatasetThemeTokens(false);
 
   const [datasetData, setDatasetData] = useState<DatasetDetailsResponse | null>(
     null
@@ -219,44 +224,41 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   // --- Loading ---
   if (loading) {
     return (
-      <PageBackground withGrid>
-        <DatasetWorkspace className="max-w-[1380px]">
-          <div className="supplier-glass-card flex min-h-72 items-center justify-center rounded-2xl border">
-            <Loader2
-              className="w-8 h-8 animate-spin"
-              style={{ color: tokens.textSecondary }}
-            />
-          </div>
-        </DatasetWorkspace>
-      </PageBackground>
+      <DatasetWorkspace>
+        <DashboardPageHeader
+          title="Dataset update"
+          description="Loading the editable update workspace for this dataset."
+        />
+        <DashboardLoadingState
+          label="Loading dataset update"
+          variant="skeleton"
+          rows={6}
+        />
+      </DatasetWorkspace>
     );
   }
 
   if (loadError || !datasetData) {
     return (
-      <PageBackground withGrid>
-        <DatasetWorkspace className="max-w-[1380px]">
-          <div className="supplier-glass-card rounded-2xl border p-6 sm:p-8">
-            <h1 className="text-xl font-semibold text-foreground">
-              Dataset update could not be loaded
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {loadError ?? "The dataset is unavailable."}
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button onClick={() => void fetchData()}>Try again</Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  router.push(`/dashboard/my-datasets/${datasetId}`)
-                }
-              >
-                Back to dataset
-              </Button>
-            </div>
-          </div>
-        </DatasetWorkspace>
-      </PageBackground>
+      <DatasetWorkspace className="max-w-3xl">
+        <DashboardPageHeader
+          title="Dataset update"
+          description="Prepare and submit changes to this dataset."
+        />
+        <DashboardErrorState
+          title="Dataset update could not be loaded"
+          message={loadError ?? "The dataset is unavailable."}
+          onRetry={() => void fetchData()}
+        />
+        <div className="flex justify-center">
+          <DashboardButton
+            variant="ghost"
+            onClick={() => router.push(`/dashboard/my-datasets/${datasetId}`)}
+          >
+            Back to dataset
+          </DashboardButton>
+        </div>
+      </DatasetWorkspace>
     );
   }
 
@@ -275,7 +277,9 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   const verificationStatus = verification?.status ?? "PENDING";
 
   const sectionTokens = {
-    surfaceCard: isDark ? "rgba(26, 34, 64, 0.68)" : "#ffffff",
+    surfaceCard: isDark
+      ? "var(--dashboard-glass-background)"
+      : "var(--dashboard-glass-background)",
     borderDefault: tokens.borderDefault,
     borderSubtle: tokens.borderSubtle,
     textPrimary: tokens.textPrimary,
@@ -286,16 +290,16 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
   };
 
   return (
-    <PageBackground withGrid>
-      <DatasetWorkspace className="max-w-[1380px]">
-        <Button
+    <>
+      <DatasetWorkspace>
+        <DashboardButton
           variant="ghost"
           onClick={() => router.push(`/dashboard/my-datasets/${datasetId}`)}
           className="-ml-3 mb-5 gap-2"
         >
           <ArrowLeft className="size-4" />
           Back to dataset
-        </Button>
+        </DashboardButton>
 
         <DatasetEntityHeader
           eyebrow="Dataset update workspace"
@@ -330,12 +334,12 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
             )}
 
           {!canEdit && !["DELISTED", "SUBMITTED"].includes(dataset.status) && (
-            <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/[0.08] px-5 py-4">
-              <p className="text-sm leading-6 text-amber-700 dark:text-amber-300">
-                Editing is locked while this update is outside an editable
-                review state.
-              </p>
-            </div>
+            <DashboardInlineAlert
+              className="mb-6"
+              tone="warning"
+              title="Editing is locked"
+              message="This update is outside an editable review state. You can still review the saved information below."
+            />
           )}
         </div>
 
@@ -612,7 +616,7 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
             )}
           </main>
 
-          <aside className="order-first space-y-4 xl:order-none xl:sticky xl:top-6">
+          <aside className="space-y-4 xl:sticky xl:top-6">
             {canEdit ? (
               <SubmitForReviewSection
                 verificationStatus={verificationStatus}
@@ -639,7 +643,7 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
                 }
               />
             ) : (
-              <section className="supplier-glass-panel rounded-xl border p-5">
+              <DashboardCard className="p-5">
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   Review state
                 </p>
@@ -650,10 +654,10 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
                   This update is currently locked by its lifecycle state. The
                   editable sections remain visible for reference.
                 </p>
-              </section>
+              </DashboardCard>
             )}
 
-            <section className="supplier-glass-panel rounded-xl border p-5">
+            <DashboardCard className="p-5">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 What this changes
               </p>
@@ -664,7 +668,7 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
                 Submitting this form starts an admin review. It does not
                 immediately republish or replace the marketplace version.
               </p>
-            </section>
+            </DashboardCard>
           </aside>
         </div>
       </DatasetWorkspace>
@@ -684,6 +688,6 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
           void fetchData();
         }}
       />
-    </PageBackground>
+    </>
   );
 }

@@ -3,18 +3,29 @@
  * Dialog for creating/editing sources
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { createSource, updateSource } from '@/lib/api/catalog';
-import { SOURCE_CONFIG, CATALOG_ERROR_MESSAGES } from '@/constants/catalog.constants';
-import type { Source, CreateSourceRequest, UpdateSourceRequest } from '@/types/catalog.types';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import {
+  DashboardButton,
+  DashboardDialog,
+  DashboardDialogContent,
+  DashboardField,
+  DashboardInlineAlert,
+  DashboardInput,
+  DashboardTextarea,
+} from "@/components/dashboard";
+import { createSource, updateSource } from "@/lib/api/catalog";
+import {
+  SOURCE_CONFIG,
+  CATALOG_ERROR_MESSAGES,
+} from "@/constants/catalog.constants";
+import type {
+  Source,
+  CreateSourceRequest,
+  UpdateSourceRequest,
+} from "@/types/catalog.types";
+import { Loader2 } from "lucide-react";
 
 interface SourcesDialogProps {
   isOpen: boolean;
@@ -22,7 +33,42 @@ interface SourcesDialogProps {
   onSuccess?: (source: Source) => void;
   existingSource?: Source | null;
   isDark?: boolean;
-  tokens?: any;
+  tokens?: unknown;
+}
+
+interface SourceFieldErrors {
+  name?: string;
+  description?: string;
+  websiteUrl?: string;
+}
+
+function isValidUrl(url: string) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readCatalogError(error: unknown): {
+  code?: string;
+  message?: string;
+} {
+  if (typeof error !== "object" || error === null) {
+    return {};
+  }
+
+  const errorRecord = error as Record<string, unknown>;
+  return {
+    code: typeof errorRecord.code === "string" ? errorRecord.code : undefined,
+    message:
+      error instanceof Error && error.message
+        ? error.message
+        : typeof errorRecord.message === "string"
+          ? errorRecord.message
+          : undefined,
+  };
 }
 
 export function SourcesDialog({
@@ -30,266 +76,278 @@ export function SourcesDialog({
   onClose,
   onSuccess,
   existingSource = null,
-  isDark = false,
-  tokens,
 }: SourcesDialogProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pre-fill form if editing
-  useEffect(() => {
-    if (existingSource) {
-      setName(existingSource.name);
-      setDescription(existingSource.description || '');
-      setWebsiteUrl(existingSource.websiteUrl || '');
-    } else {
-      resetForm();
-    }
-  }, [existingSource, isOpen]);
+  const generatedId = useId().replaceAll(":", "");
+  const formId = `source-form-${generatedId}`;
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<SourceFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
-    setName('');
-    setDescription('');
-    setWebsiteUrl('');
-    setError(null);
+    setName("");
+    setDescription("");
+    setWebsiteUrl("");
+    setFieldErrors({});
+    setFormError(null);
   }, []);
 
-  const validateForm = useCallback(() => {
-    if (!name.trim()) {
-      setError('Source name is required');
-      return false;
-    }
+  useEffect(() => {
+    if (!isOpen) return;
 
-    if (name.trim().length < SOURCE_CONFIG.MIN_NAME_LENGTH) {
-      setError(`Source name must be at least ${SOURCE_CONFIG.MIN_NAME_LENGTH} characters`);
-      return false;
-    }
-
-    if (name.trim().length > SOURCE_CONFIG.MAX_NAME_LENGTH) {
-      setError(`Source name must be less than ${SOURCE_CONFIG.MAX_NAME_LENGTH} characters`);
-      return false;
-    }
-
-    if (description.length > SOURCE_CONFIG.MAX_DESCRIPTION_LENGTH) {
-      setError(`Description must be less than ${SOURCE_CONFIG.MAX_DESCRIPTION_LENGTH} characters`);
-      return false;
-    }
-
-    // Validate URL if provided
-    if (websiteUrl && !isValidUrl(websiteUrl)) {
-      setError('Please enter a valid website URL');
-      return false;
-    }
-
-    return true;
-  }, [name, description, websiteUrl]);
-
-  const isValidUrl = (url: string) => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleSubmit = useCallback(async () => {
-    setError(null);
-
-    if (!validateForm()) {
+    if (existingSource) {
+      setName(existingSource.name);
+      setDescription(existingSource.description || "");
+      setWebsiteUrl(existingSource.websiteUrl || "");
+      setFieldErrors({});
+      setFormError(null);
       return;
     }
 
-    try {
-      setLoading(true);
+    resetForm();
+  }, [existingSource, isOpen, resetForm]);
 
-      let result;
+  const validateForm = useCallback(() => {
+    const nextErrors: SourceFieldErrors = {};
+    const trimmedName = name.trim();
 
-      if (existingSource) {
-        // Update existing source
-        const updateData: UpdateSourceRequest = {
-          name: name.trim(),
-          description: description.trim() || null,
-          websiteUrl: websiteUrl.trim() || null,
-        };
-        result = await updateSource(existingSource.id, updateData);
-      } else {
-        // Create new source
-        const createData: CreateSourceRequest = {
-          name: name.trim(),
-          description: description.trim() || undefined,
-          websiteUrl: websiteUrl.trim() || undefined,
-        };
-        result = await createSource(createData);
-      }
+    if (!trimmedName) {
+      nextErrors.name = "Source name is required";
+    } else if (trimmedName.length < SOURCE_CONFIG.MIN_NAME_LENGTH) {
+      nextErrors.name = `Source name must be at least ${SOURCE_CONFIG.MIN_NAME_LENGTH} characters`;
+    } else if (trimmedName.length > SOURCE_CONFIG.MAX_NAME_LENGTH) {
+      nextErrors.name = `Source name must be less than ${SOURCE_CONFIG.MAX_NAME_LENGTH} characters`;
+    }
 
-      // Extract source from nested response structure
-      const sourceObj = result?.data?.source;
-      if (sourceObj && sourceObj.id) {
-        onSuccess?.(sourceObj);
+    if (description.length > SOURCE_CONFIG.MAX_DESCRIPTION_LENGTH) {
+      nextErrors.description = `Description must be less than ${SOURCE_CONFIG.MAX_DESCRIPTION_LENGTH} characters`;
+    }
+
+    if (websiteUrl && !isValidUrl(websiteUrl)) {
+      nextErrors.websiteUrl = "Please enter a valid website URL";
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }, [description, name, websiteUrl]);
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setFormError(null);
+
+      if (!validateForm()) return;
+
+      try {
+        setSaving(true);
+
+        const result = existingSource
+          ? await updateSource(existingSource.id, {
+              name: name.trim(),
+              description: description.trim() || null,
+              websiteUrl: websiteUrl.trim() || null,
+            } satisfies UpdateSourceRequest)
+          : await createSource({
+              name: name.trim(),
+              description: description.trim() || undefined,
+              websiteUrl: websiteUrl.trim() || undefined,
+            } satisfies CreateSourceRequest);
+
+        const source = result?.data?.source;
+        if (!source?.id) {
+          console.error("API did not return a valid source object:", result);
+          setFormError(
+            "The source could not be saved because the response was invalid."
+          );
+          return;
+        }
+
+        onSuccess?.(source);
         resetForm();
         onClose();
-      } else {
-        console.error('API did not return a valid source object:', result);
-        setError('Failed to create source: invalid response from server.');
-      }
-    } catch (err: any) {
-      console.error('Failed to save source:', err);
+      } catch (error: unknown) {
+        console.error("Failed to save source:", error);
+        const catalogError = readCatalogError(error);
 
-      // Map error codes to user-friendly messages
-      if (err.code === 'SOURCE_NAME_TAKEN') {
-        setError(CATALOG_ERROR_MESSAGES.SOURCE_NAME_TAKEN);
-      } else {
-        setError(err.message || CATALOG_ERROR_MESSAGES.VALIDATION_ERROR);
+        if (catalogError.code === "SOURCE_NAME_TAKEN") {
+          setFieldErrors((current) => ({
+            ...current,
+            name: CATALOG_ERROR_MESSAGES.SOURCE_NAME_TAKEN,
+          }));
+        } else {
+          setFormError(
+            catalogError.message || CATALOG_ERROR_MESSAGES.VALIDATION_ERROR
+          );
+        }
+      } finally {
+        setSaving(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [name, description, websiteUrl, existingSource, validateForm, resetForm, onClose, onSuccess]);
+    },
+    [
+      description,
+      existingSource,
+      name,
+      onClose,
+      onSuccess,
+      resetForm,
+      validateForm,
+      websiteUrl,
+    ]
+  );
 
   const handleClose = useCallback(() => {
+    if (saving) return;
     resetForm();
     onClose();
-  }, [resetForm, onClose]);
+  }, [onClose, resetForm, saving]);
 
-  const isEditing = !!existingSource;
-  const bgColor = tokens?.surfaceCard || (isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255,255,255,0.95)');
-  const borderColor = tokens?.borderDefault || (isDark ? 'rgba(255,255,255,0.08)' : '#e6eef8');
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) handleClose();
+    },
+    [handleClose]
+  );
+
+  const isEditing = Boolean(existingSource);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent
-        className="backdrop-blur-sm rounded-lg border shadow-xl p-6 max-w-xl"
-        style={{
-          background: bgColor,
-          borderColor,
-          boxShadow: tokens?.shadow || undefined,
+    <DashboardDialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DashboardDialogContent
+        size="md"
+        title={isEditing ? "Edit source" : "Create new source"}
+        description={
+          isEditing
+            ? "Update the source details used by your dataset proposals."
+            : "Add a reusable data source for this dataset proposal."
+        }
+        showCloseButton={!saving}
+        onEscapeKeyDown={(event) => {
+          if (saving) event.preventDefault();
         }}
-      >
-        <DialogHeader>
-          <DialogTitle style={{ color: tokens?.textPrimary }}>
-            {isEditing ? 'Edit Source' : 'Create New Source'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Source Name */}
-          <div className="space-y-2">
-            <Label style={{ color: tokens?.textPrimary }}>
-              Source Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null);
-              }}
-              placeholder="e.g., Financial Systems, Market Data"
-              disabled={loading}
-              style={{
-                background: tokens?.inputBg,
-                borderColor: error ? '#ef4444' : tokens?.inputBorder,
-                color: tokens?.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens?.textMuted }}>
-              {name.length}/{SOURCE_CONFIG.MAX_NAME_LENGTH} characters
-            </p>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label style={{ color: tokens?.textPrimary }}>Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                setError(null);
-              }}
-              placeholder="Describe this data source (optional)"
-              disabled={loading}
-              className="resize-none"
-              rows={3}
-              style={{
-                background: tokens?.inputBg,
-                borderColor: tokens?.inputBorder,
-                color: tokens?.textPrimary,
-              }}
-            />
-            <p className="text-xs" style={{ color: tokens?.textMuted }}>
-              {description.length}/{SOURCE_CONFIG.MAX_DESCRIPTION_LENGTH} characters
-            </p>
-          </div>
-
-          {/* Website URL */}
-          <div className="space-y-2">
-            <Label style={{ color: tokens?.textPrimary }}>Website URL</Label>
-            <Input
-              value={websiteUrl}
-              onChange={(e) => {
-                setWebsiteUrl(e.target.value);
-                setError(null);
-              }}
-              placeholder="https://example.com (optional)"
-              type="url"
-              disabled={loading}
-              style={{
-                background: tokens?.inputBg,
-                borderColor: error ? '#ef4444' : tokens?.inputBorder,
-                color: tokens?.textPrimary,
-              }}
-            />
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div
-              className="flex items-start gap-2 p-3 rounded-lg"
-              style={{ background: tokens?.dangerBg || (isDark ? 'rgba(254, 202, 202, 0.06)' : '#fff5f5') }}
-            >
-              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm" style={{ color: tokens?.dangerText || (isDark ? '#fecaca' : '#c53030') }}>{error}</p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3 justify-end pt-4">
-            <Button
+        onInteractOutside={(event) => {
+          if (saving) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (saving) event.preventDefault();
+        }}
+        footer={
+          <>
+            <DashboardButton
+              type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={loading}
-              style={{
-                borderColor: tokens?.inputBorder,
-                color: tokens?.textPrimary,
-                background: tokens?.buttonBg || 'transparent',
-              }}
+              disabled={saving}
             >
               Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              style={{
-                background: tokens?.primary || (isDark ? '#0f172a' : '#1f2937'),
-                color: tokens?.buttonText || '#ffffff',
-                borderColor: tokens?.primary || undefined,
-              }}
-            >
-              {loading ? (
+            </DashboardButton>
+            <DashboardButton type="submit" form={formId} disabled={saving}>
+              {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isEditing ? 'Updating...' : 'Creating...'}
+                  <Loader2
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  {isEditing ? "Updating..." : "Creating..."}
                 </>
+              ) : isEditing ? (
+                "Update source"
               ) : (
-                isEditing ? 'Update Source' : 'Create Source'
+                "Create source"
               )}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+            </DashboardButton>
+          </>
+        }
+      >
+        <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+          <DashboardField
+            id={`${formId}-name`}
+            label="Source name"
+            required
+            error={fieldErrors.name}
+            description={`${name.length}/${SOURCE_CONFIG.MAX_NAME_LENGTH} characters`}
+          >
+            {(controlProps) => (
+              <DashboardInput
+                {...controlProps}
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setFieldErrors((current) => ({
+                    ...current,
+                    name: undefined,
+                  }));
+                  setFormError(null);
+                }}
+                placeholder="e.g., Financial Systems, Market Data"
+                disabled={saving}
+                autoComplete="organization"
+              />
+            )}
+          </DashboardField>
+
+          <DashboardField
+            id={`${formId}-description`}
+            label="Description"
+            error={fieldErrors.description}
+            description={`${description.length}/${SOURCE_CONFIG.MAX_DESCRIPTION_LENGTH} characters`}
+          >
+            {(controlProps) => (
+              <DashboardTextarea
+                {...controlProps}
+                value={description}
+                onChange={(event) => {
+                  setDescription(event.target.value);
+                  setFieldErrors((current) => ({
+                    ...current,
+                    description: undefined,
+                  }));
+                  setFormError(null);
+                }}
+                placeholder="Describe this data source (optional)"
+                disabled={saving}
+                className="resize-none"
+                rows={3}
+              />
+            )}
+          </DashboardField>
+
+          <DashboardField
+            id={`${formId}-website-url`}
+            label="Website URL"
+            error={fieldErrors.websiteUrl}
+            description="Optional. Include the full URL, such as https://example.com."
+          >
+            {(controlProps) => (
+              <DashboardInput
+                {...controlProps}
+                value={websiteUrl}
+                onChange={(event) => {
+                  setWebsiteUrl(event.target.value);
+                  setFieldErrors((current) => ({
+                    ...current,
+                    websiteUrl: undefined,
+                  }));
+                  setFormError(null);
+                }}
+                placeholder="https://example.com"
+                type="url"
+                disabled={saving}
+                autoComplete="url"
+              />
+            )}
+          </DashboardField>
+
+          {formError && (
+            <DashboardInlineAlert
+              tone="danger"
+              title="Source could not be saved"
+              message={formError}
+            />
+          )}
+        </form>
+      </DashboardDialogContent>
+    </DashboardDialog>
   );
 }

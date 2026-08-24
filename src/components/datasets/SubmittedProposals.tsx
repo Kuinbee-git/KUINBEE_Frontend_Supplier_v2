@@ -12,8 +12,7 @@ import {
   Send,
 } from "lucide-react";
 
-import { PaginationControls } from "@/components/shared";
-import { Button } from "@/components/ui/button";
+import { DashboardButton, DashboardPagination } from "@/components/dashboard";
 import { listMyProposals } from "@/lib/api";
 import type {
   ListProposalsResponse,
@@ -270,11 +269,11 @@ export function SubmittedProposals({
       headerClassName: "text-right",
       className: "text-right",
       render: (proposal) => (
-        <Button asChild variant="outline" size="sm">
+        <DashboardButton asChild variant="outline" size="compact">
           <Link href={`/dashboard/datasets/${proposal.id}`}>
             {getProposalActionLabel(proposal.verificationStatus)} <ArrowRight />
           </Link>
-        </Button>
+        </DashboardButton>
       ),
     },
   ];
@@ -286,7 +285,7 @@ export function SubmittedProposals({
         description="Track each proposal through review, respond to requested changes, and see completed decisions."
       />
 
-      <section aria-label="Proposal review overview" className="mt-7">
+      <section aria-label="Proposal review overview">
         <DatasetMetricStrip
           metrics={metrics}
           activeValue={statusFilter}
@@ -321,7 +320,7 @@ export function SubmittedProposals({
         />
       )}
 
-      <section aria-labelledby="proposal-inventory-title" className="mt-5">
+      <section aria-labelledby="proposal-inventory-title">
         <DatasetInventoryHeader
           id="proposal-inventory-title"
           title="Review queue"
@@ -331,7 +330,7 @@ export function SubmittedProposals({
           pluralLabel="proposals"
         />
 
-        {loading ? (
+        {loading && proposals.length === 0 ? (
           <DatasetListSkeleton />
         ) : !error && proposals.length === 0 ? (
           <DatasetEmptyState
@@ -346,6 +345,8 @@ export function SubmittedProposals({
           <>
             <DatasetRecordList
               items={proposals}
+              busy={loading}
+              caption="Submitted dataset proposals"
               columns={columns}
               getKey={(proposal) => proposal.id}
               renderMobile={(proposal) => (
@@ -367,13 +368,13 @@ export function SubmittedProposals({
                 />
               )}
             />
-            <PaginationControls
+            <DashboardPagination
               page={page}
               pageSize={PAGE_SIZE}
-              total={totalProposals}
+              totalItems={totalProposals}
               itemLabel="proposals"
-              mutedColor="var(--muted-foreground)"
               onPageChange={setPage}
+              className="pt-4"
             />
           </>
         ) : null}

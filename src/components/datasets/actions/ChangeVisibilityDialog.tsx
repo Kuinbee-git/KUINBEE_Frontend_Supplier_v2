@@ -1,15 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
-import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Lock, Loader2, Info } from 'lucide-react';
-import { changeDatasetVisibility } from '@/lib/api/datasets';
-import { toast } from 'sonner';
-import { useSupplierTokens } from '@/hooks/useSupplierTokens';
-import type { DatasetVisibility } from '@/types/dataset-proposal.types';
+import { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/datasets/shared/DatasetDialog";
+import { DashboardButton } from "@/components/dashboard";
+import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
+import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Lock, Loader2, Info } from "lucide-react";
+import { changeDatasetVisibility } from "@/lib/api/datasets";
+import { toast } from "sonner";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import type { DatasetVisibility } from "@/types/dataset-proposal.types";
 
 interface ChangeVisibilityDialogProps {
   isOpen: boolean;
@@ -22,25 +29,25 @@ interface ChangeVisibilityDialogProps {
 
 const VISIBILITY_OPTIONS = [
   {
-    value: 'PUBLIC' as const,
-    label: 'Public',
-    description: 'Visible to all users on the marketplace',
+    value: "PUBLIC" as const,
+    label: "Public",
+    description: "Visible to all users on the marketplace",
     icon: Eye,
-    color: '#22c55e',
+    color: "var(--dashboard-success-foreground)",
   },
   {
-    value: 'PRIVATE' as const,
-    label: 'Private',
-    description: 'Only visible to users you specifically grant access',
+    value: "PRIVATE" as const,
+    label: "Private",
+    description: "Only visible to users you specifically grant access",
     icon: Lock,
-    color: '#ef4444',
+    color: "var(--dashboard-danger-foreground)",
   },
   {
-    value: 'UNLISTED' as const,
-    label: 'Unlisted',
-    description: 'Not shown in marketplace, accessible via direct link only',
+    value: "UNLISTED" as const,
+    label: "Unlisted",
+    description: "Not shown in marketplace, accessible via direct link only",
     icon: EyeOff,
-    color: '#f59e0b',
+    color: "var(--dashboard-warning-foreground)",
   },
 ];
 
@@ -50,10 +57,12 @@ export function ChangeVisibilityDialog({
   datasetId,
   currentVisibility,
   onSuccess,
+  isDark = false,
 }: ChangeVisibilityDialogProps) {
-  const [visibility, setVisibility] = useState<DatasetVisibility>(currentVisibility);
+  const [visibility, setVisibility] =
+    useState<DatasetVisibility>(currentVisibility);
   const [saving, setSaving] = useState(false);
-  const tokens = useSupplierTokens();
+  const tokens = getDatasetThemeTokens(isDark);
 
   // Discard an unsubmitted selection when the dialog closes. Without this,
   // cancelling and reopening could show (and subsequently save) a visibility
@@ -73,17 +82,18 @@ export function ChangeVisibilityDialog({
     setSaving(true);
     try {
       await changeDatasetVisibility(datasetId, { visibility });
-      
-      toast.success('Visibility changed successfully', {
+
+      toast.success("Visibility changed successfully", {
         description: `Dataset is now ${visibility.toLowerCase()}.`,
       });
-      
+
       onClose();
       onSuccess();
     } catch (error: unknown) {
-      console.error('Failed to change visibility:', error);
-      toast.error('Failed to change visibility', {
-        description: error instanceof Error ? error.message : 'Please try again later.',
+      console.error("Failed to change visibility:", error);
+      toast.error("Failed to change visibility", {
+        description:
+          error instanceof Error ? error.message : "Please try again later.",
         duration: 6000,
       });
     } finally {
@@ -91,15 +101,25 @@ export function ChangeVisibilityDialog({
     }
   };
 
-  const selectedOption = VISIBILITY_OPTIONS.find(opt => opt.value === visibility);
+  const selectedOption = VISIBILITY_OPTIONS.find(
+    (opt) => opt.value === visibility
+  );
   const Icon = selectedOption?.icon || Eye;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && !saving && onClose()}
+    >
+      <DialogContent
         className="max-w-md border backdrop-blur-sm rounded-lg"
+        showCloseButton={!saving}
+        onEscapeKeyDown={(event) => saving && event.preventDefault()}
+        onPointerDownOutside={(event) => saving && event.preventDefault()}
         style={{
-          background: tokens.isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255,255,255,0.95)',
+          background: tokens.isDark
+            ? "var(--dashboard-glass-background-strong)"
+            : "var(--dashboard-glass-background-strong)",
           borderColor: tokens.borderDefault,
           boxShadow: tokens.glassShadow,
         }}
@@ -108,12 +128,23 @@ export function ChangeVisibilityDialog({
           <div className="flex items-start gap-3 mb-4">
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: `${selectedOption?.color || '#3b82f6'}15` }}
+              style={{
+                background: `color-mix(in srgb, ${selectedOption?.color || "var(--dashboard-info-foreground)"} 10%, transparent)`,
+              }}
             >
-              <Icon className="w-6 h-6" style={{ color: selectedOption?.color || '#3b82f6' }} />
+              <Icon
+                className="w-6 h-6"
+                style={{
+                  color:
+                    selectedOption?.color || "var(--dashboard-info-foreground)",
+                }}
+              />
             </div>
             <div>
-              <DialogTitle className="text-lg mb-1" style={{ color: tokens.textPrimary }}>
+              <DialogTitle
+                className="text-lg mb-1"
+                style={{ color: tokens.textPrimary }}
+              >
                 Change Visibility
               </DialogTitle>
               <DialogDescription style={{ color: tokens.textSecondary }}>
@@ -125,13 +156,23 @@ export function ChangeVisibilityDialog({
 
         <div className="space-y-5 py-2">
           <div>
-            <Label className="mb-3 block text-sm font-medium" style={{ color: tokens.textPrimary }}>
+            <Label
+              htmlFor="dataset-visibility"
+              className="mb-3 block text-sm font-medium"
+              style={{ color: tokens.textPrimary }}
+            >
               Visibility Setting
             </Label>
-            <StyledSelect
-              options={VISIBILITY_OPTIONS.map(option => ({ label: option.label, value: option.value }))}
+            <DatasetSelect
+              triggerId="dataset-visibility"
+              options={VISIBILITY_OPTIONS.map((option) => ({
+                label: option.label,
+                value: option.value,
+              }))}
               value={visibility}
-              onValueChange={(value) => setVisibility(value as DatasetVisibility)}
+              onValueChange={(value) =>
+                setVisibility(value as DatasetVisibility)
+              }
               isDark={tokens.isDark}
               tokens={{
                 inputBg: tokens.inputBg,
@@ -154,31 +195,42 @@ export function ChangeVisibilityDialog({
                 border: `1px solid ${selectedOption.color}30`,
               }}
             >
-              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: selectedOption.color }} />
+              <Info
+                className="w-4 h-4 flex-shrink-0 mt-0.5"
+                style={{ color: selectedOption.color }}
+              />
               <div className="text-sm" style={{ color: tokens.textPrimary }}>
-                <span className="font-medium">{selectedOption.label}:</span>{' '}
-                <span style={{ color: tokens.textSecondary }}>{selectedOption.description}</span>
+                <span className="font-medium">{selectedOption.label}:</span>{" "}
+                <span style={{ color: tokens.textSecondary }}>
+                  {selectedOption.description}
+                </span>
               </div>
             </div>
           )}
 
           {/* Change indicator */}
           {visibility !== currentVisibility && (
-            <div 
+            <div
               className="pt-3 border-t text-xs flex items-center gap-2"
-              style={{ borderColor: tokens.borderSubtle, color: tokens.textMuted }}
+              style={{
+                borderColor: tokens.borderSubtle,
+                color: tokens.textMuted,
+              }}
             >
               <span>Change:</span>
-              <span 
+              <span
                 className="px-2 py-0.5 rounded"
                 style={{ background: tokens.errorBg, color: tokens.errorText }}
               >
                 {currentVisibility}
               </span>
               <span>→</span>
-              <span 
+              <span
                 className="px-2 py-0.5 rounded"
-                style={{ background: tokens.successBg, color: tokens.successText }}
+                style={{
+                  background: tokens.successBg,
+                  color: tokens.successText,
+                }}
               >
                 {visibility}
               </span>
@@ -187,27 +239,28 @@ export function ChangeVisibilityDialog({
         </div>
 
         <DialogFooter className="gap-3 pt-2">
-          <Button
+          <DashboardButton
             variant="outline"
             onClick={onClose}
             disabled={saving}
-            className="transition-all duration-300 hover:shadow-md"
-            style={{ 
+            className=""
+            style={{
               borderColor: tokens.borderDefault,
               color: tokens.textPrimary,
               background: tokens.glassBg,
             }}
           >
             Cancel
-          </Button>
-          <Button
+          </DashboardButton>
+          <DashboardButton
             onClick={handleSave}
             disabled={saving || visibility === currentVisibility}
-            className="gap-2 text-white transition-all duration-300 hover:shadow-lg disabled:opacity-60"
+            className="gap-2"
             style={{
-              background: (saving || visibility === currentVisibility)
-                ? tokens.textMuted
-                : '#2a3558',
+              background:
+                saving || visibility === currentVisibility
+                  ? tokens.textMuted
+                  : "var(--dashboard-button-primary-background)",
             }}
           >
             {saving ? (
@@ -216,9 +269,9 @@ export function ChangeVisibilityDialog({
                 Saving...
               </>
             ) : (
-              'Save Changes'
+              "Save Changes"
             )}
-          </Button>
+          </DashboardButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

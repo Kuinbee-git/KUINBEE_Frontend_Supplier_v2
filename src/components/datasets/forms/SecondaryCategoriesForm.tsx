@@ -1,21 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { Save, X, Plus, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
-import { setSecondaryCategories } from '@/lib/api';
-import { CategoriesSelect } from '@/components/catalog';
-import type { SetCategoriesRequest, SetCategoriesResponse } from '@/types/dataset-proposal.types';
+import { useState } from "react";
+import { DashboardButton } from "@/components/dashboard";
+import { Label } from "@/components/ui/label";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import { Save, X, Plus, Trash2, AlertCircle, CheckCircle } from "lucide-react";
+import { setSecondaryCategories } from "@/lib/api";
+import { CategoriesSelect } from "@/components/catalog";
+import type {
+  SetCategoriesRequest,
+  SetCategoriesResponse,
+} from "@/types/dataset-proposal.types";
+import { toDatasetUiError } from "../shared/datasetUiError";
 interface SecondaryCategoriesFormProps {
   datasetId: string;
   initialCategories?: string[];
   isDark?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
-  onSubmitData?: (datasetId: string, data: SetCategoriesRequest) => Promise<SetCategoriesResponse>;
+  onSubmitData?: (
+    datasetId: string,
+    data: SetCategoriesRequest
+  ) => Promise<SetCategoriesResponse>;
 }
 
 export function SecondaryCategoriesForm({
@@ -32,7 +38,7 @@ export function SecondaryCategoriesForm({
   const [success, setSuccess] = useState(false);
 
   const [categoryIds, setCategoryIds] = useState<string[]>(
-    initialCategories.length > 0 ? initialCategories : ['']
+    initialCategories.length > 0 ? initialCategories : [""]
   );
 
   const handleCategoryChange = (index: number, value: string) => {
@@ -44,7 +50,7 @@ export function SecondaryCategoriesForm({
   };
 
   const addCategory = () => {
-    setCategoryIds([...categoryIds, '']);
+    setCategoryIds([...categoryIds, ""]);
   };
 
   const removeCategory = (index: number) => {
@@ -54,14 +60,14 @@ export function SecondaryCategoriesForm({
   };
 
   const isFormValid = () => {
-    return categoryIds.every(id => id.trim() !== '');
+    return categoryIds.every((id) => id.trim() !== "");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isFormValid()) {
-      setError('All category IDs must be filled');
+      setError("All category IDs must be filled");
       return;
     }
 
@@ -70,18 +76,19 @@ export function SecondaryCategoriesForm({
     setSuccess(false);
 
     try {
-      const validCategoryIds = categoryIds.filter(id => id.trim() !== '');
+      const validCategoryIds = categoryIds.filter((id) => id.trim() !== "");
       await (onSubmitData
         ? onSubmitData(datasetId, { categoryIds: validCategoryIds })
         : setSecondaryCategories(datasetId, { categoryIds: validCategoryIds }));
       setSuccess(true);
-      
+
       setTimeout(() => {
         onSuccess?.();
       }, 1500);
-    } catch (err: any) {
-      console.error('Failed to update secondary categories:', err);
-      setError(err.message || 'Failed to update secondary categories');
+    } catch (err: unknown) {
+      console.error("Failed to update secondary categories:", err);
+      const apiError = toDatasetUiError(err);
+      setError(apiError.message || "Failed to update secondary categories");
     } finally {
       setSubmitting(false);
     }
@@ -97,14 +104,30 @@ export function SecondaryCategoriesForm({
             <div
               className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
               style={{
-                background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                background: isDark
+                  ? "color-mix(in srgb, var(--dashboard-danger) 10%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-danger) 5%, transparent)",
+                borderColor: isDark
+                  ? "color-mix(in srgb, var(--dashboard-danger) 30%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-danger) 20%, transparent)",
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
-                <AlertCircle className="w-4 h-4" style={{ color: '#DC2626' }} />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--dashboard-danger) 15%, transparent)",
+                }}
+              >
+                <AlertCircle
+                  className="w-4 h-4"
+                  style={{ color: "var(--dashboard-danger-foreground)" }}
+                />
               </div>
-              <p className="text-sm font-medium" style={{ color: '#DC2626' }}>
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--dashboard-danger-foreground)" }}
+              >
                 {error}
               </p>
             </div>
@@ -115,14 +138,30 @@ export function SecondaryCategoriesForm({
             <div
               className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
               style={{
-                background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                background: isDark
+                  ? "color-mix(in srgb, var(--dashboard-success) 10%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-success) 5%, transparent)",
+                borderColor: isDark
+                  ? "color-mix(in srgb, var(--dashboard-success) 30%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-success) 20%, transparent)",
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
-                <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--dashboard-success) 15%, transparent)",
+                }}
+              >
+                <CheckCircle
+                  className="w-4 h-4"
+                  style={{ color: "var(--dashboard-success-foreground)" }}
+                />
               </div>
-              <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
+              <p
+                className="text-sm font-medium"
+                style={{ color: "var(--dashboard-success-foreground)" }}
+              >
                 Secondary categories updated successfully!
               </p>
             </div>
@@ -134,35 +173,40 @@ export function SecondaryCategoriesForm({
       <div
         className="rounded-xl border p-4 space-y-4"
         style={{
-          background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+          background: isDark
+            ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
+            : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
           borderColor: tokens.borderSubtle || tokens.inputBorder,
         }}
       >
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+            <Label
+              className="text-sm font-medium"
+              style={{ color: tokens.textPrimary }}
+            >
               Secondary Category IDs
             </Label>
             <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
               Add additional categories to improve discoverability
             </p>
           </div>
-          <Button
+          <DashboardButton
             type="button"
-            size="sm"
+            size="compact"
             variant="outline"
             onClick={addCategory}
             disabled={submitting}
-            className="h-9 gap-2 font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="h-9 gap-2 font-medium "
             style={{
-              background: 'transparent',
+              background: "transparent",
               borderColor: tokens.borderSubtle || tokens.inputBorder,
               color: tokens.textPrimary,
             }}
           >
             <Plus className="w-4 h-4" />
             Add
-          </Button>
+          </DashboardButton>
         </div>
 
         <div className="space-y-3">
@@ -171,8 +215,10 @@ export function SecondaryCategoriesForm({
               <span
                 className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-medium flex-shrink-0"
                 style={{
-                  background: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-                  color: '#3b82f6',
+                  background: isDark
+                    ? "color-mix(in srgb, var(--dashboard-action) 15%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-action) 10%, transparent)",
+                  color: "var(--dashboard-info-foreground)",
                 }}
               >
                 {index + 1}
@@ -187,16 +233,17 @@ export function SecondaryCategoriesForm({
                 />
               </div>
               {categoryIds.length > 1 && (
-                <Button
+                <DashboardButton
                   type="button"
                   size="icon"
                   variant="ghost"
+                  aria-label={`Remove secondary category ${index + 1}`}
                   onClick={() => removeCategory(index)}
                   disabled={submitting}
-                  className="h-10 w-10 flex-shrink-0 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  className="h-10 w-10 flex-shrink-0 hover:bg-destructive/10"
                 >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </Button>
+                  <Trash2 className="w-4 h-4 text-[var(--dashboard-danger-foreground)]" />
+                </DashboardButton>
               )}
             </div>
           ))}
@@ -204,37 +251,41 @@ export function SecondaryCategoriesForm({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-3 pt-4 border-t" style={{ borderColor: tokens.borderSubtle || tokens.inputBorder }}>
-        <Button
+      <div
+        className="flex items-center gap-3 pt-4 border-t"
+        style={{ borderColor: tokens.borderSubtle || tokens.inputBorder }}
+      >
+        <DashboardButton
           type="submit"
           disabled={!isFormValid() || submitting}
-          className="h-11 px-6 font-medium transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+          className="h-11 px-6 font-medium "
           style={{
-            background: isFormValid() && !submitting
-              ? '#2a3558'
-              : 'rgba(156, 163, 175, 0.3)',
-            color: '#fff',
+            background:
+              isFormValid() && !submitting
+                ? "var(--dashboard-button-primary-background)"
+                : "color-mix(in srgb, var(--dashboard-text-muted) 30%, transparent)",
+            color: "var(--dashboard-button-primary-foreground)",
           }}
         >
           <Save className="w-4 h-4 mr-2" />
-          {submitting ? 'Saving...' : 'Save Categories'}
-        </Button>
+          {submitting ? "Saving..." : "Save Categories"}
+        </DashboardButton>
 
-        <Button
+        <DashboardButton
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={submitting}
-          className="h-11 px-5 font-medium transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+          className="h-11 px-5 font-medium"
           style={{
-            background: tokens.glassBg || 'transparent',
+            background: tokens.glassBg || "transparent",
             border: `1px solid ${tokens.glassBorder || tokens.inputBorder}`,
             color: tokens.textPrimary,
           }}
         >
           <X className="w-4 h-4 mr-2" />
           Cancel
-        </Button>
+        </DashboardButton>
       </div>
     </form>
   );

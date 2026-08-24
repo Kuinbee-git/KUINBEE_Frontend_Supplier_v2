@@ -1,106 +1,122 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import { getSupplierStats } from "@/lib/api/stats";
-import { GlassCard } from "@/components/shared";
-import { StatsOverviewCards } from "@/components/dashboard/stats/StatsOverviewCards";
+
+import {
+  DashboardErrorState,
+  DashboardLoadingState,
+  DashboardSection,
+} from "@/components/dashboard";
 import { RevenueTrendChart } from "@/components/dashboard/stats/RevenueTrendChart";
+import { StatsOverviewCards } from "@/components/dashboard/stats/StatsOverviewCards";
 import { TopLowPerformingDatasets } from "@/components/dashboard/stats/TopLowPerformingDatasets";
-import type { StatsTimeRange, SupplierStatsResponse } from "@/types/supplier-stats.types";
-import { TrendingUp } from "lucide-react";
+import { getSupplierStats } from "@/lib/api/stats";
+import type {
+  StatsOverview,
+  StatsTimeRange,
+  SupplierStatsResponse,
+} from "@/types/supplier-stats.types";
+
+const EMPTY_OVERVIEW: StatsOverview = {
+  totalRevenue: 0,
+  totalRevenueCurrency: null,
+  totalRevenueByCurrency: [],
+  totalSales: 0,
+  activeDatasets: 0,
+  totalViews: 0,
+  averageQualityScore: null,
+  pendingValidationCount: 0,
+  conversionRate: 0,
+};
+
+const VALID_RANGES: StatsTimeRange[] = ["7d", "30d", "90d", "1y", "lifetime"];
+
+function getTimeRange(value: string | null): StatsTimeRange {
+  return VALID_RANGES.includes(value as StatsTimeRange)
+    ? (value as StatsTimeRange)
+    : "30d";
+}
 
 function StatsOverviewContent() {
-    const tokens = useSupplierTokens();
-    const searchParams = useSearchParams();
-    const range = (searchParams.get("range") as StatsTimeRange) || "30d";
-    const [stats, setStats] = useState<SupplierStatsResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const range = getTimeRange(searchParams.get("range"));
+  const [stats, setStats] = useState<SupplierStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    const fetchStats = useCallback(async (selectedRange: StatsTimeRange) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await getSupplierStats(selectedRange);
-            setStats(data);
-        } catch (error) {
-            console.error("Failed to fetch stats:", error);
-            setError(error instanceof Error ? error.message : "Failed to fetch statistics");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  const fetchStats = useCallback(async (selectedRange: StatsTimeRange) => {
+    setLoading(true);
+    setError(null);
+    try {
+      setStats(await getSupplierStats(selectedRange));
+    } catch (requestError: unknown) {
+      setStats(null);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Analytics could not be loaded."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        fetchStats(range);
-    }, [range, fetchStats]);
+  useEffect(() => {
+    void fetchStats(range);
+  }, [fetchStats, range]);
 
+  if (error) {
     return (
-        <>
-            {/* Error State */}
-            {error && (
-                <div className="rounded-lg p-4 mb-4" style={{ backgroundColor: "rgba(239, 68, 68, 0.1)", color: "rgb(239, 68, 68)" }}>
-                    <p className="text-sm font-medium">{error}</p>
-                </div>
-            )}
-            {/* Overview Cards */}
-            <div style={{ animation: "fadeIn 0.5s ease-out" }}>
-                <StatsOverviewCards
-                    overview={
-                        stats?.overview || {
-                            totalRevenue: 0, totalRevenueCurrency: null, totalRevenueByCurrency: [],
-                            totalSales: 0, activeDatasets: 0,
-                            totalViews: 0, averageQualityScore: 0,
-                            pendingValidationCount: 0, conversionRate: 0,
-                        }
-                    }
-                    loading={loading}
-                />
-            </div>
-
-            {/* Revenue Trend */}
-            <div style={{ animation: "fadeIn 0.5s ease-out 0.15s backwards" }}>
-                <GlassCard className="mt-6">
-                    <div className="p-5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <TrendingUp className="w-5 h-5" style={{ color: tokens.textPrimary }} />
-                            <h2 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
-                                Revenue Trend
-                            </h2>
-                        </div>
-                        <RevenueTrendChart data={stats?.revenueTrend || []} loading={loading} />
-                    </div>
-                </GlassCard>
-            </div>
-
-            {/* Top & Low Performing */}
-            <div style={{ animation: "fadeIn 0.5s ease-out 0.3s backwards" }}>
-                <div className="mt-6">
-                    <TopLowPerformingDatasets
-                        topPerforming={stats?.topPerformingDataset || null}
-                        lowPerforming={stats?.lowPerformingDataset || null}
-                        loading={loading}
-                    />
-                </div>
-            </div>
-        </>
+      <DashboardErrorState
+        title="Analytics could not be loaded"
+        message={error}
+        onRetry={() => void fetchStats(range)}
+      />
     );
+  }
+
+  return (
+    <div className="space-y-6">
+      <StatsOverviewCards
+        overview={stats?.overview ?? EMPTY_OVERVIEW}
+        loading={loading}
+      />
+
+      <DashboardSection
+        title="Revenue trend"
+        description="Recognized marketplace revenue during the selected period."
+      >
+        <RevenueTrendChart data={stats?.revenueTrend ?? []} loading={loading} />
+      </DashboardSection>
+
+      <DashboardSection
+        title="Portfolio performance"
+        description="Compare your strongest dataset with the listing that may need attention."
+        surface="plain"
+      >
+        <TopLowPerformingDatasets
+          topPerforming={stats?.topPerformingDataset ?? null}
+          lowPerforming={stats?.lowPerformingDataset ?? null}
+          loading={loading}
+        />
+      </DashboardSection>
+    </div>
+  );
 }
 
 export default function StatsOverviewPage() {
-    return (
-        <Suspense
-            fallback={
-                <div className="space-y-4">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="rounded-xl animate-pulse h-32" style={{ background: "var(--muted)" }} />
-                    ))}
-                </div>
-            }
-        >
-            <StatsOverviewContent />
-        </Suspense>
-    );
+  return (
+    <Suspense
+      fallback={
+        <DashboardLoadingState
+          label="Loading analytics overview"
+          variant="skeleton"
+          rows={5}
+        />
+      }
+    >
+      <StatsOverviewContent />
+    </Suspense>
+  );
 }
