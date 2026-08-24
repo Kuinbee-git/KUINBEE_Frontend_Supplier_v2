@@ -1,40 +1,81 @@
-'use client';
+"use client";
 
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
-import { ENCODING_TYPES } from '@/types/dataset-proposal.types';
-import type { FileFormat, CompressionType, EncodingType } from '@/types/dataset-proposal.types';
+import { DashboardInput } from "@/components/dashboard";
+import { Label } from "@/components/ui/label";
+import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
+import type { DatasetThemeTokens } from "@/constants/dataset.constants";
+import { ENCODING_TYPES } from "@/types/dataset-proposal.types";
+import type {
+  FileFormat,
+  CompressionType,
+  EncodingType,
+} from "@/types/dataset-proposal.types";
 
-const FILE_FORMATS: FileFormat[] = ["CSV", "JSON", "EXCEL", "PARQUET", "SQL", "XML", "TSV", "AVRO", "HDF5", "PICKLE", "FEATHER", "OTHER"];
-const COMPRESSION_TYPES: CompressionType[] = ["NONE", "ZIP", "GZIP", "BZIP2", "TAR", "RAR"];
+const FILE_FORMATS: FileFormat[] = [
+  "CSV",
+  "JSON",
+  "EXCEL",
+  "PARQUET",
+  "SQL",
+  "XML",
+  "TSV",
+  "AVRO",
+  "HDF5",
+  "PICKLE",
+  "FEATHER",
+  "OTHER",
+];
+const COMPRESSION_TYPES: CompressionType[] = [
+  "NONE",
+  "ZIP",
+  "GZIP",
+  "BZIP2",
+  "TAR",
+  "RAR",
+];
+
+interface DataFormatStepData {
+  fileFormat: FileFormat | "";
+  fileSize: string;
+  rows: number;
+  cols: number;
+  compressionType?: CompressionType;
+  encoding?: EncodingType;
+}
 
 interface DataFormatStepProps {
-  data: {
-    fileFormat: FileFormat | '';
-    fileSize: string;
-    rows: number;
-    cols: number;
-    compressionType?: CompressionType;
-    encoding?: EncodingType;
-  };
-  onChange: (field: string, value: any) => void;
+  data: DataFormatStepData;
+  onChange: (
+    field: keyof DataFormatStepData,
+    value: string | number | undefined
+  ) => void;
   disabled?: boolean;
-  tokens: any;
+  tokens: DatasetThemeTokens;
   isDark?: boolean;
 }
 
-export function DataFormatStep({ data, onChange, disabled, tokens, isDark = false }: DataFormatStepProps) {
+export function DataFormatStep({
+  data,
+  onChange,
+  disabled,
+  tokens,
+  isDark = false,
+}: DataFormatStepProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
         <Label htmlFor="fileFormat" style={{ color: tokens.textPrimary }}>
-          File Format <span className="text-red-500">*</span>
+          File Format{" "}
+          <span className="text-[var(--dashboard-danger-foreground)]">*</span>
         </Label>
-        <StyledSelect
-          options={[...FILE_FORMATS].map(format => ({ label: format, value: format }))}
+        <DatasetSelect
+          triggerId="fileFormat"
+          options={[...FILE_FORMATS].map((format) => ({
+            label: format,
+            value: format,
+          }))}
           value={data.fileFormat}
-          onValueChange={(value) => onChange('fileFormat', value)}
+          onValueChange={(value) => onChange("fileFormat", value)}
           placeholder="Select file format"
           disabled={disabled}
           tokens={tokens}
@@ -44,12 +85,13 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
 
       <div className="space-y-2">
         <Label htmlFor="fileSize" style={{ color: tokens.textPrimary }}>
-          File Size <span className="text-red-500">*</span>
+          File Size{" "}
+          <span className="text-[var(--dashboard-danger-foreground)]">*</span>
         </Label>
-        <Input
+        <DashboardInput
           id="fileSize"
           value={data.fileSize}
-          onChange={(e) => onChange('fileSize', e.target.value)}
+          onChange={(e) => onChange("fileSize", e.target.value)}
           placeholder="e.g., 150"
           disabled={disabled}
           style={{
@@ -62,13 +104,14 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
 
       <div className="space-y-2">
         <Label htmlFor="rows" style={{ color: tokens.textPrimary }}>
-          Rows <span className="text-red-500">*</span>
+          Rows{" "}
+          <span className="text-[var(--dashboard-danger-foreground)]">*</span>
         </Label>
-        <Input
+        <DashboardInput
           id="rows"
           type="number"
-          value={data.rows || ''}
-          onChange={(e) => onChange('rows', parseInt(e.target.value) || 0)}
+          value={data.rows || ""}
+          onChange={(e) => onChange("rows", parseInt(e.target.value) || 0)}
           placeholder="Number of rows"
           disabled={disabled}
           style={{
@@ -81,13 +124,14 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
 
       <div className="space-y-2">
         <Label htmlFor="cols" style={{ color: tokens.textPrimary }}>
-          Columns <span className="text-red-500">*</span>
+          Columns{" "}
+          <span className="text-[var(--dashboard-danger-foreground)]">*</span>
         </Label>
-        <Input
+        <DashboardInput
           id="cols"
           type="number"
-          value={data.cols || ''}
-          onChange={(e) => onChange('cols', parseInt(e.target.value) || 0)}
+          value={data.cols || ""}
+          onChange={(e) => onChange("cols", parseInt(e.target.value) || 0)}
           placeholder="Number of columns"
           disabled={disabled}
           style={{
@@ -102,10 +146,16 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
         <Label htmlFor="compressionType" style={{ color: tokens.textPrimary }}>
           Compression Type
         </Label>
-        <StyledSelect
-          options={[...COMPRESSION_TYPES].map(type => ({ label: type, value: type }))}
-          value={data.compressionType || 'NONE'}
-          onValueChange={(value) => onChange('compressionType', value === 'NONE' ? undefined : value)}
+        <DatasetSelect
+          triggerId="compressionType"
+          options={[...COMPRESSION_TYPES].map((type) => ({
+            label: type,
+            value: type,
+          }))}
+          value={data.compressionType || "NONE"}
+          onValueChange={(value) =>
+            onChange("compressionType", value === "NONE" ? undefined : value)
+          }
           placeholder="Select compression"
           disabled={disabled}
           tokens={tokens}
@@ -117,10 +167,14 @@ export function DataFormatStep({ data, onChange, disabled, tokens, isDark = fals
         <Label htmlFor="encoding" style={{ color: tokens.textPrimary }}>
           Encoding
         </Label>
-        <StyledSelect
-          options={ENCODING_TYPES.map((encoding) => ({ label: encoding, value: encoding }))}
-          value={data.encoding || 'UTF-8'}
-          onValueChange={(value) => onChange('encoding', value as EncodingType)}
+        <DatasetSelect
+          triggerId="encoding"
+          options={ENCODING_TYPES.map((encoding) => ({
+            label: encoding,
+            value: encoding,
+          }))}
+          value={data.encoding || "UTF-8"}
+          onValueChange={(value) => onChange("encoding", value as EncodingType)}
           placeholder="Select encoding"
           disabled={disabled}
           tokens={tokens}

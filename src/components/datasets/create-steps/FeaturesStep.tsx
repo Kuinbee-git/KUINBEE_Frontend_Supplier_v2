@@ -1,48 +1,62 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, X as XIcon } from 'lucide-react';
-import type { Feature } from '@/types/dataset-proposal.types';
+import { DashboardButton } from "@/components/dashboard";
+import { DashboardInput } from "@/components/dashboard";
+import { Label } from "@/components/ui/label";
+import { DashboardTextarea } from "@/components/dashboard";
+import { DashboardCheckbox } from "@/components/dashboard";
+import { Plus, X as XIcon } from "lucide-react";
+import type { DatasetThemeTokens } from "@/constants/dataset.constants";
+import type { Feature } from "@/types/dataset-proposal.types";
+
+interface EditableFeatureValues {
+  name: string;
+  dataType: string;
+  description: string | null;
+  isNullable: boolean;
+}
+
+type FeatureChangeHandler = <K extends keyof EditableFeatureValues>(
+  index: number,
+  field: K,
+  value: EditableFeatureValues[K]
+) => void;
 
 interface FeaturesStepProps {
   features: Feature[];
-  onChange: (index: number, field: keyof Feature, value: any) => void;
+  onChange: FeatureChangeHandler;
   onAdd: () => void;
   onRemove: (index: number) => void;
   disabled?: boolean;
   isDark?: boolean;
-  tokens: any;
+  tokens: DatasetThemeTokens;
 }
 
-export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, isDark, tokens }: FeaturesStepProps) {
+export function FeaturesStep({
+  features,
+  onChange,
+  onAdd,
+  onRemove,
+  disabled,
+  tokens,
+}: FeaturesStepProps) {
   return (
     <>
       <div className="flex items-center justify-between">
         <Label style={{ color: tokens.textPrimary }}>
-          Features / Columns <span className="text-red-500">*</span>
+          Features / Columns{" "}
+          <span className="text-[var(--dashboard-danger-foreground)]">*</span>
         </Label>
-        <Button
-          size="sm"
+        <DashboardButton
+          size="compact"
           variant="outline"
           onClick={onAdd}
           disabled={disabled}
-          className="gap-2 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95"
-          style={{
-            background: tokens.glassBg,
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            border: `1.5px solid ${tokens.glassBorder}`,
-            boxShadow: tokens.glassShadow,
-            color: tokens.textPrimary,
-          }}
+          className="rounded-lg"
         >
           <Plus className="w-4 h-4" />
           Add Feature
-        </Button>
+        </DashboardButton>
       </div>
 
       <div className="space-y-4">
@@ -52,41 +66,42 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
             className="p-4 border rounded-lg space-y-4"
             style={{
               borderColor: tokens.borderDefault,
-              background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+              background:
+                "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
             }}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium" style={{ color: tokens.textSecondary }}>
+              <span
+                className="text-sm font-medium"
+                style={{ color: tokens.textSecondary }}
+              >
                 Feature {index + 1}
               </span>
               {features.length > 1 && (
-                <Button
-                  size="sm"
+                <DashboardButton
+                  size="compact"
                   variant="ghost"
                   onClick={() => onRemove(index)}
                   disabled={disabled}
-                  className="rounded-lg transition-all duration-200 hover:shadow-md active:scale-95"
-                  style={{
-                    background: tokens.glassBg,
-                    backdropFilter: "blur(16px)",
-                    WebkitBackdropFilter: "blur(16px)",
-                    border: `1.5px solid ${tokens.glassBorder}`,
-                    color: tokens.textPrimary,
-                  }}
+                  className="rounded-lg"
+                  aria-label={`Remove feature ${index + 1}`}
                 >
                   <XIcon className="w-4 h-4" />
-                </Button>
+                </DashboardButton>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label style={{ color: tokens.textPrimary }}>
-                  Feature Name <span className="text-red-500">*</span>
+                  Feature Name{" "}
+                  <span className="text-[var(--dashboard-danger-foreground)]">
+                    *
+                  </span>
                 </Label>
-                <Input
+                <DashboardInput
                   value={feature.name}
-                  onChange={(e) => onChange(index, 'name', e.target.value)}
+                  onChange={(e) => onChange(index, "name", e.target.value)}
                   placeholder="e.g., customer_id"
                   disabled={disabled}
                   style={{
@@ -99,11 +114,14 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
 
               <div className="space-y-2">
                 <Label style={{ color: tokens.textPrimary }}>
-                  Data Type <span className="text-red-500">*</span>
+                  Data Type{" "}
+                  <span className="text-[var(--dashboard-danger-foreground)]">
+                    *
+                  </span>
                 </Label>
-                <Input
+                <DashboardInput
                   value={feature.dataType}
-                  onChange={(e) => onChange(index, 'dataType', e.target.value)}
+                  onChange={(e) => onChange(index, "dataType", e.target.value)}
                   placeholder="e.g., string, integer, float"
                   disabled={disabled}
                   style={{
@@ -116,12 +134,12 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
             </div>
 
             <div className="space-y-2">
-              <Label style={{ color: tokens.textPrimary }}>
-                Description
-              </Label>
-              <Textarea
-                value={feature.description || ''}
-                onChange={(e) => onChange(index, 'description', e.target.value || null)}
+              <Label style={{ color: tokens.textPrimary }}>Description</Label>
+              <DashboardTextarea
+                value={feature.description || ""}
+                onChange={(e) =>
+                  onChange(index, "description", e.target.value || null)
+                }
                 placeholder="Describe this feature"
                 rows={2}
                 disabled={disabled}
@@ -134,13 +152,18 @@ export function FeaturesStep({ features, onChange, onAdd, onRemove, disabled, is
             </div>
 
             <div className="flex items-center gap-2">
-              <Checkbox
+              <DashboardCheckbox
                 id={`nullable-${index}`}
                 checked={feature.isNullable}
-                onCheckedChange={(checked) => onChange(index, 'isNullable', checked)}
+                onCheckedChange={(checked) =>
+                  onChange(index, "isNullable", checked === true)
+                }
                 disabled={disabled}
               />
-              <Label htmlFor={`nullable-${index}`} style={{ color: tokens.textPrimary }}>
+              <Label
+                htmlFor={`nullable-${index}`}
+                style={{ color: tokens.textPrimary }}
+              >
                 This feature can be nullable
               </Label>
             </div>
