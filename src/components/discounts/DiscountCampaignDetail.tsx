@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -13,17 +20,28 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import {
+  DashboardButton as Button,
+  DashboardCard as Card,
+  DashboardEmptyState,
+  DashboardErrorState,
+  DashboardInlineAlert,
+  DashboardInput as Input,
+  DashboardLoadingState,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardPagination,
+  DashboardStatusBadge,
+  DashboardTextarea as Textarea,
+  type DashboardTone,
+} from "@/components/dashboard";
 import {
   cancelDatasetDiscountProposal,
   createDatasetDiscountProposal,
   listDatasetDiscountProposals,
   listMyDatasets,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type {
   CreateDiscountProposalRequest,
   DatasetDiscountProposal,
@@ -31,24 +49,17 @@ import type {
 } from "@/types/discount.types";
 import {
   calculatePreview,
-  createDemoDiscountProposal,
-  demoProposalMap,
   formatMoney,
-  getDemoDatasets,
   getEligibleDataset,
-  isDemoDataset,
-  statusColors,
   statusLabel,
   toInputDateTime,
   toIsoFromInput,
   type EligibleDiscountDataset,
 } from "./discountCampaignUtils";
-import { DiscountPagination } from "./DiscountPagination";
 import { DiscountDateTimePicker } from "./DiscountDateTimePicker";
 
 interface DiscountCampaignDetailProps {
   datasetId: string;
-  isDark?: boolean;
 }
 
 type CampaignFormState = {
@@ -69,6 +80,17 @@ const blockingStatuses = [
 const DATASET_FETCH_PAGE_SIZE = 100;
 const HISTORY_PAGE_SIZE = 10;
 
+const STATUS_TONES: Record<string, DashboardTone> = {
+  SUBMITTED: "info",
+  UNDER_REVIEW: "warning",
+  APPROVED: "success",
+  ACTIVE: "success",
+  REJECTED: "danger",
+  CANCELLED: "neutral",
+  EXPIRED: "warning",
+  DRAFT: "neutral",
+};
+
 const isBlockingStatus = (
   status: DatasetDiscountProposal["status"]
 ): status is (typeof blockingStatuses)[number] =>
@@ -82,10 +104,8 @@ const formatDateTime = (value: string) =>
 
 export function DiscountCampaignDetail({
   datasetId,
-  isDark = false,
 }: DiscountCampaignDetailProps) {
   const router = useRouter();
-  const tokens = getDatasetThemeTokens(isDark);
   const [dataset, setDataset] = useState<EligibleDiscountDataset | null>(null);
   const [proposals, setProposals] = useState<DatasetDiscountProposal[]>([]);
   const [proposalTotal, setProposalTotal] = useState(0);
@@ -93,6 +113,7 @@ export function DiscountCampaignDetail({
   const [blockingProposal, setBlockingProposal] =
     useState<DatasetDiscountProposal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
@@ -116,8 +137,9 @@ export function DiscountCampaignDetail({
     supplierNotes: "",
   });
 
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const realDatasets: EligibleDiscountDataset[] = [];
       let datasetPage = 1;
@@ -142,29 +164,14 @@ export function DiscountCampaignDetail({
         datasetPage += 1;
       } while (fetched < total);
 
-      const displayDatasets = [
-        ...getDemoDatasets(),
-        ...realDatasets.filter((item) => !isDemoDataset(item.id)),
-      ];
       const selected =
-        displayDatasets.find((item) => item.id === datasetId) ?? null;
+        realDatasets.find((item) => item.id === datasetId) ?? null;
       setDataset(selected);
 
       if (!selected) {
         setProposals([]);
         setProposalTotal(0);
         setBlockingProposal(null);
-        return;
-      }
-
-      if (isDemoDataset(selected.id)) {
-        const demoProposals = demoProposalMap[selected.id] ?? [];
-        setProposals(demoProposals);
-        setProposalTotal(demoProposals.length);
-        setBlockingProposal(
-          demoProposals.find((proposal) => isBlockingStatus(proposal.status)) ??
-            null
-        );
         return;
       }
 
@@ -186,16 +193,20 @@ export function DiscountCampaignDetail({
       setBlockingProposal(
         blockingData.flatMap((response) => response.items)[0] ?? null
       );
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to load discount campaign");
+    } catch (error: unknown) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "The dataset promotion could not be loaded."
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [datasetId, proposalPage]);
 
   useEffect(() => {
-    loadDetail();
-  }, [datasetId, proposalPage]);
+    void loadDetail();
+  }, [loadDetail]);
 
   useEffect(() => {
     setProposalPage(1);
@@ -218,15 +229,8 @@ export function DiscountCampaignDetail({
     : null;
 
   const formDisabled = Boolean(activeProposal);
-  const historyTotal =
-    dataset?.id && isDemoDataset(dataset.id) ? proposals.length : proposalTotal;
-  const historyRows =
-    dataset?.id && isDemoDataset(dataset.id)
-      ? proposals.slice(
-          (proposalPage - 1) * HISTORY_PAGE_SIZE,
-          proposalPage * HISTORY_PAGE_SIZE
-        )
-      : proposals;
+  const historyTotal = proposalTotal;
+  const historyRows = proposals;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -257,22 +261,13 @@ export function DiscountCampaignDetail({
 
     setSubmitting(true);
     try {
-      if (isDemoDataset(dataset.id)) {
-        const demoProposal = createDemoDiscountProposal(dataset, payload);
-        setProposals((current) => [demoProposal, ...current]);
-        setProposalTotal((current) => current + 1);
-        setBlockingProposal(demoProposal);
-        setProposalPage(1);
-        toast.success("Demo discount proposal submitted");
+      await createDatasetDiscountProposal(dataset.id, payload);
+      if (proposalPage === 1) {
+        await loadDetail();
       } else {
-        await createDatasetDiscountProposal(dataset.id, payload);
-        if (proposalPage === 1) {
-          await loadDetail();
-        } else {
-          setProposalPage(1);
-        }
-        toast.success("Discount proposal submitted for admin review");
+        setProposalPage(1);
       }
+      toast.success("Discount proposal submitted for admin review");
 
       setForm({
         discountType: "PERCENTAGE",
@@ -281,8 +276,12 @@ export function DiscountCampaignDetail({
         endsAt: defaultEndsAt,
         supplierNotes: "",
       });
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to submit discount proposal");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit discount proposal"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -293,38 +292,23 @@ export function DiscountCampaignDetail({
 
     setCancellingId(proposal.id);
     try {
-      if (isDemoDataset(dataset.id)) {
-        const now = new Date().toISOString();
-        setProposals((current) =>
-          current.map((item) =>
-            item.id === proposal.id
-              ? { ...item, status: "CANCELLED", updatedAt: now }
-              : item
-          )
-        );
-        setBlockingProposal((current) =>
-          current?.id === proposal.id
-            ? { ...current, status: "CANCELLED", updatedAt: now }
-            : current
-        );
-        toast.success("Demo campaign cancelled");
-      } else {
-        const response = await cancelDatasetDiscountProposal(
-          dataset.id,
-          proposal.id
-        );
-        setProposals((current) =>
-          current.map((item) =>
-            item.id === proposal.id ? response.discountProposal : item
-          )
-        );
-        setBlockingProposal((current) =>
-          current?.id === proposal.id ? response.discountProposal : current
-        );
-        toast.success("Discount campaign cancelled");
-      }
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to cancel campaign");
+      const response = await cancelDatasetDiscountProposal(
+        dataset.id,
+        proposal.id
+      );
+      setProposals((current) =>
+        current.map((item) =>
+          item.id === proposal.id ? response.discountProposal : item
+        )
+      );
+      setBlockingProposal((current) =>
+        current?.id === proposal.id ? response.discountProposal : current
+      );
+      toast.success("Discount campaign cancelled");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel campaign"
+      );
     } finally {
       setCancellingId(null);
     }
@@ -332,198 +316,144 @@ export function DiscountCampaignDetail({
 
   if (loading) {
     return (
-      <div className="max-w-[1400px] mx-auto p-8">
-        <div className="flex items-center justify-center py-24">
-          <Loader2
-            className="w-10 h-10 animate-spin"
-            style={{ color: tokens.textPrimary }}
-          />
-        </div>
-      </div>
+      <DashboardPage width="wide">
+        <DashboardPageHeader
+          title="Dataset promotion"
+          description="Loading promotion eligibility, pricing, and campaign history."
+        />
+        <DashboardLoadingState
+          label="Loading dataset promotion"
+          variant="skeleton"
+          rows={7}
+        />
+      </DashboardPage>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <DashboardPage width="standard">
+        <Button
+          variant="ghost"
+          onClick={() => router.push("/dashboard/discount-campaigns")}
+          className="self-start"
+        >
+          <ArrowLeft aria-hidden="true" /> Back to promotions
+        </Button>
+        <DashboardPageHeader
+          title="Dataset promotion"
+          description="Create and manage a promotion for this dataset."
+        />
+        <DashboardErrorState
+          title="Dataset promotion could not be loaded"
+          message={loadError}
+          onRetry={() => void loadDetail()}
+        />
+      </DashboardPage>
     );
   }
 
   if (!dataset) {
     return (
-      <div className="max-w-[1100px] mx-auto p-8">
+      <DashboardPage width="standard">
         <Button
           variant="ghost"
           onClick={() => router.push("/dashboard/discount-campaigns")}
-          className="mb-6"
+          className="self-start"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </Button>
-        <Card
-          className="p-12 text-center"
-          style={{
-            background: tokens.surfaceCard,
-            borderColor: tokens.borderDefault,
-          }}
-        >
-          <BadgePercent
-            className="w-16 h-16 mx-auto mb-4"
-            style={{ color: tokens.textMuted }}
-          />
-          <h1
-            className="text-2xl font-semibold mb-2"
-            style={{ color: tokens.textPrimary }}
-          >
-            Dataset not eligible
-          </h1>
-          <p style={{ color: tokens.textSecondary }}>
-            Only published public datasets with active paid pricing or sample
-            actual pricing can run discount campaigns.
-          </p>
-        </Card>
-      </div>
+        <DashboardPageHeader
+          title="Dataset promotion"
+          description="Create and manage a promotion for this dataset."
+        />
+        <DashboardEmptyState
+          icon={BadgePercent}
+          title="Dataset not eligible"
+          description="Only published public datasets with active paid pricing or sample commercial pricing can run promotions."
+        />
+      </DashboardPage>
     );
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto p-8">
-      <div className="mb-8">
+    <DashboardPage width="wide">
+      <div>
         <Button
           variant="ghost"
           onClick={() => router.push("/dashboard/discount-campaigns")}
-          className="mb-5"
+          className="mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to campaigns
         </Button>
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1
-                className="text-3xl font-semibold"
-                style={{ color: tokens.textPrimary }}
-              >
-                Create Discount Campaign
-              </h1>
-              {isDemoDataset(dataset.id) && (
-                <span className="rounded px-2 py-1 text-xs font-semibold bg-blue-500/10 text-blue-600">
-                  Demo
-                </span>
-              )}
-            </div>
-            <p className="mt-2" style={{ color: tokens.textSecondary }}>
-              {dataset.title}
-            </p>
-          </div>
-          <Button onClick={loadDetail} variant="outline">
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
-        </div>
+        <DashboardPageHeader
+          title="Create dataset promotion"
+          description={dataset.title}
+          actions={
+            <Button onClick={() => void loadDetail()} variant="outline">
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] gap-6">
         <div className="space-y-6">
-          <Card
-            className="p-6"
-            style={{
-              background: tokens.surfaceCard,
-              borderColor: tokens.borderDefault,
-            }}
-          >
+          <Card className="p-6">
             <div className="flex items-start gap-3">
-              <Database
-                className="w-5 h-5 mt-1"
-                style={{ color: tokens.textMuted }}
-              />
+              <Database className="mt-1 size-5 text-muted-foreground" />
               <div className="min-w-0">
-                <h2
-                  className="text-xl font-semibold"
-                  style={{ color: tokens.textPrimary }}
-                >
+                <h2 className="text-xl font-semibold text-foreground">
                   {dataset.title}
                 </h2>
-                <p
-                  className="mt-1 font-mono text-xs"
-                  style={{ color: tokens.textMuted }}
-                >
+                <p className="mt-1 font-mono text-xs text-muted-foreground">
                   {dataset.datasetUniqueId}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-              <SummaryTile
-                label="Dataset Status"
-                value={dataset.status}
-                tokens={tokens}
-              />
-              <SummaryTile
-                label="Visibility"
-                value={dataset.visibility}
-                tokens={tokens}
-              />
-              <SummaryTile
-                label="Price Surface"
-                value={dataset.surfaceLabel}
-                tokens={tokens}
-              />
+              <SummaryTile label="Dataset Status" value={dataset.status} />
+              <SummaryTile label="Visibility" value={dataset.visibility} />
+              <SummaryTile label="Price Surface" value={dataset.surfaceLabel} />
               <SummaryTile
                 label="Base Price"
                 value={formatMoney(dataset.baseAmount, dataset.currency)}
-                tokens={tokens}
               />
             </div>
 
             {dataset.isSample && (
-              <div
-                className="mt-5 rounded-md border p-4 text-sm"
-                style={{
-                  borderColor: tokens.borderDefault,
-                  color: tokens.textSecondary,
-                  background: isDark
-                    ? "rgba(124, 58, 237, 0.1)"
-                    : "rgba(124, 58, 237, 0.06)",
-                }}
-              >
+              <DashboardInlineAlert tone="info" className="mt-5">
                 This is a sample listing. The discount applies to the full
                 dataset commercial price, while sample access remains free.
-              </div>
+              </DashboardInlineAlert>
             )}
           </Card>
 
-          <Card
-            className="p-6"
-            style={{
-              background: tokens.surfaceCard,
-              borderColor: tokens.borderDefault,
-            }}
-          >
+          <Card className="p-6">
             <div className="flex items-center gap-2 mb-4">
-              <CalendarClock
-                className="w-5 h-5"
-                style={{ color: tokens.textMuted }}
-              />
-              <h2
-                className="text-xl font-semibold"
-                style={{ color: tokens.textPrimary }}
-              >
+              <CalendarClock className="size-5 text-muted-foreground" />
+              <h2 className="text-xl font-semibold text-foreground">
                 Campaign Status
               </h2>
             </div>
 
             {activeProposal ? (
               <div>
-                <span
-                  className="inline-flex rounded px-2 py-1 text-xs font-semibold"
-                  style={{
-                    background: `${statusColors[activeProposal.status] ?? "#64748b"}18`,
-                    color: statusColors[activeProposal.status] ?? "#64748b",
-                  }}
+                <DashboardStatusBadge
+                  status={activeProposal.status}
+                  tone={STATUS_TONES[activeProposal.status] ?? "neutral"}
                 >
                   {statusLabel(activeProposal.status)}
-                </span>
+                </DashboardStatusBadge>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <SummaryTile
                     label="Discount"
                     value={`${activeProposal.discountType === "PERCENTAGE" ? `${activeProposal.discountValue}%` : formatMoney(activeProposal.discountValue, activeProposal.currencySnapshot)}`}
-                    tokens={tokens}
                   />
                   <SummaryTile
                     label="Final Price"
@@ -531,22 +461,19 @@ export function DiscountCampaignDetail({
                       activeProposal.finalPriceSnapshot,
                       activeProposal.currencySnapshot
                     )}
-                    tokens={tokens}
                   />
                   <SummaryTile
                     label="Starts"
                     value={formatDateTime(activeProposal.startsAt)}
-                    tokens={tokens}
                   />
                   <SummaryTile
                     label="Ends"
                     value={formatDateTime(activeProposal.endsAt)}
-                    tokens={tokens}
                   />
                 </div>
               </div>
             ) : (
-              <p className="text-sm" style={{ color: tokens.textSecondary }}>
+              <p className="text-sm text-muted-foreground">
                 No active or pending campaign exists for this dataset.
               </p>
             )}
@@ -554,54 +481,25 @@ export function DiscountCampaignDetail({
         </div>
 
         <div className="space-y-6">
-          <Card
-            className="p-6"
-            style={{
-              background: tokens.surfaceCard,
-              borderColor: tokens.borderDefault,
-            }}
-          >
+          <Card className="p-6">
             <div className="flex items-center gap-2 mb-5">
-              <BadgePercent
-                className="w-5 h-5"
-                style={{ color: tokens.textMuted }}
-              />
-              <h2
-                className="text-xl font-semibold"
-                style={{ color: tokens.textPrimary }}
-              >
+              <BadgePercent className="size-5 text-muted-foreground" />
+              <h2 className="text-xl font-semibold text-foreground">
                 Proposal Details
               </h2>
             </div>
 
             {formDisabled && (
-              <div
-                className="mb-5 rounded-md border p-4 text-sm"
-                style={{
-                  borderColor: tokens.borderDefault,
-                  color: tokens.textSecondary,
-                  background: tokens.dropzoneBg,
-                }}
-              >
+              <DashboardInlineAlert tone="warning" className="mb-5">
                 A campaign is already pending or active. Cancel it before
                 submitting another proposal.
-              </div>
+              </DashboardInlineAlert>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Discount Type" tokens={tokens}>
-                  <div
-                    className="grid grid-cols-2 gap-1 rounded-md border p-1 backdrop-blur-xl"
-                    style={{
-                      background: isDark
-                        ? "rgba(255, 255, 255, 0.06)"
-                        : "rgba(255, 255, 255, 0.76)",
-                      borderColor: isDark
-                        ? "rgba(255, 255, 255, 0.12)"
-                        : "rgba(26, 34, 64, 0.1)",
-                    }}
-                  >
+                <FormField label="Discount type">
+                  <div className="dashboard-glass-control grid grid-cols-2 gap-1 rounded-lg border border-[var(--dashboard-control-border)] p-1">
                     {[
                       ["PERCENTAGE", "Percentage"],
                       ["FIXED_AMOUNT", "Fixed amount"],
@@ -618,26 +516,12 @@ export function DiscountCampaignDetail({
                               discountType: value as DiscountType,
                             }))
                           }
-                          className="h-9 rounded text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                          style={{
-                            background: active
-                              ? isDark
-                                ? "rgba(255, 255, 255, 0.14)"
-                                : "rgba(26, 34, 64, 0.08)"
-                              : isDark
-                                ? "rgba(255, 255, 255, 0.04)"
-                                : "rgba(255, 255, 255, 0.45)",
-                            color: active
-                              ? tokens.textPrimary
-                              : tokens.textSecondary,
-                            border: `1px solid ${
-                              active
-                                ? isDark
-                                  ? "rgba(255, 255, 255, 0.24)"
-                                  : "rgba(26, 34, 64, 0.18)"
-                                : "transparent"
-                            }`,
-                          }}
+                          className={cn(
+                            "h-9 rounded-md border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                            active
+                              ? "border-[var(--dashboard-control-border-strong)] bg-muted text-foreground shadow-sm"
+                              : "border-transparent text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                          )}
                         >
                           {label}
                         </button>
@@ -652,7 +536,6 @@ export function DiscountCampaignDetail({
                       ? "Discount Percentage"
                       : "Discount Amount"
                   }
-                  tokens={tokens}
                 >
                   <Input
                     type="number"
@@ -669,20 +552,12 @@ export function DiscountCampaignDetail({
                     placeholder={
                       form.discountType === "PERCENTAGE" ? "20" : "5000"
                     }
-                    style={{
-                      background: isDark
-                        ? "rgba(255, 255, 255, 0.06)"
-                        : "rgba(255, 255, 255, 0.76)",
-                      borderColor: tokens.borderDefault,
-                      color: tokens.textPrimary,
-                      backdropFilter: "blur(16px)",
-                    }}
                   />
                 </FormField>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Starts At" tokens={tokens}>
+                <FormField label="Starts at">
                   <DiscountDateTimePicker
                     value={form.startsAt}
                     onChange={(value) =>
@@ -692,12 +567,10 @@ export function DiscountCampaignDetail({
                       }))
                     }
                     disabled={formDisabled}
-                    tokens={tokens}
-                    isDark={isDark}
                   />
                 </FormField>
 
-                <FormField label="Ends At" tokens={tokens}>
+                <FormField label="Ends at">
                   <DiscountDateTimePicker
                     value={form.endsAt}
                     onChange={(value) =>
@@ -707,13 +580,11 @@ export function DiscountCampaignDetail({
                       }))
                     }
                     disabled={formDisabled}
-                    tokens={tokens}
-                    isDark={isDark}
                   />
                 </FormField>
               </div>
 
-              <FormField label="Supplier Notes" tokens={tokens}>
+              <FormField label="Supplier notes">
                 <Textarea
                   value={form.supplierNotes}
                   onChange={(event) =>
@@ -724,51 +595,25 @@ export function DiscountCampaignDetail({
                   }
                   disabled={formDisabled}
                   placeholder="Add campaign context for admin review"
-                  style={{
-                    background: isDark
-                      ? "rgba(255, 255, 255, 0.06)"
-                      : "rgba(255, 255, 255, 0.76)",
-                    borderColor: tokens.borderDefault,
-                    color: tokens.textPrimary,
-                    backdropFilter: "blur(16px)",
-                  }}
                 />
               </FormField>
 
-              <div
-                className="rounded-md border p-4"
-                style={{
-                  borderColor: tokens.borderDefault,
-                  background: tokens.dropzoneBg,
-                }}
-              >
-                <p
-                  className="text-xs font-semibold uppercase"
-                  style={{ color: tokens.textMuted }}
-                >
+              <div className="rounded-lg border border-border bg-muted/35 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Price Preview
                 </p>
                 <div className="mt-3 flex flex-wrap items-baseline gap-3">
-                  <span
-                    className="text-sm line-through"
-                    style={{ color: tokens.textMuted }}
-                  >
+                  <span className="text-sm text-muted-foreground line-through">
                     {formatMoney(dataset.baseAmount, dataset.currency)}
                   </span>
-                  <span
-                    className="text-2xl font-semibold"
-                    style={{ color: tokens.textPrimary }}
-                  >
+                  <span className="text-2xl font-semibold text-foreground">
                     {preview
                       ? formatMoney(preview.final, dataset.currency)
                       : "Enter discount"}
                   </span>
                 </div>
                 {preview && (
-                  <p
-                    className="mt-2 text-sm"
-                    style={{ color: tokens.textSecondary }}
-                  >
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Customer saves{" "}
                     {formatMoney(preview.amountOff, dataset.currency)}
                   </p>
@@ -778,27 +623,8 @@ export function DiscountCampaignDetail({
               <Button
                 type="submit"
                 disabled={submitting || formDisabled}
-                className="h-11 w-full border font-semibold shadow-sm backdrop-blur-xl transition-all hover:shadow-md"
-                style={{
-                  background:
-                    submitting || formDisabled
-                      ? isDark
-                        ? "rgba(148, 163, 184, 0.16)"
-                        : "rgba(148, 163, 184, 0.22)"
-                      : isDark
-                        ? "rgba(255, 255, 255, 0.10)"
-                        : "rgba(255, 255, 255, 0.78)",
-                  borderColor:
-                    submitting || formDisabled
-                      ? tokens.borderDefault
-                      : isDark
-                        ? "rgba(255, 255, 255, 0.18)"
-                        : "rgba(26, 34, 64, 0.12)",
-                  color:
-                    submitting || formDisabled
-                      ? tokens.textMuted
-                      : tokens.textPrimary,
-                }}
+                className="w-full"
+                size="large"
               >
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Submit for Admin Review
@@ -806,28 +632,16 @@ export function DiscountCampaignDetail({
             </form>
           </Card>
 
-          <Card
-            className="p-6"
-            style={{
-              background: tokens.surfaceCard,
-              borderColor: tokens.borderDefault,
-            }}
-          >
+          <Card className="p-6">
             <div className="flex items-center gap-2 mb-5">
-              <History
-                className="w-5 h-5"
-                style={{ color: tokens.textMuted }}
-              />
-              <h2
-                className="text-xl font-semibold"
-                style={{ color: tokens.textPrimary }}
-              >
+              <History className="size-5 text-muted-foreground" />
+              <h2 className="text-xl font-semibold text-foreground">
                 Campaign History
               </h2>
             </div>
 
             {historyTotal === 0 ? (
-              <p className="text-sm" style={{ color: tokens.textSecondary }}>
+              <p className="text-sm text-muted-foreground">
                 No discount proposals have been created for this dataset yet.
               </p>
             ) : (
@@ -835,32 +649,22 @@ export function DiscountCampaignDetail({
                 {historyRows.map((proposal) => (
                   <div
                     key={proposal.id}
-                    className="rounded-md border p-4"
-                    style={{ borderColor: tokens.borderDefault }}
+                    className="rounded-lg border border-border bg-muted/20 p-4"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <span
-                          className="inline-flex rounded px-2 py-1 text-xs font-semibold"
-                          style={{
-                            background: `${statusColors[proposal.status] ?? "#64748b"}18`,
-                            color: statusColors[proposal.status] ?? "#64748b",
-                          }}
+                        <DashboardStatusBadge
+                          status={proposal.status}
+                          tone={STATUS_TONES[proposal.status] ?? "neutral"}
                         >
                           {statusLabel(proposal.status)}
-                        </span>
-                        <p
-                          className="mt-3 text-sm font-semibold"
-                          style={{ color: tokens.textPrimary }}
-                        >
+                        </DashboardStatusBadge>
+                        <p className="mt-3 text-sm font-semibold text-foreground">
                           {proposal.discountType === "PERCENTAGE"
                             ? `${proposal.discountValue}% off`
                             : `${formatMoney(proposal.discountValue, proposal.currencySnapshot)} off`}
                         </p>
-                        <p
-                          className="mt-1 text-sm"
-                          style={{ color: tokens.textSecondary }}
-                        >
+                        <p className="mt-1 text-sm text-muted-foreground">
                           {formatMoney(
                             proposal.basePriceSnapshot,
                             proposal.currencySnapshot
@@ -877,7 +681,7 @@ export function DiscountCampaignDetail({
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
+                          size="compact"
                           onClick={() => handleCancel(proposal)}
                           disabled={cancellingId === proposal.id}
                         >
@@ -893,12 +697,10 @@ export function DiscountCampaignDetail({
                       <DetailLine
                         label="Starts"
                         value={formatDateTime(proposal.startsAt)}
-                        tokens={tokens}
                       />
                       <DetailLine
                         label="Ends"
                         value={formatDateTime(proposal.endsAt)}
-                        tokens={tokens}
                       />
                       <DetailLine
                         label="Submitted"
@@ -907,7 +709,6 @@ export function DiscountCampaignDetail({
                             ? formatDateTime(proposal.submittedAt)
                             : "-"
                         }
-                        tokens={tokens}
                       />
                       <DetailLine
                         label="Reviewed"
@@ -916,7 +717,6 @@ export function DiscountCampaignDetail({
                             ? formatDateTime(proposal.reviewedAt)
                             : "-"
                         }
-                        tokens={tokens}
                       />
                     </div>
 
@@ -924,21 +724,18 @@ export function DiscountCampaignDetail({
                       <NoteBlock
                         label="Supplier Notes"
                         value={proposal.supplierNotes}
-                        tokens={tokens}
                       />
                     )}
                     {proposal.adminNotes && (
                       <NoteBlock
                         label="Admin Notes"
                         value={proposal.adminNotes}
-                        tokens={tokens}
                       />
                     )}
                     {proposal.rejectionReason && (
                       <NoteBlock
                         label="Rejection Reason"
                         value={proposal.rejectionReason}
-                        tokens={tokens}
                       />
                     )}
                   </div>
@@ -946,36 +743,30 @@ export function DiscountCampaignDetail({
               </div>
             )}
 
-            <DiscountPagination
+            <DashboardPagination
               page={proposalPage}
               pageSize={HISTORY_PAGE_SIZE}
-              total={historyTotal}
+              totalItems={historyTotal}
               itemLabel="proposals"
-              tokens={tokens}
               onPageChange={setProposalPage}
             />
           </Card>
         </div>
       </div>
-    </div>
+    </DashboardPage>
   );
 }
 
 function FormField({
   label,
   children,
-  tokens,
 }: {
   label: string;
   children: ReactNode;
-  tokens: ReturnType<typeof getDatasetThemeTokens>;
 }) {
   return (
     <label className="block">
-      <span
-        className="mb-2 block text-sm font-medium"
-        style={{ color: tokens.textSecondary }}
-      >
+      <span className="mb-2 block text-sm font-medium text-foreground">
         {label}
       </span>
       {children}
@@ -983,83 +774,35 @@ function FormField({
   );
 }
 
-function SummaryTile({
-  label,
-  value,
-  tokens,
-}: {
-  label: string;
-  value: string;
-  tokens: ReturnType<typeof getDatasetThemeTokens>;
-}) {
+function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className="rounded-md border p-4"
-      style={{
-        borderColor: tokens.borderDefault,
-        background: tokens.dropzoneBg,
-      }}
-    >
-      <p
-        className="text-xs font-semibold uppercase"
-        style={{ color: tokens.textMuted }}
-      >
+    <div className="rounded-lg border border-border bg-muted/35 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p
-        className="mt-2 text-sm font-semibold"
-        style={{ color: tokens.textPrimary }}
-      >
-        {value}
-      </p>
+      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
 
-function DetailLine({
-  label,
-  value,
-  tokens,
-}: {
-  label: string;
-  value: string;
-  tokens: ReturnType<typeof getDatasetThemeTokens>;
-}) {
+function DetailLine({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p
-        className="text-xs font-semibold uppercase"
-        style={{ color: tokens.textMuted }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1" style={{ color: tokens.textSecondary }}>
-        {value}
-      </p>
+      <p className="mt-1 text-muted-foreground">{value}</p>
     </div>
   );
 }
 
-function NoteBlock({
-  label,
-  value,
-  tokens,
-}: {
-  label: string;
-  value: string;
-  tokens: ReturnType<typeof getDatasetThemeTokens>;
-}) {
+function NoteBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="mt-4">
-      <p
-        className="text-xs font-semibold uppercase"
-        style={{ color: tokens.textMuted }}
-      >
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-sm" style={{ color: tokens.textSecondary }}>
-        {value}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{value}</p>
     </div>
   );
 }
