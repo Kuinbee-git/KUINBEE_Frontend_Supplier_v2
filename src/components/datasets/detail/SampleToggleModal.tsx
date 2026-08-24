@@ -1,12 +1,31 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ArrowRightLeft } from 'lucide-react';
-import type { Currency, SampleDeliveryMechanism } from '@/types/dataset-proposal.types';
+import {
+  DashboardButton,
+  DashboardInlineAlert,
+  DashboardInput,
+  DashboardSelect,
+  DashboardSelectContent,
+  DashboardSelectItem,
+  DashboardSelectTrigger,
+  DashboardSelectValue,
+  DashboardTextarea,
+} from "@/components/dashboard";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/datasets/shared/DatasetDialog";
+import { Label } from "@/components/ui/label";
+import { ArrowRightLeft } from "lucide-react";
+import type {
+  Currency,
+  SampleDeliveryMechanism,
+} from "@/types/dataset-proposal.types";
+import type { DatasetDetailTokens } from "./detailTokens";
 
 interface SampleToggleModalProps {
   pendingSampleValue: boolean | null;
@@ -28,15 +47,15 @@ interface SampleToggleModalProps {
   onSampleActualPriceChange: (value: string) => void;
   sampleActualPriceCurrency: Currency;
   onSampleActualPriceCurrencyChange: (value: Currency) => void;
-  sampleNegotiable: 'yes' | 'no';
-  onSampleNegotiableChange: (value: 'yes' | 'no') => void;
+  sampleNegotiable: "yes" | "no";
+  onSampleNegotiableChange: (value: "yes" | "no") => void;
 
   // Handlers
   onConfirm: () => void;
   onCancel: () => void;
 
   isDark: boolean;
-  tokens: any;
+  tokens: DatasetDetailTokens;
 }
 
 export function SampleToggleModal({
@@ -61,212 +80,219 @@ export function SampleToggleModal({
   onSampleNegotiableChange,
   onConfirm,
   onCancel,
-  isDark,
-  tokens,
 }: SampleToggleModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <Card
-        className="w-full max-w-xl shadow-xl border rounded-lg"
-        style={{
-          background: isDark ? 'rgba(26, 34, 64, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-          borderColor: tokens.borderDefault,
-          backdropFilter: isDark ? 'blur(12px)' : 'none',
-          WebkitBackdropFilter: isDark ? 'blur(12px)' : 'none',
-        }}
+    <Dialog
+      open
+      onOpenChange={(open) => !open && !sampleToggleSubmitting && onCancel()}
+    >
+      <DialogContent
+        className="max-w-xl"
+        showCloseButton={!sampleToggleSubmitting}
+        onEscapeKeyDown={(event) =>
+          sampleToggleSubmitting && event.preventDefault()
+        }
+        onPointerDownOutside={(event) =>
+          sampleToggleSubmitting && event.preventDefault()
+        }
       >
-        <div className="p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <ArrowRightLeft className="w-5 h-5" style={{ color: '#3b82f6' }} />
-            <h3 className="text-lg font-semibold" style={{ color: tokens.textPrimary }}>
-              {pendingSampleValue ? 'Enable Sample Mode' : 'Disable Sample Mode'}
-            </h3>
+        <DialogHeader>
+          <div className="flex items-start gap-3">
+            <span className="dashboard-tone-info flex size-9 shrink-0 items-center justify-center rounded-lg border">
+              <ArrowRightLeft className="size-4" aria-hidden="true" />
+            </span>
+            <div>
+              <DialogTitle>
+                {pendingSampleValue
+                  ? "Enable Sample Mode"
+                  : "Disable Sample Mode"}
+              </DialogTitle>
+              <DialogDescription>
+                {pendingSampleValue
+                  ? "Describe how this sample represents the complete dataset."
+                  : "Confirm that this proposal should return to regular dataset mode."}
+              </DialogDescription>
+            </div>
           </div>
+        </DialogHeader>
 
-          <p className="text-sm" style={{ color: tokens.textSecondary }}>
+        <div className="mt-5 space-y-4">
+          <p className="text-sm text-muted-foreground">
             {pendingSampleValue
-              ? 'Confirm this draft should be marked as sample and provide required sample details.'
-              : 'Confirm this draft should be converted from sample to regular. Sample-specific fields will be cleared.'}
+              ? "Confirm this draft should be marked as sample and provide required sample details."
+              : "Confirm this draft should be converted from sample to regular. Sample-specific fields will be cleared."}
           </p>
 
           {pendingSampleValue && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label style={{ color: tokens.textPrimary }}>Why sample *</Label>
-                <Textarea
+                <Label htmlFor="sample-why">Why sample *</Label>
+                <DashboardTextarea
+                  id="sample-why"
                   value={sampleWhy}
                   onChange={(e) => onSampleWhyChange(e.target.value)}
                   rows={3}
                   placeholder="Explain why this is a sample dataset"
-                  style={{
-                    background: tokens.inputBg,
-                    borderColor: tokens.inputBorder,
-                    color: tokens.textPrimary,
-                  }}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Actual dataset size *</Label>
-                  <Input
+                  <Label htmlFor="sample-size">Actual dataset size *</Label>
+                  <DashboardInput
+                    id="sample-size"
                     value={sampleSize}
                     onChange={(e) => onSampleSizeChange(e.target.value)}
                     placeholder="e.g., 120 GB"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Completeness (optional)</Label>
-                  <Input
+                  <Label htmlFor="sample-completeness">
+                    Completeness (optional)
+                  </Label>
+                  <DashboardInput
+                    id="sample-completeness"
                     value={sampleCompleteness}
                     onChange={(e) => onSampleCompletenessChange(e.target.value)}
                     placeholder="e.g., 80% representative"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Delivery mechanism *</Label>
-                  <select
+                  <Label htmlFor="sample-delivery">Delivery mechanism *</Label>
+                  <DashboardSelect
                     value={sampleDelivery}
-                    onChange={(e) => onSampleDeliveryChange(e.target.value as SampleDeliveryMechanism)}
-                    className="w-full h-10 rounded-md border px-3 text-sm"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
+                    onValueChange={(value) =>
+                      onSampleDeliveryChange(value as SampleDeliveryMechanism)
+                    }
                   >
-                    <option value="API">API</option>
-                    <option value="FILE">File</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                    <DashboardSelectTrigger id="sample-delivery">
+                      <DashboardSelectValue />
+                    </DashboardSelectTrigger>
+                    <DashboardSelectContent>
+                      <DashboardSelectItem value="API">API</DashboardSelectItem>
+                      <DashboardSelectItem value="FILE">
+                        File
+                      </DashboardSelectItem>
+                      <DashboardSelectItem value="OTHER">
+                        Other
+                      </DashboardSelectItem>
+                    </DashboardSelectContent>
+                  </DashboardSelect>
                 </div>
 
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Is price negotiable? *</Label>
-                  <select
+                  <Label htmlFor="sample-negotiable">
+                    Is price negotiable? *
+                  </Label>
+                  <DashboardSelect
                     value={sampleNegotiable}
-                    onChange={(e) => onSampleNegotiableChange(e.target.value as 'yes' | 'no')}
-                    className="w-full h-10 rounded-md border px-3 text-sm"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
+                    onValueChange={(value) =>
+                      onSampleNegotiableChange(value as "yes" | "no")
+                    }
                   >
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                  </select>
+                    <DashboardSelectTrigger id="sample-negotiable">
+                      <DashboardSelectValue />
+                    </DashboardSelectTrigger>
+                    <DashboardSelectContent>
+                      <DashboardSelectItem value="yes">Yes</DashboardSelectItem>
+                      <DashboardSelectItem value="no">No</DashboardSelectItem>
+                    </DashboardSelectContent>
+                  </DashboardSelect>
                 </div>
               </div>
 
-              {sampleDelivery === 'OTHER' && (
+              {sampleDelivery === "OTHER" && (
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Delivery mechanism notes *</Label>
-                  <Input
+                  <Label htmlFor="sample-delivery-notes">
+                    Delivery mechanism notes *
+                  </Label>
+                  <DashboardInput
+                    id="sample-delivery-notes"
                     value={sampleDeliveryNotes}
-                    onChange={(e) => onSampleDeliveryNotesChange(e.target.value)}
+                    onChange={(e) =>
+                      onSampleDeliveryNotesChange(e.target.value)
+                    }
                     placeholder="Describe delivery mechanism"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
                   />
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Actual full price *</Label>
-                  <Input
+                  <Label htmlFor="sample-actual-price">
+                    Actual full price *
+                  </Label>
+                  <DashboardInput
+                    id="sample-actual-price"
                     type="number"
                     min={0}
                     step={1}
                     value={sampleActualPrice}
                     onChange={(e) => onSampleActualPriceChange(e.target.value)}
                     placeholder="e.g., 499"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label style={{ color: tokens.textPrimary }}>Currency *</Label>
-                  <select
+                  <Label htmlFor="sample-currency">Currency *</Label>
+                  <DashboardSelect
                     value={sampleActualPriceCurrency}
-                    onChange={(e) => onSampleActualPriceCurrencyChange(e.target.value as Currency)}
-                    className="w-full h-10 rounded-md border px-3 text-sm"
-                    style={{
-                      background: tokens.inputBg,
-                      borderColor: tokens.inputBorder,
-                      color: tokens.textPrimary,
-                    }}
+                    onValueChange={(value) =>
+                      onSampleActualPriceCurrencyChange(value as Currency)
+                    }
                   >
-                    <option value="USD">USD ($)</option>
-                    <option value="INR">INR (₹)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                  </select>
+                    <DashboardSelectTrigger id="sample-currency">
+                      <DashboardSelectValue />
+                    </DashboardSelectTrigger>
+                    <DashboardSelectContent>
+                      <DashboardSelectItem value="USD">
+                        USD ($)
+                      </DashboardSelectItem>
+                      <DashboardSelectItem value="INR">
+                        INR (₹)
+                      </DashboardSelectItem>
+                      <DashboardSelectItem value="EUR">
+                        EUR (€)
+                      </DashboardSelectItem>
+                      <DashboardSelectItem value="GBP">
+                        GBP (£)
+                      </DashboardSelectItem>
+                    </DashboardSelectContent>
+                  </DashboardSelect>
                 </div>
               </div>
             </div>
           )}
 
           {sampleToggleError && (
-            <p className="text-sm" style={{ color: '#dc2626' }}>{sampleToggleError}</p>
+            <DashboardInlineAlert
+              tone="danger"
+              title="Sample mode could not be updated"
+              message={sampleToggleError}
+            />
           )}
 
-          <div className="flex gap-3 pt-2">
-            <Button
+          <DialogFooter>
+            <DashboardButton
               variant="outline"
               onClick={onCancel}
               disabled={sampleToggleSubmitting}
-              className="flex-1"
-              style={{
-                background: tokens.glassBg || 'transparent',
-                border: `1.5px solid ${tokens.inputBorder}`,
-                color: tokens.textPrimary,
-              }}
             >
               Cancel
-            </Button>
-            <Button
+            </DashboardButton>
+            <DashboardButton
               onClick={onConfirm}
               disabled={sampleToggleSubmitting}
-              className="flex-1"
-              style={{
-                background: sampleToggleSubmitting
-                  ? 'rgba(156, 163, 175, 0.2)'
-                  : tokens.glassBg || 'transparent',
-                border: `1.5px solid ${sampleToggleSubmitting
-                    ? 'rgba(156, 163, 175, 0.3)'
-                    : tokens.glassBorder || tokens.borderSubtle
-                  }`,
-                color: tokens.textPrimary,
-              }}
             >
-              {sampleToggleSubmitting ? 'Saving...' : 'Confirm'}
-            </Button>
-          </div>
+              {sampleToggleSubmitting ? "Saving..." : "Confirm"}
+            </DashboardButton>
+          </DialogFooter>
         </div>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
