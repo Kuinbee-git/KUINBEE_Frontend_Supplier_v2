@@ -1,7 +1,7 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { DashboardCard } from "@/components/dashboard";
+import { DashboardButton } from "@/components/dashboard";
 import { Label } from "@/components/ui/label";
 import { Upload, ChevronUp, ChevronDown, Info, RefreshCw } from "lucide-react";
 import type { DatasetDetailTokens } from "./detailTokens";
@@ -37,7 +37,7 @@ export function CurrentUploadSection({
   formatFileSize,
 }: CurrentUploadSectionProps) {
   return (
-    <Card className="supplier-glass-card overflow-hidden rounded-xl border">
+    <DashboardCard className="overflow-hidden rounded-xl border">
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between px-6 py-4 border-b transition-colors duration-200"
@@ -81,10 +81,10 @@ export function CurrentUploadSection({
                 No file uploaded yet
               </p>
               {isEditable && (
-                <Button onClick={onUploadClick} className="gap-2">
+                <DashboardButton onClick={onUploadClick} className="gap-2">
                   <Upload className="w-4 h-4" />
                   Upload file
-                </Button>
+                </DashboardButton>
               )}
             </div>
           ) : (
@@ -92,8 +92,8 @@ export function CurrentUploadSection({
               className="p-4 rounded-lg border"
               style={{
                 background: isDark
-                  ? "rgba(255, 255, 255, 0.02)"
-                  : "rgba(26, 34, 64, 0.02)",
+                  ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
                 borderColor: tokens.borderSubtle,
               }}
             >
@@ -115,20 +115,20 @@ export function CurrentUploadSection({
                     style={{
                       background:
                         currentUpload.status === "UPLOADED"
-                          ? "rgba(34, 197, 94, 0.1)"
+                          ? "color-mix(in srgb, var(--dashboard-success) 10%, transparent)"
                           : currentUpload.status === "UPLOADING"
-                            ? "rgba(234, 179, 8, 0.1)"
+                            ? "color-mix(in srgb, var(--dashboard-warning) 10%, transparent)"
                             : currentUpload.status === "FAILED"
-                              ? "rgba(239, 68, 68, 0.1)"
-                              : "rgba(59, 130, 246, 0.1)",
+                              ? "color-mix(in srgb, var(--dashboard-danger) 10%, transparent)"
+                              : "color-mix(in srgb, var(--dashboard-action) 10%, transparent)",
                       color:
                         currentUpload.status === "UPLOADED"
-                          ? "#22c55e"
+                          ? "var(--dashboard-success-foreground)"
                           : currentUpload.status === "UPLOADING"
-                            ? "#eab308"
+                            ? "var(--dashboard-warning-foreground)"
                             : currentUpload.status === "FAILED"
-                              ? "#ef4444"
-                              : "#3b82f6",
+                              ? "var(--dashboard-danger-foreground)"
+                              : "var(--dashboard-info-foreground)",
                     }}
                   >
                     {currentUpload.status}
@@ -178,47 +178,60 @@ export function CurrentUploadSection({
                       <div className="relative group">
                         <Info
                           className="w-4 h-4 cursor-help"
-                          style={{ color: "#eab308" }}
+                          style={{
+                            color: "var(--dashboard-warning-foreground)",
+                          }}
                         />
                         <div
-                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none"
+                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap invisible opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100 motion-reduce:transition-none z-50 pointer-events-none"
                           style={{
-                            background: isDark ? "#1e293b" : "#1a2240",
-                            color: "#f8fafc",
-                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                            border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.15)"}`,
+                            background: isDark
+                              ? "var(--dashboard-text)"
+                              : "var(--dashboard-text)",
+                            color: "var(--dashboard-surface)",
+                            boxShadow:
+                              "0 4px 12px color-mix(in srgb, var(--background) 30%, transparent)",
+                            border: `1px solid ${isDark ? "color-mix(in srgb, var(--dashboard-text) 10%, transparent)" : "color-mix(in srgb, var(--dashboard-text) 15%, transparent)"}`,
                           }}
                         >
                           If the status is stuck as uploading, reupload
                           <div
                             className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
                             style={{
-                              background: isDark ? "#1e293b" : "#1a2240",
+                              background: isDark
+                                ? "var(--dashboard-text)"
+                                : "var(--dashboard-text)",
                               marginTop: "-4px",
                             }}
                           />
                         </div>
                       </div>
-                      <span className="text-xs" style={{ color: "#eab308" }}>
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--dashboard-warning-foreground)" }}
+                      >
                         Upload may be stuck
                       </span>
                     </div>
-                    <Button
-                      size="sm"
+                    <DashboardButton
+                      size="compact"
                       variant="outline"
                       onClick={onUploadClick}
-                      className="w-full font-semibold transition-all duration-200 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]"
+                      className="w-full font-semibold"
                       style={{
                         background: isDark
-                          ? "rgba(234, 179, 8, 0.1)"
-                          : "rgba(234, 179, 8, 0.08)",
-                        border: "1.5px solid rgba(234, 179, 8, 0.4)",
-                        color: isDark ? "#fbbf24" : "#b45309",
+                          ? "color-mix(in srgb, var(--dashboard-warning) 10%, transparent)"
+                          : "color-mix(in srgb, var(--dashboard-warning) 8%, transparent)",
+                        border:
+                          "1.5px solid color-mix(in srgb, var(--dashboard-warning) 40%, transparent)",
+                        color: isDark
+                          ? "var(--dashboard-warning-foreground)"
+                          : "var(--dashboard-warning-foreground)",
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Reupload
-                    </Button>
+                    </DashboardButton>
                   </div>
                 )}
 
@@ -227,15 +240,15 @@ export function CurrentUploadSection({
                     className="pt-3 border-t"
                     style={{ borderColor: tokens.borderSubtle }}
                   >
-                    <Button
-                      size="sm"
+                    <DashboardButton
+                      size="compact"
                       variant="outline"
                       onClick={onUploadClick}
                       className="w-full gap-2"
                     >
                       <Upload className="w-4 h-4" />
                       Replace file
-                    </Button>
+                    </DashboardButton>
                   </div>
                 )}
               </div>
@@ -243,6 +256,6 @@ export function CurrentUploadSection({
           )}
         </div>
       )}
-    </Card>
+    </DashboardCard>
   );
 }

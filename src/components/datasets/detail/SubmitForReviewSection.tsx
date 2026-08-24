@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { DashboardButton } from "@/components/dashboard";
 import { Send, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { VerificationStatus } from "@/types/dataset-proposal.types";
 import type { DatasetDetailTokens } from "./detailTokens";
@@ -31,13 +31,14 @@ export function SubmitForReviewSection({
   const isInitialSubmission = verificationStatus === "PENDING";
 
   return (
-    <section className="supplier-glass-panel overflow-hidden rounded-xl border p-5">
+    <section className="dashboard-glass-card overflow-hidden rounded-xl border p-5">
       <div>
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {eyebrow}
         </p>
         <h3 className="mt-2 text-lg font-semibold text-foreground">
-          {title ?? (isInitialSubmission ? "Ready to Submit?" : "Resubmit for Review")}
+          {title ??
+            (isInitialSubmission ? "Ready to Submit?" : "Resubmit for Review")}
         </h3>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {description ??
@@ -47,9 +48,9 @@ export function SubmitForReviewSection({
         </p>
 
         {missingPrerequisites.length > 0 ? (
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-4">
+          <div className="mt-4 rounded-xl border dashboard-tone-warning p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--dashboard-warning-foreground)]" />
               <div>
                 <p className="text-sm font-semibold text-foreground">
                   Complete before submitting
@@ -66,9 +67,9 @@ export function SubmitForReviewSection({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] p-4">
+          <div className="mt-4 rounded-xl border dashboard-tone-success p-4">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="size-4 shrink-0 text-[var(--dashboard-success-foreground)]" />
               <p className="text-sm font-semibold text-foreground">
                 All required information is complete.
               </p>
@@ -76,7 +77,7 @@ export function SubmitForReviewSection({
           </div>
         )}
 
-        <Button
+        <DashboardButton
           onClick={onSubmit}
           disabled={submitting || missingPrerequisites.length > 0}
           className="mt-4 h-11 w-full gap-2"
@@ -84,9 +85,11 @@ export function SubmitForReviewSection({
           <Send className="size-4" />
           {submitting
             ? "Submitting..."
-            : actionLabel ??
-              (isInitialSubmission ? "Submit for Review" : "Resubmit for Review")}
-        </Button>
+            : (actionLabel ??
+              (isInitialSubmission
+                ? "Submit for Review"
+                : "Resubmit for Review"))}
+        </DashboardButton>
       </div>
     </section>
   );
