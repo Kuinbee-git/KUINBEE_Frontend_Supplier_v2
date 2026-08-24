@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ChevronDown, ChevronUp } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -15,34 +15,34 @@ export function CollapsibleSection({
   isExpanded,
   onToggle,
   children,
-  isDark = false,
   icon,
 }: CollapsibleSectionProps) {
-  const borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : '#dde3f0';
-  const textPrimary = isDark ? '#ffffff' : '#1a2240';
-  const textMuted = isDark ? 'rgba(255, 255, 255, 0.5)' : '#7a8494';
-  const hoverBg = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(26, 34, 64, 0.02)';
-
   return (
-    <div className="border-b" style={{ borderColor }}>
+    <div className="border-b border-[var(--dashboard-border)]">
       <button
+        type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-6 py-4 transition-colors duration-200"
-        style={{
-          color: textPrimary,
-          background: 'transparent',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
-        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        aria-expanded={isExpanded}
+        className="flex w-full items-center justify-between px-6 py-4 text-foreground transition-colors duration-150 hover:bg-[var(--dashboard-button-ghost-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dashboard-focus-ring)] motion-reduce:transition-none"
       >
         <div className="flex items-center gap-3">
-          {icon && <span style={{ color: textMuted }}>{icon}</span>}
+          {icon && (
+            <span className="text-muted-foreground" aria-hidden="true">
+              {icon}
+            </span>
+          )}
           <span className="text-sm font-semibold">{title}</span>
         </div>
         {isExpanded ? (
-          <ChevronUp className="w-4 h-4" style={{ color: textMuted }} />
+          <ChevronUp
+            className="size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
         ) : (
-          <ChevronDown className="w-4 h-4" style={{ color: textMuted }} />
+          <ChevronDown
+            className="size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
         )}
       </button>
 
