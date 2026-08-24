@@ -1,4 +1,5 @@
-import { Card } from '@/components/ui/card';
+import { DashboardCard } from "@/components/dashboard";
+import type { DatasetThemeTokens } from "@/constants/dataset.constants";
 
 interface StatCardData {
   value: number;
@@ -8,15 +9,18 @@ interface StatCardData {
 
 interface StatsCardsProps {
   stats: StatCardData[];
-  tokens: any;
+  tokens: Pick<
+    DatasetThemeTokens,
+    "surfaceCard" | "borderDefault" | "textSecondary"
+  >;
   isDark?: boolean;
 }
 
-export function StatsCards({ stats, tokens, isDark = false }: StatsCardsProps) {
+export function StatsCards({ stats, tokens }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
       {stats.map((stat, index) => (
-        <Card
+        <DashboardCard
           key={index}
           className="p-4"
           style={{
@@ -24,13 +28,16 @@ export function StatsCards({ stats, tokens, isDark = false }: StatsCardsProps) {
             borderColor: tokens.borderDefault,
           }}
         >
-          <div className="text-2xl font-bold mb-1" style={{ color: stat.color }}>
+          <div
+            className="text-2xl font-bold mb-1"
+            style={{ color: stat.color }}
+          >
             {stat.value}
           </div>
           <div className="text-xs" style={{ color: tokens.textSecondary }}>
             {stat.label}
           </div>
-        </Card>
+        </DashboardCard>
       ))}
     </div>
   );
