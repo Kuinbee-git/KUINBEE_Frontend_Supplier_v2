@@ -1,6 +1,5 @@
 "use client";
 
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 import type { RevenueTrendPoint, Currency } from "@/types/supplier-stats.types";
 import {
   formatCurrencyShort,
@@ -16,6 +15,9 @@ import {
   YAxis,
 } from "recharts";
 import { useMemo } from "react";
+import { TrendingUp } from "lucide-react";
+
+import { DashboardEmptyState, DashboardSkeleton } from "@/components/dashboard";
 
 interface RevenueTrendChartProps {
   data: RevenueTrendPoint[];
@@ -24,10 +26,10 @@ interface RevenueTrendChartProps {
 
 /** Distinct colors for each currency line */
 const CURRENCY_COLORS: Record<string, string> = {
-  INR: "#6366f1", // indigo
-  USD: "#10b981", // emerald
-  EUR: "#f59e0b", // amber
-  GBP: "#ec4899", // pink
+  INR: "var(--chart-1)",
+  USD: "var(--chart-2)",
+  EUR: "var(--chart-3)",
+  GBP: "var(--chart-4)",
 };
 
 function formatDate(dateStr: string): string {
@@ -54,8 +56,6 @@ function formatDate(dateStr: string): string {
 }
 
 export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
-  const tokens = useSupplierTokens();
-
   // Discover all unique currencies in the data
   const currencies = useMemo(() => {
     const set = new Set<string>();
@@ -93,34 +93,21 @@ export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
   }, [data, currencies]);
 
   if (loading) {
-    return (
-      <div
-        className="rounded-xl animate-pulse"
-        style={{ background: "var(--muted)", height: "320px" }}
-      />
-    );
+    return <DashboardSkeleton className="h-72 sm:h-80" />;
   }
 
   if (data.length === 0) {
     return (
-      <div
-        className="flex items-center justify-center rounded-xl"
-        style={{
-          height: 320,
-          background: tokens.isDark
-            ? "rgba(255,255,255,0.02)"
-            : "rgba(0,0,0,0.02)",
-          color: tokens.textMuted,
-        }}
-      >
-        <p className="text-sm">No revenue data for this period</p>
-      </div>
+      <DashboardEmptyState
+        surface="plain"
+        icon={TrendingUp}
+        title="No revenue in this period"
+        description="Try a longer time range or check again after a marketplace purchase."
+      />
     );
   }
 
-  const gridColor = tokens.isDark
-    ? "rgba(255,255,255,0.06)"
-    : "rgba(26,34,64,0.08)";
+  const gridColor = "var(--dashboard-glass-border)";
 
   return (
     <div>
@@ -131,12 +118,11 @@ export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
             <div key={c} className="flex items-center gap-2">
               <span
                 className="w-3 h-3 rounded-full"
-                style={{ background: CURRENCY_COLORS[c] || "#888" }}
+                style={{
+                  background: CURRENCY_COLORS[c] || "var(--muted-foreground)",
+                }}
               />
-              <span
-                className="text-xs font-medium"
-                style={{ color: tokens.textSecondary }}
-              >
+              <span className="text-xs font-medium text-muted-foreground">
                 {c} ({getCurrencySymbol(c as Currency)})
               </span>
             </div>
@@ -162,14 +148,14 @@ export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
             <XAxis
               dataKey="date"
               tickFormatter={formatDate}
-              tick={{ fill: tokens.textMuted, fontSize: 11 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
               axisLine={{ stroke: gridColor }}
               tickLine={false}
               interval="preserveStartEnd"
               minTickGap={40}
             />
             <YAxis
-              tick={{ fill: tokens.textMuted, fontSize: 11 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
               tickFormatter={(value: number) =>
                 currencies.length === 1
                   ? formatCurrencyShort(value, currencies[0] as Currency)
@@ -182,17 +168,15 @@ export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
             />
             <Tooltip
               contentStyle={{
-                background: tokens.isDark
-                  ? "rgba(20, 27, 54, 0.95)"
-                  : "rgba(255, 255, 255, 0.95)",
-                border: `1px solid ${tokens.borderDefault}`,
-                borderRadius: "12px",
+                background: "var(--dashboard-glass-background-strong)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
                 backdropFilter: "blur(16px)",
-                boxShadow: tokens.glassShadow,
+                boxShadow: "var(--dashboard-glass-shadow)",
                 padding: "12px 16px",
               }}
               labelStyle={{
-                color: tokens.textSecondary,
+                color: "var(--muted-foreground)",
                 fontSize: 12,
                 marginBottom: 6,
               }}
@@ -203,13 +187,14 @@ export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
                 return [`${symbol}${value.toLocaleString(locale)}`, name];
               }}
               itemStyle={{
-                color: tokens.textPrimary,
+                color: "var(--foreground)",
                 fontSize: 13,
                 fontWeight: 600,
               }}
             />
             {currencies.map((currency) => {
-              const color = CURRENCY_COLORS[currency] || "#888";
+              const color =
+                CURRENCY_COLORS[currency] || "var(--muted-foreground)";
               return (
                 <Line
                   key={currency}
@@ -221,13 +206,13 @@ export function RevenueTrendChart({ data, loading }: RevenueTrendChartProps) {
                   dot={{
                     r: 4,
                     fill: color,
-                    stroke: tokens.isDark ? "#0f1428" : "#ffffff",
+                    stroke: "var(--dashboard-surface)",
                     strokeWidth: 2,
                   }}
                   activeDot={{
                     r: 6,
                     fill: color,
-                    stroke: tokens.isDark ? "#0f1428" : "#ffffff",
+                    stroke: "var(--dashboard-surface)",
                     strokeWidth: 2.5,
                   }}
                   connectNulls={false}
