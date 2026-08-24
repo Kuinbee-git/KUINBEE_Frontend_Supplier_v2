@@ -1,32 +1,66 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { GlassCard } from "@/components/shared";
-import { Button } from "@/components/ui/button";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  Send,
+} from "lucide-react";
+
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardCardContent,
+  DashboardCardDescription,
+  DashboardCardHeader,
+  DashboardCardTitle,
+  DashboardEmptyState,
+  DashboardErrorState,
+  DashboardField,
+  DashboardInlineAlert,
+  DashboardLoadingState,
+  DashboardMetricCard,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardStatusBadge,
+  DashboardTextarea,
+} from "@/components/dashboard";
 import {
   answerDatasetQuestion,
   getDatasetQuestions,
   listMyDatasets,
 } from "@/lib/api/datasets";
+import { cn } from "@/lib/utils";
 import type {
   DatasetQuestion,
   PublishedDatasetListItem,
 } from "@/types/dataset.types";
-import {
-  MessageSquare,
-  Send,
-  CheckCircle2,
-  Clock,
-  Loader2,
-} from "lucide-react";
 
 type DatasetQuestionBucket = {
   dataset: PublishedDatasetListItem;
   questions: DatasetQuestion[];
 };
 
+type ReplyFeedback = {
+  message: string;
+  tone: "danger" | "success";
+};
+
 const FETCH_PAGE_SIZE = 100;
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 async function fetchAllSupplierDatasets() {
   const datasets: PublishedDatasetListItem[] = [];
@@ -35,11 +69,16 @@ async function fetchAllSupplierDatasets() {
   let total = 0;
 
   do {
-    const response = await listMyDatasets({ page, pageSize: FETCH_PAGE_SIZE });
-    const items = response.items || [];
+    const response = await listMyDatasets({
+      page,
+      pageSize: FETCH_PAGE_SIZE,
+      status: "PUBLISHED",
+      visibility: "PUBLIC",
+    });
+    const items = response.items ?? [];
     datasets.push(...items);
     fetched += items.length;
-    total = response.total || 0;
+    total = response.total ?? 0;
     if (items.length === 0) break;
     page += 1;
   } while (fetched < total);
@@ -58,10 +97,10 @@ async function fetchAllDatasetQuestions(datasetId: string) {
       page,
       pageSize: FETCH_PAGE_SIZE,
     });
-    const items = response.items || [];
+    const items = response.items ?? [];
     questions.push(...items);
     fetched += items.length;
-    total = response.total || 0;
+    total = response.total ?? 0;
     if (items.length === 0) break;
     page += 1;
   } while (fetched < total);
@@ -70,8 +109,11 @@ async function fetchAllDatasetQuestions(datasetId: string) {
 }
 
 export default function SupplierQuestionsPage() {
-  const tokens = useSupplierTokens();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [partialFailureCount, setPartialFailureCount] = useState(0);
   const [buckets, setBuckets] = useState<DatasetQuestionBucket[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(
     null
@@ -80,425 +122,470 @@ export default function SupplierQuestionsPage() {
   const [answeringQuestionId, setAnsweringQuestionId] = useState<string | null>(
     null
   );
+  const [replyFeedback, setReplyFeedback] = useState<
+    Record<string, ReplyFeedback>
+  >({});
 
-  const fetchData = async () => {
-    try {
+  const loadQuestions = useCallback(async (mode: "initial" | "refresh") => {
+    if (mode === "initial") {
       setLoading(true);
-
-      const datasets = await fetchAllSupplierDatasets();
-
-      const bucketsPromises = datasets.map(async (dataset) => {
-        try {
-          return {
-            dataset,
-            questions: await fetchAllDatasetQuestions(dataset.id),
-          };
-        } catch (error) {
-          console.error(
-            `Failed to fetch questions for dataset ${dataset.id}:`,
-            error
-          );
-          return { dataset, questions: [] };
-        }
-      });
-
-      const allBuckets = await Promise.all(bucketsPromises);
-      const filtered = allBuckets.filter((item) => item.questions.length > 0);
-
-      setBuckets(filtered);
-      if (!selectedDatasetId && filtered.length > 0) {
-        setSelectedDatasetId(filtered[0].dataset.id);
-      }
-    } catch (error) {
-      console.error("Failed to fetch questions data:", error);
-    } finally {
-      setLoading(false);
+      setLoadError(null);
+    } else {
+      setRefreshing(true);
+      setRefreshError(null);
     }
-  };
+    setPartialFailureCount(0);
 
-  useEffect(() => {
-    fetchData();
+    try {
+      const datasets = await fetchAllSupplierDatasets();
+      const results = await Promise.allSettled(
+        datasets.map(async (dataset) => ({
+          dataset,
+          questions: await fetchAllDatasetQuestions(dataset.id),
+        }))
+      );
+      const failedCount = results.filter(
+        (result) => result.status === "rejected"
+      ).length;
+
+      if (datasets.length > 0 && failedCount === datasets.length) {
+        throw new Error("Questions could not be loaded for your datasets.");
+      }
+
+      const nextBuckets = results
+        .filter(
+          (result): result is PromiseFulfilledResult<DatasetQuestionBucket> =>
+            result.status === "fulfilled" && result.value.questions.length > 0
+        )
+        .map((result) => result.value);
+
+      setBuckets(nextBuckets);
+      setPartialFailureCount(failedCount);
+      setSelectedDatasetId((current) => {
+        if (
+          current &&
+          nextBuckets.some(({ dataset }) => dataset.id === current)
+        ) {
+          return current;
+        }
+        return nextBuckets[0]?.dataset.id ?? null;
+      });
+    } catch (error: unknown) {
+      const message = getErrorMessage(
+        error,
+        "Buyer questions could not be loaded."
+      );
+      if (mode === "initial") setLoadError(message);
+      else setRefreshError(message);
+    } finally {
+      if (mode === "initial") setLoading(false);
+      else setRefreshing(false);
+    }
   }, []);
 
+  useEffect(() => {
+    void loadQuestions("initial");
+  }, [loadQuestions]);
+
   const selected = useMemo(
-    () => buckets.find((b) => b.dataset.id === selectedDatasetId) || null,
+    () =>
+      buckets.find(({ dataset }) => dataset.id === selectedDatasetId) ?? null,
     [buckets, selectedDatasetId]
   );
 
-  // Stats
-  const totalQuestions = buckets.reduce(
-    (sum, b) => sum + b.questions.length,
-    0
+  const totalQuestions = useMemo(
+    () => buckets.reduce((sum, bucket) => sum + bucket.questions.length, 0),
+    [buckets]
   );
-  const unansweredCount = buckets.reduce(
-    (sum, b) => sum + b.questions.filter((q) => q.answers.length === 0).length,
-    0
+  const unansweredCount = useMemo(
+    () =>
+      buckets.reduce(
+        (sum, bucket) =>
+          sum +
+          bucket.questions.filter((question) => question.answers.length === 0)
+            .length,
+        0
+      ),
+    [buckets]
   );
+  const answeredCount = totalQuestions - unansweredCount;
 
-  const handleAnswer = async (questionId: string) => {
-    const answer = (answerDrafts[questionId] || "").trim();
-    if (!answer) return;
+  const handleAnswer = async (
+    event: FormEvent<HTMLFormElement>,
+    questionId: string
+  ) => {
+    event.preventDefault();
+    const answer = (answerDrafts[questionId] ?? "").trim();
+
+    if (!answer) {
+      setReplyFeedback((current) => ({
+        ...current,
+        [questionId]: {
+          tone: "danger",
+          message: "Enter a reply before sending it.",
+        },
+      }));
+      return;
+    }
+
+    setAnsweringQuestionId(questionId);
+    setReplyFeedback((current) => {
+      const next = { ...current };
+      delete next[questionId];
+      return next;
+    });
 
     try {
-      setAnsweringQuestionId(questionId);
-      await answerDatasetQuestion(questionId, { answer });
-      setAnswerDrafts((prev) => ({ ...prev, [questionId]: "" }));
-      await fetchData();
+      const response = await answerDatasetQuestion(questionId, { answer });
+      setBuckets((current) =>
+        current.map((bucket) => ({
+          ...bucket,
+          questions: bucket.questions.map((question) =>
+            question.id === questionId
+              ? {
+                  ...question,
+                  answers: [...question.answers, response.answer],
+                }
+              : question
+          ),
+        }))
+      );
+      setAnswerDrafts((current) => ({ ...current, [questionId]: "" }));
+      setReplyFeedback((current) => ({
+        ...current,
+        [questionId]: {
+          tone: "success",
+          message: "Your response was posted.",
+        },
+      }));
+    } catch (error: unknown) {
+      setReplyFeedback((current) => ({
+        ...current,
+        [questionId]: {
+          tone: "danger",
+          message: getErrorMessage(error, "Your response could not be posted."),
+        },
+      }));
     } finally {
       setAnsweringQuestionId(null);
     }
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-8 py-7 h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1
-            className="text-3xl font-semibold mb-1"
-            style={{ color: tokens.textPrimary }}
+    <DashboardPage width="wide">
+      <DashboardPageHeader
+        title="Questions"
+        description="Respond to buyer questions across your marketplace datasets."
+        actions={
+          <DashboardButton
+            variant="outline"
+            onClick={() => void loadQuestions("refresh")}
+            disabled={loading || refreshing}
           >
-            Questions
-          </h1>
-          <p className="text-sm" style={{ color: tokens.textSecondary }}>
-            Respond to buyer questions across your datasets
-          </p>
-        </div>
-        {!loading && buckets.length > 0 && (
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center gap-2 rounded-lg px-3 py-2"
-              style={{
-                background: tokens.infoBg,
-                border: `1px solid ${tokens.infoBorder}`,
-              }}
-            >
-              <MessageSquare size={14} style={{ color: tokens.textMuted }} />
-              <span
-                className="text-xs font-medium"
-                style={{ color: tokens.textSecondary }}
-              >
-                {totalQuestions} total
-              </span>
-            </div>
-            {unansweredCount > 0 && (
-              <div
-                className="flex items-center gap-2 rounded-lg px-3 py-2"
-                style={{
-                  background: tokens.warningBg,
-                  border: `1px solid ${tokens.warningBorder}`,
-                }}
-              >
-                <Clock size={14} style={{ color: tokens.warningText }} />
-                <span
-                  className="text-xs font-medium"
-                  style={{ color: tokens.warningText }}
-                >
-                  {unansweredCount} awaiting reply
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            <RefreshCw
+              className={cn(
+                refreshing && "animate-spin motion-reduce:animate-none"
+              )}
+              aria-hidden="true"
+            />
+            Refresh
+          </DashboardButton>
+        }
+      />
 
-      {loading ? (
-        <GlassCard className="p-12 flex items-center justify-center">
-          <Loader2
-            className="animate-spin mr-3"
-            size={20}
-            style={{ color: tokens.textMuted }}
-          />
-          <span style={{ color: tokens.textMuted }}>Loading questions…</span>
-        </GlassCard>
+      {loadError ? (
+        <DashboardErrorState
+          title="Questions could not be loaded"
+          message={loadError}
+          onRetry={() => void loadQuestions("initial")}
+        />
+      ) : loading ? (
+        <DashboardLoadingState
+          label="Loading buyer questions"
+          variant="skeleton"
+          rows={6}
+        />
+      ) : buckets.length === 0 && partialFailureCount > 0 ? (
+        <DashboardErrorState
+          title="Questions are temporarily unavailable"
+          message={`Questions from ${partialFailureCount} ${partialFailureCount === 1 ? "dataset could" : "datasets could"} not be checked.`}
+          onRetry={() => void loadQuestions("initial")}
+        />
       ) : buckets.length === 0 ? (
-        <GlassCard className="p-12 text-center">
-          <MessageSquare
-            size={40}
-            className="mx-auto mb-4"
-            style={{ color: tokens.textMuted, opacity: 0.4 }}
-          />
-          <p
-            className="text-base font-medium mb-1"
-            style={{ color: tokens.textPrimary }}
-          >
-            No questions yet
-          </p>
-          <p className="text-sm" style={{ color: tokens.textMuted }}>
-            Questions from buyers will appear here once your datasets are
-            published
-          </p>
-        </GlassCard>
+        <DashboardEmptyState
+          icon={MessageSquare}
+          title="No questions yet"
+          description="Buyer questions will appear here after they are submitted on your marketplace datasets."
+        />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 h-[calc(100vh-220px)]">
-          {/* Dataset Sidebar */}
-          <GlassCard className="p-3 overflow-auto">
-            <div className="px-1 py-2 mb-2">
-              <h2
-                className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: tokens.textMuted }}
-              >
-                Datasets ({buckets.length})
-              </h2>
-            </div>
-            <div className="space-y-1.5">
-              {buckets.map((bucket) => {
-                const isActive = bucket.dataset.id === selectedDatasetId;
-                const unanswered = bucket.questions.filter(
-                  (q) => q.answers.length === 0
-                ).length;
+        <>
+          <section
+            aria-label="Question summary"
+            className="grid gap-4 sm:grid-cols-3"
+          >
+            <DashboardMetricCard
+              label="Total questions"
+              value={totalQuestions}
+              supportingText={`Across ${buckets.length} ${buckets.length === 1 ? "dataset" : "datasets"}`}
+            />
+            <DashboardMetricCard
+              label="Awaiting reply"
+              value={unansweredCount}
+              supportingText="Buyer questions needing attention"
+              status={unansweredCount > 0 ? "Action needed" : "All clear"}
+              statusTone={unansweredCount > 0 ? "warning" : "success"}
+            />
+            <DashboardMetricCard
+              label="Answered"
+              value={answeredCount}
+              supportingText="Questions with at least one response"
+            />
+          </section>
 
-                return (
-                  <button
-                    key={bucket.dataset.id}
-                    onClick={() => setSelectedDatasetId(bucket.dataset.id)}
-                    className="w-full text-left rounded-lg p-3 transition-all duration-200"
-                    style={{
-                      background: isActive
-                        ? tokens.navItemActive
-                        : "transparent",
-                      border: `1px solid ${isActive ? tokens.borderDefault : "transparent"}`,
-                    }}
-                  >
-                    <p
-                      className="text-sm font-medium truncate"
-                      style={{ color: tokens.textPrimary }}
-                    >
-                      {bucket.dataset.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span
-                        className="text-xs"
-                        style={{ color: tokens.textMuted }}
-                      >
-                        {bucket.questions.length} question
-                        {bucket.questions.length === 1 ? "" : "s"}
-                      </span>
-                      {unanswered > 0 && (
-                        <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                          style={{
-                            background: tokens.warningBg,
-                            color: tokens.warningText,
-                          }}
-                        >
-                          {unanswered} pending
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </GlassCard>
-
-          {/* Question Detail Panel */}
-          <GlassCard className="p-5 overflow-auto">
-            {!selected ? (
-              <div className="h-full flex items-center justify-center">
-                <p className="text-sm" style={{ color: tokens.textMuted }}>
-                  Select a dataset to view questions
-                </p>
-              </div>
-            ) : (
-              <>
-                <div
-                  className="flex items-center justify-between mb-5 pb-4"
-                  style={{ borderBottom: `1px solid ${tokens.borderSubtle}` }}
+          {refreshError ? (
+            <DashboardInlineAlert
+              tone="danger"
+              title="Questions could not be refreshed"
+              message={refreshError}
+              action={
+                <DashboardButton
+                  variant="outline"
+                  size="compact"
+                  onClick={() => void loadQuestions("refresh")}
                 >
-                  <div>
-                    <h2
-                      className="text-base font-semibold"
-                      style={{ color: tokens.textPrimary }}
+                  Try again
+                </DashboardButton>
+              }
+            />
+          ) : null}
+
+          {partialFailureCount > 0 ? (
+            <DashboardInlineAlert
+              tone="warning"
+              title="Some datasets could not be checked"
+              message={`Questions from ${partialFailureCount} ${partialFailureCount === 1 ? "dataset are" : "datasets are"} temporarily unavailable.`}
+              action={
+                <DashboardButton
+                  variant="outline"
+                  size="compact"
+                  onClick={() => void loadQuestions("refresh")}
+                  disabled={refreshing}
+                >
+                  Retry
+                </DashboardButton>
+              }
+            />
+          ) : null}
+
+          <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <DashboardCard className="min-w-0 lg:sticky lg:top-6">
+              <DashboardCardHeader>
+                <DashboardCardTitle>Datasets</DashboardCardTitle>
+                <DashboardCardDescription>
+                  Choose a dataset to review its conversations.
+                </DashboardCardDescription>
+              </DashboardCardHeader>
+              <DashboardCardContent className="grid gap-2 p-3 md:p-3">
+                {buckets.map((bucket) => {
+                  const active = bucket.dataset.id === selectedDatasetId;
+                  const pending = bucket.questions.filter(
+                    (question) => question.answers.length === 0
+                  ).length;
+
+                  return (
+                    <button
+                      key={bucket.dataset.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setSelectedDatasetId(bucket.dataset.id)}
+                      className={cn(
+                        "rounded-lg border px-3 py-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] motion-reduce:transition-none",
+                        active
+                          ? "border-[var(--dashboard-control-border-strong)] bg-muted text-foreground"
+                          : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/55 hover:text-foreground"
+                      )}
                     >
+                      <span className="block truncate text-sm font-semibold">
+                        {bucket.dataset.title}
+                      </span>
+                      <span className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-xs">
+                          {bucket.questions.length} question
+                          {bucket.questions.length === 1 ? "" : "s"}
+                        </span>
+                        {pending > 0 ? (
+                          <DashboardStatusBadge tone="warning">
+                            {pending} pending
+                          </DashboardStatusBadge>
+                        ) : (
+                          <DashboardStatusBadge tone="success">
+                            Answered
+                          </DashboardStatusBadge>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </DashboardCardContent>
+            </DashboardCard>
+
+            {selected ? (
+              <DashboardCard className="min-w-0">
+                <DashboardCardHeader className="sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <DashboardCardTitle className="truncate">
                       {selected.dataset.title}
-                    </h2>
-                    <p
-                      className="text-xs mt-0.5"
-                      style={{ color: tokens.textMuted }}
-                    >
+                    </DashboardCardTitle>
+                    <DashboardCardDescription className="mt-1 font-mono">
                       {selected.dataset.datasetUniqueId}
-                    </p>
+                    </DashboardCardDescription>
                   </div>
-                  <span
-                    className="text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{
-                      background: tokens.infoBg,
-                      color: tokens.textSecondary,
-                    }}
-                  >
+                  <DashboardStatusBadge tone="neutral">
                     {selected.questions.length} question
                     {selected.questions.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-
-                <div className="space-y-5">
+                  </DashboardStatusBadge>
+                </DashboardCardHeader>
+                <DashboardCardContent className="grid gap-4">
                   {selected.questions.map((question) => {
-                    const isUnanswered = question.answers.length === 0;
+                    const unanswered = question.answers.length === 0;
+                    const feedback = replyFeedback[question.id];
+                    const answering = answeringQuestionId === question.id;
 
                     return (
-                      <div
+                      <article
                         key={question.id}
-                        className="rounded-xl p-5 transition-all duration-200"
-                        style={{
-                          background: tokens.infoBg,
-                          border: `1px solid ${isUnanswered ? tokens.warningBorder : tokens.borderSubtle}`,
-                        }}
+                        className="rounded-xl border border-border bg-card/65 p-4 shadow-sm dark:shadow-none md:p-5"
                       >
-                        {/* Question */}
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full mt-0.5"
-                            style={{
-                              background: tokens.glassBg,
-                              border: `1px solid ${tokens.borderSubtle}`,
-                            }}
-                          >
-                            <MessageSquare
-                              size={14}
-                              style={{ color: tokens.textSecondary }}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className="text-sm font-medium leading-relaxed"
-                              style={{ color: tokens.textPrimary }}
-                            >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <MessageSquare
+                                className="size-3.5"
+                                aria-hidden="true"
+                              />
+                              <span>
+                                Asked {formatDateTime(question.createdAt)}
+                              </span>
+                            </div>
+                            <h3 className="mt-2 text-sm font-semibold leading-6 text-foreground">
                               {question.question}
-                            </p>
-                            <p
-                              className="text-[11px] mt-1"
-                              style={{ color: tokens.textMuted }}
-                            >
-                              Asked{" "}
-                              {new Date(question.createdAt).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
-                            </p>
+                            </h3>
                           </div>
-                          {isUnanswered && (
-                            <span
-                              className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full shrink-0"
-                              style={{
-                                background: tokens.warningBg,
-                                color: tokens.warningText,
-                              }}
-                            >
-                              Pending
-                            </span>
-                          )}
+                          <DashboardStatusBadge
+                            tone={unanswered ? "warning" : "success"}
+                            icon={unanswered ? Clock3 : CheckCircle2}
+                          >
+                            {unanswered ? "Awaiting reply" : "Answered"}
+                          </DashboardStatusBadge>
                         </div>
 
-                        {/* Existing Answers */}
-                        {question.answers.length > 0 && (
-                          <div className="mt-4 ml-11 space-y-2.5">
+                        {question.answers.length > 0 ? (
+                          <div className="mt-4 grid gap-3 border-l-2 border-border pl-4">
                             {question.answers.map((answer) => (
                               <div
                                 key={answer.id}
-                                className="rounded-lg p-3.5"
-                                style={{
-                                  background: tokens.successBg,
-                                  border: `1px solid ${tokens.successBorder}`,
-                                }}
+                                className="rounded-lg bg-muted/45 p-3.5"
                               >
-                                <div className="flex items-center gap-2 mb-1.5">
-                                  <CheckCircle2
-                                    size={13}
-                                    style={{ color: tokens.successText }}
-                                  />
-                                  <span
-                                    className="text-[11px] font-semibold"
-                                    style={{ color: tokens.successText }}
-                                  >
-                                    Your Response
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                  <span className="font-semibold text-foreground">
+                                    Your response
                                   </span>
-                                  <span
-                                    className="text-[11px]"
-                                    style={{ color: tokens.textMuted }}
-                                  >
-                                    ·{" "}
-                                    {new Date(
-                                      answer.createdAt
-                                    ).toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                    })}
-                                  </span>
+                                  <span aria-hidden="true">·</span>
+                                  <time dateTime={answer.createdAt}>
+                                    {formatDateTime(answer.createdAt)}
+                                  </time>
                                 </div>
-                                <p
-                                  className="text-sm leading-relaxed"
-                                  style={{ color: tokens.textPrimary }}
-                                >
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
                                   {answer.answer}
                                 </p>
                               </div>
                             ))}
                           </div>
-                        )}
+                        ) : null}
 
-                        {/* Answer Input */}
-                        <div className="mt-4 ml-11">
-                          <div className="flex gap-2">
-                            <input
-                              className="flex-1 h-10 px-3.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-1"
-                              style={{
-                                background: tokens.inputBg,
-                                border: `1px solid ${tokens.inputBorder}`,
-                                color: tokens.textPrimary,
-                              }}
-                              placeholder={
-                                question.answers.length > 0
-                                  ? "Add another response…"
-                                  : "Write your answer…"
-                              }
-                              value={answerDrafts[question.id] || ""}
-                              onChange={(e) =>
-                                setAnswerDrafts((prev) => ({
-                                  ...prev,
-                                  [question.id]: e.target.value,
-                                }))
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleAnswer(question.id);
-                                }
-                              }}
+                        <form
+                          className="mt-5 grid gap-3 border-t border-border pt-4"
+                          onSubmit={(event) =>
+                            void handleAnswer(event, question.id)
+                          }
+                        >
+                          {feedback?.tone === "success" ? (
+                            <DashboardInlineAlert
+                              tone="success"
+                              live="polite"
+                              message={feedback.message}
                             />
-                            <Button
-                              size="sm"
-                              onClick={() => handleAnswer(question.id)}
+                          ) : null}
+                          <DashboardField
+                            id={`question-reply-${question.id}`}
+                            label={
+                              unanswered ? "Your reply" : "Add another response"
+                            }
+                            error={
+                              feedback?.tone === "danger"
+                                ? feedback.message
+                                : undefined
+                            }
+                            required
+                          >
+                            {(controlProps) => (
+                              <DashboardTextarea
+                                {...controlProps}
+                                value={answerDrafts[question.id] ?? ""}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setAnswerDrafts((current) => ({
+                                    ...current,
+                                    [question.id]: value,
+                                  }));
+                                  if (replyFeedback[question.id]) {
+                                    setReplyFeedback((current) => {
+                                      const next = { ...current };
+                                      delete next[question.id];
+                                      return next;
+                                    });
+                                  }
+                                }}
+                                placeholder="Write a clear response for the buyer"
+                                disabled={answering}
+                                rows={3}
+                              />
+                            )}
+                          </DashboardField>
+                          <div className="flex justify-end">
+                            <DashboardButton
+                              type="submit"
                               disabled={
-                                answeringQuestionId === question.id ||
-                                !(answerDrafts[question.id] || "").trim()
+                                answering ||
+                                !(answerDrafts[question.id] ?? "").trim()
                               }
-                              className="h-10 px-4"
                             >
-                              {answeringQuestionId === question.id ? (
-                                <Loader2 size={14} className="animate-spin" />
+                              {answering ? (
+                                <Loader2
+                                  className="animate-spin motion-reduce:animate-none"
+                                  aria-hidden="true"
+                                />
                               ) : (
-                                <Send size={14} />
+                                <Send aria-hidden="true" />
                               )}
-                              <span className="ml-2">Reply</span>
-                            </Button>
+                              {answering ? "Posting…" : "Post response"}
+                            </DashboardButton>
                           </div>
-                        </div>
-                      </div>
+                        </form>
+                      </article>
                     );
                   })}
-                </div>
-              </>
+                </DashboardCardContent>
+              </DashboardCard>
+            ) : (
+              <DashboardEmptyState
+                title="Select a dataset"
+                description="Choose a dataset to view its buyer questions."
+              />
             )}
-          </GlassCard>
-        </div>
+          </div>
+        </>
       )}
-    </div>
+    </DashboardPage>
   );
 }
