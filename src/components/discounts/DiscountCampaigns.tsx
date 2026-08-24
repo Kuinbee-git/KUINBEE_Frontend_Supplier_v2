@@ -1,51 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BadgePercent,
-  ChevronRight,
+  CircleDollarSign,
   Database,
+  FlaskConical,
   Info,
-  Loader2,
-  Search,
+  RefreshCw,
+  Send,
+  XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+  DashboardButton,
+  DashboardDataTable,
+  DashboardDialog,
+  DashboardDialogContent,
+  DashboardDialogTrigger,
+  DashboardEmptyState,
+  DashboardErrorState,
+  DashboardLoadingState,
+  DashboardMetricCard,
+  DashboardMobileRecordCard,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardPagination,
+  DashboardSearchField,
+  DashboardStatusBadge,
+  DashboardToolbar,
+  type DashboardTableColumn,
+  type DashboardTone,
+} from "@/components/dashboard";
 import { listDatasetDiscountProposals, listMyDatasets } from "@/lib/api";
+import type { DatasetDiscountProposal } from "@/types/discount.types";
 import {
-  DatasetsTable,
-  type TableColumn,
-} from "@/components/datasets/shared/DatasetsTable";
-import { StatsCards } from "@/components/datasets/shared/StatsCards";
-import {
-  demoProposalMap,
   formatMoney,
-  getDemoDatasets,
   getEligibleDataset,
-  isDemoDataset,
-  statusColors,
   statusLabel,
   type EligibleDiscountDataset,
 } from "./discountCampaignUtils";
-import type { DatasetDiscountProposal } from "@/types/discount.types";
-import { DiscountPagination } from "./DiscountPagination";
-
-interface DiscountCampaignsProps {
-  isDark?: boolean;
-}
 
 type CampaignDatasetRow = EligibleDiscountDataset & {
   _index: number;
@@ -56,19 +51,30 @@ type CampaignDatasetRow = EligibleDiscountDataset & {
 const DATASET_FETCH_PAGE_SIZE = 100;
 const DATASET_TABLE_PAGE_SIZE = 10;
 
-export function DiscountCampaigns({ isDark = false }: DiscountCampaignsProps) {
-  const router = useRouter();
-  const tokens = getDatasetThemeTokens(isDark);
+const STATUS_TONES: Record<string, DashboardTone> = {
+  SUBMITTED: "info",
+  UNDER_REVIEW: "warning",
+  APPROVED: "success",
+  ACTIVE: "success",
+  REJECTED: "danger",
+  CANCELLED: "neutral",
+  EXPIRED: "warning",
+  DRAFT: "neutral",
+};
+
+export function DiscountCampaigns() {
   const [datasets, setDatasets] = useState<EligibleDiscountDataset[]>([]);
   const [proposalMap, setProposalMap] = useState<
     Record<string, DatasetDiscountProposal[]>
   >({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const loadDatasets = async () => {
+  const loadDatasets = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const allItems: EligibleDiscountDataset[] = [];
       let page = 1;
@@ -93,21 +99,10 @@ export function DiscountCampaigns({ isDark = false }: DiscountCampaignsProps) {
         page += 1;
       } while (fetched < total);
 
-      const eligible = allItems;
-      const demoDatasets = getDemoDatasets();
-      const displayDatasets = [
-        ...demoDatasets,
-        ...eligible.filter((item) => !isDemoDataset(item.id)),
-      ];
-
-      setDatasets(displayDatasets);
+      setDatasets(allItems);
 
       const proposalEntries = await Promise.all(
-        displayDatasets.map(async (dataset) => {
-          if (isDemoDataset(dataset.id)) {
-            return [dataset.id, demoProposalMap[dataset.id] ?? []] as const;
-          }
-
+        allItems.map(async (dataset) => {
           try {
             const proposals = await listDatasetDiscountProposals(dataset.id, {
               page: 1,
@@ -120,18 +115,22 @@ export function DiscountCampaigns({ isDark = false }: DiscountCampaignsProps) {
         })
       );
       setProposalMap(Object.fromEntries(proposalEntries));
-    } catch (error: any) {
-      toast.error(
-        error?.message || "Failed to load discount campaign datasets"
+    } catch (requestError: unknown) {
+      setDatasets([]);
+      setProposalMap({});
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Discount campaign datasets could not be loaded."
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadDatasets();
-  }, []);
+    void loadDatasets();
+  }, [loadDatasets]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -140,25 +139,23 @@ export function DiscountCampaigns({ isDark = false }: DiscountCampaignsProps) {
   const rows = useMemo<CampaignDatasetRow[]>(() => {
     const query = searchQuery.trim().toLowerCase();
     return datasets
-      .filter((dataset) => {
-        if (!query) return true;
-        return (
+      .filter(
+        (dataset) =>
+          !query ||
           dataset.title.toLowerCase().includes(query) ||
           dataset.datasetUniqueId.toLowerCase().includes(query)
-        );
-      })
+      )
       .map((dataset, index) => {
         const proposals = proposalMap[dataset.id] ?? [];
-        const activeProposal =
-          proposals.find((proposal) =>
-            ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "ACTIVE"].includes(
-              proposal.status
-            )
-          ) ?? null;
         return {
           ...dataset,
           _index: index,
-          activeProposal,
+          activeProposal:
+            proposals.find((proposal) =>
+              ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "ACTIVE"].includes(
+                proposal.status
+              )
+            ) ?? null,
           proposalCount: proposals.length,
         };
       });
@@ -174,304 +171,294 @@ export function DiscountCampaigns({ isDark = false }: DiscountCampaignsProps) {
     safeCurrentPage * DATASET_TABLE_PAGE_SIZE
   );
 
-  const stats = [
-    { value: datasets.length, label: "Eligible", color: tokens.textPrimary },
+  const allProposals = Object.values(proposalMap).flat();
+  const metrics = [
     {
+      label: "Eligible datasets",
+      value: datasets.length,
+      supportingText: "Published public datasets",
+      icon: Database,
+    },
+    {
+      label: "Paid datasets",
       value: datasets.filter((item) => !item.isSample).length,
-      label: "Paid Datasets",
-      color: "#2563eb",
+      supportingText: "Checkout-price campaigns",
+      icon: CircleDollarSign,
     },
     {
+      label: "Sample listings",
       value: datasets.filter((item) => item.isSample).length,
-      label: "Samples",
-      color: "#7c3aed",
+      supportingText: "Commercial-price campaigns",
+      icon: FlaskConical,
     },
     {
-      value: Object.values(proposalMap)
-        .flat()
-        .filter((item) => item.status === "SUBMITTED").length,
       label: "Submitted",
-      color: "#f59e0b",
+      value: allProposals.filter((item) => item.status === "SUBMITTED").length,
+      supportingText: "Awaiting review",
+      icon: Send,
     },
     {
-      value: Object.values(proposalMap)
-        .flat()
-        .filter((item) => item.status === "ACTIVE").length,
       label: "Active",
-      color: "#16a34a",
+      value: allProposals.filter((item) => item.status === "ACTIVE").length,
+      supportingText: "Live marketplace promotions",
+      icon: BadgePercent,
     },
     {
-      value: Object.values(proposalMap)
-        .flat()
-        .filter((item) => item.status === "REJECTED").length,
       label: "Rejected",
-      color: "#dc2626",
+      value: allProposals.filter((item) => item.status === "REJECTED").length,
+      supportingText: "Campaigns needing a new proposal",
+      icon: XCircle,
     },
   ];
 
-  const columns: TableColumn<CampaignDatasetRow>[] = [
+  const columns: readonly DashboardTableColumn<CampaignDatasetRow>[] = [
     {
-      header: "No.",
-      accessor: (item) => (
-        <span className="font-medium" style={{ color: tokens.textMuted }}>
-          {item._index + 1}
-        </span>
-      ),
-      headerClassName: "text-center",
-      className: "text-center",
-      minWidth: "56px",
-    },
-    {
+      id: "dataset",
       header: "Dataset",
-      accessor: (item) => (
-        <div className="flex items-center gap-2 min-w-0">
-          <Database
-            className="w-4 h-4 flex-shrink-0"
-            style={{ color: tokens.textMuted }}
-          />
+      rowHeader: true,
+      className: "min-w-64",
+      cell: (item) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Database className="size-4" aria-hidden="true" />
+          </span>
           <div className="min-w-0">
-            <p
-              className="text-sm font-semibold truncate"
-              style={{ color: tokens.textPrimary }}
+            <Link
+              href={`/dashboard/discount-campaigns/${item.id}`}
+              className="block max-w-72 truncate text-sm font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline"
             >
               {item.title}
-            </p>
-            <p
-              className="text-xs font-mono truncate"
-              style={{ color: tokens.textMuted }}
-            >
+            </Link>
+            <p className="mt-1 truncate font-mono text-xs font-normal text-muted-foreground">
               {item.datasetUniqueId}
             </p>
           </div>
         </div>
       ),
-      minWidth: "260px",
     },
     {
+      id: "type",
       header: "Type",
-      accessor: (item) => (
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex rounded px-2 py-1 text-xs font-medium bg-emerald-500/10 text-emerald-600">
-            {item.isSample ? "Sample listing" : "Paid dataset"}
-          </span>
-          {isDemoDataset(item.id) && (
-            <span className="inline-flex rounded px-2 py-1 text-xs font-medium bg-blue-500/10 text-blue-600">
-              Demo
-            </span>
-          )}
-        </div>
+      cell: (item) => (
+        <DashboardStatusBadge tone={item.isSample ? "info" : "neutral"}>
+          {item.isSample ? "Sample listing" : "Paid dataset"}
+        </DashboardStatusBadge>
       ),
-      hidden: "md",
-      minWidth: "150px",
     },
     {
-      header: "Price Surface",
-      accessor: (item) => (
+      id: "surface",
+      header: "Price surface",
+      className: "min-w-52 text-muted-foreground",
+      cell: (item) => (
         <div>
-          <p className="text-sm" style={{ color: tokens.textPrimary }}>
-            {item.surfaceLabel}
-          </p>
-          {item.isSample && (
-            <p className="text-xs mt-1" style={{ color: tokens.textMuted }}>
-              Sample access stays free
-            </p>
-          )}
+          <p>{item.surfaceLabel}</p>
+          {item.isSample ? (
+            <p className="mt-1 text-xs">Sample access stays free</p>
+          ) : null}
         </div>
       ),
-      hidden: "lg",
-      minWidth: "220px",
     },
     {
-      header: "Base Price",
-      accessor: (item) => (
-        <span className="font-semibold" style={{ color: tokens.textPrimary }}>
-          {formatMoney(item.baseAmount, item.currency)}
-        </span>
-      ),
-      minWidth: "150px",
+      id: "price",
+      header: "Base price",
+      className: "font-semibold tabular-nums",
+      cell: (item) => formatMoney(item.baseAmount, item.currency),
     },
     {
-      header: "Campaign Status",
-      accessor: (item) => {
-        if (!item.activeProposal) {
-          return (
-            <span className="text-sm" style={{ color: tokens.textMuted }}>
-              No campaign
-            </span>
-          );
-        }
-
-        return (
-          <span
-            className="inline-flex rounded px-2 py-1 text-xs font-semibold"
-            style={{
-              background: `${statusColors[item.activeProposal.status] ?? "#64748b"}18`,
-              color: statusColors[item.activeProposal.status] ?? "#64748b",
-            }}
+      id: "status",
+      header: "Campaign status",
+      cell: (item) =>
+        item.activeProposal ? (
+          <DashboardStatusBadge
+            status={item.activeProposal.status}
+            tone={STATUS_TONES[item.activeProposal.status] ?? "neutral"}
           >
             {statusLabel(item.activeProposal.status)}
-          </span>
-        );
-      },
-      hidden: "sm",
-      minWidth: "160px",
+          </DashboardStatusBadge>
+        ) : (
+          <span className="text-sm text-muted-foreground">No campaign</span>
+        ),
     },
     {
-      header: "Actions",
-      accessor: () => (
-        <span
-          className="inline-flex items-center gap-1 text-xs font-semibold"
-          style={{ color: tokens.textSecondary }}
-        >
-          Open
-          <ChevronRight className="w-3.5 h-3.5" />
-        </span>
+      id: "action",
+      header: <span className="sr-only">Action</span>,
+      align: "end",
+      cell: (item) => (
+        <DashboardButton asChild variant="outline" size="compact">
+          <Link href={`/dashboard/discount-campaigns/${item.id}`}>Open</Link>
+        </DashboardButton>
       ),
-      headerClassName: "text-right",
-      className: "text-right",
-      minWidth: "90px",
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="max-w-[1400px] mx-auto p-8">
-        <div className="flex items-center justify-center py-24">
-          <Loader2
-            className="w-10 h-10 animate-spin"
-            style={{ color: tokens.textPrimary }}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-[1400px] mx-auto p-8">
-      <div className="mb-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1
-                className="text-3xl font-semibold"
-                style={{ color: tokens.textPrimary }}
+    <DashboardPage width="wide">
+      <DashboardPageHeader
+        title="Dataset promotions"
+        description="Create and manage approved discounts for eligible public datasets without changing their listing status."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <DashboardDialog>
+              <DashboardDialogTrigger asChild>
+                <DashboardButton
+                  variant="outline"
+                  size="icon"
+                  aria-label="How dataset promotions work"
+                >
+                  <Info aria-hidden="true" />
+                </DashboardButton>
+              </DashboardDialogTrigger>
+              <DashboardDialogContent
+                title="How to create a dataset promotion"
+                description="Pick an eligible dataset, create a proposal, and wait for admin approval."
               >
-                Discount Campaigns
-              </h1>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
-                    style={{
-                      borderColor: tokens.borderDefault,
-                      background: tokens.surfaceCard,
-                      color: tokens.textSecondary,
-                    }}
-                    aria-label="How discount campaigns work"
-                    title="How discount campaigns work"
-                  >
-                    <Info className="w-4 h-4" />
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>How to create a discount campaign</DialogTitle>
-                    <DialogDescription>
-                      Pick an eligible dataset, create a proposal, and wait for
-                      admin approval. Approved discounts apply to marketplace
-                      pricing without changing dataset status.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div
-                    className="space-y-3 text-sm"
-                    style={{ color: tokens.textSecondary }}
-                  >
-                    <p>1. Only published public datasets appear here.</p>
-                    <p>2. Paid datasets discount their checkout price.</p>
-                    <p>
-                      3. Sample datasets discount the full dataset commercial
-                      price; sample access remains free.
-                    </p>
-                    <p>
-                      4. Admin approval is required before a campaign becomes
-                      active.
-                    </p>
-                    <p>
-                      5. If pricing changes, stale discounts stop applying
-                      automatically.
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-            <p className="mt-2" style={{ color: tokens.textSecondary }}>
-              Select a dataset from the table to create or manage its discount
-              campaign.
-            </p>
+                <ol className="list-decimal space-y-3 pl-5 text-sm leading-6 text-muted-foreground">
+                  <li>Only published public datasets appear here.</li>
+                  <li>Paid datasets discount their checkout price.</li>
+                  <li>
+                    Sample listings discount the full dataset commercial price;
+                    sample access remains free.
+                  </li>
+                  <li>
+                    Admin approval is required before a promotion becomes
+                    active.
+                  </li>
+                  <li>
+                    Stale discounts stop applying if the underlying price
+                    changes.
+                  </li>
+                </ol>
+              </DashboardDialogContent>
+            </DashboardDialog>
+            <DashboardButton
+              variant="outline"
+              onClick={() => void loadDatasets()}
+            >
+              <RefreshCw aria-hidden="true" /> Refresh
+            </DashboardButton>
           </div>
-          <Button onClick={loadDatasets} variant="outline">
-            Refresh
-          </Button>
-        </div>
-
-        <div className="mt-6">
-          <StatsCards stats={stats} tokens={tokens} isDark={isDark} />
-        </div>
-      </div>
-
-      <Card
-        className="p-4 mb-5"
-        style={{
-          background: tokens.surfaceCard,
-          borderColor: tokens.borderDefault,
-        }}
-      >
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: tokens.textMuted }}
-          />
-          <Input
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search eligible datasets..."
-            className="pl-10"
-            style={{
-              background: tokens.inputBg,
-              borderColor: tokens.inputBorder,
-              color: tokens.textPrimary,
-            }}
-          />
-        </div>
-      </Card>
-
-      <DatasetsTable
-        data={paginatedRows}
-        columns={columns}
-        onRowClick={(item) =>
-          router.push(`/dashboard/discount-campaigns/${item.id}`)
         }
-        emptyIcon={
-          <BadgePercent
-            className="w-16 h-16 mx-auto mb-4"
-            style={{ color: tokens.textMuted }}
-          />
-        }
-        emptyTitle="No eligible datasets"
-        emptyDescription="Published public datasets with active paid pricing or sample actual pricing will appear here."
-        tokens={tokens}
-        isDark={isDark}
-        getRowKey={(item) => item.id}
       />
 
-      <DiscountPagination
-        page={safeCurrentPage}
-        pageSize={DATASET_TABLE_PAGE_SIZE}
-        total={rows.length}
-        itemLabel="datasets"
-        tokens={tokens}
-        onPageChange={setCurrentPage}
-      />
-    </div>
+      {error ? (
+        <DashboardErrorState
+          title="Dataset promotions could not be loaded"
+          message={error}
+          onRetry={() => void loadDatasets()}
+        />
+      ) : loading ? (
+        <DashboardLoadingState
+          label="Loading dataset promotions"
+          variant="skeleton"
+          rows={6}
+        />
+      ) : (
+        <>
+          <section
+            aria-label="Dataset promotion summary"
+            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          >
+            {metrics.map((metric) => (
+              <DashboardMetricCard key={metric.label} {...metric} />
+            ))}
+          </section>
+
+          <DashboardToolbar ariaLabel="Search eligible datasets">
+            <DashboardSearchField
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              label="Search eligible datasets"
+              placeholder="Search by dataset title or ID"
+            />
+          </DashboardToolbar>
+
+          {rows.length ? (
+            <section
+              aria-label="Eligible promotion datasets"
+              className="space-y-4"
+            >
+              <DashboardDataTable
+                caption="Eligible dataset promotions"
+                items={paginatedRows}
+                columns={columns}
+                getRowId={(item) => item.id}
+                renderMobileItem={(item) => (
+                  <DashboardMobileRecordCard>
+                    <div className="flex items-start gap-3">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Database className="size-4" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                          {item.datasetUniqueId}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                        {formatMoney(item.baseAmount, item.currency)}
+                      </p>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <DashboardStatusBadge
+                        tone={item.isSample ? "info" : "neutral"}
+                      >
+                        {item.isSample ? "Sample listing" : "Paid dataset"}
+                      </DashboardStatusBadge>
+                      {item.activeProposal ? (
+                        <DashboardStatusBadge
+                          tone={
+                            STATUS_TONES[item.activeProposal.status] ??
+                            "neutral"
+                          }
+                        >
+                          {statusLabel(item.activeProposal.status)}
+                        </DashboardStatusBadge>
+                      ) : null}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+                      <span className="truncate text-xs text-muted-foreground">
+                        {item.surfaceLabel}
+                      </span>
+                      <DashboardButton asChild variant="outline" size="compact">
+                        <Link href={`/dashboard/discount-campaigns/${item.id}`}>
+                          Open
+                        </Link>
+                      </DashboardButton>
+                    </div>
+                  </DashboardMobileRecordCard>
+                )}
+              />
+              <DashboardPagination
+                page={safeCurrentPage}
+                pageSize={DATASET_TABLE_PAGE_SIZE}
+                totalItems={rows.length}
+                itemLabel="datasets"
+                onPageChange={setCurrentPage}
+              />
+            </section>
+          ) : (
+            <DashboardEmptyState
+              filtered={Boolean(searchQuery.trim())}
+              icon={BadgePercent}
+              title={
+                searchQuery.trim()
+                  ? "No datasets match this search"
+                  : "No eligible datasets"
+              }
+              description={
+                searchQuery.trim()
+                  ? "Try a different title or dataset ID."
+                  : "Published public datasets with active paid pricing or sample commercial pricing will appear here."
+              }
+              onClear={
+                searchQuery.trim() ? () => setSearchQuery("") : undefined
+              }
+            />
+          )}
+        </>
+      )}
+    </DashboardPage>
   );
 }
