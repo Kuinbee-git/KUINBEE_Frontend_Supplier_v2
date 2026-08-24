@@ -13,8 +13,11 @@ import {
   UploadCloud,
 } from "lucide-react";
 
-import { PaginationControls } from "@/components/shared";
-import { Button } from "@/components/ui/button";
+import {
+  DashboardButton,
+  DashboardPagination,
+  DashboardStatusBadge,
+} from "@/components/dashboard";
 import { listMyProposals } from "@/lib/api";
 import type {
   ListProposalsResponse,
@@ -208,11 +211,11 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
       headerClassName: "text-right",
       className: "text-right",
       render: (draft) => (
-        <Button asChild variant="outline" size="sm">
+        <DashboardButton asChild variant="outline" size="compact">
           <Link href={`/dashboard/datasets/${draft.id}`}>
             Continue <ArrowRight />
           </Link>
-        </Button>
+        </DashboardButton>
       ),
     },
   ];
@@ -223,15 +226,15 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
         title="My Drafts"
         description="Continue incomplete proposals, attach the required files, and review everything before submission."
         action={
-          <Button asChild className="h-10 w-full px-5 sm:w-auto">
+          <DashboardButton asChild className="w-full sm:w-auto">
             <Link href="/dashboard/datasets/create">
               <Plus /> Create proposal
             </Link>
-          </Button>
+          </DashboardButton>
         }
       />
 
-      <section aria-label="Draft overview" className="mt-7">
+      <section aria-label="Draft overview">
         <DatasetMetricStrip
           metrics={metrics}
           loading={loading && drafts.length === 0}
@@ -255,7 +258,7 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
         />
       )}
 
-      <section aria-labelledby="draft-inventory-title" className="mt-5">
+      <section aria-labelledby="draft-inventory-title">
         <DatasetInventoryHeader
           id="draft-inventory-title"
           title="Draft inventory"
@@ -265,7 +268,7 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
           pluralLabel="drafts"
         />
 
-        {loading ? (
+        {loading && drafts.length === 0 ? (
           <DatasetListSkeleton />
         ) : !error && drafts.length === 0 ? (
           <DatasetEmptyState
@@ -276,17 +279,19 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
             filteredTitle="No drafts match this search"
             filteredDescription="Try another title or dataset ID."
             action={
-              <Button asChild>
+              <DashboardButton asChild>
                 <Link href="/dashboard/datasets/create">
                   <Plus /> Create proposal
                 </Link>
-              </Button>
+              </DashboardButton>
             }
           />
         ) : drafts.length > 0 ? (
           <>
             <DatasetRecordList
               items={drafts}
+              busy={loading}
+              caption="Draft dataset proposals"
               columns={columns}
               getKey={(draft) => draft.id}
               renderMobile={(draft) => (
@@ -311,13 +316,13 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
                 />
               )}
             />
-            <PaginationControls
+            <DashboardPagination
               page={page}
               pageSize={PAGE_SIZE}
-              total={totalDrafts}
+              totalItems={totalDrafts}
               itemLabel="drafts"
-              mutedColor="var(--muted-foreground)"
               onPageChange={setPage}
+              className="pt-4"
             />
           </>
         ) : null}
@@ -328,19 +333,11 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
 
 function DraftFileState({ attached }: { attached: boolean }) {
   return (
-    <span
-      className={
-        attached
-          ? "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-500"
-          : "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-500"
-      }
+    <DashboardStatusBadge
+      tone={attached ? "success" : "warning"}
+      icon={attached ? Paperclip : UploadCloud}
     >
-      {attached ? (
-        <Paperclip className="size-3" />
-      ) : (
-        <UploadCloud className="size-3" />
-      )}
       {attached ? "Attached" : "Required"}
-    </span>
+    </DashboardStatusBadge>
   );
 }
