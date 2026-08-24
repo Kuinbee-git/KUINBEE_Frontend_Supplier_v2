@@ -1,19 +1,29 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { formatFileSize } from '@/utils/dataset.utils';
-import { presignCurrentUpload, uploadFileToS3, completeCurrentUpload, presignSampleUpload, completeSampleUpload } from '@/lib/api';
-import { 
-  Upload, 
-  FileText, 
-  CheckCircle, 
-  AlertCircle,
-  X
-} from 'lucide-react';
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/datasets/shared/DatasetDialog";
+import {
+  DashboardButton,
+  DashboardInlineAlert,
+  DashboardProgress,
+  DashboardStatusBadge,
+} from "@/components/dashboard";
+import { FILE_UPLOAD_CONSTRAINTS } from "@/constants/dataset.constants";
+import { formatFileSize } from "@/utils/dataset.utils";
+import {
+  presignCurrentUpload,
+  uploadFileToS3,
+  completeCurrentUpload,
+  presignSampleUpload,
+  completeSampleUpload,
+} from "@/lib/api";
+import { Upload, FileText, CheckCircle, X } from "lucide-react";
 
 interface DatasetUploadFlowProps {
   isOpen: boolean;
@@ -21,35 +31,61 @@ interface DatasetUploadFlowProps {
   datasetId: string;
   isDark?: boolean;
   isEditable: boolean;
-  uploadKind?: 'current' | 'sample';
+  uploadKind?: "current" | "sample";
   onUploadComplete?: (fileInfo: { fileName: string; fileSize: string }) => void;
 }
 
-type UploadStep = 'select' | 'uploading' | 'complete' | 'error';
+type UploadStep = "select" | "uploading" | "complete" | "error";
 
-export function DatasetUploadFlow({ 
-  isOpen, 
-  onClose, 
-  datasetId, 
-  isDark = false,
+export function DatasetUploadFlow({
+  isOpen,
+  onClose,
+  datasetId,
   isEditable,
-  uploadKind = 'current',
-  onUploadComplete 
+  uploadKind = "current",
+  onUploadComplete,
 }: DatasetUploadFlowProps) {
-  const [step, setStep] = useState<UploadStep>('select');
+  const [step, setStep] = useState<UploadStep>("select");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [uploadedFileInfo, setUploadedFileInfo] = useState<{ fileName: string; fileSize: string } | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [uploadedFileInfo, setUploadedFileInfo] = useState<{
+    fileName: string;
+    fileSize: string;
+  } | null>(null);
 
-  const tokens = getDatasetThemeTokens(isDark);
-  const isSampleUpload = uploadKind === 'sample';
+  const isSampleUpload = uploadKind === "sample";
+
+  const validateFile = (file: File) => {
+    if (file.size > FILE_UPLOAD_CONSTRAINTS.MAX_SIZE) {
+      return `Choose a file smaller than ${formatFileSize(FILE_UPLOAD_CONSTRAINTS.MAX_SIZE)}.`;
+    }
+
+    const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
+    const extensionAllowed = FILE_UPLOAD_CONSTRAINTS.ALLOWED_EXTENSIONS.some(
+      (allowedExtension) => allowedExtension === extension
+    );
+
+    if (!extensionAllowed) {
+      return `Choose a ${FILE_UPLOAD_CONSTRAINTS.ALLOWED_EXTENSIONS.join(", ")} file.`;
+    }
+
+    return null;
+  };
 
   const handleFileSelect = (file: File) => {
+    const validationError = validateFile(file);
+    if (validationError) {
+      setSelectedFile(null);
+      setErrorMessage(validationError);
+      return;
+    }
+
+    setErrorMessage("");
     setSelectedFile(file);
   };
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -57,12 +93,12 @@ export function DatasetUploadFlow({
     if (files.length > 0) {
       handleFileSelect(files[0]);
     }
-  }, []);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
-  }, []);
+  };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -73,13 +109,21 @@ export function DatasetUploadFlow({
 
   const handleUpload = async () => {
     if (!selectedFile) return;
+    const validationError = validateFile(selectedFile);
+    if (validationError) {
+      setErrorMessage(validationError);
+      setStep("select");
+      return;
+    }
     if (!isEditable) {
-      setErrorMessage('This proposal is no longer editable, so its files cannot be changed.');
-      setStep('error');
+      setErrorMessage(
+        "This proposal is no longer editable, so its files cannot be changed."
+      );
+      setStep("error");
       return;
     }
 
-    setStep('uploading');
+    setStep("uploading");
     setUploadProgress(0);
 
     try {
@@ -87,18 +131,16 @@ export function DatasetUploadFlow({
       const presignResponse = isSampleUpload
         ? await presignSampleUpload(datasetId, {
             originalFileName: selectedFile.name,
-            contentType: selectedFile.type || 'application/octet-stream',
+            contentType: selectedFile.type || "application/octet-stream",
           })
         : await presignCurrentUpload(datasetId, {
             originalFileName: selectedFile.name,
-            contentType: selectedFile.type || 'application/octet-stream',
+            contentType: selectedFile.type || "application/octet-stream",
           });
 
       // Step 2: Upload file directly to S3 with progress tracking
-      await uploadFileToS3(
-        presignResponse.putUrl,
-        selectedFile,
-        (progress) => setUploadProgress(progress)
+      await uploadFileToS3(presignResponse.putUrl, selectedFile, (progress) =>
+        setUploadProgress(progress)
       );
 
       // Step 3: Notify backend that upload is complete
@@ -118,271 +160,227 @@ export function DatasetUploadFlow({
         fileSize: formatFileSize(selectedFile.size),
       };
       setUploadedFileInfo(fileInfo);
-      setStep('complete');
+      setStep("complete");
       onUploadComplete?.(fileInfo);
-    } catch (error: any) {
-      console.error('Upload failed:', error);
-      setErrorMessage(error.message || 'Failed to upload file. Please try again.');
-      setStep('error');
+    } catch (error: unknown) {
+      console.error("Upload failed:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload file. Please try again."
+      );
+      setStep("error");
     }
   };
 
   const handleClose = () => {
-    setStep('select');
+    if (step === "uploading") return;
+    setStep("select");
     setSelectedFile(null);
     setUploadProgress(0);
-    setErrorMessage('');
+    setErrorMessage("");
     setUploadedFileInfo(null);
     onClose();
   };
 
   const handleRetry = () => {
-    setStep('select');
+    setStep("select");
     setSelectedFile(null);
-    setErrorMessage('');
+    setErrorMessage("");
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && step !== "uploading" && handleClose()}
+    >
       <DialogContent
         className="max-w-[600px]"
-        style={{
-          background: tokens.surfaceCard,
-          borderColor: tokens.borderDefault,
+        showCloseButton={step !== "uploading"}
+        onEscapeKeyDown={(event) => {
+          if (step === "uploading") event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (step === "uploading") event.preventDefault();
         }}
       >
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle style={{ color: tokens.textPrimary }}>
-              {step === 'select' && (isSampleUpload ? 'Upload sample file' : 'Upload dataset file')}
-              {step === 'uploading' && 'Uploading...'}
-              {step === 'complete' && 'Upload complete'}
-              {step === 'error' && 'Upload failed'}
-            </DialogTitle>
-            <button
-              onClick={handleClose}
-              className="rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <X className="w-5 h-5" style={{ color: tokens.textMuted }} />
-            </button>
-          </div>
+          <DialogTitle>
+            {step === "select" &&
+              (isSampleUpload ? "Upload sample file" : "Upload dataset file")}
+            {step === "uploading" && "Uploading file"}
+            {step === "complete" && "Upload complete"}
+            {step === "error" && "Upload failed"}
+          </DialogTitle>
+          <DialogDescription>
+            {isSampleUpload
+              ? "Add the sample buyers can inspect before purchase."
+              : "Add the dataset file that Kuinbee should review."}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4">
-          {/* Step 1: Select File */}
-          {step === 'select' && (
-            <div className="space-y-6">
+        <div className="mt-5">
+          {step === "select" && (
+            <div className="space-y-5">
               {!selectedFile ? (
-                <div
-                  className="border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer"
-                  style={{
-                    background: tokens.dropzoneBg,
-                    borderColor: tokens.dropzoneBorder,
-                  }}
+                <label
+                  htmlFor="file-upload"
+                  className="dashboard-glass-control block cursor-pointer rounded-xl border-2 border-dashed p-8 text-center outline-none transition-colors hover:bg-[var(--dashboard-control-background-hover)] focus-within:ring-2 focus-within:ring-[var(--dashboard-focus-ring)] sm:p-10"
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
-                  onClick={() => document.getElementById('file-upload')?.click()}
                 >
-                  <Upload className="w-12 h-12 mx-auto mb-4" style={{ color: tokens.textMuted }} />
-                  <p className="text-sm font-medium mb-2" style={{ color: tokens.textPrimary }}>
-                    Drop your file here or click to browse
-                  </p>
-                  <p className="text-xs mb-4" style={{ color: tokens.textMuted }}>
-                    Select any file to upload
-                  </p>
+                  <span className="dashboard-tone-neutral mx-auto mb-4 flex size-12 items-center justify-center rounded-xl border">
+                    <Upload className="size-6" aria-hidden="true" />
+                  </span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Drop your file here or browse
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    CSV, JSON, Parquet, XLSX, or ZIP up to 500 MB.
+                  </span>
                   <input
                     id="file-upload"
                     type="file"
-                    className="hidden"
+                    className="sr-only"
+                    accept={FILE_UPLOAD_CONSTRAINTS.ALLOWED_EXTENSIONS.join(
+                      ","
+                    )}
                     onChange={handleFileInputChange}
                   />
-                </div>
+                </label>
               ) : (
-                <div
-                  className="p-6 rounded-lg border"
-                  style={{
-                    background: tokens.dropzoneBg,
-                    borderColor: tokens.borderDefault,
-                  }}
-                >
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(59, 130, 246, 0.1)' }}
-                    >
-                      <FileText className="w-6 h-6 text-blue-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate mb-1" style={{ color: tokens.textPrimary }}>
-                        {selectedFile.name}
-                      </p>
-                      <p className="text-xs" style={{ color: tokens.textMuted }}>
-                        {formatFileSize(selectedFile.size)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedFile(null)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                <div className="flex items-start gap-4 rounded-xl border border-border bg-muted/35 p-4">
+                  <span className="dashboard-tone-neutral flex size-10 shrink-0 items-center justify-center rounded-lg border">
+                    <FileText className="size-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {selectedFile.name}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatFileSize(selectedFile.size)}
+                    </p>
                   </div>
+                  <DashboardButton
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label="Remove selected file"
+                    onClick={() => setSelectedFile(null)}
+                  >
+                    <X aria-hidden="true" />
+                  </DashboardButton>
                 </div>
               )}
 
-              <div
-                className="rounded-lg border p-4 flex items-start gap-3"
-                style={{
-                  background: 'rgba(59, 130, 246, 0.05)',
-                  borderColor: 'rgba(59, 130, 246, 0.2)',
-                }}
-              >
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-500" />
-                <div className="text-xs leading-relaxed" style={{ color: tokens.textSecondary }}>
-                  <p className="font-medium mb-1">File requirements:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>No file size or type limits are enforced in the panel</li>
-                    <li>Files are uploaded as-is</li>
-                  </ul>
-                </div>
-              </div>
+              {errorMessage ? (
+                <DashboardInlineAlert
+                  tone="danger"
+                  title="Choose another file"
+                  message={errorMessage}
+                />
+              ) : null}
 
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={handleClose}>
+              <DashboardInlineAlert
+                tone="info"
+                title="Before you upload"
+                message="Confirm that this is the correct version and that it contains no credentials or unrelated personal files."
+              />
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <DashboardButton variant="outline" onClick={handleClose}>
                   Cancel
-                </Button>
-                <Button
+                </DashboardButton>
+                <DashboardButton
                   onClick={handleUpload}
                   disabled={!selectedFile || !isEditable}
-                  className="text-white"
-                  style={{
-                    background: selectedFile
-                      ? 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)'
-                      : 'rgba(156, 163, 175, 0.3)',
-                  }}
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Upload aria-hidden="true" />
                   Upload file
-                </Button>
+                </DashboardButton>
               </div>
             </div>
           )}
 
-          {/* Step 2: Uploading */}
-          {step === 'uploading' && (
-            <div className="space-y-6 py-8">
+          {step === "uploading" && (
+            <div className="space-y-6 py-6">
               <div className="text-center">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'rgba(59, 130, 246, 0.1)' }}
-                >
-                  <Upload className="w-8 h-8 text-blue-500 animate-pulse" />
-                </div>
-                <p className="text-sm font-medium mb-2" style={{ color: tokens.textPrimary }}>
+                <span className="dashboard-tone-info mx-auto mb-4 flex size-14 items-center justify-center rounded-xl border">
+                  <Upload
+                    className="size-7 animate-pulse motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                </span>
+                <p className="truncate text-sm font-medium text-foreground">
                   Uploading {selectedFile?.name}
                 </p>
-                <p className="text-xs" style={{ color: tokens.textMuted }}>
-                  Please don't close this window
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Keep this dialog open until the upload finishes.
                 </p>
               </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs" style={{ color: tokens.textMuted }}>
-                  <span>Progress</span>
-                  <span>{Math.round(uploadProgress)}%</span>
-                </div>
-                <Progress value={uploadProgress} className="h-2" />
-              </div>
+              <DashboardProgress
+                label="Upload progress"
+                value={uploadProgress}
+              />
             </div>
           )}
 
-          {/* Step 3: Complete */}
-          {step === 'complete' && (
-            <div className="space-y-6 py-8">
+          {step === "complete" && (
+            <div className="space-y-5 py-4">
               <div className="text-center">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'rgba(34, 197, 94, 0.1)' }}
-                >
-                  <CheckCircle className="w-8 h-8 text-green-500" />
-                </div>
-                <p className="text-sm font-medium mb-2" style={{ color: tokens.textPrimary }}>
-                  {isSampleUpload ? 'Sample file uploaded successfully' : 'File uploaded successfully'}
-                </p>
-                <p className="text-xs" style={{ color: tokens.textMuted }}>
+                <span className="dashboard-tone-success mx-auto mb-4 flex size-14 items-center justify-center rounded-xl border">
+                  <CheckCircle className="size-7" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-medium text-foreground">
                   {isSampleUpload
-                    ? 'Your sample file is ready and can be replaced anytime before review'
-                    : 'Your file is being processed and will be reviewed by admins'}
+                    ? "Sample file uploaded"
+                    : "Dataset file uploaded"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isSampleUpload
+                    ? "You can replace this sample before the proposal is reviewed."
+                    : "Kuinbee can now process and review this file."}
                 </p>
               </div>
-
               {uploadedFileInfo && (
-                <div
-                  className="p-4 rounded-lg border"
-                  style={{
-                    background: tokens.dropzoneBg,
-                    borderColor: tokens.borderDefault,
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                        {uploadedFileInfo.fileName}
-                      </p>
-                      <p className="text-xs" style={{ color: tokens.textMuted }}>
-                        {uploadedFileInfo.fileSize}
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/35 p-4">
+                  <FileText
+                    className="size-5 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {uploadedFileInfo.fileName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {uploadedFileInfo.fileSize}
+                    </p>
                   </div>
+                  <DashboardStatusBadge tone="success" className="ml-auto">
+                    Uploaded
+                  </DashboardStatusBadge>
                 </div>
               )}
-
               <div className="flex justify-end">
-                <Button
-                  onClick={handleClose}
-                  className="text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
-                  }}
-                >
-                  Done
-                </Button>
+                <DashboardButton onClick={handleClose}>Done</DashboardButton>
               </div>
             </div>
           )}
 
-          {/* Step 4: Error */}
-          {step === 'error' && (
-            <div className="space-y-6 py-8">
-              <div className="text-center">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'rgba(239, 68, 68, 0.1)' }}
-                >
-                  <AlertCircle className="w-8 h-8 text-red-500" />
-                </div>
-                <p className="text-sm font-medium mb-2" style={{ color: tokens.textPrimary }}>
-                  Upload failed
-                </p>
-                <p className="text-xs" style={{ color: tokens.textMuted }}>
-                  {errorMessage}
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={handleClose}>
+          {step === "error" && (
+            <div className="space-y-5 py-4">
+              <DashboardInlineAlert
+                tone="danger"
+                title="The file could not be uploaded"
+                message={errorMessage}
+              />
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <DashboardButton variant="outline" onClick={handleClose}>
                   Cancel
-                </Button>
-                <Button
-                  onClick={handleRetry}
-                  className="text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, #1a2240 0%, #2a3558 50%, #4e5a7e 100%)',
-                  }}
-                >
+                </DashboardButton>
+                <DashboardButton onClick={handleRetry}>
                   Try again
-                </Button>
+                </DashboardButton>
               </div>
             </div>
           )}
