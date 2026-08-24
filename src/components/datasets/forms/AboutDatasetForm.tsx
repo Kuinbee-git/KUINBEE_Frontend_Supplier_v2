@@ -1,14 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
-import { upsertAboutInfo } from '@/lib/api';
-import type { AboutDatasetInfo, UpsertAboutInfoRequest, UpsertAboutInfoResponse } from '@/types/dataset-proposal.types';
+import { useState } from "react";
+import { DashboardCard } from "@/components/dashboard";
+import { DashboardButton } from "@/components/dashboard";
+import { Label } from "@/components/ui/label";
+import { DashboardTextarea } from "@/components/dashboard";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import { Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { upsertAboutInfo } from "@/lib/api";
+import type {
+  AboutDatasetInfo,
+  UpsertAboutInfoRequest,
+  UpsertAboutInfoResponse,
+} from "@/types/dataset-proposal.types";
+import { toDatasetUiError } from "../shared/datasetUiError";
 
 type AboutInitialData = {
   overview?: string | null;
@@ -25,7 +30,10 @@ interface AboutDatasetFormProps {
   isDark?: boolean;
   onSuccess?: (data: AboutDatasetInfo) => void;
   onCancel?: () => void;
-  onSubmitData?: (datasetId: string, data: UpsertAboutInfoRequest) => Promise<UpsertAboutInfoResponse>;
+  onSubmitData?: (
+    datasetId: string,
+    data: UpsertAboutInfoRequest
+  ) => Promise<UpsertAboutInfoResponse>;
 }
 
 export function AboutDatasetForm({
@@ -42,15 +50,18 @@ export function AboutDatasetForm({
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState<UpsertAboutInfoRequest>({
-    overview: initialData?.overview || '',
-    description: initialData?.description || '',
-    dataQuality: initialData?.dataQuality || '',
+    overview: initialData?.overview || "",
+    description: initialData?.description || "",
+    dataQuality: initialData?.dataQuality || "",
     useCases: initialData?.useCases || null,
     limitations: initialData?.limitations || null,
     methodology: initialData?.methodology || null,
   });
 
-  const handleFieldChange = (field: keyof UpsertAboutInfoRequest, value: string) => {
+  const handleFieldChange = (
+    field: keyof UpsertAboutInfoRequest,
+    value: string
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value || null }));
     setError(null);
     setSuccess(false);
@@ -58,17 +69,17 @@ export function AboutDatasetForm({
 
   const isFormValid = () => {
     return (
-      formData.overview.trim() !== '' &&
-      formData.description.trim() !== '' &&
-      formData.dataQuality.trim() !== ''
+      formData.overview.trim() !== "" &&
+      formData.description.trim() !== "" &&
+      formData.dataQuality.trim() !== ""
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isFormValid()) {
-      setError('Please fill in all required fields');
+      setError("Please fill in all required fields");
       return;
     }
 
@@ -77,18 +88,21 @@ export function AboutDatasetForm({
     setSuccess(false);
 
     try {
-      const response = await (onSubmitData ? onSubmitData(datasetId, formData) : upsertAboutInfo(datasetId, formData));
+      const response = await (onSubmitData
+        ? onSubmitData(datasetId, formData)
+        : upsertAboutInfo(datasetId, formData));
       setSuccess(true);
-      
+
       if (onSuccess) {
         onSuccess(response.about);
       }
 
       // Auto-hide success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      console.error('Failed to save about info:', err);
-      setError(err.message || 'Failed to save information');
+    } catch (err: unknown) {
+      console.error("Failed to save about info:", err);
+      const apiError = toDatasetUiError(err);
+      setError(apiError.message || "Failed to save information");
     } finally {
       setSubmitting(false);
     }
@@ -100,9 +114,9 @@ export function AboutDatasetForm({
     } else {
       // Reset to initial data
       setFormData({
-        overview: initialData?.overview || '',
-        description: initialData?.description || '',
-        dataQuality: initialData?.dataQuality || '',
+        overview: initialData?.overview || "",
+        description: initialData?.description || "",
+        dataQuality: initialData?.dataQuality || "",
         useCases: initialData?.useCases || null,
         limitations: initialData?.limitations || null,
         methodology: initialData?.methodology || null,
@@ -113,7 +127,7 @@ export function AboutDatasetForm({
   };
 
   return (
-    <Card
+    <DashboardCard
       className="border overflow-hidden"
       style={{
         background: tokens.surfaceCard,
@@ -122,12 +136,19 @@ export function AboutDatasetForm({
     >
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6 pb-4 border-b" style={{ borderColor: tokens.borderSubtle }}>
-          <h2 className="text-lg font-semibold mb-1" style={{ color: tokens.textPrimary }}>
+        <div
+          className="mb-6 pb-4 border-b"
+          style={{ borderColor: tokens.borderSubtle }}
+        >
+          <h2
+            className="text-lg font-semibold mb-1"
+            style={{ color: tokens.textPrimary }}
+          >
             About Dataset
           </h2>
           <p className="text-sm" style={{ color: tokens.textMuted }}>
-            Provide comprehensive information about your dataset to help users understand its value
+            Provide comprehensive information about your dataset to help users
+            understand its value
           </p>
         </div>
 
@@ -139,14 +160,30 @@ export function AboutDatasetForm({
               <div
                 className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
                 style={{
-                  background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                  borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                  background: isDark
+                    ? "color-mix(in srgb, var(--dashboard-success) 10%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-success) 5%, transparent)",
+                  borderColor: isDark
+                    ? "color-mix(in srgb, var(--dashboard-success) 30%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-success) 20%, transparent)",
                 }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
-                  <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--dashboard-success) 15%, transparent)",
+                  }}
+                >
+                  <CheckCircle
+                    className="w-4 h-4"
+                    style={{ color: "var(--dashboard-success-foreground)" }}
+                  />
                 </div>
-                <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--dashboard-success-foreground)" }}
+                >
                   Information saved successfully!
                 </p>
               </div>
@@ -157,14 +194,30 @@ export function AboutDatasetForm({
               <div
                 className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
                 style={{
-                  background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                  background: isDark
+                    ? "color-mix(in srgb, var(--dashboard-danger) 10%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-danger) 5%, transparent)",
+                  borderColor: isDark
+                    ? "color-mix(in srgb, var(--dashboard-danger) 30%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-danger) 20%, transparent)",
                 }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
-                  <AlertCircle className="w-4 h-4" style={{ color: '#ef4444' }} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--dashboard-danger) 15%, transparent)",
+                  }}
+                >
+                  <AlertCircle
+                    className="w-4 h-4"
+                    style={{ color: "var(--dashboard-danger-foreground)" }}
+                  />
                 </div>
-                <p className="text-sm font-medium" style={{ color: '#ef4444' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--dashboard-danger-foreground)" }}
+                >
                   {error}
                 </p>
               </div>
@@ -176,20 +229,38 @@ export function AboutDatasetForm({
           {/* Required Fields Section */}
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
-              <span className="text-xs font-medium px-2" style={{ color: tokens.textMuted }}>REQUIRED INFORMATION</span>
-              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
+              <div
+                className="h-px flex-1"
+                style={{ background: tokens.borderSubtle }}
+              />
+              <span
+                className="text-xs font-medium px-2"
+                style={{ color: tokens.textMuted }}
+              >
+                REQUIRED INFORMATION
+              </span>
+              <div
+                className="h-px flex-1"
+                style={{ background: tokens.borderSubtle }}
+              />
             </div>
-            
+
             {/* Overview */}
             <div className="space-y-2">
-              <Label htmlFor="overview" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                Overview <span className="text-red-500">*</span>
+              <Label
+                htmlFor="overview"
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
+                Overview{" "}
+                <span className="text-[var(--dashboard-danger-foreground)]">
+                  *
+                </span>
               </Label>
-              <Textarea
+              <DashboardTextarea
                 id="overview"
                 value={formData.overview}
-                onChange={(e) => handleFieldChange('overview', e.target.value)}
+                onChange={(e) => handleFieldChange("overview", e.target.value)}
                 placeholder="Provide a concise overview of the dataset (2-3 sentences)"
                 rows={3}
                 disabled={submitting}
@@ -208,13 +279,22 @@ export function AboutDatasetForm({
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                Description <span className="text-red-500">*</span>
+              <Label
+                htmlFor="description"
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
+                Description{" "}
+                <span className="text-[var(--dashboard-danger-foreground)]">
+                  *
+                </span>
               </Label>
-              <Textarea
+              <DashboardTextarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => handleFieldChange('description', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("description", e.target.value)
+                }
                 placeholder="Provide a detailed description of the dataset, its contents, and structure"
                 rows={5}
                 disabled={submitting}
@@ -227,19 +307,28 @@ export function AboutDatasetForm({
                 }}
               />
               <p className="text-xs" style={{ color: tokens.textMuted }}>
-                Detailed information about the dataset's content and structure
+                Detailed information about the dataset content and structure
               </p>
             </div>
 
             {/* Data Quality */}
             <div className="space-y-2">
-              <Label htmlFor="dataQuality" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                Data Quality <span className="text-red-500">*</span>
+              <Label
+                htmlFor="dataQuality"
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
+                Data Quality{" "}
+                <span className="text-[var(--dashboard-danger-foreground)]">
+                  *
+                </span>
               </Label>
-              <Textarea
+              <DashboardTextarea
                 id="dataQuality"
                 value={formData.dataQuality}
-                onChange={(e) => handleFieldChange('dataQuality', e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("dataQuality", e.target.value)
+                }
                 placeholder="Describe the quality of the data, including completeness, accuracy, and any quality assurance processes"
                 rows={4}
                 disabled={submitting}
@@ -260,20 +349,35 @@ export function AboutDatasetForm({
           {/* Optional Fields Section */}
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-4">
-              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
-              <span className="text-xs font-medium px-2" style={{ color: tokens.textMuted }}>OPTIONAL INFORMATION</span>
-              <div className="h-px flex-1" style={{ background: tokens.borderSubtle }} />
+              <div
+                className="h-px flex-1"
+                style={{ background: tokens.borderSubtle }}
+              />
+              <span
+                className="text-xs font-medium px-2"
+                style={{ color: tokens.textMuted }}
+              >
+                OPTIONAL INFORMATION
+              </span>
+              <div
+                className="h-px flex-1"
+                style={{ background: tokens.borderSubtle }}
+              />
             </div>
 
             {/* Use Cases */}
             <div className="space-y-2">
-              <Label htmlFor="useCases" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+              <Label
+                htmlFor="useCases"
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
                 Use Cases
               </Label>
-              <Textarea
+              <DashboardTextarea
                 id="useCases"
-                value={formData.useCases || ''}
-                onChange={(e) => handleFieldChange('useCases', e.target.value)}
+                value={formData.useCases || ""}
+                onChange={(e) => handleFieldChange("useCases", e.target.value)}
                 placeholder="Describe potential use cases and applications for this dataset"
                 rows={4}
                 disabled={submitting}
@@ -291,13 +395,19 @@ export function AboutDatasetForm({
 
             {/* Limitations */}
             <div className="space-y-2">
-              <Label htmlFor="limitations" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+              <Label
+                htmlFor="limitations"
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
                 Limitations
               </Label>
-              <Textarea
+              <DashboardTextarea
                 id="limitations"
-                value={formData.limitations || ''}
-                onChange={(e) => handleFieldChange('limitations', e.target.value)}
+                value={formData.limitations || ""}
+                onChange={(e) =>
+                  handleFieldChange("limitations", e.target.value)
+                }
                 placeholder="Describe any known limitations, biases, or constraints of this dataset"
                 rows={4}
                 disabled={submitting}
@@ -315,13 +425,19 @@ export function AboutDatasetForm({
 
             {/* Methodology */}
             <div className="space-y-2">
-              <Label htmlFor="methodology" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+              <Label
+                htmlFor="methodology"
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
                 Methodology
               </Label>
-              <Textarea
+              <DashboardTextarea
                 id="methodology"
-                value={formData.methodology || ''}
-                onChange={(e) => handleFieldChange('methodology', e.target.value)}
+                value={formData.methodology || ""}
+                onChange={(e) =>
+                  handleFieldChange("methodology", e.target.value)
+                }
                 placeholder="Describe the methodology used to collect or generate this data"
                 rows={4}
                 disabled={submitting}
@@ -339,41 +455,45 @@ export function AboutDatasetForm({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-6 border-t" style={{ borderColor: tokens.borderSubtle }}>
-            <Button
+          <div
+            className="flex items-center gap-3 pt-6 border-t"
+            style={{ borderColor: tokens.borderSubtle }}
+          >
+            <DashboardButton
               type="submit"
               disabled={!isFormValid() || submitting}
-              className="h-11 px-6 font-medium transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] text-white"
+              className="h-11 px-6 font-medium"
               style={{
-                background: isFormValid() && !submitting
-                  ? '#2a3558'
-                  : 'rgba(156, 163, 175, 0.3)',
+                background:
+                  isFormValid() && !submitting
+                    ? "var(--dashboard-button-primary-background)"
+                    : "color-mix(in srgb, var(--dashboard-text-muted) 30%, transparent)",
               }}
             >
               <Save className="w-4 h-4 mr-2" />
-              {submitting ? 'Saving...' : 'Save Information'}
-            </Button>
+              {submitting ? "Saving..." : "Save Information"}
+            </DashboardButton>
 
             {onCancel && (
-              <Button
+              <DashboardButton
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
                 disabled={submitting}
-                className="h-11 px-5 font-medium transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                className="h-11 px-5 font-medium"
                 style={{
-                  background: tokens.glassBg || 'transparent',
+                  background: tokens.glassBg || "transparent",
                   border: `1px solid ${tokens.glassBorder || tokens.inputBorder}`,
                   color: tokens.textPrimary,
                 }}
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
-              </Button>
+              </DashboardButton>
             )}
           </div>
         </form>
       </div>
-    </Card>
+    </DashboardCard>
   );
 }
