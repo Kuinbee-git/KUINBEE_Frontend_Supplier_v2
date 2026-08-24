@@ -10,13 +10,14 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
-import { DatasetPerformanceTable } from "@/components/dashboard/stats/DatasetPerformanceTable";
 import {
-  DatasetErrorBanner,
-  DatasetMetricStrip,
-  DatasetSection,
-} from "@/components/datasets/workspace";
-import { Button } from "@/components/ui/button";
+  DashboardButton,
+  DashboardErrorState,
+  DashboardLoadingState,
+  DashboardMetricCard,
+  DashboardSection,
+} from "@/components/dashboard";
+import { DatasetPerformanceTable } from "@/components/dashboard/stats/DatasetPerformanceTable";
 import { getSupplierStats } from "@/lib/api/stats";
 import type {
   DatasetPerformanceItem,
@@ -74,69 +75,74 @@ function DatasetsContent() {
     return [
       {
         label: "Tracked datasets",
+        value: datasets.length.toLocaleString(),
         supportingText: "Datasets with performance data",
-        value: datasets.length,
         icon: Database,
-        tone: "neutral" as const,
       },
       {
         label: "Marketplace views",
+        value: totalViews.toLocaleString(),
         supportingText: "Attention in the selected period",
-        value: totalViews,
         icon: Eye,
-        tone: "blue" as const,
       },
       {
         label: "Completed sales",
+        value: totalSales.toLocaleString(),
         supportingText: "Purchases in the selected period",
-        value: totalSales,
         icon: ShoppingCart,
-        tone: "green" as const,
       },
       {
         label: "Portfolio conversion",
-        supportingText: `${conversion.toFixed(2)}% of views converted`,
-        value: Number(conversion.toFixed(2)),
+        value: `${conversion.toFixed(2)}%`,
+        supportingText: "Views converted to purchases",
         icon: BarChart3,
-        tone: "purple" as const,
       },
     ];
   }, [datasets]);
 
+  if (error) {
+    return (
+      <DashboardErrorState
+        title="Dataset analytics could not be loaded"
+        message={error}
+        onRetry={() => void fetchData()}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {!error && <DatasetMetricStrip metrics={metrics} loading={loading} />}
+      <section
+        aria-label="Dataset analytics summary"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {metrics.map((metric) => (
+          <DashboardMetricCard
+            key={metric.label}
+            {...metric}
+            loading={loading && datasets.length === 0}
+          />
+        ))}
+      </section>
 
-      {error && (
-        <DatasetErrorBanner
-          title="Dataset analytics could not be loaded"
-          message={error}
-          onRetry={() => void fetchData()}
-        />
-      )}
-
-      {!error && (
-        <DatasetSection
-          title="Dataset performance"
-          description="Compare marketplace reach, conversion, quality, and revenue. Open a dataset for its full trend history."
-          icon={Database}
-          action={
-            !loading && !error ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="gap-2"
-                onClick={() => void fetchData()}
-              >
-                <RefreshCw /> Refresh
-              </Button>
-            ) : undefined
-          }
-        >
-          <DatasetPerformanceTable data={datasets} loading={loading} />
-        </DatasetSection>
-      )}
+      <DashboardSection
+        title="Dataset performance"
+        description="Compare marketplace reach, conversion, quality, and revenue."
+        actions={
+          <DashboardButton
+            type="button"
+            variant="outline"
+            size="compact"
+            onClick={() => void fetchData()}
+            disabled={loading}
+          >
+            <RefreshCw aria-hidden="true" />
+            Refresh
+          </DashboardButton>
+        }
+      >
+        <DatasetPerformanceTable data={datasets} loading={loading} />
+      </DashboardSection>
     </div>
   );
 }
@@ -145,21 +151,11 @@ export default function DatasetsPage() {
   return (
     <Suspense
       fallback={
-        <div
-          className="space-y-6"
-          aria-label="Loading dataset analytics"
-          aria-busy="true"
-        >
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className="supplier-glass-card h-[106px] animate-pulse rounded-xl border"
-              />
-            ))}
-          </div>
-          <div className="supplier-glass-card h-96 animate-pulse rounded-xl border" />
-        </div>
+        <DashboardLoadingState
+          label="Loading dataset analytics"
+          variant="skeleton"
+          rows={5}
+        />
       }
     >
       <DatasetsContent />
