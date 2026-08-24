@@ -1,7 +1,7 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { DashboardCard } from "@/components/dashboard";
+import { DashboardButton } from "@/components/dashboard";
 import { ArrowRightLeft } from "lucide-react";
 import type { DatasetDetailTokens } from "./detailTokens";
 
@@ -23,8 +23,8 @@ export function SampleProposalToggleCard({
   tokens,
 }: SampleProposalToggleCardProps) {
   return (
-    <Card
-      className={`supplier-glass-card overflow-hidden rounded-xl border ${isSampleProposal ? "border-primary/40" : ""}`}
+    <DashboardCard
+      className={`dashboard-glass-card overflow-hidden rounded-xl border ${isSampleProposal ? "border-primary/40" : ""}`}
     >
       <div className="flex flex-col gap-4 p-5">
         <div className="flex items-start gap-3">
@@ -33,17 +33,19 @@ export function SampleProposalToggleCard({
             style={{
               background: isSampleProposal
                 ? isDark
-                  ? "rgba(59, 130, 246, 0.2)"
-                  : "rgba(59, 130, 246, 0.12)"
+                  ? "color-mix(in srgb, var(--dashboard-action) 20%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-action) 12%, transparent)"
                 : isDark
-                  ? "rgba(107, 114, 128, 0.2)"
-                  : "rgba(107, 114, 128, 0.12)",
+                  ? "color-mix(in srgb, var(--dashboard-text-muted) 20%, transparent)"
+                  : "color-mix(in srgb, var(--dashboard-text-muted) 12%, transparent)",
             }}
           >
             <ArrowRightLeft
               className="w-4 h-4"
               style={{
-                color: isSampleProposal ? "#2563eb" : tokens.textSecondary,
+                color: isSampleProposal
+                  ? "var(--dashboard-info-foreground)"
+                  : tokens.textSecondary,
               }}
             />
           </div>
@@ -60,7 +62,7 @@ export function SampleProposalToggleCard({
           </div>
         </div>
 
-        <Button
+        <DashboardButton
           onClick={() => onToggle(!isSampleProposal)}
           disabled={!isEditable || sampleToggleSubmitting}
           className="h-10 w-full px-5"
@@ -71,8 +73,8 @@ export function SampleProposalToggleCard({
             : isSampleProposal
               ? "Switch to Regular"
               : "Switch to Sample"}
-        </Button>
+        </DashboardButton>
       </div>
-    </Card>
+    </DashboardCard>
   );
 }
