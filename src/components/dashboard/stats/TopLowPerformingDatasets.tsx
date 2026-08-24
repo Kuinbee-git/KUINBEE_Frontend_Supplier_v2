@@ -1,174 +1,153 @@
 "use client";
 
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import type { PerformingDataset } from "@/types/supplier-stats.types";
+import {
+  BarChart3,
+  Coins,
+  Eye,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import Link from "next/link";
+
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardSkeleton,
+  DashboardStatusBadge,
+} from "@/components/dashboard";
 import { formatCurrencyValue } from "@/lib/utils/currency.utils";
-import { TrendingUp, TrendingDown, Eye, ShoppingCart, Coins, BarChart2 } from "lucide-react";
+import type { PerformingDataset } from "@/types/supplier-stats.types";
 
 interface TopLowPerformingDatasetsProps {
-    topPerforming: PerformingDataset | null;
-    lowPerforming: PerformingDataset | null;
-    loading?: boolean;
+  topPerforming: PerformingDataset | null;
+  lowPerforming: PerformingDataset | null;
+  loading?: boolean;
 }
 
 function PerformanceCard({
-    dataset,
-    type,
+  dataset,
+  type,
 }: {
-    dataset: PerformingDataset | null;
-    type: "top" | "low";
+  dataset: PerformingDataset | null;
+  type: "top" | "low";
 }) {
-    const tokens = useSupplierTokens();
-    const isTop = type === "top";
+  const isTop = type === "top";
+  const Icon = isTop ? TrendingUp : TrendingDown;
 
-    const accentColor = isTop ? "#10b981" : "#f59e0b";
-    const accentBg = isTop
-        ? tokens.isDark
-            ? "rgba(16, 185, 129, 0.08)"
-            : "rgba(16, 185, 129, 0.06)"
-        : tokens.isDark
-            ? "rgba(245, 158, 11, 0.08)"
-            : "rgba(245, 158, 11, 0.06)";
-    const borderAccent = isTop
-        ? tokens.isDark
-            ? "rgba(16, 185, 129, 0.2)"
-            : "rgba(16, 185, 129, 0.15)"
-        : tokens.isDark
-            ? "rgba(245, 158, 11, 0.2)"
-            : "rgba(245, 158, 11, 0.15)";
-
-    if (!dataset) {
-        return (
-            <div
-                className="flex-1 rounded-xl p-5 flex flex-col items-center justify-center min-h-[180px]"
-                style={{
-                    background: tokens.glassBg,
-                    backdropFilter: "blur(16px)",
-                    border: `1px solid ${tokens.glassBorder}`,
-                    boxShadow: tokens.glassShadow,
-                }}
-            >
-                <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-                    style={{ background: `${accentColor}12`, color: accentColor }}
-                >
-                    {isTop ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-                </div>
-                <p className="text-sm font-medium" style={{ color: tokens.textMuted }}>
-                    {isTop ? "No sales data yet" : "No qualifying datasets"}
-                </p>
-            </div>
-        );
-    }
-
-    const isMixed = dataset.revenueCurrency === null;
-
+  if (!dataset) {
     return (
-        <div
-            className="flex-1 rounded-xl p-5 transition-all duration-300 hover:scale-[1.01]"
-            style={{
-                background: accentBg,
-                backdropFilter: "blur(16px)",
-                border: `1px solid ${borderAccent}`,
-                boxShadow: tokens.glassShadow,
-            }}
-        >
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-4">
-                <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ background: `${accentColor}20`, color: accentColor }}
-                >
-                    {isTop ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                </div>
-                <span
-                    className="text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: accentColor }}
-                >
-                    {isTop ? "Top Performer" : "Needs Attention"}
-                </span>
-            </div>
-
-            {/* Dataset Name */}
-            <p
-                className="text-base font-semibold mb-4 truncate"
-                style={{ color: tokens.textPrimary }}
-                title={dataset.title}
-            >
-                {dataset.title}
-            </p>
-
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                    <Coins className="w-3.5 h-3.5" style={{ color: tokens.textMuted }} />
-                    <div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>Revenue</p>
-                        <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                            {formatCurrencyValue(dataset.revenue, dataset.revenueCurrency)}
-                            {isMixed && (
-                                <span className="ml-1 text-xs font-normal" style={{ color: tokens.textMuted }}>
-                                    (Mixed)
-                                </span>
-                            )}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Eye className="w-3.5 h-3.5" style={{ color: tokens.textMuted }} />
-                    <div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>Views</p>
-                        <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                            {dataset.views.toLocaleString()}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-3.5 h-3.5" style={{ color: tokens.textMuted }} />
-                    <div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>Sales</p>
-                        <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                            {dataset.sales}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <BarChart2 className="w-3.5 h-3.5" style={{ color: tokens.textMuted }} />
-                    <div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>Conv. Rate</p>
-                        <p className="text-sm font-semibold" style={{ color: accentColor }}>
-                            {(dataset.conversionRate * 100).toFixed(2)}%
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <DashboardCard className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
+        <span className="dashboard-tone-neutral flex size-11 items-center justify-center rounded-xl border">
+          <Icon aria-hidden="true" />
+        </span>
+        <p className="mt-4 text-sm font-semibold text-foreground">
+          {isTop ? "No sales data yet" : "No dataset needs attention"}
+        </p>
+        <p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">
+          Performance comparisons appear after marketplace activity is recorded.
+        </p>
+      </DashboardCard>
     );
+  }
+
+  const revenue = `${formatCurrencyValue(
+    dataset.revenue,
+    dataset.revenueCurrency
+  )}${dataset.revenueCurrency === null ? " (Mixed)" : ""}`;
+  const metrics = [
+    { label: "Revenue", value: revenue, icon: Coins },
+    { label: "Views", value: dataset.views.toLocaleString(), icon: Eye },
+    {
+      label: "Sales",
+      value: dataset.sales.toLocaleString(),
+      icon: ShoppingCart,
+    },
+    {
+      label: "Conversion",
+      value: `${(dataset.conversionRate * 100).toFixed(2)}%`,
+      icon: BarChart3,
+    },
+  ];
+
+  return (
+    <DashboardCard className="flex min-h-52 flex-col p-5 md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <DashboardStatusBadge
+            tone={isTop ? "success" : "warning"}
+            icon={Icon}
+          >
+            {isTop ? "Top performer" : "Needs attention"}
+          </DashboardStatusBadge>
+          <h3
+            className="mt-3 truncate text-base font-semibold text-foreground"
+            title={dataset.title}
+          >
+            {dataset.title}
+          </h3>
+        </div>
+        <DashboardButton asChild variant="ghost" size="compact">
+          <Link href={`/dashboard/stats/datasets/${dataset.datasetId}`}>
+            View analytics
+          </Link>
+        </DashboardButton>
+      </div>
+
+      <dl className="mt-5 grid grid-cols-2 gap-3">
+        {metrics.map((metric) => {
+          const MetricIcon = metric.icon;
+          return (
+            <div
+              key={metric.label}
+              className="rounded-lg border border-border bg-muted/40 p-3"
+            >
+              <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MetricIcon className="size-3.5" aria-hidden="true" />
+                {metric.label}
+              </dt>
+              <dd className="mt-1 truncate text-sm font-semibold tabular-nums text-foreground">
+                {metric.value}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </DashboardCard>
+  );
 }
 
 export function TopLowPerformingDatasets({
-    topPerforming,
-    lowPerforming,
-    loading,
+  topPerforming,
+  lowPerforming,
+  loading = false,
 }: TopLowPerformingDatasetsProps) {
-    if (loading) {
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[0, 1].map((i) => (
-                    <div
-                        key={i}
-                        className="rounded-xl animate-pulse"
-                        style={{ background: "var(--muted)", height: "220px" }}
-                    />
-                ))}
-            </div>
-        );
-    }
-
+  if (loading) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <PerformanceCard dataset={topPerforming} type="top" />
-            <PerformanceCard dataset={lowPerforming} type="low" />
-        </div>
+      <div
+        className="grid gap-4 md:grid-cols-2"
+        role="status"
+        aria-label="Loading portfolio performance"
+      >
+        {[0, 1].map((index) => (
+          <DashboardCard key={index} className="min-h-52 p-6">
+            <DashboardSkeleton className="h-6 w-28 rounded-full" />
+            <DashboardSkeleton className="mt-4 h-5 w-3/5" />
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((item) => (
+                <DashboardSkeleton key={item} className="h-16" />
+              ))}
+            </div>
+          </DashboardCard>
+        ))}
+      </div>
     );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <PerformanceCard dataset={topPerforming} type="top" />
+      <PerformanceCard dataset={lowPerforming} type="low" />
+    </div>
+  );
 }

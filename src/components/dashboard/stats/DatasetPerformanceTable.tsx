@@ -2,21 +2,26 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  Coins,
-  Eye,
-  ShoppingCart,
-} from "lucide-react";
+import { BarChart3, Coins, Eye, ShoppingCart } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import {
+  DashboardButton,
+  DashboardDataTable,
+  DashboardEmptyState,
+  DashboardLoadingState,
+  DashboardMobileRecordCard,
+  DashboardPagination,
+  DashboardSelect,
+  DashboardSelectContent,
+  DashboardSelectItem,
+  DashboardSelectTrigger,
+  DashboardSelectValue,
+  DashboardStatusBadge,
+  type DashboardSortDirection,
+  type DashboardTableColumn,
+  type DashboardTone,
+} from "@/components/dashboard";
 import { formatCurrencyValue } from "@/lib/utils/currency.utils";
-import { cn } from "@/lib/utils";
 import type { DatasetPerformanceItem } from "@/types/supplier-stats.types";
 
 interface DatasetPerformanceTableProps {
@@ -25,7 +30,7 @@ interface DatasetPerformanceTableProps {
 }
 
 type SortKey = keyof DatasetPerformanceItem;
-type SortDir = "asc" | "desc";
+type SortDirection = "asc" | "desc";
 
 const PAGE_SIZE = 10;
 const NUMERIC_SORT_KEYS = new Set<SortKey>([
@@ -36,60 +41,42 @@ const NUMERIC_SORT_KEYS = new Set<SortKey>([
   "qualityScore",
 ]);
 
-const statusClasses: Record<string, string> = {
-  PUBLISHED:
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  VERIFIED:
-    "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  SUBMITTED:
-    "border-blue-500/25 bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  UNDER_REVIEW:
-    "border-violet-500/25 bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  ARCHIVED:
-    "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300",
-  REJECTED: "border-red-500/25 bg-red-500/10 text-red-600 dark:text-red-400",
-  DRAFT:
-    "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+const statusTones: Record<string, DashboardTone> = {
+  PUBLISHED: "success",
+  VERIFIED: "info",
+  SUBMITTED: "info",
+  UNDER_REVIEW: "warning",
+  ARCHIVED: "neutral",
+  REJECTED: "danger",
+  DRAFT: "warning",
 };
 
-const columns: { key: SortKey; label: string; align?: "right" }[] = [
-  { key: "title", label: "Dataset" },
-  { key: "views", label: "Views", align: "right" },
-  { key: "sales", label: "Sales", align: "right" },
-  { key: "revenue", label: "Revenue", align: "right" },
-  { key: "conversionRate", label: "Conversion", align: "right" },
-  { key: "qualityScore", label: "Quality", align: "right" },
-  { key: "status", label: "Status" },
-];
-
-function formatStatusLabel(status: string): string {
+function formatStatus(status: string) {
   return status
-    .replace(/_/g, " ")
+    .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function DatasetStatus({ status }: { status: string }) {
+  const normalizedStatus = status.toUpperCase();
   return (
-    <span
-      className={cn(
-        "inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium",
-        statusClasses[status.toUpperCase()] ??
-          "border-border bg-muted text-muted-foreground"
-      )}
+    <DashboardStatusBadge
+      tone={statusTones[normalizedStatus] ?? "neutral"}
+      status={normalizedStatus}
     >
-      {formatStatusLabel(status)}
-    </span>
+      {formatStatus(status)}
+    </DashboardStatusBadge>
   );
 }
 
 export function DatasetPerformanceTable({
   data,
-  loading,
+  loading = false,
 }: DatasetPerformanceTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(0);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [page, setPage] = useState(1);
 
   const sorted = useMemo(
     () =>
@@ -101,274 +88,286 @@ export function DatasetPerformanceTable({
           if (firstValue === null || firstValue === undefined) return 1;
           if (secondValue === null || secondValue === undefined) return -1;
           const difference = Number(firstValue) - Number(secondValue);
-          return sortDir === "asc" ? difference : -difference;
+          return sortDirection === "asc" ? difference : -difference;
         }
 
         const difference = String(firstValue ?? "").localeCompare(
           String(secondValue ?? "")
         );
-        return sortDir === "asc" ? difference : -difference;
+        return sortDirection === "asc" ? difference : -difference;
       }),
-    [data, sortDir, sortKey]
+    [data, sortDirection, sortKey]
   );
-
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const currentPage = Math.min(page, Math.max(0, totalPages - 1));
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
   const pageData = sorted.slice(
-    currentPage * PAGE_SIZE,
-    (currentPage + 1) * PAGE_SIZE
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
   );
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
-      setSortDir((direction) => (direction === "asc" ? "desc" : "asc"));
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDir("desc");
+      setSortDirection("desc");
     }
-    setPage(0);
+    setPage(1);
   };
 
-  if (loading) {
+  const getSortDirection = (key: SortKey): DashboardSortDirection => {
+    if (key !== sortKey) return "none";
+    return sortDirection === "asc" ? "ascending" : "descending";
+  };
+
+  const columns: readonly DashboardTableColumn<DatasetPerformanceItem>[] = [
+    {
+      id: "dataset",
+      header: "Dataset",
+      rowHeader: true,
+      className: "min-w-56",
+      sort: {
+        direction: getSortDirection("title"),
+        onToggle: () => handleSort("title"),
+        sortLabel: "dataset title",
+      },
+      cell: (dataset) => (
+        <div className="min-w-0">
+          <p
+            className="max-w-64 truncate text-sm font-semibold text-foreground"
+            title={dataset.title}
+          >
+            {dataset.title}
+          </p>
+          <p className="mt-1 truncate font-mono text-xs font-normal text-muted-foreground">
+            {dataset.datasetId}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "views",
+      header: "Views",
+      align: "end",
+      className: "tabular-nums text-muted-foreground",
+      sort: {
+        direction: getSortDirection("views"),
+        onToggle: () => handleSort("views"),
+        sortLabel: "views",
+      },
+      cell: (dataset) => dataset.views.toLocaleString(),
+    },
+    {
+      id: "sales",
+      header: "Sales",
+      align: "end",
+      className: "tabular-nums text-muted-foreground",
+      sort: {
+        direction: getSortDirection("sales"),
+        onToggle: () => handleSort("sales"),
+        sortLabel: "sales",
+      },
+      cell: (dataset) => dataset.sales.toLocaleString(),
+    },
+    {
+      id: "revenue",
+      header: "Revenue",
+      align: "end",
+      className: "font-medium tabular-nums",
+      sort: {
+        direction: getSortDirection("revenue"),
+        onToggle: () => handleSort("revenue"),
+        sortLabel: "revenue",
+      },
+      cell: (dataset) =>
+        formatCurrencyValue(dataset.revenue, dataset.revenueCurrency),
+    },
+    {
+      id: "conversion",
+      header: "Conversion",
+      align: "end",
+      className: "tabular-nums text-muted-foreground",
+      sort: {
+        direction: getSortDirection("conversionRate"),
+        onToggle: () => handleSort("conversionRate"),
+        sortLabel: "conversion rate",
+      },
+      cell: (dataset) => `${(dataset.conversionRate * 100).toFixed(2)}%`,
+    },
+    {
+      id: "quality",
+      header: "Quality",
+      align: "end",
+      className: "font-medium tabular-nums",
+      sort: {
+        direction: getSortDirection("qualityScore"),
+        onToggle: () => handleSort("qualityScore"),
+        sortLabel: "quality score",
+      },
+      cell: (dataset) =>
+        dataset.qualityScore === null
+          ? "—"
+          : Number(dataset.qualityScore).toFixed(0),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (dataset) => <DatasetStatus status={dataset.status} />,
+    },
+    {
+      id: "action",
+      header: <span className="sr-only">Action</span>,
+      align: "end",
+      cell: (dataset) => (
+        <DashboardButton asChild variant="outline" size="compact">
+          <Link href={`/dashboard/stats/datasets/${dataset.datasetId}`}>
+            View
+          </Link>
+        </DashboardButton>
+      ),
+    },
+  ];
+
+  if (loading && data.length === 0) {
     return (
-      <div
-        className="space-y-3"
-        aria-label="Loading dataset performance"
-        aria-busy="true"
-      >
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="h-20 animate-pulse rounded-xl bg-foreground/[0.055]"
-          />
-        ))}
-      </div>
+      <DashboardLoadingState
+        label="Loading dataset performance"
+        variant="skeleton"
+        rows={5}
+        surface="plain"
+      />
     );
   }
 
-  if (data.length === 0) {
+  if (!loading && data.length === 0) {
     return (
-      <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed border-border/80 px-6 text-center">
-        <span className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <BarChart3 className="size-6" aria-hidden="true" />
-        </span>
-        <p className="mt-4 text-sm font-semibold text-foreground">
-          No dataset performance yet
-        </p>
-        <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">
-          Views, sales, and revenue will appear after a dataset is available to
-          buyers.
-        </p>
-      </div>
+      <DashboardEmptyState
+        surface="plain"
+        icon={BarChart3}
+        title="No dataset performance yet"
+        description="Views, sales, and revenue will appear after a dataset becomes available to buyers."
+      />
     );
   }
-
-  const sortIcon = (key: SortKey) => {
-    if (sortKey !== key) return <ArrowUpDown className="size-3 opacity-40" />;
-    return sortDir === "asc" ? (
-      <ArrowUp className="size-3" />
-    ) : (
-      <ArrowDown className="size-3" />
-    );
-  };
 
   return (
-    <div>
-      <div className="space-y-3 md:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-medium text-muted-foreground">
-            Sort performance
-          </p>
-          <select
-            value={`${sortKey}:${sortDir}`}
-            onChange={(event) => {
-              const [nextKey, nextDirection] = event.target.value.split(
-                ":"
-              ) as [SortKey, SortDir];
-              setSortKey(nextKey);
-              setSortDir(nextDirection);
-              setPage(0);
-            }}
-            className="supplier-glass-input h-9 rounded-lg border px-3 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Sort dataset performance"
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 md:hidden">
+        <label
+          htmlFor="dataset-performance-sort"
+          className="text-sm font-medium text-muted-foreground"
+        >
+          Sort by
+        </label>
+        <DashboardSelect
+          value={`${sortKey}:${sortDirection}`}
+          onValueChange={(value) => {
+            const [nextKey, nextDirection] = value.split(":") as [
+              SortKey,
+              SortDirection,
+            ];
+            setSortKey(nextKey);
+            setSortDirection(nextDirection);
+            setPage(1);
+          }}
+        >
+          <DashboardSelectTrigger
+            id="dataset-performance-sort"
+            className="w-52"
           >
-            <option value="revenue:desc">Revenue: high to low</option>
-            <option value="views:desc">Views: high to low</option>
-            <option value="sales:desc">Sales: high to low</option>
-            <option value="conversionRate:desc">Conversion: high to low</option>
-            <option value="qualityScore:desc">Quality: high to low</option>
-            <option value="title:asc">Dataset: A to Z</option>
-          </select>
-        </div>
+            <DashboardSelectValue />
+          </DashboardSelectTrigger>
+          <DashboardSelectContent>
+            <DashboardSelectItem value="revenue:desc">
+              Revenue: high to low
+            </DashboardSelectItem>
+            <DashboardSelectItem value="views:desc">
+              Views: high to low
+            </DashboardSelectItem>
+            <DashboardSelectItem value="sales:desc">
+              Sales: high to low
+            </DashboardSelectItem>
+            <DashboardSelectItem value="conversionRate:desc">
+              Conversion: high to low
+            </DashboardSelectItem>
+            <DashboardSelectItem value="qualityScore:desc">
+              Quality: high to low
+            </DashboardSelectItem>
+            <DashboardSelectItem value="title:asc">
+              Dataset: A to Z
+            </DashboardSelectItem>
+          </DashboardSelectContent>
+        </DashboardSelect>
+      </div>
 
-        {pageData.map((item) => (
-          <Link
-            key={item.datasetId}
-            href={`/dashboard/stats/datasets/${item.datasetId}`}
-            className="supplier-glass-panel block rounded-xl border p-4 transition-colors hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
+      <DashboardDataTable
+        caption="Dataset performance"
+        columns={columns}
+        items={pageData}
+        busy={loading}
+        getRowId={(dataset) => dataset.datasetId}
+        renderMobileItem={(dataset) => (
+          <DashboardMobileRecordCard>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {item.title}
-                </p>
-                <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                  {item.datasetId}
+                <h3 className="truncate text-sm font-semibold text-foreground">
+                  {dataset.title}
+                </h3>
+                <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                  {dataset.datasetId}
                 </p>
               </div>
-              <DatasetStatus status={item.status} />
+              <DatasetStatus status={dataset.status} />
             </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <dl className="mt-4 grid grid-cols-2 gap-3">
               {[
-                [Eye, "Views", item.views.toLocaleString()],
-                [ShoppingCart, "Sales", item.sales.toLocaleString()],
+                [Eye, "Views", dataset.views.toLocaleString()],
+                [ShoppingCart, "Sales", dataset.sales.toLocaleString()],
                 [
                   Coins,
                   "Revenue",
-                  formatCurrencyValue(item.revenue, item.revenueCurrency),
+                  formatCurrencyValue(dataset.revenue, dataset.revenueCurrency),
                 ],
                 [
                   BarChart3,
                   "Conversion",
-                  `${(item.conversionRate * 100).toFixed(2)}%`,
+                  `${(dataset.conversionRate * 100).toFixed(2)}%`,
                 ],
               ].map(([Icon, label, value]) => {
                 const MetricIcon = Icon as typeof Eye;
                 return (
                   <div
                     key={label as string}
-                    className="rounded-lg bg-foreground/[0.035] p-3"
+                    className="rounded-lg border border-border bg-muted/40 p-3"
                   >
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <MetricIcon className="size-3.5" aria-hidden="true" />
-                      <span className="text-[11px]">{label as string}</span>
-                    </div>
-                    <p className="mt-1 truncate text-sm font-semibold tabular-nums text-foreground">
+                      {label as string}
+                    </dt>
+                    <dd className="mt-1 truncate text-sm font-semibold tabular-nums text-foreground">
                       {value as string}
-                    </p>
+                    </dd>
                   </div>
                 );
               })}
-            </div>
-          </Link>
-        ))}
-      </div>
+            </dl>
+            <DashboardButton asChild variant="outline" className="mt-4 w-full">
+              <Link href={`/dashboard/stats/datasets/${dataset.datasetId}`}>
+                View analytics
+              </Link>
+            </DashboardButton>
+          </DashboardMobileRecordCard>
+        )}
+      />
 
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[900px] text-left">
-          <thead>
-            <tr className="border-b border-border/70">
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className={cn(
-                    "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
-                    column.align === "right" && "text-right"
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleSort(column.key)}
-                    className="inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`Sort by ${column.label}`}
-                  >
-                    {column.label}
-                    {sortIcon(column.key)}
-                  </button>
-                </th>
-              ))}
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageData.map((item) => (
-              <tr
-                key={item.datasetId}
-                className="border-b border-border/60 transition-colors last:border-0 hover:bg-foreground/[0.025]"
-              >
-                <td className="px-4 py-3.5">
-                  <p
-                    className="max-w-[240px] truncate text-sm font-semibold text-foreground"
-                    title={item.title}
-                  >
-                    {item.title}
-                  </p>
-                  <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    {item.datasetId}
-                  </p>
-                </td>
-                <td className="px-4 py-3.5 text-right text-sm tabular-nums text-muted-foreground">
-                  {item.views.toLocaleString()}
-                </td>
-                <td className="px-4 py-3.5 text-right text-sm tabular-nums text-muted-foreground">
-                  {item.sales.toLocaleString()}
-                </td>
-                <td className="px-4 py-3.5 text-right text-sm font-medium tabular-nums text-foreground">
-                  {formatCurrencyValue(item.revenue, item.revenueCurrency)}
-                </td>
-                <td className="px-4 py-3.5 text-right text-sm tabular-nums text-muted-foreground">
-                  {(item.conversionRate * 100).toFixed(2)}%
-                </td>
-                <td className="px-4 py-3.5 text-right text-sm font-medium tabular-nums text-foreground">
-                  {item.qualityScore == null
-                    ? "—"
-                    : Number(item.qualityScore).toFixed(0)}
-                </td>
-                <td className="px-4 py-3.5">
-                  <DatasetStatus status={item.status} />
-                </td>
-                <td className="px-4 py-3.5 text-right">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/dashboard/stats/datasets/${item.datasetId}`}>
-                      View analytics
-                    </Link>
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="mt-4 flex flex-col gap-3 border-t border-border/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground" aria-live="polite">
-            Showing {currentPage * PAGE_SIZE + 1}–
-            {Math.min((currentPage + 1) * PAGE_SIZE, sorted.length)} of{" "}
-            {sorted.length} datasets
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-8"
-              onClick={() => setPage(Math.max(0, currentPage - 1))}
-              disabled={currentPage === 0}
-              aria-label="Previous page"
-            >
-              <ChevronLeft />
-            </Button>
-            <span className="min-w-16 text-center text-xs font-medium text-muted-foreground">
-              {currentPage + 1} / {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-8"
-              onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
-              disabled={currentPage === totalPages - 1}
-              aria-label="Next page"
-            >
-              <ChevronRight />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DashboardPagination
+        page={currentPage}
+        pageSize={PAGE_SIZE}
+        totalItems={sorted.length}
+        itemLabel="datasets"
+        onPageChange={setPage}
+        disabled={loading}
+      />
     </div>
   );
 }
