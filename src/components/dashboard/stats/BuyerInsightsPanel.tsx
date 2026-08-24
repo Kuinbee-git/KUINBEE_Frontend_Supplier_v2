@@ -1,347 +1,330 @@
 "use client";
 
 import { useMemo } from "react";
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import type { BuyerInsights, DatasetPerformanceItem } from "@/types/supplier-stats.types";
-import { getCurrencySymbol, formatCurrencyShort } from "@/lib/utils/currency.utils";
-import { Users, UserX, Crown, Calendar, ShoppingBag } from "lucide-react";
 import {
-    Bar,
-    BarChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-    Cell,
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
+import { Calendar, Crown, Eye, ShoppingBag, UserX, Users } from "lucide-react";
+
+import {
+  DashboardDataTable,
+  DashboardEmptyState,
+  DashboardMetricCard,
+  DashboardMobileRecordCard,
+  DashboardSection,
+  DashboardSkeleton,
+  type DashboardTableColumn,
+} from "@/components/dashboard";
+import {
+  formatCurrencyShort,
+  formatCurrencyValue,
+} from "@/lib/utils/currency.utils";
+import type {
+  BuyerInsights,
+  DatasetPerformanceItem,
+  HighIntentNonBuyer,
+} from "@/types/supplier-stats.types";
 
 interface BuyerInsightsPanelProps {
-    insights: BuyerInsights;
-    loading?: boolean;
-    /** Pass datasetPerformance to resolve IDs → titles for non-buyers */
-    datasetPerformance?: DatasetPerformanceItem[];
+  insights: BuyerInsights;
+  loading?: boolean;
+  datasetPerformance?: DatasetPerformanceItem[];
 }
 
-const barColors = ["#6366f1", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899"];
+const BAR_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
 
-function formatRelativeDate(dateStr: string): string {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays}d ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+function formatRelativeDate(dateValue: string): string {
+  const date = new Date(dateValue);
+  const difference = Date.now() - date.getTime();
+  const days = Math.floor(difference / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-export function BuyerInsightsPanel({ insights, loading, datasetPerformance = [] }: BuyerInsightsPanelProps) {
-    const tokens = useSupplierTokens();
+export function BuyerInsightsPanel({
+  insights,
+  loading = false,
+  datasetPerformance = [],
+}: BuyerInsightsPanelProps) {
+  const datasetTitleMap = useMemo(
+    () =>
+      new Map(
+        datasetPerformance.map((dataset) => [dataset.datasetId, dataset.title])
+      ),
+    [datasetPerformance]
+  );
+  const chartData = insights.topBuyers.map((buyer) => ({
+    name: buyer.name?.split(" ")[0] || "Anonymous",
+    spent: Number(buyer.totalSpent),
+    currency: buyer.totalSpentCurrency,
+  }));
+  const currencies = new Set(
+    insights.topBuyers
+      .map((buyer) => buyer.totalSpentCurrency)
+      .filter((currency) => Boolean(currency))
+  );
+  const dominantCurrency = currencies.size === 1 ? [...currencies][0] : null;
 
-    // Build a lookup map for dataset IDs → titles
-    const datasetTitleMap = useMemo(() => {
-        const map = new Map<string, string>();
-        datasetPerformance.forEach((d) => map.set(d.datasetId, d.title));
-        return map;
-    }, [datasetPerformance]);
+  const highIntentColumns = useMemo<
+    readonly DashboardTableColumn<HighIntentNonBuyer>[]
+  >(
+    () => [
+      {
+        id: "visitor",
+        header: "Visitor",
+        rowHeader: true,
+        cell: (visitor) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">
+              {visitor.name ?? "Anonymous user"}
+            </p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {visitor.companyName || "No company provided"}
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: "views",
+        header: "Views",
+        align: "end",
+        className: "font-medium tabular-nums",
+        cell: (visitor) => visitor.totalViews.toLocaleString(),
+      },
+      {
+        id: "datasets",
+        header: "Viewed datasets",
+        cell: (visitor) => (
+          <div className="flex max-w-xl flex-wrap gap-1.5">
+            {visitor.viewedDatasets.slice(0, 3).map((datasetId) => {
+              const title = datasetTitleMap.get(datasetId) ?? datasetId;
+              return (
+                <span
+                  key={datasetId}
+                  title={title}
+                  className="max-w-48 truncate rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                >
+                  {title}
+                </span>
+              );
+            })}
+            {visitor.viewedDatasets.length > 3 ? (
+              <span className="px-1 py-0.5 text-xs text-muted-foreground">
+                +{visitor.viewedDatasets.length - 3}
+              </span>
+            ) : null}
+          </div>
+        ),
+      },
+    ],
+    [datasetTitleMap]
+  );
 
-    if (loading) {
-        return (
-            <div
-                className="rounded-xl animate-pulse"
-                style={{ background: "var(--muted)", height: "400px" }}
-            />
-        );
-    }
-
-    // Prep chart data for top buyers
-    const chartData = insights.topBuyers.map((b) => ({
-        name: b.name ? b.name.split(" ")[0] : "Anonymous",
-        fullName: b.name ?? "Anonymous User",
-        company: b.companyName ?? "—",
-        spent: Number(b.totalSpent),
-        currency: b.totalSpentCurrency,
-        purchases: b.totalPurchases,
-        lastPurchase: b.lastPurchaseDate,
-    }));
-
-    // Determine if all buyers share the same currency for axis formatting
-    const currencies = new Set(insights.topBuyers.map((b) => b.totalSpentCurrency).filter(Boolean));
-    const dominantCurrency = currencies.size === 1 ? [...currencies][0]! : null;
-
+  if (loading) {
     return (
-        <div className="space-y-6">
-            {/* Summary Stats Row */}
-            <div className="grid grid-cols-2 gap-4">
-                <div
-                    className="rounded-xl p-4 flex items-center gap-4"
-                    style={{
-                        background: tokens.isDark
-                            ? "rgba(99, 102, 241, 0.08)"
-                            : "rgba(99, 102, 241, 0.06)",
-                        border: `1px solid ${tokens.isDark ? "rgba(99, 102, 241, 0.2)" : "rgba(99, 102, 241, 0.12)"}`,
-                    }}
-                >
-                    <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center"
-                        style={{ background: "rgba(99, 102, 241, 0.2)", color: "#6366f1" }}
-                    >
-                        <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>Total Buyers</p>
-                        <p className="text-xl font-bold" style={{ color: tokens.textPrimary }}>
-                            {insights.totalBuyers}
-                        </p>
-                    </div>
-                </div>
-                <div
-                    className="rounded-xl p-4 flex items-center gap-4"
-                    style={{
-                        background: tokens.isDark
-                            ? "rgba(245, 158, 11, 0.08)"
-                            : "rgba(245, 158, 11, 0.06)",
-                        border: `1px solid ${tokens.isDark ? "rgba(245, 158, 11, 0.2)" : "rgba(245, 158, 11, 0.12)"}`,
-                    }}
-                >
-                    <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center"
-                        style={{ background: "rgba(245, 158, 11, 0.2)", color: "#f59e0b" }}
-                    >
-                        <UserX className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p className="text-xs" style={{ color: tokens.textMuted }}>Non-Buying Visitors</p>
-                        <p className="text-xl font-bold" style={{ color: tokens.textPrimary }}>
-                            {insights.totalNonBuyingUsers}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Top Buyers — Chart + Detail Table */}
-            <div>
-                <div className="flex items-center gap-2 mb-4">
-                    <Crown className="w-4 h-4" style={{ color: "#f59e0b" }} />
-                    <h4 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                        Top Buyers by Spend
-                    </h4>
-                </div>
-
-                {chartData.length > 0 ? (
-                    <>
-                        <div style={{ width: "100%", height: 200 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={chartData}
-                                    layout="vertical"
-                                    margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
-                                >
-                                    <XAxis
-                                        type="number"
-                                        tickFormatter={(v: number) => formatCurrencyShort(v, dominantCurrency)}
-                                        tick={{ fill: tokens.textMuted, fontSize: 11 }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <YAxis
-                                        type="category"
-                                        dataKey="name"
-                                        tick={{ fill: tokens.textSecondary, fontSize: 12 }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        width={80}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            background: tokens.isDark
-                                                ? "rgba(20, 27, 54, 0.95)"
-                                                : "rgba(255, 255, 255, 0.95)",
-                                            border: `1px solid ${tokens.borderDefault}`,
-                                            borderRadius: "12px",
-                                            backdropFilter: "blur(16px)",
-                                            boxShadow: tokens.glassShadow,
-                                            padding: "12px 16px",
-                                        }}
-                                        labelStyle={{ color: tokens.textSecondary, fontSize: 12 }}
-                                        itemStyle={{ color: tokens.textPrimary, fontSize: 14, fontWeight: 600 }}
-                                        formatter={(value: number, _name: string, props: any) => {
-                                            const currency = props?.payload?.currency ?? dominantCurrency;
-                                            const symbol = getCurrencySymbol(currency);
-                                            const locale = currency === "INR" ? "en-IN" : "en-US";
-                                            return [`${symbol}${value.toLocaleString(locale)}`, "Total Spent"];
-                                        }}
-                                        labelFormatter={(_: string, payload: any[]) => {
-                                            if (payload?.[0]?.payload) {
-                                                const p = payload[0].payload;
-                                                return `${p.fullName}${p.company !== "—" ? ` — ${p.company}` : ""}`;
-                                            }
-                                            return "";
-                                        }}
-                                    />
-                                    <Bar dataKey="spent" radius={[0, 6, 6, 0]} barSize={24}>
-                                        {chartData.map((_, index) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={barColors[index % barColors.length]}
-                                                fillOpacity={0.85}
-                                            />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-
-                        {/* Buyer detail cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                            {insights.topBuyers.map((buyer, idx) => (
-                                <div
-                                    key={buyer.userId}
-                                    className="rounded-lg p-3"
-                                    style={{
-                                        background: tokens.isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-                                        border: `1px solid ${tokens.borderSubtle}`,
-                                    }}
-                                >
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div
-                                            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                                            style={{ background: `${barColors[idx % barColors.length]}20`, color: barColors[idx % barColors.length] }}
-                                        >
-                                            {idx + 1}
-                                        </div>
-                                        <p className="text-sm font-medium truncate" style={{ color: tokens.textPrimary }}>
-                                            {buyer.name ?? "Anonymous User"}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-4 text-xs" style={{ color: tokens.textMuted }}>
-                                        <span className="flex items-center gap-1">
-                                            <ShoppingBag className="w-3 h-3" />
-                                            {buyer.totalPurchases} purchases
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {buyer.lastPurchaseDate ? formatRelativeDate(buyer.lastPurchaseDate) : "—"}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </>
-                ) : (
-                    <p className="text-sm" style={{ color: tokens.textMuted }}>No buyer data available</p>
-                )}
-            </div>
-
-            {/* High Intent Non-Buyers Table */}
-            <div>
-                <div className="flex items-center gap-2 mb-4">
-                    <UserX className="w-4 h-4" style={{ color: "#f59e0b" }} />
-                    <h4 className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                        High-Intent Non-Buyers
-                    </h4>
-                </div>
-                {insights.highIntentNonBuyers.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr style={{ borderBottom: `1px solid ${tokens.borderDefault}` }}>
-                                    <th
-                                        className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider"
-                                        style={{ color: tokens.textMuted }}
-                                    >
-                                        Name
-                                    </th>
-                                    <th
-                                        className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider"
-                                        style={{ color: tokens.textMuted }}
-                                    >
-                                        Views
-                                    </th>
-                                    <th
-                                        className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider"
-                                        style={{ color: tokens.textMuted }}
-                                    >
-                                        Viewed Datasets
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {insights.highIntentNonBuyers.map((user, idx) => (
-                                    <tr
-                                        key={user.userId}
-                                        className="transition-colors duration-200"
-                                        style={{
-                                            borderBottom:
-                                                idx < insights.highIntentNonBuyers.length - 1
-                                                    ? `1px solid ${tokens.borderSubtle}`
-                                                    : undefined,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = tokens.isDark
-                                                ? "rgba(255,255,255,0.03)"
-                                                : "rgba(26,34,64,0.02)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = "transparent";
-                                        }}
-                                    >
-                                        <td className="px-4 py-3">
-                                            <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                                                {user.name ?? "Anonymous User"}
-                                            </p>
-                                            {user.companyName && (
-                                                <p className="text-xs mt-0.5" style={{ color: tokens.textMuted }}>
-                                                    {user.companyName}
-                                                </p>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <p className="text-sm font-semibold" style={{ color: tokens.textPrimary }}>
-                                                {user.totalViews}
-                                            </p>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {user.viewedDatasets.slice(0, 3).map((dsId) => {
-                                                    const title = datasetTitleMap.get(dsId) || dsId;
-                                                    const displayTitle = title.length > 22 ? `${title.slice(0, 20)}…` : title;
-                                                    return (
-                                                        <span
-                                                            key={dsId}
-                                                            className="inline-flex px-2 py-0.5 rounded-md text-xs"
-                                                            style={{
-                                                                background: tokens.isDark
-                                                                    ? "rgba(255,255,255,0.06)"
-                                                                    : "rgba(26,34,64,0.06)",
-                                                                color: tokens.textSecondary,
-                                                            }}
-                                                            title={title}
-                                                        >
-                                                            {displayTitle}
-                                                        </span>
-                                                    );
-                                                })}
-                                                {user.viewedDatasets.length > 3 && (
-                                                    <span
-                                                        className="inline-flex px-2 py-0.5 rounded-md text-xs"
-                                                        style={{ color: tokens.textMuted }}
-                                                    >
-                                                        +{user.viewedDatasets.length - 3}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <p className="text-sm" style={{ color: tokens.textMuted }}>No high-intent visitors detected</p>
-                )}
-            </div>
+      <div
+        className="space-y-6"
+        role="status"
+        aria-label="Loading buyer analytics"
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DashboardSkeleton className="h-36" />
+          <DashboardSkeleton className="h-36" />
         </div>
+        <DashboardSkeleton className="h-96" />
+        <DashboardSkeleton className="h-72" />
+      </div>
     );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section aria-label="Buyer summary" className="grid gap-4 sm:grid-cols-2">
+        <DashboardMetricCard
+          label="Total buyers"
+          value={insights.totalBuyers.toLocaleString()}
+          supportingText="Customers who completed a purchase"
+          icon={Users}
+        />
+        <DashboardMetricCard
+          label="High-intent visitors"
+          value={insights.totalNonBuyingUsers.toLocaleString()}
+          supportingText="Visitors who viewed datasets without purchasing"
+          icon={UserX}
+        />
+      </section>
+
+      <DashboardSection
+        title="Top buyers by spend"
+        description="Your highest-value marketplace customers during the selected period."
+      >
+        {chartData.length ? (
+          <div className="space-y-5">
+            <div
+              className="h-56 w-full"
+              role="img"
+              aria-label="Top buyers ranked by spend"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
+                >
+                  <XAxis
+                    type="number"
+                    tickFormatter={(value: number) =>
+                      formatCurrencyShort(value, dominantCurrency)
+                    }
+                    tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={80}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "var(--muted)" }}
+                    contentStyle={{
+                      background: "var(--dashboard-glass-background-strong)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      boxShadow: "var(--dashboard-glass-shadow)",
+                    }}
+                    formatter={(value) => [
+                      formatCurrencyValue(Number(value), dominantCurrency),
+                      "Total spent",
+                    ]}
+                  />
+                  <Bar dataKey="spent" radius={[0, 6, 6, 0]} barSize={24}>
+                    {chartData.map((buyer, index) => (
+                      <Cell
+                        key={`${buyer.name}-${index}`}
+                        fill={BAR_COLORS[index % BAR_COLORS.length]}
+                        fillOpacity={0.9}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {insights.topBuyers.map((buyer, index) => (
+                <article
+                  key={buyer.userId}
+                  className="rounded-xl border border-border bg-muted/35 p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="dashboard-tone-neutral flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-semibold text-foreground">
+                        {buyer.name ?? "Anonymous user"}
+                      </h3>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {buyer.companyName || "No company provided"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <ShoppingBag className="size-3.5" aria-hidden="true" />
+                      {buyer.totalPurchases} purchases
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="size-3.5" aria-hidden="true" />
+                      {buyer.lastPurchaseDate
+                        ? formatRelativeDate(buyer.lastPurchaseDate)
+                        : "No recent purchase"}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <DashboardEmptyState
+            surface="plain"
+            icon={Crown}
+            title="No buyer spend yet"
+            description="Top buyers will appear after marketplace purchases are recorded."
+          />
+        )}
+      </DashboardSection>
+
+      <DashboardSection
+        title="High-intent visitors"
+        description="Visitors who repeatedly viewed your datasets but did not complete a purchase."
+      >
+        {insights.highIntentNonBuyers.length ? (
+          <DashboardDataTable
+            caption="High-intent visitors"
+            columns={highIntentColumns}
+            items={insights.highIntentNonBuyers}
+            getRowId={(visitor) => visitor.userId}
+            renderMobileItem={(visitor) => (
+              <DashboardMobileRecordCard>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold text-foreground">
+                      {visitor.name ?? "Anonymous user"}
+                    </h3>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {visitor.companyName || "No company provided"}
+                    </p>
+                  </div>
+                  <span className="flex shrink-0 items-center gap-1.5 text-sm font-semibold tabular-nums text-foreground">
+                    <Eye
+                      className="size-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    {visitor.totalViews}
+                  </span>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {visitor.viewedDatasets.slice(0, 3).map((datasetId) => (
+                    <span
+                      key={datasetId}
+                      className="max-w-full truncate rounded-md border border-border bg-muted px-2 py-1 text-xs text-muted-foreground"
+                    >
+                      {datasetTitleMap.get(datasetId) ?? datasetId}
+                    </span>
+                  ))}
+                </div>
+              </DashboardMobileRecordCard>
+            )}
+          />
+        ) : (
+          <DashboardEmptyState
+            surface="plain"
+            icon={UserX}
+            title="No high-intent visitors"
+            description="Visitors matching this behavior will appear here when enough activity is available."
+          />
+        )}
+      </DashboardSection>
+    </div>
+  );
 }
