@@ -2,25 +2,31 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Archive,
-  EyeOff,
-  Globe2,
-  ImageIcon,
-  Plus,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { Archive, EyeOff, Globe2, ImageIcon, Plus, Search } from "lucide-react";
 
-import { StyledSelect } from "@/components/datasets/shared/StyledSelect";
-import { PaginationControls } from "@/components/shared/PaginationControls";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { getDatasetThemeTokens } from "@/constants/dataset.constants";
-import { cn } from "@/lib/utils";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardCardContent,
+  DashboardEmptyState,
+  DashboardErrorState,
+  DashboardLoadingState,
+  DashboardPage,
+  DashboardPageHeader,
+  DashboardPagination,
+  DashboardSearchField,
+  DashboardSelect,
+  DashboardSelectContent,
+  DashboardSelectItem,
+  DashboardSelectTrigger,
+  DashboardSelectValue,
+  DashboardStatusBadge,
+  DashboardToolbar,
+  DashboardToolbarActions,
+  DashboardToolbarFilters,
+  type DashboardTone,
+} from "@/components/dashboard";
 import { customCollectionApi } from "@/lib/api/custom-collection";
-import { useThemeStore } from "@/store";
 import type {
   CustomCollectionAvailability,
   CustomCollectionRevisionStatus,
@@ -30,9 +36,20 @@ import { STATUS_CONFIG, formatDate } from "./customCollectionUtils";
 
 const PAGE_SIZE = 9;
 
+const STATUS_TONES: Partial<
+  Record<CustomCollectionRevisionStatus, DashboardTone>
+> = {
+  DRAFT: "neutral",
+  SUBMITTED: "info",
+  UNDER_REVIEW: "warning",
+  CHANGES_REQUESTED: "warning",
+  RESUBMITTED: "info",
+  APPROVED: "success",
+  REJECTED: "danger",
+  SUPERSEDED: "neutral",
+};
+
 export function CustomCollectionServicesView() {
-  const { isDark } = useThemeStore();
-  const tokens = getDatasetThemeTokens(isDark);
   const [items, setItems] = useState<CustomCollectionService[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -92,165 +109,139 @@ export function CustomCollectionServicesView() {
   const filtered = Boolean(query || status !== "ALL" || availability !== "ALL");
 
   return (
-    <div className="custom-collection-scope mx-auto w-full max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Custom collection services
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-            Present your team&apos;s data collection capabilities and turn buyer
-            requirements into qualified conversations.
-          </p>
-        </div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link href="/dashboard/custom-collection-services/create">
-            <Plus /> Create service
-          </Link>
-        </Button>
-      </header>
+    <DashboardPage width="wide">
+      <DashboardPageHeader
+        title="Custom collection services"
+        description="Present your team’s data collection capabilities and turn buyer requirements into qualified conversations."
+        actions={
+          <DashboardButton asChild>
+            <Link href="/dashboard/custom-collection-services/create">
+              <Plus aria-hidden="true" /> Create service
+            </Link>
+          </DashboardButton>
+        }
+      />
 
-      <section
-        aria-label="Filter custom collection services"
-        className="supplier-glass-panel rounded-2xl border p-4"
-      >
-        <form onSubmit={search} className="flex flex-col gap-3 lg:flex-row">
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              className="supplier-glass-input pl-9"
-              maxLength={120}
-              placeholder="Search by service title or description"
-              aria-label="Search services"
-            />
-          </div>
-          <div className="lg:w-52">
-            <StyledSelect
+      <form onSubmit={search}>
+        <DashboardToolbar ariaLabel="Filter custom collection services">
+          <DashboardSearchField
+            value={searchInput}
+            onValueChange={setSearchInput}
+            onClear={() => setSearchInput("")}
+            maxLength={120}
+            placeholder="Search by service title or description"
+            label="Search services"
+          />
+          <DashboardToolbarFilters ariaLabel="Service filters">
+            <DashboardSelect
               value={status}
               onValueChange={(value) => {
                 setStatus(value as CustomCollectionRevisionStatus | "ALL");
                 setPage(1);
               }}
-              options={[
-                { value: "ALL", label: "All review statuses" },
-                ...Object.entries(STATUS_CONFIG)
+            >
+              <DashboardSelectTrigger aria-label="Filter by review status">
+                <DashboardSelectValue />
+              </DashboardSelectTrigger>
+              <DashboardSelectContent>
+                <DashboardSelectItem value="ALL">
+                  All review statuses
+                </DashboardSelectItem>
+                {Object.entries(STATUS_CONFIG)
                   .filter(([value]) => value !== "SUPERSEDED")
-                  .map(([value, config]) => ({
-                    value,
-                    label: config.label,
-                  })),
-              ]}
-              ariaLabel="Filter by review status"
-              isDark={isDark}
-              tokens={tokens}
-            />
-          </div>
-          <div className="lg:w-44">
-            <StyledSelect
+                  .map(([value, config]) => (
+                    <DashboardSelectItem key={value} value={value}>
+                      {config.label}
+                    </DashboardSelectItem>
+                  ))}
+              </DashboardSelectContent>
+            </DashboardSelect>
+            <DashboardSelect
               value={availability}
               onValueChange={(value) => {
                 setAvailability(value as CustomCollectionAvailability | "ALL");
                 setPage(1);
               }}
-              options={[
-                { value: "ALL", label: "All services" },
-                { value: "ACTIVE", label: "Active" },
-                { value: "ARCHIVED", label: "Archived" },
-              ]}
-              ariaLabel="Filter by availability"
-              isDark={isDark}
-              tokens={tokens}
-            />
-          </div>
-          <Button type="submit" className="h-9 min-w-24 px-5">
-            Search
-          </Button>
-          {filtered && (
-            <Button type="button" variant="ghost" onClick={clearFilters}>
-              Clear
-            </Button>
-          )}
-        </form>
-      </section>
+            >
+              <DashboardSelectTrigger aria-label="Filter by availability">
+                <DashboardSelectValue />
+              </DashboardSelectTrigger>
+              <DashboardSelectContent>
+                <DashboardSelectItem value="ALL">
+                  All services
+                </DashboardSelectItem>
+                <DashboardSelectItem value="ACTIVE">Active</DashboardSelectItem>
+                <DashboardSelectItem value="ARCHIVED">
+                  Archived
+                </DashboardSelectItem>
+              </DashboardSelectContent>
+            </DashboardSelect>
+          </DashboardToolbarFilters>
+          <DashboardToolbarActions>
+            {filtered ? (
+              <DashboardButton
+                type="button"
+                variant="ghost"
+                onClick={clearFilters}
+              >
+                Clear
+              </DashboardButton>
+            ) : null}
+            <DashboardButton type="submit">Search</DashboardButton>
+          </DashboardToolbarActions>
+        </DashboardToolbar>
+      </form>
 
-      {error && (
-        <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-destructive">{error}</p>
-          <Button type="button" variant="outline" size="sm" onClick={load}>
-            <RefreshCw /> Try again
-          </Button>
-        </div>
-      )}
-
-      {loading ? (
-        <div
-          className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-          aria-label="Loading services"
-        >
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div
-              key={index}
-              className="supplier-glass-card h-80 animate-pulse rounded-2xl border"
-            />
-          ))}
-        </div>
+      {error ? (
+        <DashboardErrorState
+          title="Services could not be loaded"
+          message={error}
+          onRetry={() => void load()}
+        />
+      ) : loading ? (
+        <DashboardLoadingState
+          label="Loading custom collection services"
+          variant="skeleton"
+          rows={6}
+        />
       ) : items.length === 0 && filtered ? (
-        <Card className="supplier-glass-panel border-dashed">
-          <CardContent className="flex min-h-80 flex-col items-center justify-center px-6 py-12 text-center">
-            <span className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Search className="size-7" />
-            </span>
-            <h2 className="text-lg font-semibold">
-              No services match these filters
-            </h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              Try changing the search or filters to see more services.
-            </p>
-            <Button asChild className="mt-5">
-              <button type="button" onClick={clearFilters}>
-                Clear filters
-              </button>
-            </Button>
-          </CardContent>
-        </Card>
+        <DashboardEmptyState
+          filtered
+          icon={Search}
+          title="No services match these filters"
+          description="Try changing the search or filters to see more services."
+          onClear={clearFilters}
+        />
       ) : items.length === 0 ? (
-        <Card className="supplier-glass-panel border-dashed">
-          <CardContent className="flex min-h-80 flex-col items-center justify-center px-6 py-12 text-center">
-            <span className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <ImageIcon className="size-7" />
-            </span>
-            <h2 className="text-lg font-semibold">No services yet</h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              Create a private draft to describe your custom data collection
-              capabilities and submit it for review.
-            </p>
-            <Button asChild className="mt-5">
+        <DashboardEmptyState
+          icon={ImageIcon}
+          title="No services yet"
+          description="Create a private draft to describe your custom data collection capabilities and submit it for review."
+          action={
+            <DashboardButton asChild>
               <Link href="/dashboard/custom-collection-services/create">
-                <Plus /> Create your first service
+                <Plus aria-hidden="true" /> Create your first service
               </Link>
-            </Button>
-          </CardContent>
-        </Card>
+            </DashboardButton>
+          }
+        />
       ) : (
-        <>
+        <section aria-label="Custom collection services" className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((service) => (
               <ServiceCard key={service.id} service={service} />
             ))}
           </div>
-          <PaginationControls
+          <DashboardPagination
             page={page}
             pageSize={PAGE_SIZE}
-            total={total}
+            totalItems={total}
             itemLabel="services"
-            mutedColor="var(--muted-foreground)"
             onPageChange={setPage}
           />
-        </>
+        </section>
       )}
-    </div>
+    </DashboardPage>
   );
 }
 
@@ -264,88 +255,80 @@ function ServiceCard({ service }: { service: CustomCollectionService }) {
   return (
     <Link
       href={`/dashboard/custom-collection-services/${service.id}`}
-      className="group rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]"
     >
-      <Card className="supplier-glass-card h-full overflow-hidden transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40">
-        <div className="supplier-glass-input relative aspect-[16/8] overflow-hidden">
+      <DashboardCard className="flex h-full flex-col overflow-hidden transition-[transform,border-color,box-shadow] duration-150 group-hover:-translate-y-0.5 group-hover:border-[var(--dashboard-focus-ring)] group-hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
+        <div className="relative aspect-[16/8] overflow-hidden border-b border-border bg-muted/45">
           {revision.coverImage ? (
-            // The image URL is supplied by the configured asset host and may not be known at build time.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={revision.coverImage.url}
               alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground">
-              <ImageIcon className="size-9" />
+              <ImageIcon className="size-9" aria-hidden="true" />
             </div>
           )}
-          {service.archivedAt && (
-            <span className="supplier-glass-panel absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
-              <Archive className="size-3" /> Archived
-            </span>
-          )}
+          {service.archivedAt ? (
+            <DashboardStatusBadge
+              icon={Archive}
+              tone="neutral"
+              className="absolute left-3 top-3"
+            >
+              Archived
+            </DashboardStatusBadge>
+          ) : null}
         </div>
-        <CardContent className="space-y-4 p-5">
+        <DashboardCardContent className="flex flex-1 flex-col gap-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-wrap gap-1.5">
-              <span
-                className={cn(
-                  "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                  status.className
-                )}
+              <DashboardStatusBadge
+                status={revision.status}
+                tone={STATUS_TONES[revision.status] ?? "neutral"}
               >
                 {status.label}
-              </span>
-              {service.publishedRevision && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
-                    service.isPublished
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200"
-                      : "border-slate-300 bg-slate-100 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70"
-                  )}
+              </DashboardStatusBadge>
+              {service.publishedRevision ? (
+                <DashboardStatusBadge
+                  icon={service.isPublished ? Globe2 : EyeOff}
+                  tone={service.isPublished ? "success" : "neutral"}
                 >
-                  {service.isPublished ? (
-                    <Globe2 className="size-3" />
-                  ) : (
-                    <EyeOff className="size-3" />
-                  )}
                   {service.isPublished ? "Public" : "Private"}
-                </span>
-              )}
-              {hasSeparateApprovedRevision && (
-                <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-400/25 dark:bg-blue-400/10 dark:text-blue-200">
+                </DashboardStatusBadge>
+              ) : null}
+              {hasSeparateApprovedRevision ? (
+                <DashboardStatusBadge tone="info">
                   Approved v{service.publishedRevision?.version}
-                </span>
-              )}
+                </DashboardStatusBadge>
+              ) : null}
             </div>
             <span className="shrink-0 text-xs text-muted-foreground">
               v{revision.version}
             </span>
           </div>
-          <div>
-            <h2 className="line-clamp-2 text-lg font-semibold leading-snug group-hover:text-primary">
+          <div className="min-w-0 flex-1">
+            <h2 className="line-clamp-2 text-lg font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
               {revision.title}
             </h2>
             <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
               {revision.shortDescription}
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 text-xs text-muted-foreground">
             <span>{revision.primaryCategory.name}</span>
             <span>{formatDate(service.updatedAt)}</span>
           </div>
-          {hasSeparateApprovedRevision && (
-            <p className="rounded-lg bg-blue-500/10 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+          {hasSeparateApprovedRevision ? (
+            <p className="dashboard-tone-info rounded-lg border px-3 py-2 text-xs">
               Approved revision v{service.publishedRevision?.version} remains{" "}
               {service.isPublished ? "public" : "private"} while this update is
               reviewed.
             </p>
-          )}
-        </CardContent>
-      </Card>
+          ) : null}
+        </DashboardCardContent>
+      </DashboardCard>
     </Link>
   );
 }
