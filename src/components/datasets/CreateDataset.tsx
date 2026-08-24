@@ -3,8 +3,15 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardDialog,
+  DashboardDialogContent,
+  DashboardFormActions,
+  DashboardInlineAlert,
+  DashboardProgress,
+} from "@/components/dashboard";
 import { getDatasetThemeTokens } from "@/constants/dataset.constants";
 import {
   FileText,
@@ -196,6 +203,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [sampleUploadDialogOpen, setSampleUploadDialogOpen] = useState(false);
+  const [startOverDialogOpen, setStartOverDialogOpen] = useState(false);
+  const [startOverError, setStartOverError] = useState<string | null>(null);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [sampleFileUploaded, setSampleFileUploaded] = useState(false);
 
@@ -238,14 +247,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     currency: "USD",
   });
   // Draft management
-  const { loadDraft, saveDraft, clearDraft } = useDraftProposal();
+  const { loadDraft, saveDraft, clearDraft, isDraftStorageReady } =
+    useDraftProposal();
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   const tokens = getDatasetThemeTokens(isDark);
 
   // Load draft on mount
   useEffect(() => {
-    if (draftLoaded) return;
+    if (draftLoaded || !isDraftStorageReady) return;
 
     const draft = loadDraft() as SavedDraftProposal | null;
     if (draft) {
@@ -286,16 +296,26 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
               clearDraft();
               setDraftLoaded(true);
             } else {
-              restoreDraft(draft);
+              restoreDraft({
+                ...draft,
+                fileUploaded:
+                  res.currentUpload?.status === "UPLOADED" ||
+                  res.currentUpload?.status === "PROMOTED",
+                sampleFileUploaded:
+                  res.sampleUpload?.status === "UPLOADED" ||
+                  res.sampleUpload?.status === "PROMOTED",
+              });
             }
           })
           .catch((err) => {
             console.error(
-              "Failed to verify draft proposal. Clearing local draft.",
+              "Failed to verify draft proposal. Restoring local draft.",
               err
             );
-            clearDraft();
-            setDraftLoaded(true);
+            restoreDraft(draft);
+            setError(
+              "Your locally saved draft was restored, but its server status could not be verified. Check your connection before saving the next step."
+            );
           });
       } else {
         restoreDraft(draft);
@@ -303,11 +323,11 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     } else {
       setDraftLoaded(true);
     }
-  }, [clearDraft, draftLoaded, loadDraft]);
+  }, [clearDraft, draftLoaded, isDraftStorageReady, loadDraft]);
 
   // Auto-save draft whenever form data changes
   useEffect(() => {
-    if (!draftLoaded) return;
+    if (!draftLoaded || !isDraftStorageReady) return;
 
     const draftData = {
       basicData,
@@ -326,6 +346,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     saveDraft(draftData);
   }, [
     draftLoaded,
+    isDraftStorageReady,
     basicData,
     aboutData,
     locationData,
@@ -818,27 +839,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     }
   };
 
-  const canGoNext = () => {
-    if (currentStep === "basic") return isBasicValid();
-    if (currentStep === "about") return isAboutValid();
-    if (currentStep === "format") return isFormatValid();
-    if (currentStep === "features") return isFeaturesValid();
-    if (currentStep === "pricing") return isPricingValid();
-    if (currentStep === "upload") return fileUploaded;
-    if (currentStep === "review")
-      return Boolean(createdProposalId && fileUploaded);
-    return false;
+  const handleStartOver = () => {
+    setStartOverError(null);
+    setStartOverDialogOpen(true);
   };
 
-  const handleStartOver = async () => {
-    const message = createdProposalId
-      ? "Discard this draft and start over? The server draft and its uploaded files will be permanently deleted."
-      : "Start over? Your locally saved progress will be permanently cleared.";
-
-    if (!confirm(message)) return;
-
+  const confirmStartOver = async () => {
     setError(null);
     setSuccess(null);
+    setStartOverError(null);
     setSubmitting(true);
 
     try {
@@ -860,12 +869,12 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
         return;
       }
 
-      setError(
+      const message =
         apiError.code === "INVALID_STATE"
           ? "This proposal can no longer be discarded because it has already entered review. Open it from your proposals list to see its current status."
           : apiError.message ||
-              "Failed to discard this draft. Your existing proposal has not been cleared."
-      );
+            "Failed to discard this draft. Your existing proposal has not been cleared.";
+      setStartOverError(message);
       setSubmitting(false);
     }
   };
@@ -876,124 +885,72 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     <>
       <DatasetWorkspace className="max-w-[1320px]">
         <div className="space-y-7">
-          {/* Back Button */}
-          <Button
-            variant="outline"
-            onClick={() => router.back()}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform duration-200" />
-            Back to datasets
-          </Button>
-
           <DatasetPageHeader
             title="Create a dataset proposal"
             description="Build and save the proposal in seven clear steps. You will review the completed draft before deciding when to submit it for moderation."
+            breadcrumbs={
+              <DashboardButton
+                variant="ghost"
+                size="compact"
+                onClick={() => router.back()}
+                className="-ml-3"
+              >
+                <ArrowLeft aria-hidden="true" />
+                Back to datasets
+              </DashboardButton>
+            }
           />
 
-          <div className="supplier-glass-panel rounded-xl border p-4 lg:hidden">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Step {currentStepIndex + 1} of {steps.length}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {steps[currentStepIndex].label}
-                </p>
-              </div>
-              <span className="text-sm font-semibold text-primary">
-                {Math.round(((currentStepIndex + 1) / steps.length) * 100)}%
-              </span>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{
-                  width: `${((currentStepIndex + 1) / steps.length) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
+          <DashboardCard className="p-4 xl:hidden">
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Step {currentStepIndex + 1} of {steps.length}
+            </p>
+            <DashboardProgress
+              label={steps[currentStepIndex].label}
+              value={currentStepIndex + 1}
+              max={steps.length}
+            />
+          </DashboardCard>
 
           {/* Two Column Layout */}
-          <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_18rem] xl:gap-10">
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
             {/* Left: Form Content (Wider) */}
             <div className="min-w-0 space-y-5">
               {/* Error Message */}
               {error && (
-                <div
-                  className="rounded-lg border px-4 py-3 flex items-start justify-between gap-3 animate-in fade-in duration-200"
-                  style={{
-                    background: isDark
-                      ? "rgba(239, 68, 68, 0.1)"
-                      : "rgba(239, 68, 68, 0.05)",
-                    borderColor: isDark
-                      ? "rgba(239, 68, 68, 0.3)"
-                      : "rgba(239, 68, 68, 0.2)",
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <AlertCircle
-                      className="w-5 h-5 flex-shrink-0 mt-0.5"
-                      style={{ color: "#DC2626" }}
-                    />
-                    <div className="space-y-1">
-                      <p
-                        className="text-sm font-medium"
-                        style={{ color: "#DC2626" }}
+                <DashboardInlineAlert
+                  tone="danger"
+                  title="This step could not be saved"
+                  message={
+                    error.toLowerCase().includes("not editable")
+                      ? `${error} This draft might already be in review. Start over only if you want to clear this local draft.`
+                      : error
+                  }
+                  action={
+                    error.toLowerCase().includes("not editable") ? (
+                      <DashboardButton
+                        variant="outline"
+                        size="compact"
+                        onClick={handleStartOver}
                       >
-                        {error}
-                      </p>
-                      {error.toLowerCase().includes("not editable") && (
-                        <p
-                          className="text-xs"
-                          style={{ color: "#DC2626", opacity: 0.8 }}
-                        >
-                          This draft might have been submitted already or is no
-                          longer editable. Click &quot;Start Over&quot; above to
-                          clear the draft.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {error.toLowerCase().includes("not editable") && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleStartOver}
-                      className="text-xs border-red-200 text-red-600 hover:bg-red-50 h-8"
-                    >
-                      Start Over
-                    </Button>
-                  )}
-                </div>
+                        Start over
+                      </DashboardButton>
+                    ) : undefined
+                  }
+                />
               )}
 
               {/* Success Message */}
               {success && (
-                <div
-                  className="rounded-lg border px-4 py-3 flex items-start gap-3 animate-in fade-in duration-200"
-                  style={{
-                    background: isDark
-                      ? "rgba(34, 197, 94, 0.1)"
-                      : "rgba(34, 197, 94, 0.05)",
-                    borderColor: isDark
-                      ? "rgba(34, 197, 94, 0.3)"
-                      : "rgba(34, 197, 94, 0.2)",
-                  }}
-                >
-                  <CheckCircle
-                    className="w-4 h-4 flex-shrink-0 mt-0.5"
-                    style={{ color: "#22c55e" }}
-                  />
-                  <p className="text-sm" style={{ color: "#22c55e" }}>
-                    {success}
-                  </p>
-                </div>
+                <DashboardInlineAlert
+                  tone="success"
+                  title="Saved"
+                  message={success}
+                />
               )}
 
               {/* Form Card */}
-              <Card className="supplier-glass-card overflow-hidden rounded-2xl border">
+              <DashboardCard className="overflow-hidden">
                 <div className="p-5 sm:p-7 lg:p-8">
                   <div className="mb-6">
                     <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -1069,9 +1026,9 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
                             style={{
                               background: isDark
-                                ? "rgba(59, 130, 246, 0.1)"
-                                : "rgba(59, 130, 246, 0.05)",
-                              border: `2px dashed ${isDark ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.2)"}`,
+                                ? "color-mix(in srgb, var(--dashboard-action) 10%, transparent)"
+                                : "color-mix(in srgb, var(--dashboard-action) 5%, transparent)",
+                              border: `2px dashed ${isDark ? "color-mix(in srgb, var(--dashboard-action) 30%, transparent)" : "color-mix(in srgb, var(--dashboard-action) 20%, transparent)"}`,
                             }}
                           >
                             <FileText
@@ -1103,24 +1060,26 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                             <div
                               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg"
                               style={{
-                                background: "rgba(34, 197, 94, 0.1)",
-                                border: "1px solid rgba(34, 197, 94, 0.3)",
+                                background:
+                                  "color-mix(in srgb, var(--dashboard-success) 10%, transparent)",
+                                border:
+                                  "1px solid color-mix(in srgb, var(--dashboard-success) 30%, transparent)",
                               }}
                             >
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                              <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-5 h-5 text-[var(--dashboard-success-foreground)]" />
+                              <span className="text-sm font-medium text-[var(--dashboard-success-foreground)]">
                                 Upload complete
                               </span>
                             </div>
                           ) : (
-                            <Button
+                            <DashboardButton
                               onClick={() => setUploadDialogOpen(true)}
-                              size="lg"
+                              size="large"
                               className="gap-2 px-8 py-6 text-base"
                             >
                               <Upload className="w-5 h-5" />
                               Upload Dataset File
-                            </Button>
+                            </DashboardButton>
                           )}
                         </div>
 
@@ -1128,12 +1087,14 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                           <div
                             className="rounded-lg border p-5 max-w-md mx-auto"
                             style={{
-                              background: "rgba(59, 130, 246, 0.05)",
-                              borderColor: "rgba(59, 130, 246, 0.2)",
+                              background:
+                                "color-mix(in srgb, var(--dashboard-action) 5%, transparent)",
+                              borderColor:
+                                "color-mix(in srgb, var(--dashboard-action) 20%, transparent)",
                             }}
                           >
                             <div className="flex items-start gap-3">
-                              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-500" />
+                              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-[var(--dashboard-info-foreground)]" />
                               <div
                                 className="text-sm leading-relaxed"
                                 style={{ color: tokens.textSecondary }}
@@ -1146,14 +1107,18 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 </p>
                                 <ul className="space-y-1.5 list-none">
                                   <li className="flex items-start gap-2">
-                                    <span className="text-blue-500">•</span>
+                                    <span className="text-[var(--dashboard-info-foreground)]">
+                                      •
+                                    </span>
                                     <span>
                                       Supported formats: CSV, JSON, Parquet,
                                       XLSX, ZIP
                                     </span>
                                   </li>
                                   <li className="flex items-start gap-2">
-                                    <span className="text-blue-500">•</span>
+                                    <span className="text-[var(--dashboard-info-foreground)]">
+                                      •
+                                    </span>
                                     <span>
                                       File upload is required to complete your
                                       proposal
@@ -1169,8 +1134,10 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                           <div
                             className="rounded-lg border p-5 max-w-md mx-auto"
                             style={{
-                              background: "rgba(34, 197, 94, 0.06)",
-                              borderColor: "rgba(34, 197, 94, 0.25)",
+                              background:
+                                "color-mix(in srgb, var(--dashboard-success) 6%, transparent)",
+                              borderColor:
+                                "color-mix(in srgb, var(--dashboard-success) 25%, transparent)",
                             }}
                           >
                             <div className="text-center space-y-4">
@@ -1194,20 +1161,22 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 <div
                                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
                                   style={{
-                                    background: "rgba(34, 197, 94, 0.12)",
-                                    border: "1px solid rgba(34, 197, 94, 0.35)",
+                                    background:
+                                      "color-mix(in srgb, var(--dashboard-success) 12%, transparent)",
+                                    border:
+                                      "1px solid color-mix(in srgb, var(--dashboard-success) 35%, transparent)",
                                   }}
                                 >
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                  <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                                  <CheckCircle className="w-4 h-4 text-[var(--dashboard-success-foreground)]" />
+                                  <span className="text-xs font-medium text-[var(--dashboard-success-foreground)]">
                                     Sample upload complete
                                   </span>
                                 </div>
                               ) : null}
 
-                              <Button
+                              <DashboardButton
                                 onClick={() => setSampleUploadDialogOpen(true)}
-                                size="sm"
+                                size="compact"
                                 variant="outline"
                                 className="gap-2"
                               >
@@ -1215,7 +1184,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                                 {sampleFileUploaded
                                   ? "Replace sample file"
                                   : "Upload sample file"}
-                              </Button>
+                              </DashboardButton>
                             </div>
                           </div>
                         )}
@@ -1244,10 +1213,17 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                 </div>
 
                 {/* Navigation Buttons */}
-                <div className="flex flex-col-reverse gap-3 border-t border-border/70 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <DashboardFormActions
+                  className="px-5 sm:px-7"
+                  status={
+                    submitting
+                      ? "Saving this step…"
+                      : `Step ${currentStepIndex + 1} of ${steps.length}`
+                  }
+                >
                   <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                     {currentStepIndex > 0 && (
-                      <Button
+                      <DashboardButton
                         variant="outline"
                         onClick={handleBack}
                         disabled={submitting}
@@ -1255,26 +1231,27 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       >
                         <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
                         Back
-                      </Button>
+                      </DashboardButton>
                     )}
 
                     {(createdProposalId || currentStep !== "basic") && (
-                      <Button
+                      <DashboardButton
                         variant="ghost"
                         onClick={handleStartOver}
                         disabled={submitting}
-                        className="gap-2 px-4 h-11 font-medium transition-all duration-200 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                        className="text-[var(--dashboard-danger-foreground)]"
                       >
                         <RotateCcw className="w-4 h-4" />
                         Start Over
-                      </Button>
+                      </DashboardButton>
                     )}
                   </div>
 
-                  <Button
+                  <DashboardButton
+                    size="large"
                     onClick={handleNext}
-                    disabled={!canGoNext() || submitting}
-                    className="h-11 w-full gap-2 px-7 sm:w-auto"
+                    disabled={submitting}
+                    className="w-full sm:w-auto"
                   >
                     {submitting ? (
                       <>
@@ -1301,14 +1278,14 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                         <ChevronRight className="w-4 h-4 transition-transform duration-200" />
                       </>
                     )}
-                  </Button>
-                </div>
-              </Card>
+                  </DashboardButton>
+                </DashboardFormActions>
+              </DashboardCard>
             </div>
 
             {/* Right: Progress Stepper (Wider, Sticky) */}
-            <aside className="hidden lg:block">
-              <div className="supplier-glass-panel sticky top-6 w-full rounded-2xl border p-5">
+            <aside className="hidden xl:block">
+              <DashboardCard className="sticky top-6 w-full p-5">
                 <h3 className="text-sm font-semibold text-foreground">
                   Proposal progress
                 </h3>
@@ -1325,8 +1302,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       <div
                         className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
                           idx <= currentStepIndex
-                            ? "border-primary/40 bg-primary text-primary-foreground"
-                            : "border-border bg-background/70 text-muted-foreground"
+                            ? "border-[var(--dashboard-indicator)] bg-[var(--dashboard-indicator)] text-primary-foreground"
+                            : "dashboard-tone-neutral"
                         }`}
                       >
                         {idx < currentStepIndex ? "✓" : step.number}
@@ -1335,20 +1312,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       {/* Step Label & Status */}
                       <div className="ml-3 flex min-w-0 flex-col">
                         <div
-                          className="text-sm font-semibold"
-                          style={{
-                            color:
-                              idx <= currentStepIndex
-                                ? tokens.textPrimary
-                                : tokens.textMuted,
-                          }}
+                          className={`text-sm font-semibold ${
+                            idx <= currentStepIndex
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          }`}
                         >
                           {step.label}
                         </div>
-                        <div
-                          className="mt-0.5 text-xs"
-                          style={{ color: tokens.textMuted }}
-                        >
+                        <div className="mt-0.5 text-xs text-muted-foreground">
                           {idx < currentStepIndex
                             ? "Complete"
                             : idx === currentStepIndex
@@ -1360,15 +1332,15 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                       {/* Connecting Line */}
                       {idx < steps.length - 1 && (
                         <div
-                          className="absolute w-px transition-all duration-300"
+                          className={`absolute w-px transition-colors duration-300 motion-reduce:transition-none ${
+                            idx < currentStepIndex
+                              ? "bg-[var(--dashboard-indicator)]"
+                              : "bg-border"
+                          }`}
                           style={{
                             left: "1.125rem",
                             top: "2.25rem",
                             height: "1.25rem",
-                            background:
-                              idx < currentStepIndex
-                                ? "linear-gradient(to bottom, #1a2240, #2a3558)"
-                                : tokens.borderSubtle,
                             zIndex: 0,
                           }}
                         />
@@ -1376,7 +1348,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
                     </div>
                   ))}
                 </div>
-              </div>
+              </DashboardCard>
             </aside>
           </div>
         </div>
@@ -1415,6 +1387,71 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
           }}
         />
       )}
+
+      <DashboardDialog
+        open={startOverDialogOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setStartOverDialogOpen(open);
+        }}
+      >
+        <DashboardDialogContent
+          size="sm"
+          title="Start over?"
+          description={
+            createdProposalId
+              ? "This permanently removes the server draft and its uploaded files."
+              : "This permanently clears the progress saved in this browser."
+          }
+          showCloseButton={!submitting}
+          onEscapeKeyDown={(event) => {
+            if (submitting) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (submitting) event.preventDefault();
+          }}
+          footer={
+            <>
+              <DashboardButton
+                variant="outline"
+                onClick={() => setStartOverDialogOpen(false)}
+                disabled={submitting}
+              >
+                Keep draft
+              </DashboardButton>
+              <DashboardButton
+                variant="destructive"
+                onClick={confirmStartOver}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                    Discarding…
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw aria-hidden="true" />
+                    Discard and start over
+                  </>
+                )}
+              </DashboardButton>
+            </>
+          }
+        >
+          {startOverError ? (
+            <DashboardInlineAlert
+              tone="danger"
+              title="The draft was not discarded"
+              message={startOverError}
+            />
+          ) : (
+            <p className="text-sm leading-6 text-muted-foreground">
+              This cannot be undone. Your marketplace account and published
+              datasets are not affected.
+            </p>
+          )}
+        </DashboardDialogContent>
+      </DashboardDialog>
     </>
   );
 }
