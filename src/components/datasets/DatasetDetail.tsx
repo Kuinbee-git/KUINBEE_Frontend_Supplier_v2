@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { PageBackground } from "@/components/shared";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardInlineAlert,
+} from "@/components/dashboard";
 import {
   DatasetWorkspace,
   isProposalEditable,
@@ -91,6 +94,7 @@ export function DatasetDetail({
   const [pricingData, setPricingData] = useState<DatasetPricingVersion | null>(
     null
   );
+  const [pricingError, setPricingError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({
@@ -127,11 +131,15 @@ export function DatasetDetail({
 
   // --- Pricing fetch ---
   const fetchPricing = useCallback(async () => {
+    setPricingError(null);
     try {
       const response = await getProposalPricing(proposal.dataset.id);
       setPricingData(response.pricing);
     } catch (err) {
       console.error("Failed to fetch pricing", err);
+      setPricingError(
+        "Pricing information could not be loaded. Try again to refresh it."
+      );
     }
   }, [proposal.dataset.id]);
 
@@ -140,10 +148,18 @@ export function DatasetDetail({
 
     getProposalPricing(proposal.dataset.id)
       .then((response) => {
-        if (active) setPricingData(response.pricing);
+        if (active) {
+          setPricingData(response.pricing);
+          setPricingError(null);
+        }
       })
       .catch((err: unknown) => {
         console.error("Failed to fetch pricing", err);
+        if (active) {
+          setPricingError(
+            "Pricing information could not be loaded. Try again to refresh it."
+          );
+        }
       });
 
     return () => {
@@ -198,16 +214,17 @@ export function DatasetDetail({
   };
 
   return (
-    <PageBackground withGrid>
-      <DatasetWorkspace className="relative z-10 max-w-[1380px]">
-        <Button
-          variant="outline"
+    <>
+      <DatasetWorkspace>
+        <DashboardButton
+          variant="ghost"
+          size="compact"
           onClick={() => router.push("/dashboard/datasets")}
-          className="group mb-5 gap-2"
+          className="group -ml-3 w-fit"
         >
           <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
           Back to proposals
-        </Button>
+        </DashboardButton>
 
         <ProposalTitleCard
           title={proposal.dataset.title}
@@ -533,7 +550,7 @@ export function DatasetDetail({
               />
             </section>
 
-            {pricingData && (
+            {(pricingData || pricingError) && (
               <section
                 className="space-y-4"
                 aria-labelledby="commercial-heading"
@@ -554,18 +571,37 @@ export function DatasetDetail({
                     </p>
                   </div>
                 </div>
-                <PricingSection
-                  pricingData={pricingData}
-                  isSampleProposal={isSampleProposal}
-                  onEditPricing={() => setShowPricingDialog(true)}
-                  isDark={isDark}
-                  tokens={tokens}
-                />
+                {pricingError && (
+                  <DashboardInlineAlert
+                    tone="danger"
+                    title="Pricing unavailable"
+                    message={pricingError}
+                    action={
+                      <DashboardButton
+                        type="button"
+                        variant="outline"
+                        size="compact"
+                        onClick={() => void fetchPricing()}
+                      >
+                        Try again
+                      </DashboardButton>
+                    }
+                  />
+                )}
+                {pricingData && (
+                  <PricingSection
+                    pricingData={pricingData}
+                    isSampleProposal={isSampleProposal}
+                    onEditPricing={() => setShowPricingDialog(true)}
+                    isDark={isDark}
+                    tokens={tokens}
+                  />
+                )}
               </section>
             )}
           </main>
 
-          <aside className="order-first space-y-4 xl:order-none xl:sticky xl:top-6">
+          <aside className="space-y-4 xl:sticky xl:top-6">
             {canSubmit && (
               <SubmitForReviewSection
                 verificationStatus={proposal.verification.status}
@@ -585,7 +621,7 @@ export function DatasetDetail({
               tokens={tokens}
             />
             <KdtsScoreCard datasetId={proposal.dataset.id} variant="flat" />
-            <div className="supplier-glass-panel rounded-xl border p-4">
+            <DashboardCard className="p-4">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Workspace rules
               </p>
@@ -593,7 +629,7 @@ export function DatasetDetail({
                 Section saves update the draft only. Submission is always a
                 separate confirmed action from the readiness panel.
               </p>
-            </div>
+            </DashboardCard>
           </aside>
         </div>
       </DatasetWorkspace>
@@ -677,6 +713,6 @@ export function DatasetDetail({
           pricingStatus={pricingData.status}
         />
       )}
-    </PageBackground>
+    </>
   );
 }
