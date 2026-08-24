@@ -8,6 +8,7 @@ import type {
   SupplierInviteResponse,
   SupplierRegistrationRequest,
   SupplierRegistrationResponse,
+  SupplierUser,
   OnboardingStatusResponse,
   SelectSupplierTypeRequest,
   SelectSupplierTypeResponse,
@@ -29,13 +30,27 @@ import type {
   PartialCompleteOnboardingResponse,
 } from "@/types/onboarding.types";
 
+interface SupplierApiError extends Error {
+  code?: string;
+  data?: unknown;
+  status?: number;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 // ===== Helper: API Fetch =====
 async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = endpoint.startsWith("http") ? endpoint : `${API_BASE_URL}${endpoint}`;
-  
+  const url = endpoint.startsWith("http")
+    ? endpoint
+    : `${API_BASE_URL}${endpoint}`;
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -48,46 +63,65 @@ async function apiFetch<T>(
 
     if (!response.ok) {
       // Try to parse error from response
-      const errorData = await response.json().catch(() => null);
-      
-      const error: any = new Error(
-        errorData?.message || `HTTP ${response.status}: ${response.statusText}`
-      );
+      const errorData: unknown = await response.json().catch(() => null);
+      const errorRecord = asRecord(errorData);
+      const nestedError = asRecord(errorRecord?.error);
+      const apiError = nestedError ?? errorRecord;
+      const message =
+        typeof apiError?.message === "string"
+          ? apiError.message
+          : `HTTP ${response.status}: ${response.statusText}`;
+      const code =
+        typeof apiError?.code === "string"
+          ? apiError.code
+          : `HTTP_${response.status}`;
+
+      const error = new Error(message) as SupplierApiError;
       error.status = response.status;
-      error.code = errorData?.code || `HTTP_${response.status}`;
+      error.code = code;
       error.data = errorData;
-      
+
       // CRITICAL: Global 401/403 handler - Force logout and redirect
       if (response.status === 401 || response.status === 403) {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           // Clear auth state immediately
           try {
-            localStorage.removeItem('auth-storage');
-            localStorage.removeItem('kuinbee-supplier-storage');
-            localStorage.removeItem('onboarding-storage');
+            localStorage.removeItem("auth-storage");
+            localStorage.removeItem("kuinbee-supplier-storage");
+            localStorage.removeItem("onboarding-storage");
           } catch {
             // Ignore localStorage errors
           }
-          
+
           // Redirect to login if not already there
-          if (!window.location.pathname.includes('/auth/login')) {
-            window.location.href = '/auth/login';
+          if (!window.location.pathname.includes("/auth/login")) {
+            window.location.href = "/auth/login";
           }
         }
       }
-      
-      console.error(`[API] ${options.method || 'GET'} ${endpoint} failed:`, error);
+
+      console.error(
+        `[API] ${options.method || "GET"} ${endpoint} failed:`,
+        error
+      );
       throw error;
     }
 
     return response.json();
-  } catch (err: any) {
+  } catch (err: unknown) {
     // If error already has status, rethrow
-    if (err.status) throw err;
-    
+    if (
+      err instanceof Error &&
+      "status" in err &&
+      typeof err.status === "number"
+    ) {
+      throw err;
+    }
+
     // Network error or other fetch error
     console.error(`[API] Network error for ${endpoint}:`, err);
-    const error: any = new Error(err.message || "Network error");
+    const message = err instanceof Error ? err.message : "Network error";
+    const error = new Error(message) as SupplierApiError;
     error.code = "NETWORK_ERROR";
     throw error;
   }
@@ -129,8 +163,8 @@ export async function registerSupplier(
 export async function loginSupplier(credentials: {
   email: string;
   password: string;
-}): Promise<{ user: any }> {
-  return apiFetch<{ user: any }>(SUPPLIER_API.LOGIN, {
+}): Promise<{ user: SupplierUser }> {
+  return apiFetch<{ user: SupplierUser }>(SUPPLIER_API.LOGIN, {
     method: "POST",
     body: JSON.stringify(credentials),
   });
@@ -143,10 +177,10 @@ export async function loginSupplier(credentials: {
  * Returns what step is next and progress
  */
 export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
-  const response = await apiFetch<{ success: boolean; data: OnboardingStatusResponse }>(
-    SUPPLIER_API.ONBOARDING_STATUS, 
-    { method: "GET" }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: OnboardingStatusResponse;
+  }>(SUPPLIER_API.ONBOARDING_STATUS, { method: "GET" });
   return response.data;
 }
 
@@ -158,13 +192,13 @@ export async function getOnboardingStatus(): Promise<OnboardingStatusResponse> {
 export async function selectSupplierType(
   data: SelectSupplierTypeRequest
 ): Promise<SelectSupplierTypeResponse> {
-  const response = await apiFetch<{ success: boolean; data: SelectSupplierTypeResponse }>(
-    SUPPLIER_API.SELECT_TYPE,
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: SelectSupplierTypeResponse;
+  }>(SUPPLIER_API.SELECT_TYPE, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -176,13 +210,13 @@ export async function selectSupplierType(
 export async function sendEmailOtp(
   data: SendEmailOtpRequest = { reason: "SUPPLIER_ONBOARDING" }
 ): Promise<SendEmailOtpResponse> {
-  const response = await apiFetch<{ success: boolean; data: SendEmailOtpResponse }>(
-    SUPPLIER_API.SEND_EMAIL_OTP,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: SendEmailOtpResponse;
+  }>(SUPPLIER_API.SEND_EMAIL_OTP, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -192,13 +226,13 @@ export async function sendEmailOtp(
 export async function verifyEmailOtp(
   data: VerifyEmailOtpRequest
 ): Promise<VerifyEmailOtpResponse> {
-  const response = await apiFetch<{ success: boolean; data: VerifyEmailOtpResponse }>(
-    SUPPLIER_API.VERIFY_EMAIL_OTP,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: VerifyEmailOtpResponse;
+  }>(SUPPLIER_API.VERIFY_EMAIL_OTP, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -211,13 +245,13 @@ export async function verifyEmailOtp(
 export async function verifyPan(
   data: VerifyPanRequest
 ): Promise<VerifyPanResponse> {
-  const response = await apiFetch<{ success: boolean; data: VerifyPanResponse }>(
-    SUPPLIER_API.VERIFY_PAN,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: VerifyPanResponse;
+  }>(SUPPLIER_API.VERIFY_PAN, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -231,10 +265,13 @@ export async function getPanAttempts(params?: {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.set("page", params.page.toString());
   if (params?.pageSize) queryParams.set("pageSize", params.pageSize.toString());
-  
+
   const url = `${SUPPLIER_API.PAN_ATTEMPTS}?${queryParams.toString()}`;
-  
-  const response = await apiFetch<{ success: boolean; data: PanAttemptsResponse }>(url, {
+
+  const response = await apiFetch<{
+    success: boolean;
+    data: PanAttemptsResponse;
+  }>(url, {
     method: "GET",
   });
   return response.data;
@@ -246,12 +283,12 @@ export async function getPanAttempts(params?: {
  * Get supplier profile
  */
 export async function getSupplierProfile(): Promise<SupplierProfileResponse> {
-  const response = await apiFetch<{ success: boolean; data: SupplierProfileResponse }>(
-    SUPPLIER_API.GET_PROFILE,
-    {
-      method: "GET",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: SupplierProfileResponse;
+  }>(SUPPLIER_API.GET_PROFILE, {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -261,39 +298,39 @@ export async function getSupplierProfile(): Promise<SupplierProfileResponse> {
 export async function updateSupplierProfile(
   data: UpdateProfileRequest
 ): Promise<UpdateProfileResponse> {
-  const response = await apiFetch<{ success: boolean; data: UpdateProfileResponse }>(
-    SUPPLIER_API.UPDATE_PROFILE,
-    {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: UpdateProfileResponse;
+  }>(SUPPLIER_API.UPDATE_PROFILE, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
 export async function presignSupplierLogoUpload(
   data: PresignSupplierLogoRequest
 ): Promise<PresignSupplierLogoResponse> {
-  const response = await apiFetch<{ success: boolean; data: PresignSupplierLogoResponse }>(
-    SUPPLIER_API.PRESIGN_PROFILE_LOGO,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: PresignSupplierLogoResponse;
+  }>(SUPPLIER_API.PRESIGN_PROFILE_LOGO, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
 export async function completeSupplierLogoUpload(
   data: CompleteSupplierLogoRequest
 ): Promise<CompleteSupplierLogoResponse> {
-  const response = await apiFetch<{ success: boolean; data: CompleteSupplierLogoResponse }>(
-    SUPPLIER_API.COMPLETE_PROFILE_LOGO,
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: CompleteSupplierLogoResponse;
+  }>(SUPPLIER_API.COMPLETE_PROFILE_LOGO, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response.data;
 }
 
@@ -304,9 +341,12 @@ export async function completeSupplierLogoUpload(
  * Validates all required steps are done
  */
 export async function completeOnboarding(): Promise<CompleteOnboardingResponse> {
-  return apiFetch<CompleteOnboardingResponse>(SUPPLIER_API.COMPLETE_ONBOARDING, {
-    method: "POST",
-  });
+  return apiFetch<CompleteOnboardingResponse>(
+    SUPPLIER_API.COMPLETE_ONBOARDING,
+    {
+      method: "POST",
+    }
+  );
 }
 
 /**
@@ -314,12 +354,12 @@ export async function completeOnboarding(): Promise<CompleteOnboardingResponse> 
  * Keeps supplier blocked until admin verifies
  */
 export async function partialCompleteOnboarding(): Promise<PartialCompleteOnboardingResponse> {
-  const response = await apiFetch<{ success: boolean; data: PartialCompleteOnboardingResponse }>(
-    SUPPLIER_API.PARTIAL_COMPLETE_ONBOARDING,
-    {
-      method: "POST",
-    }
-  );
+  const response = await apiFetch<{
+    success: boolean;
+    data: PartialCompleteOnboardingResponse;
+  }>(SUPPLIER_API.PARTIAL_COMPLETE_ONBOARDING, {
+    method: "POST",
+  });
   return response.data;
 }
 
