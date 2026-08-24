@@ -1,153 +1,114 @@
 "use client";
 
-import { useSupplierTokens } from "@/hooks/useSupplierTokens";
-import type { StatsOverview } from "@/types/supplier-stats.types";
-import { getCurrencySymbol, formatCurrencyValue } from "@/lib/utils/currency.utils";
 import {
-    Coins,
-    ShoppingCart,
-    Database,
-    Eye,
-    Star,
-    Clock,
-    TrendingUp,
+  Clock,
+  Coins,
+  Database,
+  Eye,
+  ShoppingCart,
+  Star,
+  TrendingUp,
 } from "lucide-react";
-import { type ReactNode } from "react";
+
+import { DashboardMetricCard } from "@/components/dashboard";
+import { formatCurrencyValue } from "@/lib/utils/currency.utils";
+import type { StatsOverview } from "@/types/supplier-stats.types";
 
 interface StatsOverviewCardsProps {
-    overview: StatsOverview;
-    loading?: boolean;
+  overview: StatsOverview;
+  loading?: boolean;
 }
 
-interface MetricCardProps {
-    icon: ReactNode;
-    label: string;
-    value: string;
-    accentColor: string;
-    subContent?: ReactNode;
-}
-
-function MetricCard({ icon, label, value, accentColor, subContent }: MetricCardProps) {
-    const tokens = useSupplierTokens();
-
-    return (
-        <div
-            className="rounded-xl p-5 transition-all duration-300 hover:scale-[1.02] group"
-            style={{
-                background: tokens.glassBg,
-                backdropFilter: "blur(16px)",
-                WebkitBackdropFilter: "blur(16px)",
-                border: `1px solid ${tokens.glassBorder}`,
-                boxShadow: tokens.glassShadow,
-            }}
-        >
-            <div className="flex items-center gap-3 mb-3">
-                <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                    style={{
-                        background: `${accentColor}15`,
-                        color: accentColor,
-                    }}
-                >
-                    {icon}
-                </div>
-                <p
-                    className="text-xs font-medium uppercase tracking-wider"
-                    style={{ color: tokens.textMuted }}
-                >
-                    {label}
-                </p>
-            </div>
-            <p
-                className="text-2xl font-bold"
-                style={{ color: tokens.textPrimary, lineHeight: "1.2" }}
-            >
-                {value}
-            </p>
-            {subContent && <div className="mt-2">{subContent}</div>}
-        </div>
-    );
-}
-
-export function StatsOverviewCards({ overview, loading }: StatsOverviewCardsProps) {
-    const tokens = useSupplierTokens();
-
-    if (loading) {
-        return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 7 }).map((_, i) => (
-                    <div
-                        key={i}
-                        className="rounded-xl p-5 animate-pulse"
-                        style={{ background: "var(--muted)", height: "120px" }}
-                    />
-                ))}
-            </div>
-        );
-    }
-
-    const isMixed = overview.totalRevenueCurrency === null && (overview.totalRevenueByCurrency?.length ?? 0) > 1;
-
-    // When mixed currencies, show per-currency breakdown as the primary value
-    const revenueValue = isMixed && overview.totalRevenueByCurrency
-        ? overview.totalRevenueByCurrency
-            .map((item) => formatCurrencyValue(item.revenue, item.currency))
-            .join(" · ")
-        : formatCurrencyValue(
-            overview.totalRevenue ?? 0,
-            overview.totalRevenueCurrency
+export function StatsOverviewCards({
+  overview,
+  loading = false,
+}: StatsOverviewCardsProps) {
+  const hasMixedRevenue =
+    overview.totalRevenueCurrency === null &&
+    (overview.totalRevenueByCurrency?.length ?? 0) > 1;
+  const revenueValue =
+    hasMixedRevenue && overview.totalRevenueByCurrency
+      ? overview.totalRevenueByCurrency
+          .map((item) => formatCurrencyValue(item.revenue, item.currency))
+          .join(" · ")
+      : formatCurrencyValue(
+          overview.totalRevenue ?? 0,
+          overview.totalRevenueCurrency
         );
 
-    const metrics: MetricCardProps[] = [
-        {
-            icon: <Coins className="w-5 h-5" />,
-            label: "Total Revenue",
-            value: revenueValue,
-            accentColor: "#10b981",
-        },
-        {
-            icon: <ShoppingCart className="w-5 h-5" />,
-            label: "Total Sales",
-            value: Number(overview.totalSales).toLocaleString(),
-            accentColor: "#4a90e2",
-        },
-        {
-            icon: <Database className="w-5 h-5" />,
-            label: "Active Datasets",
-            value: overview.activeDatasets.toString(),
-            accentColor: "#8b5cf6",
-        },
-        {
-            icon: <Eye className="w-5 h-5" />,
-            label: "Total Views",
-            value: Number(overview.totalViews).toLocaleString(),
-            accentColor: "#f59e0b",
-        },
-        {
-            icon: <Star className="w-5 h-5" />,
-            label: "Avg Quality Score",
-            value: overview.averageQualityScore !== null ? `${Number(overview.averageQualityScore).toFixed(1)}` : "N/A",
-            accentColor: "#ec4899",
-        },
-        {
-            icon: <Clock className="w-5 h-5" />,
-            label: "Pending Validations",
-            value: overview.pendingValidationCount.toString(),
-            accentColor: "#f97316",
-        },
-        {
-            icon: <TrendingUp className="w-5 h-5" />,
-            label: "Conversion Rate",
-            value: `${(Number(overview.conversionRate) * 100).toFixed(2)}%`,
-            accentColor: "#06b6d4",
-        },
-    ];
+  const metrics = [
+    {
+      label: "Total revenue",
+      value: revenueValue,
+      supportingText: hasMixedRevenue
+        ? "Revenue shown by currency"
+        : "Recognized marketplace revenue",
+      icon: Coins,
+    },
+    {
+      label: "Total sales",
+      value: Number(overview.totalSales).toLocaleString(),
+      supportingText: "Completed purchases",
+      icon: ShoppingCart,
+    },
+    {
+      label: "Active datasets",
+      value: overview.activeDatasets.toLocaleString(),
+      supportingText: "Available to marketplace buyers",
+      icon: Database,
+    },
+    {
+      label: "Total views",
+      value: Number(overview.totalViews).toLocaleString(),
+      supportingText: "Marketplace dataset views",
+      icon: Eye,
+    },
+    {
+      label: "Average quality",
+      value:
+        overview.averageQualityScore === null
+          ? "Not available"
+          : Number(overview.averageQualityScore).toFixed(1),
+      supportingText: "Across scored datasets",
+      icon: Star,
+    },
+    {
+      label: "Pending validations",
+      value: overview.pendingValidationCount.toLocaleString(),
+      supportingText: "Awaiting marketplace review",
+      icon: Clock,
+      status:
+        overview.pendingValidationCount > 0
+          ? `${overview.pendingValidationCount} pending`
+          : "Clear",
+      statusTone: overview.pendingValidationCount > 0 ? "warning" : "success",
+    },
+    {
+      label: "Conversion rate",
+      value: `${(Number(overview.conversionRate) * 100).toFixed(2)}%`,
+      supportingText: "Views converted to purchases",
+      icon: TrendingUp,
+    },
+  ] as const;
 
-    return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {metrics.map((metric) => (
-                <MetricCard key={metric.label} {...metric} />
-            ))}
-        </div>
-    );
+  return (
+    <section
+      aria-label="Analytics summary"
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+    >
+      {metrics.map((metric) => (
+        <DashboardMetricCard
+          key={metric.label}
+          label={metric.label}
+          value={metric.value}
+          supportingText={metric.supportingText}
+          icon={metric.icon}
+          status={"status" in metric ? metric.status : undefined}
+          statusTone={"statusTone" in metric ? metric.statusTone : undefined}
+          loading={loading}
+          loadingLabel={`Loading ${metric.label.toLowerCase()}`}
+        />
+      ))}
+    </section>
+  );
 }
