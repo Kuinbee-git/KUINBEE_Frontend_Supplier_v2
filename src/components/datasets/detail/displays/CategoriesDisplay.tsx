@@ -1,14 +1,19 @@
-'use client';
+"use client";
 
-import { Label } from '@/components/ui/label';
+import { Label } from "@/components/ui/label";
+import type { DatasetDetailTokens } from "../detailTokens";
 
 interface CategoriesDisplayProps {
   categoryIds: string[];
-  tokens: any;
+  tokens: DatasetDetailTokens;
   isDark: boolean;
 }
 
-export function CategoriesDisplay({ categoryIds, tokens, isDark }: CategoriesDisplayProps) {
+export function CategoriesDisplay({
+  categoryIds,
+  tokens,
+  isDark,
+}: CategoriesDisplayProps) {
   return (
     <div className="space-y-2">
       <Label style={{ color: tokens.textSecondary }}>Category IDs</Label>
@@ -18,9 +23,12 @@ export function CategoriesDisplay({ categoryIds, tokens, isDark }: CategoriesDis
             key={index}
             className="px-3 py-1 text-xs font-mono rounded-full"
             style={{
-              background: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
-              color: '#3b82f6',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              background: isDark
+                ? "color-mix(in srgb, var(--dashboard-action) 15%, transparent)"
+                : "color-mix(in srgb, var(--dashboard-action) 10%, transparent)",
+              color: "var(--dashboard-info-foreground)",
+              border:
+                "1px solid color-mix(in srgb, var(--dashboard-action) 30%, transparent)",
             }}
           >
             {categoryId}
