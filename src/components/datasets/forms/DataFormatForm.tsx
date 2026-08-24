@@ -1,16 +1,24 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { StyledSelect } from '@/components/datasets/shared/StyledSelect';
-import { getDatasetThemeTokens } from '@/constants/dataset.constants';
-import { Save, X, AlertCircle, CheckCircle } from 'lucide-react';
-import { upsertDataFormatInfo } from '@/lib/api';
-import { ENCODING_TYPES } from '@/types/dataset-proposal.types';
-import type { DataFormatInfo, UpsertDataFormatRequest, UpsertDataFormatResponse, FileFormat, CompressionType, EncodingType } from '@/types/dataset-proposal.types';
+import { useState } from "react";
+import { DashboardCard } from "@/components/dashboard";
+import { DashboardButton } from "@/components/dashboard";
+import { Label } from "@/components/ui/label";
+import { DashboardInput } from "@/components/dashboard";
+import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
+import { getDatasetThemeTokens } from "@/constants/dataset.constants";
+import { Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { upsertDataFormatInfo } from "@/lib/api";
+import { ENCODING_TYPES } from "@/types/dataset-proposal.types";
+import type {
+  DataFormatInfo,
+  UpsertDataFormatRequest,
+  UpsertDataFormatResponse,
+  FileFormat,
+  CompressionType,
+  EncodingType,
+} from "@/types/dataset-proposal.types";
+import { toDatasetUiError } from "../shared/datasetUiError";
 
 type DataFormatInitialData = {
   fileFormat?: string | null;
@@ -27,15 +35,34 @@ interface DataFormatFormProps {
   isDark?: boolean;
   onSuccess?: (data: DataFormatInfo) => void;
   onCancel?: () => void;
-  onSubmitData?: (datasetId: string, data: UpsertDataFormatRequest) => Promise<UpsertDataFormatResponse>;
+  onSubmitData?: (
+    datasetId: string,
+    data: UpsertDataFormatRequest
+  ) => Promise<UpsertDataFormatResponse>;
 }
 
 const FILE_FORMATS: FileFormat[] = [
-  'CSV', 'JSON', 'EXCEL', 'PARQUET', 'SQL', 'XML', 'TSV', 'AVRO', 'HDF5', 'PICKLE', 'FEATHER', 'OTHER'
+  "CSV",
+  "JSON",
+  "EXCEL",
+  "PARQUET",
+  "SQL",
+  "XML",
+  "TSV",
+  "AVRO",
+  "HDF5",
+  "PICKLE",
+  "FEATHER",
+  "OTHER",
 ];
 
 const COMPRESSION_TYPES: CompressionType[] = [
-  'NONE', 'ZIP', 'GZIP', 'BZIP2', 'TAR', 'RAR'
+  "NONE",
+  "ZIP",
+  "GZIP",
+  "BZIP2",
+  "TAR",
+  "RAR",
 ];
 
 export function DataFormatForm({
@@ -50,7 +77,7 @@ export function DataFormatForm({
     if (value && ENCODING_TYPES.includes(value as EncodingType)) {
       return value as EncodingType;
     }
-    return 'UTF-8';
+    return "UTF-8";
   };
 
   const tokens = getDatasetThemeTokens(isDark);
@@ -59,15 +86,19 @@ export function DataFormatForm({
   const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState<UpsertDataFormatRequest>({
-    fileFormat: (initialData?.fileFormat as FileFormat) || 'CSV',
+    fileFormat: (initialData?.fileFormat as FileFormat) || "CSV",
     rows: initialData?.rows || 0,
     cols: initialData?.cols || 0,
-    fileSize: initialData?.fileSize || '',
-    compressionType: (initialData?.compressionType as CompressionType) || 'NONE',
+    fileSize: initialData?.fileSize || "",
+    compressionType:
+      (initialData?.compressionType as CompressionType) || "NONE",
     encoding: normalizeEncoding(initialData?.encoding),
   });
 
-  const handleFieldChange = (field: keyof UpsertDataFormatRequest, value: any) => {
+  const handleFieldChange = <K extends keyof UpsertDataFormatRequest>(
+    field: K,
+    value: UpsertDataFormatRequest[K]
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setError(null);
     setSuccess(false);
@@ -78,15 +109,15 @@ export function DataFormatForm({
       formData.fileFormat &&
       formData.rows > 0 &&
       formData.cols > 0 &&
-      formData.fileSize.trim() !== ''
+      formData.fileSize.trim() !== ""
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isFormValid()) {
-      setError('Please fill in all required fields with valid values');
+      setError("Please fill in all required fields with valid values");
       return;
     }
 
@@ -95,18 +126,21 @@ export function DataFormatForm({
     setSuccess(false);
 
     try {
-      const response = await (onSubmitData ? onSubmitData(datasetId, formData) : upsertDataFormatInfo(datasetId, formData));
+      const response = await (onSubmitData
+        ? onSubmitData(datasetId, formData)
+        : upsertDataFormatInfo(datasetId, formData));
       setSuccess(true);
-      
+
       if (onSuccess) {
         onSuccess(response.dataFormat);
       }
 
       // Auto-hide success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      console.error('Failed to save data format:', err);
-      setError(err.message || 'Failed to save data format');
+    } catch (err: unknown) {
+      console.error("Failed to save data format:", err);
+      const apiError = toDatasetUiError(err);
+      setError(apiError.message || "Failed to save data format");
     } finally {
       setSubmitting(false);
     }
@@ -118,11 +152,12 @@ export function DataFormatForm({
     } else {
       // Reset to initial data
       setFormData({
-        fileFormat: (initialData?.fileFormat as FileFormat) || 'CSV',
+        fileFormat: (initialData?.fileFormat as FileFormat) || "CSV",
         rows: initialData?.rows || 0,
         cols: initialData?.cols || 0,
-        fileSize: initialData?.fileSize || '',
-        compressionType: (initialData?.compressionType as CompressionType) || 'NONE',
+        fileSize: initialData?.fileSize || "",
+        compressionType:
+          (initialData?.compressionType as CompressionType) || "NONE",
         encoding: normalizeEncoding(initialData?.encoding),
       });
       setError(null);
@@ -131,7 +166,7 @@ export function DataFormatForm({
   };
 
   return (
-    <Card
+    <DashboardCard
       className="border overflow-hidden"
       style={{
         background: tokens.surfaceCard,
@@ -140,8 +175,14 @@ export function DataFormatForm({
     >
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6 pb-4 border-b" style={{ borderColor: tokens.borderSubtle }}>
-          <h2 className="text-lg font-semibold mb-1" style={{ color: tokens.textPrimary }}>
+        <div
+          className="mb-6 pb-4 border-b"
+          style={{ borderColor: tokens.borderSubtle }}
+        >
+          <h2
+            className="text-lg font-semibold mb-1"
+            style={{ color: tokens.textPrimary }}
+          >
             Data Format & Structure
           </h2>
           <p className="text-sm" style={{ color: tokens.textMuted }}>
@@ -157,14 +198,30 @@ export function DataFormatForm({
               <div
                 className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
                 style={{
-                  background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-                  borderColor: isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+                  background: isDark
+                    ? "color-mix(in srgb, var(--dashboard-success) 10%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-success) 5%, transparent)",
+                  borderColor: isDark
+                    ? "color-mix(in srgb, var(--dashboard-success) 30%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-success) 20%, transparent)",
                 }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34, 197, 94, 0.15)' }}>
-                  <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--dashboard-success) 15%, transparent)",
+                  }}
+                >
+                  <CheckCircle
+                    className="w-4 h-4"
+                    style={{ color: "var(--dashboard-success-foreground)" }}
+                  />
                 </div>
-                <p className="text-sm font-medium" style={{ color: '#22c55e' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--dashboard-success-foreground)" }}
+                >
                   Data format saved successfully!
                 </p>
               </div>
@@ -175,14 +232,30 @@ export function DataFormatForm({
               <div
                 className="rounded-xl border px-4 py-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200"
                 style={{
-                  background: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                  background: isDark
+                    ? "color-mix(in srgb, var(--dashboard-danger) 10%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-danger) 5%, transparent)",
+                  borderColor: isDark
+                    ? "color-mix(in srgb, var(--dashboard-danger) 30%, transparent)"
+                    : "color-mix(in srgb, var(--dashboard-danger) 20%, transparent)",
                 }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-cente150 r justify-center flex-shrink-0" style={{ background: 'rgba(239, 68, 68, 0.15)' }}>
-                  <AlertCircle className="w-4 h-4" style={{ color: '#ef4444' }} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-cente150 r justify-center flex-shrink-0"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--dashboard-danger) 15%, transparent)",
+                  }}
+                >
+                  <AlertCircle
+                    className="w-4 h-4"
+                    style={{ color: "var(--dashboard-danger-foreground)" }}
+                  />
                 </div>
-                <p className="text-sm font-medium" style={{ color: '#ef4444' }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--dashboard-danger-foreground)" }}
+                >
                   {error}
                 </p>
               </div>
@@ -195,24 +268,47 @@ export function DataFormatForm({
           <div
             className="rounded-xl border p-5 space-y-5"
             style={{
-              background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+              background: isDark
+                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
+                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
               borderColor: tokens.borderSubtle,
             }}
           >
-            <div className="flex items-center gap-2 pb-3 border-b" style={{ borderColor: tokens.borderSubtle }}>
-              <span className="text-sm font-medium" style={{ color: tokens.textPrimary }}>File Information</span>
+            <div
+              className="flex items-center gap-2 pb-3 border-b"
+              style={{ borderColor: tokens.borderSubtle }}
+            >
+              <span
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
+                File Information
+              </span>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {/* File Format */}
               <div className="space-y-2">
-                <Label htmlFor="fileFormat" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                  File Format <span className="text-red-500">*</span>
+                <Label
+                  htmlFor="fileFormat"
+                  className="text-sm font-medium"
+                  style={{ color: tokens.textPrimary }}
+                >
+                  File Format{" "}
+                  <span className="text-[var(--dashboard-danger-foreground)]">
+                    *
+                  </span>
                 </Label>
-                <StyledSelect
-                  options={FILE_FORMATS.map(format => ({ label: format, value: format }))}
+                <DatasetSelect
+                  triggerId="fileFormat"
+                  options={FILE_FORMATS.map((format) => ({
+                    label: format,
+                    value: format,
+                  }))}
                   value={formData.fileFormat}
-                  onValueChange={(value) => handleFieldChange('fileFormat', value as FileFormat)}
+                  onValueChange={(value) =>
+                    handleFieldChange("fileFormat", value as FileFormat)
+                  }
                   disabled={submitting}
                   tokens={tokens}
                   isDark={isDark}
@@ -221,13 +317,22 @@ export function DataFormatForm({
 
               {/* File Size */}
               <div className="space-y-2">
-                <Label htmlFor="fileSize" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                  File Size <span className="text-red-500">*</span>
+                <Label
+                  htmlFor="fileSize"
+                  className="text-sm font-medium"
+                  style={{ color: tokens.textPrimary }}
+                >
+                  File Size{" "}
+                  <span className="text-[var(--dashboard-danger-foreground)]">
+                    *
+                  </span>
                 </Label>
-                <Input
+                <DashboardInput
                   id="fileSize"
                   value={formData.fileSize}
-                  onChange={(e) => handleFieldChange('fileSize', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("fileSize", e.target.value)
+                  }
                   placeholder="e.g., 10.5, 2.3"
                   disabled={submitting}
                   required
@@ -246,26 +351,45 @@ export function DataFormatForm({
           <div
             className="rounded-xl border p-5 space-y-5"
             style={{
-              background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+              background: isDark
+                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
+                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
               borderColor: tokens.borderSubtle,
             }}
           >
-            <div className="flex items-center gap-2 pb-3 border-b" style={{ borderColor: tokens.borderSubtle }}>
-              <span className="text-sm font-medium" style={{ color: tokens.textPrimary }}>Data Structure</span>
+            <div
+              className="flex items-center gap-2 pb-3 border-b"
+              style={{ borderColor: tokens.borderSubtle }}
+            >
+              <span
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
+                Data Structure
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {/* Rows */}
               <div className="space-y-2">
-                <Label htmlFor="rows" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                  Number of Rows <span className="text-red-500">*</span>
+                <Label
+                  htmlFor="rows"
+                  className="text-sm font-medium"
+                  style={{ color: tokens.textPrimary }}
+                >
+                  Number of Rows{" "}
+                  <span className="text-[var(--dashboard-danger-foreground)]">
+                    *
+                  </span>
                 </Label>
-                <Input
+                <DashboardInput
                   id="rows"
                   type="number"
                   min="1"
                   value={formData.rows}
-                  onChange={(e) => handleFieldChange('rows', parseInt(e.target.value, 10) || 0)}
+                  onChange={(e) =>
+                    handleFieldChange("rows", parseInt(e.target.value, 10) || 0)
+                  }
                   placeholder="e.g., 10000"
                   disabled={submitting}
                   required
@@ -280,15 +404,24 @@ export function DataFormatForm({
 
               {/* Columns */}
               <div className="space-y-2">
-                <Label htmlFor="cols" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
-                  Number of Columns <span className="text-red-500">*</span>
+                <Label
+                  htmlFor="cols"
+                  className="text-sm font-medium"
+                  style={{ color: tokens.textPrimary }}
+                >
+                  Number of Columns{" "}
+                  <span className="text-[var(--dashboard-danger-foreground)]">
+                    *
+                  </span>
                 </Label>
-                <Input
+                <DashboardInput
                   id="cols"
                   type="number"
                   min="1"
                   value={formData.cols}
-                  onChange={(e) => handleFieldChange('cols', parseInt(e.target.value, 10) || 0)}
+                  onChange={(e) =>
+                    handleFieldChange("cols", parseInt(e.target.value, 10) || 0)
+                  }
                   placeholder="e.g., 25"
                   disabled={submitting}
                   required
@@ -307,26 +440,53 @@ export function DataFormatForm({
           <div
             className="rounded-xl border p-5 space-y-5"
             style={{
-              background: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(26, 34, 64, 0.02)',
+              background: isDark
+                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
+                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
               borderColor: tokens.borderSubtle,
             }}
           >
-            <div className="flex items-center gap-2 pb-3 border-b" style={{ borderColor: tokens.borderSubtle }}>
-              <span className="text-sm font-medium" style={{ color: tokens.textPrimary }}>Technical Details</span>
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: tokens.inputBg, color: tokens.textMuted }}>Optional</span>
+            <div
+              className="flex items-center gap-2 pb-3 border-b"
+              style={{ borderColor: tokens.borderSubtle }}
+            >
+              <span
+                className="text-sm font-medium"
+                style={{ color: tokens.textPrimary }}
+              >
+                Technical Details
+              </span>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full"
+                style={{ background: tokens.inputBg, color: tokens.textMuted }}
+              >
+                Optional
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-
               {/* Compression Type */}
               <div className="space-y-2">
-                <Label htmlFor="compressionType" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                <Label
+                  htmlFor="compressionType"
+                  className="text-sm font-medium"
+                  style={{ color: tokens.textPrimary }}
+                >
                   Compression Type
                 </Label>
-                <StyledSelect
-                  options={COMPRESSION_TYPES.map(type => ({ label: type === 'NONE' ? 'None' : type, value: type }))}
-                  value={formData.compressionType || 'NONE'}
-                  onValueChange={(value) => handleFieldChange('compressionType', value as CompressionType)}
+                <DatasetSelect
+                  triggerId="compressionType"
+                  options={COMPRESSION_TYPES.map((type) => ({
+                    label: type === "NONE" ? "None" : type,
+                    value: type,
+                  }))}
+                  value={formData.compressionType || "NONE"}
+                  onValueChange={(value) =>
+                    handleFieldChange(
+                      "compressionType",
+                      value as CompressionType
+                    )
+                  }
                   disabled={submitting}
                   tokens={tokens}
                   isDark={isDark}
@@ -335,13 +495,23 @@ export function DataFormatForm({
 
               {/* Encoding */}
               <div className="space-y-2">
-                <Label htmlFor="encoding" className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+                <Label
+                  htmlFor="encoding"
+                  className="text-sm font-medium"
+                  style={{ color: tokens.textPrimary }}
+                >
                   Encoding
                 </Label>
-                <StyledSelect
-                  options={ENCODING_TYPES.map((encoding) => ({ label: encoding, value: encoding }))}
-                  value={formData.encoding || 'UTF-8'}
-                  onValueChange={(value) => handleFieldChange('encoding', value as EncodingType)}
+                <DatasetSelect
+                  triggerId="encoding"
+                  options={ENCODING_TYPES.map((encoding) => ({
+                    label: encoding,
+                    value: encoding,
+                  }))}
+                  value={formData.encoding || "UTF-8"}
+                  onValueChange={(value) =>
+                    handleFieldChange("encoding", value as EncodingType)
+                  }
                   disabled={submitting}
                   tokens={tokens}
                   isDark={isDark}
@@ -351,41 +521,45 @@ export function DataFormatForm({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-6 border-t" style={{ borderColor: tokens.borderSubtle }}>
-            <Button
+          <div
+            className="flex items-center gap-3 pt-6 border-t"
+            style={{ borderColor: tokens.borderSubtle }}
+          >
+            <DashboardButton
               type="submit"
               disabled={!isFormValid() || submitting}
-              className="h-11 px-6 font-medium transition-all duration-200 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] text-white"
+              className="h-11 px-6 font-medium"
               style={{
-                background: isFormValid() && !submitting
-                  ? '#2a3558'
-                  : 'rgba(156, 163, 175, 0.3)',
+                background:
+                  isFormValid() && !submitting
+                    ? "var(--dashboard-button-primary-background)"
+                    : "color-mix(in srgb, var(--dashboard-text-muted) 30%, transparent)",
               }}
             >
               <Save className="w-4 h-4 mr-2" />
-              {submitting ? 'Saving...' : 'Save Format'}
-            </Button>
+              {submitting ? "Saving..." : "Save Format"}
+            </DashboardButton>
 
             {onCancel && (
-              <Button
+              <DashboardButton
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
                 disabled={submitting}
-                className="h-11 px-5 font-medium transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+                className="h-11 px-5 font-medium"
                 style={{
-                  background: tokens.glassBg || 'transparent',
+                  background: tokens.glassBg || "transparent",
                   border: `1px solid ${tokens.glassBorder || tokens.inputBorder}`,
                   color: tokens.textPrimary,
                 }}
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
-              </Button>
+              </DashboardButton>
             )}
           </div>
         </form>
       </div>
-    </Card>
+    </DashboardCard>
   );
 }
