@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard";
 import { DatasetStatusBadge } from "../shared";
 import { FileText } from "lucide-react";
 import type { VerificationStatus } from "@/types/dataset-proposal.types";
@@ -21,10 +21,10 @@ export function ProposalTitleCard({
   isDark,
 }: ProposalTitleCardProps) {
   return (
-    <Card className="supplier-glass-card overflow-hidden rounded-2xl border">
+    <DashboardCard className="overflow-hidden">
       <div className="p-5 sm:p-7">
         <div className="flex items-start gap-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-12">
+          <div className="dashboard-tone-neutral flex size-11 shrink-0 items-center justify-center rounded-xl border sm:size-12">
             <FileText className="size-5 sm:size-6" />
           </div>
           <div className="min-w-0 flex-1">
@@ -36,13 +36,13 @@ export function ProposalTitleCard({
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
               <DatasetStatusBadge status={verificationStatus} isDark={isDark} />
-              <span className="rounded-full border border-border/80 bg-background/50 px-2.5 py-1 font-mono text-xs text-muted-foreground">
+              <span className="dashboard-tone-neutral rounded-full border px-2.5 py-1 font-mono text-xs">
                 {datasetUniqueId}
               </span>
             </div>
           </div>
         </div>
       </div>
-    </Card>
+    </DashboardCard>
   );
 }
