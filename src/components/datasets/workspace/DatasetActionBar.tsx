@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { DashboardCard } from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 
 export function DatasetActionBar({
@@ -16,15 +17,13 @@ export function DatasetActionBar({
   return (
     <section
       aria-label={label}
-      className={cn(
-        "supplier-glass-panel rounded-xl border p-3",
-        sticky && "sticky bottom-3 z-20 backdrop-blur-xl",
-        className
-      )}
+      className={cn(sticky && "sticky bottom-3 z-20", className)}
     >
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-        {children}
-      </div>
+      <DashboardCard className="p-3">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+          {children}
+        </div>
+      </DashboardCard>
     </section>
   );
 }
