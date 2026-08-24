@@ -13,7 +13,7 @@ import {
   TableProperties,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { DashboardButton } from "@/components/dashboard";
 
 type EditableStep =
   | "basic"
@@ -125,9 +125,9 @@ export function ReviewStep({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.07] p-4 sm:p-5">
+      <div className="rounded-xl border dashboard-tone-success p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg dashboard-tone-success border">
             <ShieldCheck className="size-5" aria-hidden="true" />
           </span>
           <div>
@@ -165,7 +165,7 @@ export function ReviewStep({
                     {item.detail}
                   </p>
                 </div>
-                <Button
+                <DashboardButton
                   type="button"
                   variant="ghost"
                   size="icon"
@@ -174,7 +174,7 @@ export function ReviewStep({
                   aria-label={`Edit ${item.title}`}
                 >
                   <Pencil className="size-3.5" />
-                </Button>
+                </DashboardButton>
               </div>
             </section>
           );
