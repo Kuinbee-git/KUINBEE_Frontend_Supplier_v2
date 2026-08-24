@@ -3,15 +3,15 @@
  * Dropdown for selecting a source with option to create new
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { StyledSelect } from '@/components/datasets/shared';
-import { Button } from '@/components/ui/button';
-import { listMySources } from '@/lib/api/catalog';
-import { SourcesDialog } from './SourcesDialog';
-import type { Source } from '@/types/catalog.types';
-import { AlertCircle, Loader2, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback, useId } from "react";
+import { DashboardButton, DashboardInlineAlert } from "@/components/dashboard";
+import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
+import { listMySources } from "@/lib/api/catalog";
+import { SourcesDialog } from "./SourcesDialog";
+import type { Source } from "@/types/catalog.types";
+import { Loader2, Plus } from "lucide-react";
 
 interface SourcesSelectProps {
   value: string;
@@ -19,7 +19,8 @@ interface SourcesSelectProps {
   onSourceCreated?: (source: Source) => void;
   disabled?: boolean;
   error?: string | null;
-  tokens?: any;
+  triggerId?: string;
+  tokens?: unknown;
   allowCreate?: boolean;
   isDark?: boolean;
 }
@@ -30,10 +31,11 @@ export function SourcesSelect({
   onSourceCreated,
   disabled = false,
   error = null,
-  tokens,
+  triggerId,
   allowCreate = true,
-  isDark = false,
 }: SourcesSelectProps) {
+  const generatedTriggerId = useId();
+  const resolvedTriggerId = triggerId ?? generatedTriggerId;
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -45,9 +47,13 @@ export function SourcesSelect({
       setFetchError(null);
       const response = await listMySources({ pageSize: 100 });
       setSources(response.items || []);
-    } catch (err: any) {
-      console.error('Failed to fetch sources:', err);
-      setFetchError(err.message || 'Failed to load sources');
+    } catch (err: unknown) {
+      console.error("Failed to fetch sources:", err);
+      setFetchError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to load sources"
+      );
       setSources([]);
     } finally {
       setLoading(false);
@@ -58,62 +64,77 @@ export function SourcesSelect({
     fetchSources();
   }, [fetchSources]);
 
-  const handleSourceCreated = useCallback((source: Source) => {
-    setSources((prev) => [source, ...prev]);
-    onValueChange(source.id);
-    onSourceCreated?.(source);
-  }, [onValueChange, onSourceCreated]);
+  const handleSourceCreated = useCallback(
+    (source: Source) => {
+      setSources((prev) => [source, ...prev]);
+      onValueChange(source.id);
+      onSourceCreated?.(source);
+    },
+    [onValueChange, onSourceCreated]
+  );
 
   const displayError = error || fetchError;
-  const hasNoSources = sources.length === 0 && !loading;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium" style={{ color: tokens?.textPrimary }}>
-          Source <span className="text-red-500">*</span>
+        <label
+          htmlFor={resolvedTriggerId}
+          className="text-sm font-medium text-foreground"
+        >
+          Source
+          <span
+            className="ml-1 text-[var(--dashboard-danger-foreground)]"
+            aria-hidden="true"
+          >
+            *
+          </span>
+          <span className="sr-only"> (required)</span>
         </label>
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {loading && (
+          <span role="status" className="inline-flex items-center">
+            <Loader2
+              className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading sources</span>
+          </span>
+        )}
       </div>
 
-      {/* Show dropdown */}
-      <>
-        <StyledSelect
-          value={value}
-          onValueChange={onValueChange}
-          options={sources.map(source => ({ label: source.name, value: source.id }))}
-          placeholder={loading ? 'Loading sources...' : 'Select a source'}
-          isDark={isDark}
-          tokens={tokens}
-        />
+      <DatasetSelect
+        value={value}
+        onValueChange={onValueChange}
+        triggerId={resolvedTriggerId}
+        options={sources.map((source) => ({
+          label: source.name,
+          value: source.id,
+        }))}
+        placeholder={loading ? "Loading sources..." : "Select a source"}
+        ariaLabel="Dataset source"
+        disabled={disabled || loading}
+      />
 
-        {/* Create New Button */}
-        {allowCreate && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setDialogOpen(true)}
-            className="w-full justify-center gap-2 h-10 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95"
-            style={{
-              background: tokens?.glassBg || (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.88)'),
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              border: `1.5px solid ${tokens?.glassBorder || (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)')}`,
-              boxShadow: tokens?.glassShadow || (isDark ? '0 8px 24px rgba(0, 0, 0, 0.3)' : '0 8px 24px rgba(26, 34, 64, 0.08)'),
-              color: tokens?.textPrimary || (isDark ? '#ffffff' : '#1a2240'),
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            {sources.length === 0 ? 'Create First Source' : 'Create New Source'}
-          </Button>
-        )}
-      </>
+      {allowCreate && (
+        <DashboardButton
+          size="compact"
+          variant="outline"
+          onClick={() => setDialogOpen(true)}
+          disabled={disabled}
+          className="w-full"
+        >
+          <Plus aria-hidden="true" />
+          {sources.length === 0 ? "Create first source" : "Create new source"}
+        </DashboardButton>
+      )}
 
       {displayError && (
-        <div className="flex items-center gap-2 text-sm text-red-500">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{displayError}</span>
-        </div>
+        <DashboardInlineAlert
+          tone="danger"
+          title="Sources unavailable"
+          message={displayError}
+          className="py-2.5"
+        />
       )}
 
       {/* Sources Dialog */}
@@ -121,8 +142,6 @@ export function SourcesSelect({
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSuccess={handleSourceCreated}
-        isDark={tokens?.isDark}
-        tokens={tokens}
       />
     </div>
   );
