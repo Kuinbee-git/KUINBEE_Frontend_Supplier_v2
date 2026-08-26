@@ -21,7 +21,9 @@ import {
   DashboardDialogClose,
   DashboardDialogContent,
   DashboardErrorState,
+  DashboardField,
   DashboardFormLayout,
+  DashboardInput,
   DashboardInlineAlert,
   DashboardLoadingState,
   DashboardPage,
@@ -30,7 +32,8 @@ import {
   DashboardStatusBadge,
   type DashboardTone,
 } from "@/components/dashboard";
-import { getOnboardingStatus } from "@/lib/api";
+import { changeSupplierPassword, getOnboardingStatus } from "@/lib/api";
+import { validatePasswords } from "@/lib/utils/auth.utils";
 import type {
   OnboardingStatusResponse,
   VerificationStatus,
@@ -145,6 +148,14 @@ export function SupplierAccount({
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [passwordChangeError, setPasswordChangeError] = React.useState<
+    string | null
+  >(null);
+  const [passwordChanged, setPasswordChanged] = React.useState(false);
+  const [isChangingPassword, setIsChangingPassword] = React.useState(false);
   const logoutButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const loadOnboardingStatus = React.useCallback(async () => {
@@ -163,6 +174,40 @@ export function SupplierAccount({
   React.useEffect(() => {
     void loadOnboardingStatus();
   }, [loadOnboardingStatus]);
+
+  const handlePasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordChangeError(null);
+    setPasswordChanged(false);
+
+    if (!currentPassword) {
+      setPasswordChangeError("Enter your current password.");
+      return;
+    }
+
+    const validationError = validatePasswords(newPassword, confirmPassword);
+    if (validationError) {
+      setPasswordChangeError(validationError);
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changeSupplierPassword({ currentPassword, newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordChanged(true);
+    } catch (requestError) {
+      setPasswordChangeError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Failed to change the password. Please try again."
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -357,20 +402,88 @@ export function SupplierAccount({
           <DashboardCardHeader>
             <DashboardCardTitle>Password and security</DashboardCardTitle>
             <DashboardCardDescription>
-              Recover access securely without showing a false password-update
-              state.
+              Change your password while keeping your supplier session active.
             </DashboardCardDescription>
           </DashboardCardHeader>
           <DashboardCardContent className="space-y-4">
-            <DashboardInlineAlert
-              tone="info"
-              icon={KeyRound}
-              title="Password changes are handled through account recovery"
-              message="A direct password-change action is not currently available in the supplier workspace. Use the verified recovery flow if you need a new password."
-            />
-            <DashboardButton asChild variant="outline">
-              <Link href="/auth/forgot-password">Reset password securely</Link>
-            </DashboardButton>
+            <form className="space-y-4" onSubmit={handlePasswordChange}>
+              <DashboardField label="Current password" required>
+                {(controlProps) => (
+                  <DashboardInput
+                    {...controlProps}
+                    type="password"
+                    value={currentPassword}
+                    autoComplete="current-password"
+                    disabled={isChangingPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                  />
+                )}
+              </DashboardField>
+
+              <DashboardField
+                label="New password"
+                description="Use between 8 and 128 characters."
+                required
+              >
+                {(controlProps) => (
+                  <DashboardInput
+                    {...controlProps}
+                    type="password"
+                    value={newPassword}
+                    autoComplete="new-password"
+                    disabled={isChangingPassword}
+                    minLength={8}
+                    maxLength={128}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                  />
+                )}
+              </DashboardField>
+
+              <DashboardField label="Confirm new password" required>
+                {(controlProps) => (
+                  <DashboardInput
+                    {...controlProps}
+                    type="password"
+                    value={confirmPassword}
+                    autoComplete="new-password"
+                    disabled={isChangingPassword}
+                    minLength={8}
+                    maxLength={128}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                )}
+              </DashboardField>
+
+              {passwordChangeError ? (
+                <DashboardInlineAlert
+                  tone="danger"
+                  title="Password was not changed"
+                  message={passwordChangeError}
+                />
+              ) : null}
+
+              {passwordChanged ? (
+                <DashboardInlineAlert
+                  tone="success"
+                  icon={KeyRound}
+                  title="Password changed"
+                  message="Use the new password the next time you sign in."
+                />
+              ) : null}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <DashboardButton type="submit" disabled={isChangingPassword}>
+                  {isChangingPassword
+                    ? "Changing password..."
+                    : "Change password"}
+                </DashboardButton>
+                <DashboardButton asChild variant="link">
+                  <Link href="/auth/forgot-password">
+                    Forgot your current password?
+                  </Link>
+                </DashboardButton>
+              </div>
+            </form>
           </DashboardCardContent>
         </DashboardCard>
       </DashboardFormLayout>
