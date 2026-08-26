@@ -1,30 +1,34 @@
 "use client";
 
-import { useState } from 'react';
-import { useAuthTokens } from '@/hooks/useAuthTokens';
-import { validateEmail, validatePasswords } from '@/lib/utils/auth.utils';
-import { AuthAlert } from './shared';
+import { useEffect, useState } from "react";
+import { useAuthTokens } from "@/hooks/useAuthTokens";
+import {
+  confirmSupplierPasswordReset,
+  requestSupplierPasswordReset,
+} from "@/lib/api/auth";
+import { validateEmail, validatePasswords } from "@/lib/utils/auth.utils";
+import { AuthAlert } from "./shared";
 import {
   PasswordResetRequest,
   PasswordResetSent,
   PasswordResetInvalid,
   PasswordResetForm,
   PasswordResetSuccess,
-} from './password-steps';
+} from "./password-steps";
 
-export type ForgotPasswordStep = 
-  | 'request'
-  | 'sent'
-  | 'invalid'
-  | 'reset'
-  | 'success';
+export type ForgotPasswordStep =
+  | "request"
+  | "sent"
+  | "invalid"
+  | "reset"
+  | "success";
 
 interface ForgotPasswordFlowProps {
   isDark?: boolean;
   step?: ForgotPasswordStep;
   resetToken?: string;
+  resetEmail?: string;
   onBackToLogin: () => void;
-  onPasswordResetComplete?: () => void;
 }
 
 /**
@@ -33,25 +37,30 @@ interface ForgotPasswordFlowProps {
  */
 export function ForgotPasswordFlow({
   isDark = false,
-  step = 'request',
+  step = "request",
   resetToken,
+  resetEmail,
   onBackToLogin,
-  onPasswordResetComplete,
 }: ForgotPasswordFlowProps) {
   const [currentStep, setCurrentStep] = useState<ForgotPasswordStep>(step);
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [email, setEmail] = useState(resetEmail ?? "");
+  const [emailError, setEmailError] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [networkError, setNetworkError] = useState('');
+  const [networkError, setNetworkError] = useState("");
 
   const tokens = useAuthTokens(isDark);
 
+  useEffect(() => {
+    setCurrentStep(step);
+    if (resetEmail) setEmail(resetEmail);
+  }, [resetEmail, step]);
+
   const handleSendResetInstructions = async () => {
-    setEmailError('');
-    setNetworkError('');
+    setEmailError("");
+    setNetworkError("");
 
     const error = validateEmail(email);
     if (error) {
@@ -62,10 +71,14 @@ export function ForgotPasswordFlow({
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      setCurrentStep('sent');
-    } catch (err) {
-      setNetworkError('Something went wrong. Please try again.');
+      await requestSupplierPasswordReset(email);
+      setCurrentStep("sent");
+    } catch (err: unknown) {
+      setNetworkError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -73,20 +86,24 @@ export function ForgotPasswordFlow({
 
   const handleResendEmail = async () => {
     setIsLoading(true);
-    setNetworkError('');
+    setNetworkError("");
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-    } catch (err) {
-      setNetworkError('Something went wrong. Please try again.');
+      await requestSupplierPasswordReset(email);
+    } catch (err: unknown) {
+      setNetworkError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleUpdatePassword = async () => {
-    setPasswordError('');
-    setNetworkError('');
+    setPasswordError("");
+    setNetworkError("");
 
     const error = validatePasswords(newPassword, confirmPassword);
     if (error) {
@@ -97,20 +114,41 @@ export function ForgotPasswordFlow({
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      setCurrentStep('success');
-      onPasswordResetComplete?.();
-    } catch (err) {
-      setNetworkError('Something went wrong. Please try again.');
+      if (!resetToken || !email) {
+        setCurrentStep("invalid");
+        return;
+      }
+
+      await confirmSupplierPasswordReset({
+        email,
+        token: resetToken,
+        newPassword,
+      });
+      setCurrentStep("success");
+    } catch (err: unknown) {
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as Error & { code?: string }).code
+          : undefined;
+
+      if (code === "TOKEN_EXPIRED" || code === "TOKEN_INVALID") {
+        setCurrentStep("invalid");
+      } else {
+        setNetworkError(
+          err instanceof Error
+            ? err.message
+            : "Something went wrong. Please try again."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleRequestNew = () => {
-    setCurrentStep('request');
-    setEmail('');
-    setEmailError('');
+    setCurrentStep("request");
+    setEmail("");
+    setEmailError("");
   };
 
   const handleBackToLoginClick = () => {
@@ -120,10 +158,15 @@ export function ForgotPasswordFlow({
   return (
     <div className="space-y-5">
       {networkError && (
-        <AuthAlert message={networkError} variant="error" isDark={isDark} tokens={tokens} />
+        <AuthAlert
+          message={networkError}
+          variant="error"
+          isDark={isDark}
+          tokens={tokens}
+        />
       )}
 
-      {currentStep === 'request' && (
+      {currentStep === "request" && (
         <PasswordResetRequest
           email={email}
           emailError={emailError}
@@ -136,7 +179,7 @@ export function ForgotPasswordFlow({
         />
       )}
 
-      {currentStep === 'sent' && (
+      {currentStep === "sent" && (
         <PasswordResetSent
           email={email}
           isLoading={isLoading}
@@ -147,7 +190,7 @@ export function ForgotPasswordFlow({
         />
       )}
 
-      {currentStep === 'invalid' && (
+      {currentStep === "invalid" && (
         <PasswordResetInvalid
           onRequestNew={handleRequestNew}
           onBack={handleBackToLoginClick}
@@ -156,7 +199,7 @@ export function ForgotPasswordFlow({
         />
       )}
 
-      {currentStep === 'reset' && (
+      {currentStep === "reset" && (
         <PasswordResetForm
           newPassword={newPassword}
           confirmPassword={confirmPassword}
@@ -170,7 +213,7 @@ export function ForgotPasswordFlow({
         />
       )}
 
-      {currentStep === 'success' && (
+      {currentStep === "success" && (
         <PasswordResetSuccess
           onBackToLogin={handleBackToLoginClick}
           tokens={tokens}
