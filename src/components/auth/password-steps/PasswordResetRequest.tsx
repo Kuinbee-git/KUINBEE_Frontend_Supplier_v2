@@ -1,10 +1,11 @@
 "use client";
 
-import React from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ArrowLeft } from 'lucide-react';
-import { AuthHeader, InfoCard, AuthButton } from '../shared';
+import React from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft } from "lucide-react";
+import { AuthHeader, InfoCard, AuthButton } from "../shared";
+import type { AuthTokens } from "@/hooks/useAuthTokens";
 
 interface PasswordResetRequestProps {
   email: string;
@@ -13,7 +14,7 @@ interface PasswordResetRequestProps {
   onEmailChange: (value: string) => void;
   onSubmit: () => void;
   onBack: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 
@@ -25,7 +26,7 @@ export function PasswordResetRequest({
   onSubmit,
   onBack,
   tokens,
-  isDark
+  isDark,
 }: PasswordResetRequestProps) {
   return (
     <div className="space-y-5">
@@ -36,7 +37,7 @@ export function PasswordResetRequest({
       />
 
       <div className="space-y-2">
-        <Label 
+        <Label
           htmlFor="reset-email"
           className="text-sm transition-colors duration-300"
           style={{ color: tokens.textPrimary, fontWeight: 500 }}
@@ -51,32 +52,27 @@ export function PasswordResetRequest({
           onChange={(e) => onEmailChange(e.target.value)}
           className="h-12 transition-all duration-300"
           style={{
-            borderColor: emailError ? '#ef4444' : tokens.inputBorder,
+            borderColor: emailError ? "#ef4444" : tokens.inputBorder,
             backgroundColor: tokens.inputBg,
             color: tokens.textPrimary,
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
           }}
           autoFocus
           autoComplete="email"
         />
-        {emailError && (
-          <p className="text-xs text-red-500">{emailError}</p>
-        )}
+        {emailError && <p className="text-xs text-red-500">{emailError}</p>}
       </div>
 
       <InfoCard icon="mail" isDark={isDark} tokens={tokens}>
         <p>
-          We&apos;ll send password reset instructions to this email address if it exists in our system.
+          We&apos;ll send password reset instructions to this email address if
+          it exists in our system.
         </p>
       </InfoCard>
 
       <div className="pt-2 space-y-3">
-        <AuthButton
-          onClick={onSubmit}
-          isLoading={isLoading}
-          isDark={isDark}
-        >
+        <AuthButton onClick={onSubmit} isLoading={isLoading} isDark={isDark}>
           Send reset instructions
         </AuthButton>
 
