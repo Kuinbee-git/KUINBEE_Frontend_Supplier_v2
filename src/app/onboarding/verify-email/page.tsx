@@ -11,7 +11,7 @@ import { useThemeStore } from "@/store";
 export default function VerifyEmailPage() {
   const router = useRouter();
   const { isDark, toggleTheme } = useThemeStore();
-  const [email] = useState(""); // Will be fetched from session
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
@@ -57,6 +57,8 @@ export default function VerifyEmailPage() {
       hasAttemptedSendRef.current = true;
       
       try {
+        const status = await getOnboardingStatus();
+        setEmail(status.supplier.email);
         await handleSendOtp();
       } catch (err) {
         console.error('[OTP] Error sending OTP on mount:', err);
