@@ -1,16 +1,17 @@
 "use client";
 
-import React from 'react';
-import { Mail } from 'lucide-react';
-import { AuthHeader, InfoCard, AuthButton } from '../shared';
-import { maskEmail } from '@/lib/utils/auth.utils';
+import React from "react";
+import { Mail } from "lucide-react";
+import { AuthHeader, InfoCard, AuthButton } from "../shared";
+import { maskEmail } from "@/lib/utils/auth.utils";
+import type { AuthTokens } from "@/hooks/useAuthTokens";
 
 interface PasswordResetSentProps {
   email: string;
   isLoading: boolean;
   onResend: () => void;
   onBack: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 
@@ -20,7 +21,7 @@ export function PasswordResetSent({
   onResend,
   onBack,
   tokens,
-  isDark
+  isDark,
 }: PasswordResetSentProps) {
   return (
     <div className="space-y-5">
@@ -28,8 +29,8 @@ export function PasswordResetSent({
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            boxShadow: "0 8px 24px rgba(102, 126, 234, 0.3)",
           }}
         >
           <Mail className="w-8 h-8 text-white" />
@@ -44,10 +45,12 @@ export function PasswordResetSent({
 
       <InfoCard icon="mail" isDark={isDark} tokens={tokens}>
         <p>
-          The email will contain a link to reset your password. The link will expire in 1 hour for security reasons.
+          The email will contain a link to reset your password. The link will
+          expire in 30 minutes for security reasons.
         </p>
         <p className="mt-2">
-          Didn&apos;t receive the email? Check your spam folder or click below to resend.
+          Didn&apos;t receive the email? Check your spam folder or click below
+          to resend.
         </p>
       </InfoCard>
 
