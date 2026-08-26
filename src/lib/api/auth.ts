@@ -5,6 +5,17 @@
 
 import { SUPPLIER_API, API_BASE_URL } from "@/constants/api.constants";
 
+interface AuthApiError extends Error {
+  code?: string;
+  status?: number;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 // ===== Helper: API Fetch =====
 async function apiFetch<T>(
   endpoint: string,
@@ -28,8 +39,8 @@ async function apiFetch<T>(
     console.error(`[AUTH API] Network error for ${endpoint}:`, err);
     const error = new Error(
       "Unable to reach the authentication server. Please refresh and try again."
-    );
-    (error as any).code = "NETWORK_ERROR";
+    ) as AuthApiError;
+    error.code = "NETWORK_ERROR";
     throw error;
   }
 
@@ -38,22 +49,39 @@ async function apiFetch<T>(
     let errorCode = `HTTP_${response.status}`;
 
     try {
-      const errorData = await response.json();
+      const errorData: unknown = await response.json();
+      const errorRecord = asRecord(errorData);
+      const nestedError = asRecord(errorRecord?.error);
       // Handle nested error structure: { error: { code, message } }
-      if (errorData.error && typeof errorData.error === "object") {
-        errorMessage = errorData.error.message || errorMessage;
-        errorCode = errorData.error.code || errorCode;
+      if (nestedError) {
+        if (typeof nestedError.message === "string") {
+          errorMessage = nestedError.message;
+        }
+        if (typeof nestedError.code === "string") {
+          errorCode = nestedError.code;
+        }
       } else {
         // Handle flat error structure: { message, code }
-        errorMessage = errorData.message || errorData.error || errorMessage;
-        errorCode = errorData.code || errorCode;
+        if (typeof errorRecord?.message === "string") {
+          errorMessage = errorRecord.message;
+        } else if (typeof errorRecord?.error === "string") {
+          errorMessage = errorRecord.error;
+        }
+        if (typeof errorRecord?.code === "string") {
+          errorCode = errorRecord.code;
+        }
       }
     } catch {
       // If response is not JSON, use status text
     }
 
     // CRITICAL: Global 401/403 handler - Force logout and redirect
-    if (response.status === 401 || response.status === 403) {
+    const sessionIsInvalid =
+      errorCode === "UNAUTHORIZED" || errorCode === "FORBIDDEN";
+    if (
+      (response.status === 401 || response.status === 403) &&
+      sessionIsInvalid
+    ) {
       if (typeof window !== "undefined") {
         // Clear auth state immediately
         try {
@@ -72,9 +100,9 @@ async function apiFetch<T>(
     }
 
     // Create a proper error with message property
-    const error = new Error(errorMessage);
-    (error as any).status = response.status;
-    (error as any).code = errorCode;
+    const error = new Error(errorMessage) as AuthApiError;
+    error.status = response.status;
+    error.code = errorCode;
     throw error;
   }
 
@@ -88,13 +116,16 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  user: {
-    id: string;
-    email: string;
-    phone: string | null;
-    userType: "SUPPLIER";
-    status: string;
-    emailVerified: boolean;
+  success: true;
+  data: {
+    user: {
+      id: string;
+      email: string;
+      phone: string | null;
+      userType: "SUPPLIER";
+      status: string;
+      emailVerified: boolean;
+    };
   };
 }
 
@@ -113,6 +144,54 @@ export async function login(
 }
 
 /**
+ * Request a password-reset email without revealing whether an account exists.
+ */
+export async function requestSupplierPasswordReset(
+  email: string
+): Promise<void> {
+  await apiFetch<{ success: true; data: { success: true } }>(
+    SUPPLIER_API.PASSWORD_RESET_REQUEST,
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }
+  );
+}
+
+/**
+ * Replace a forgotten supplier password using the emailed one-time token.
+ */
+export async function confirmSupplierPasswordReset(data: {
+  email: string;
+  token: string;
+  newPassword: string;
+}): Promise<void> {
+  await apiFetch<{ success: true; data: { success: true } }>(
+    SUPPLIER_API.PASSWORD_RESET_CONFIRM,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
+ * Change the password for the currently authenticated supplier.
+ */
+export async function changeSupplierPassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> {
+  await apiFetch<{ success: true; data: { success: true } }>(
+    SUPPLIER_API.PASSWORD_CHANGE,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+/**
  * Logout supplier
  */
 export async function logout(): Promise<void> {
@@ -128,7 +207,7 @@ export async function getCurrentUser(): Promise<LoginResponse | null> {
     // This would be a /api/v1/auth/me endpoint
     // For now, we'll check via onboarding status
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
