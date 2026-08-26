@@ -6,20 +6,20 @@ import { BaseEntity } from "./common.types";
 
 // ===== Auth States =====
 
-export type AuthState = 
-  | 'initial'           // Login/Register screen
-  | 'new_supplier'      // New supplier registration (email capture)
-  | 'otp'               // OTP verification
-  | 'checking'          // Loading/verification state
-  | 'authenticated';    // Successfully authenticated
+export type AuthState =
+  | "initial" // Login/Register screen
+  | "new_supplier" // New supplier registration (email capture)
+  | "otp" // OTP verification
+  | "checking" // Loading/verification state
+  | "authenticated"; // Successfully authenticated
 
 // ===== User/Supplier Types =====
 
 export interface User extends BaseEntity {
   email: string;
   emailVerified: boolean;
-  type: 'supplier' | 'admin';
-  status: 'active' | 'suspended' | 'blocked';
+  type: "supplier" | "admin";
+  status: "active" | "suspended" | "blocked";
 }
 
 export interface AuthSession {
@@ -49,6 +49,7 @@ export interface ForgotPasswordData {
 }
 
 export interface ResetPasswordData {
+  email: string;
   token: string;
   newPassword: string;
   confirmPassword: string;
