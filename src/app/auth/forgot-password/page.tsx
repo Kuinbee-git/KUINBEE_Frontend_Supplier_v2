@@ -10,27 +10,16 @@ export default function ForgotPasswordPage() {
   const [isDark, setIsDark] = useState(false);
 
   const handleToggleDark = useCallback(() => {
-    setIsDark(prev => !prev);
+    setIsDark((prev) => !prev);
   }, []);
 
   const handleBackToLogin = useCallback(() => {
     router.push("/auth/login");
   }, [router]);
 
-  const handlePasswordResetComplete = useCallback(() => {
-    router.push("/auth/login");
-  }, [router]);
-
   return (
-    <AuthShellWrapper 
-      isDark={isDark} 
-      onToggleDark={handleToggleDark}
-    >
-      <ForgotPasswordFlow
-        isDark={isDark}
-        onBackToLogin={handleBackToLogin}
-        onPasswordResetComplete={handlePasswordResetComplete}
-      />
+    <AuthShellWrapper isDark={isDark} onToggleDark={handleToggleDark}>
+      <ForgotPasswordFlow isDark={isDark} onBackToLogin={handleBackToLogin} />
     </AuthShellWrapper>
   );
 }
