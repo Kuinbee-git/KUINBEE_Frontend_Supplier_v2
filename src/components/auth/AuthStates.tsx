@@ -38,42 +38,48 @@ function AuthStatesComponent({
   const [loginError, setLoginError] = useState<string>("");
 
   // Handle login submission
-  const handleLogin = useCallback(async (submittedEmail: string, password: string) => {
-    setLoginError("");
+  const handleLogin = useCallback(
+    async (submittedEmail: string, password: string) => {
+      setLoginError("");
 
-    // Show loading state
-    onStateChange("checking");
+      // Show loading state
+      onStateChange("checking");
 
-    try {
-      // Call actual login API
-      const response = await login({
-        email: submittedEmail,
-        password: password,
-      });
+      try {
+        // Call actual login API
+        const response = await login({
+          email: submittedEmail,
+          password: password,
+        });
 
-      // Extract user from response (backend wraps as { success, data: { user } })
-      const user = (response as any).data?.user ?? (response as any).user;
+        const user = response.data.user;
 
-      // Verify this is a supplier account
-      if (user?.userType && user.userType !== 'SUPPLIER') {
-        setLoginError("Access denied. This portal is for suppliers only.");
+        // Verify this is a supplier account
+        if (user?.userType && user.userType !== "SUPPLIER") {
+          setLoginError("Access denied. This portal is for suppliers only.");
+          onStateChange("initial");
+          return;
+        }
+
+        // On success, trigger parent success handler which will:
+        // 1. Navigate to dashboard
+        // 2. Dashboard layout will check onboarding status
+        // 3. If incomplete, redirect to appropriate onboarding step
+        onSuccess?.();
+      } catch (error: unknown) {
+        console.error("[AUTH] Login failed:", error);
+
+        // Show error and return to login form
+        setLoginError(
+          error instanceof Error
+            ? error.message
+            : "Login failed. Please check your credentials."
+        );
         onStateChange("initial");
-        return;
       }
-
-      // On success, trigger parent success handler which will:
-      // 1. Navigate to dashboard
-      // 2. Dashboard layout will check onboarding status
-      // 3. If incomplete, redirect to appropriate onboarding step
-      onSuccess?.();
-    } catch (error: any) {
-      console.error("[AUTH] Login failed:", error);
-
-      // Show error and return to login form
-      setLoginError(error.message || "Login failed. Please check your credentials.");
-      onStateChange("initial");
-    }
-  }, [onStateChange, onSuccess]);
+    },
+    [onStateChange, onSuccess]
+  );
 
   // Handle create account navigation
   const handleCreateAccount = useCallback(() => {
@@ -91,23 +97,29 @@ function AuthStatesComponent({
   }, [onForgotPassword]);
 
   // Handle new supplier form submission (sends OTP)
-  const handleNewSupplierSubmit = useCallback((submittedEmail: string) => {
-    void submittedEmail;
+  const handleNewSupplierSubmit = useCallback(
+    (submittedEmail: string) => {
+      void submittedEmail;
 
-    // Show loading state briefly
-    onStateChange("checking");
+      // Show loading state briefly
+      onStateChange("checking");
 
-    // Simulate OTP send
-    setTimeout(() => {
-      onStateChange("otp");
-    }, 800);
-  }, [onStateChange]);
+      // Simulate OTP send
+      setTimeout(() => {
+        onStateChange("otp");
+      }, 800);
+    },
+    [onStateChange]
+  );
 
   // Handle OTP verification
-  const handleOTPVerify = useCallback((code: string) => {
-    void code;
-    onSuccess?.();
-  }, [onSuccess]);
+  const handleOTPVerify = useCallback(
+    (code: string) => {
+      void code;
+      onSuccess?.();
+    },
+    [onSuccess]
+  );
 
   // Handle back to initial state
   const handleBackToLogin = useCallback(() => {
@@ -131,11 +143,7 @@ function AuthStatesComponent({
 
     case "checking":
       return (
-        <LoadingState
-          email={email}
-          isDark={isDark}
-          message="Signing in..."
-        />
+        <LoadingState email={email} isDark={isDark} message="Signing in..." />
       );
 
     case "new_supplier":
