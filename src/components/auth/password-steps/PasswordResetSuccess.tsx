@@ -1,19 +1,20 @@
 "use client";
 
-import React from 'react';
-import { CheckCircle2 } from 'lucide-react';
-import { AuthHeader, InfoCard, AuthButton } from '../shared';
+import React from "react";
+import { CheckCircle2 } from "lucide-react";
+import { AuthHeader, InfoCard, AuthButton } from "../shared";
+import type { AuthTokens } from "@/hooks/useAuthTokens";
 
 interface PasswordResetSuccessProps {
   onBackToLogin: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 
 export function PasswordResetSuccess({
   onBackToLogin,
   tokens,
-  isDark
+  isDark,
 }: PasswordResetSuccessProps) {
   return (
     <div className="space-y-5">
@@ -21,8 +22,8 @@ export function PasswordResetSuccess({
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
+            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+            boxShadow: "0 8px 24px rgba(16, 185, 129, 0.3)",
           }}
         >
           <CheckCircle2 className="w-8 h-8 text-white" />
@@ -35,10 +36,13 @@ export function PasswordResetSuccess({
         tokens={tokens}
       />
 
-      <InfoCard icon="success" iconColor="#22c55e" isDark={isDark} tokens={tokens}>
-        <p>
-          You can now sign in with your new password.
-        </p>
+      <InfoCard
+        icon="success"
+        iconColor="#22c55e"
+        isDark={isDark}
+        tokens={tokens}
+      >
+        <p>You can now sign in with your new password.</p>
       </InfoCard>
 
       <div className="pt-2">
