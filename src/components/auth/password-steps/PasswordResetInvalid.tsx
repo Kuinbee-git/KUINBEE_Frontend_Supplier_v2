@@ -1,12 +1,13 @@
 "use client";
 
-import React from 'react';
-import { AuthHeader, InfoCard, AuthButton } from '../shared';
+import React from "react";
+import { AuthHeader, InfoCard, AuthButton } from "../shared";
+import type { AuthTokens } from "@/hooks/useAuthTokens";
 
 interface PasswordResetInvalidProps {
   onRequestNew: () => void;
   onBack: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 
@@ -14,7 +15,7 @@ export function PasswordResetInvalid({
   onRequestNew,
   onBack,
   tokens,
-  isDark
+  isDark,
 }: PasswordResetInvalidProps) {
   return (
     <div className="space-y-5">
@@ -24,9 +25,15 @@ export function PasswordResetInvalid({
         tokens={tokens}
       />
 
-      <InfoCard icon="alert" iconColor="#f59e0b" isDark={isDark} tokens={tokens}>
+      <InfoCard
+        icon="alert"
+        iconColor="#f59e0b"
+        isDark={isDark}
+        tokens={tokens}
+      >
         <p>
-          The reset link may have expired or already been used. Password reset links are valid for 1 hour.
+          The reset link may have expired or already been used. Password reset
+          links are valid for 30 minutes.
         </p>
         <p className="mt-2">
           You&apos;ll need to request a new reset link to continue.
