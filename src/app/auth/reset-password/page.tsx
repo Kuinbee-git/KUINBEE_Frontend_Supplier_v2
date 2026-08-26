@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, Suspense } from "react";
+import React, { useState, useCallback, Suspense } from "react";
 import { AuthShellWrapper } from "@/components/auth";
 import { ForgotPasswordFlow } from "@/components/auth/ForgotPasswordFlow";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,37 +9,25 @@ function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isDark, setIsDark] = useState(false);
-  const [resetToken, setResetToken] = useState<string | null>(null);
-
-  // Get token from URL
-  useEffect(() => {
-    const token = searchParams.get('token');
-    setResetToken(token);
-  }, [searchParams]);
+  const resetToken = searchParams.get("token");
+  const resetEmail = searchParams.get("email");
 
   const handleToggleDark = useCallback(() => {
-    setIsDark(prev => !prev);
+    setIsDark((prev) => !prev);
   }, []);
 
   const handleBackToLogin = useCallback(() => {
     router.push("/auth/login");
   }, [router]);
 
-  const handlePasswordResetComplete = useCallback(() => {
-    router.push("/auth/login");
-  }, [router]);
-
   return (
-    <AuthShellWrapper 
-      isDark={isDark} 
-      onToggleDark={handleToggleDark}
-    >
+    <AuthShellWrapper isDark={isDark} onToggleDark={handleToggleDark}>
       <ForgotPasswordFlow
         isDark={isDark}
-        step={resetToken ? "reset" : "invalid"}
+        step={resetToken && resetEmail ? "reset" : "invalid"}
         resetToken={resetToken || undefined}
+        resetEmail={resetEmail || undefined}
         onBackToLogin={handleBackToLogin}
-        onPasswordResetComplete={handlePasswordResetComplete}
       />
     </AuthShellWrapper>
   );
