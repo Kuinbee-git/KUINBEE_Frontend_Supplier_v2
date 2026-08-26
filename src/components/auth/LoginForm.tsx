@@ -31,20 +31,23 @@ function LoginFormComponent({
 
   const tokens = useAuthTokens(isDark);
 
-  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setLocalEmail(value);
-    onEmailChange(value);
-  }, [onEmailChange]);
+  const handleEmailChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setLocalEmail(value);
+      onEmailChange(value);
+    },
+    [onEmailChange]
+  );
 
   const handleSubmit = useCallback(() => {
     setError("");
-    
+
     if (!localEmail) {
       setError("Please enter your email address");
       return;
     }
-    
+
     if (!password) {
       setError("Please enter your password");
       return;
@@ -53,15 +56,18 @@ function LoginFormComponent({
     onSubmit(localEmail, password);
   }, [localEmail, password, onSubmit]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSubmit();
-    }
-  }, [handleSubmit]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        handleSubmit();
+      }
+    },
+    [handleSubmit]
+  );
 
   return (
     <div className="space-y-5">
-      <AuthHeader 
+      <AuthHeader
         title="Sign in to your account"
         subtitle="Enter your credentials to access the supplier portal"
         tokens={tokens}
@@ -69,7 +75,7 @@ function LoginFormComponent({
 
       {/* Email field */}
       <div className="space-y-2">
-        <Label 
+        <Label
           htmlFor="email"
           className="text-sm transition-colors duration-300"
           style={{ color: tokens.textPrimary, fontWeight: 500 }}
@@ -108,17 +114,22 @@ function LoginFormComponent({
 
       {/* Error message */}
       {(error || externalError) && (
-        <AuthAlert message={error || externalError || ""} variant="error" isDark={isDark} tokens={tokens} />
+        <AuthAlert
+          message={error || externalError || ""}
+          variant="error"
+          isDark={isDark}
+          tokens={tokens}
+        />
       )}
 
       {/* Forgot password link */}
       <div className="text-center pt-2">
         <button
           type="button"
-          onClick={() => window.location.href = '/auth/forgot-password'}
+          onClick={onForgotPassword}
           className="text-sm transition-all duration-300 hover:underline"
-          style={{ 
-            color: isDark ? "rgba(255,255,255,0.6)" : "#525d6f"
+          style={{
+            color: isDark ? "rgba(255,255,255,0.6)" : "#525d6f",
           }}
         >
           Forgot password?
@@ -132,7 +143,7 @@ function LoginFormComponent({
 
       {/* Secondary actions */}
       <div className="space-y-2.5 text-center pt-4">
-        <button 
+        <button
           type="button"
           className="text-sm transition-colors block w-full hover:underline underline-offset-4"
           style={{ color: tokens.textSecondary }}
@@ -143,11 +154,11 @@ function LoginFormComponent({
       </div>
 
       {/* Security notice */}
-      <div 
+      <div
         className="mt-8 pt-6 transition-colors duration-300"
         style={{ borderTop: `1px solid ${tokens.divider}` }}
       >
-        <p 
+        <p
           className="text-xs text-center leading-relaxed"
           style={{ color: tokens.textMuted }}
         >
