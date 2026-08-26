@@ -19,6 +19,9 @@ export const SUPPLIER_API = {
   // Registration & Authentication (Public)
   REGISTER: `${API_BASE_PATH}/supplier/register`,
   LOGIN: `${API_BASE_PATH}/auth/login`,
+  PASSWORD_RESET_REQUEST: `${API_BASE_PATH}/supplier/auth/password/reset/request`,
+  PASSWORD_RESET_CONFIRM: `${API_BASE_PATH}/supplier/auth/password/reset/confirm`,
+  PASSWORD_CHANGE: `${API_BASE_PATH}/supplier/auth/password/change`,
 
   // Invites (Public)
   GET_INVITE: (inviteId: string) =>
