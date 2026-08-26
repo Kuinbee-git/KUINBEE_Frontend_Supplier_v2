@@ -1,7 +1,13 @@
 "use client";
 
-import React from 'react';
-import { AuthHeader, PasswordInput, PasswordStrengthIndicator, AuthButton } from '../shared';
+import React from "react";
+import {
+  AuthHeader,
+  PasswordInput,
+  PasswordStrengthIndicator,
+  AuthButton,
+} from "../shared";
+import type { AuthTokens } from "@/hooks/useAuthTokens";
 
 interface PasswordResetFormProps {
   newPassword: string;
@@ -11,7 +17,7 @@ interface PasswordResetFormProps {
   onNewPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
   onSubmit: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 
@@ -24,7 +30,7 @@ export function PasswordResetForm({
   onConfirmPasswordChange,
   onSubmit,
   tokens,
-  isDark
+  isDark,
 }: PasswordResetFormProps) {
   return (
     <div className="space-y-5">
@@ -64,11 +70,7 @@ export function PasswordResetForm({
       </div>
 
       <div className="pt-2">
-        <AuthButton
-          onClick={onSubmit}
-          isLoading={isLoading}
-          isDark={isDark}
-        >
+        <AuthButton onClick={onSubmit} isLoading={isLoading} isDark={isDark}>
           Update password
         </AuthButton>
       </div>
