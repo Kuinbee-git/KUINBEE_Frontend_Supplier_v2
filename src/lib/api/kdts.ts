@@ -16,14 +16,6 @@ export interface KdtsBreakdown {
 export interface DatasetKdtsResponse {
   currentScore: string | null;
   breakdown: KdtsBreakdown | null;
-  history: Array<{
-    id: string;
-    finalScore: string;
-    breakdown: KdtsBreakdown;
-    createdAt: string;
-    note: string;
-    admin: { id: string; name: string } | null;
-  }>;
   updatedAt: string | null;
 }
 
@@ -46,6 +38,7 @@ export async function getDatasetKdts(
     throw new Error(err?.message || `HTTP ${response.status}`);
   }
 
-  const json: { success: boolean; data: DatasetKdtsResponse } = await response.json();
+  const json: { success: boolean; data: DatasetKdtsResponse } =
+    await response.json();
   return json.data;
 }

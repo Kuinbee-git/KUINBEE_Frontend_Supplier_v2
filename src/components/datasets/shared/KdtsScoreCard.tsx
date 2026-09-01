@@ -15,10 +15,10 @@ const KDTS_DIMS: Array<{
   key: keyof NonNullable<DatasetKdtsResponse["breakdown"]>;
   label: string;
 }> = [
-  { key: "Q", label: "Completeness" },
-  { key: "L", label: "Legitimacy" },
-  { key: "P", label: "Precision" },
-  { key: "U", label: "Usefulness" },
+  { key: "Q", label: "Quality" },
+  { key: "L", label: "Legal" },
+  { key: "P", label: "Provenance" },
+  { key: "U", label: "Usability" },
   { key: "F", label: "Freshness" },
 ];
 
