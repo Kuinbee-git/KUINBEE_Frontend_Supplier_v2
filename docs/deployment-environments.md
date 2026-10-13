@@ -1,13 +1,27 @@
 # Frontend release checks and environment separation
 
 `main` is the Vercel Production branch. `staging` is the stable Preview branch.
-GitHub Actions checks each pushed branch revision, including PR branches, without application,
-AWS, payment, SMTP or Vercel deployment credentials. Vercel builds from Git and
-requires **Frontend quality (supplier)** before assigning a deployment's domains.
-The check name must remain aligned with the project's Vercel Deployment Check.
-Push is the authoritative trigger; avoiding a second pull_request-triggered run
-keeps one required check result per pushed revision. Merged revisions run again
-on main/staging. This private repository accepts changes on internal branches.
+GitHub Actions checks each pushed branch revision, including PR branches, without
+application, AWS, payment, SMTP or Vercel deployment credentials. Vercel's
+`npm run build` first validates configuration, then requires a successful push run
+of `.github/workflows/frontend-ci.yml` for the **same commit, branch and repository**.
+Missing, running, failed, cancelled, skipped or unverifiable checks cannot release.
+The hosted gate waits up to 15 minutes; GitHub/API errors fail closed. Local and
+GitHub fixture builds make no release-status request, so there is no CI dependency
+cycle. `vercel.json` pins the build entry point.
+
+These frontend repositories are public, so status is read anonymously from GitHub
+without introducing a deployment token. If repository visibility changes, the gate
+will stop releases until authenticated status verification is configured. API rate
+limits also hold a release; they never waive a required check.
+
+Vercel additionally has the native production check **Frontend quality (supplier)**.
+Its exact job name must remain aligned with project settings. Qualification proved
+that a failed check blocks production alias assignment, but the native check did
+not hold a Preview deployment. The explicit prebuild gate covers both targets.
+Push is the authoritative workflow trigger, preventing duplicate PR/push results;
+merged main/staging revisions run again. Fork pull requests are not deployment
+sources. Public promotion remains separately held during migration.
 
 ## Build configuration
 
@@ -33,7 +47,7 @@ Use Node 24.21.0 (`.nvmrc`) and `npm ci`.
 
 - `npm run lint`: errors and warnings both fail; no legacy baseline or new rule suppressions.
 - `npm run audit:runtime`: installed production dependencies must have no HIGH/CRITICAL advisories; registry/audit failures also fail CI.
-- `npm run test:contracts`: environment rejection/acceptance and application contracts.
+- `npm run test:contracts`: release-gate failure/identity cases, environment rejection/acceptance and application contracts.
 - `npm run test:release`: production build, TypeScript check, real browser login/API-target checks against a local fixture API. The buyer also asserts actual server-rendered fixture data; admin runs its existing authentication and Claru browser scenarios.
 - `npm run test:components`: actual components in Chromium with API/framework fixtures, including the behavior changed by lint cleanup.
 
