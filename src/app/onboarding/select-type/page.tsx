@@ -1,5 +1,9 @@
 "use client";
 
+import { reloadAt } from "@/lib/utils/reload-navigation";
+
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -39,7 +43,8 @@ export default function SelectTypePage() {
 
       // Navigating to next route
       router.push(nextRoute);
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       // Failed to set type (logged silently)
       setError(err.message || "Failed to set supplier type");
     } finally {
@@ -55,7 +60,7 @@ export default function SelectTypePage() {
       localStorage.removeItem('onboarding-storage');
     }
     // Hard redirect to ensure clean state
-    window.location.href = '/auth/login';
+    reloadAt("/auth/login");
   }, []);
 
   return (

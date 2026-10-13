@@ -1,5 +1,7 @@
 "use client";
 
+import type { AuthTokens } from "@/hooks/useAuthTokens";
+
 import React from 'react';
 import { Mail } from 'lucide-react';
 import { AuthHeader, InfoCard, AuthButton } from '../shared';
@@ -10,7 +12,7 @@ interface VerificationSentProps {
   isLoading: boolean;
   onResend: () => void;
   onBack: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 

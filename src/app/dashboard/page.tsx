@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -138,8 +140,9 @@ export default function SupplierDashboardOverviewPage() {
     }
   }, []);
 
+  useComponentRequest(() => loadOverview(), []);
+
   React.useEffect(() => {
-    void loadOverview();
     return () => {
       requestIdRef.current += 1;
     };

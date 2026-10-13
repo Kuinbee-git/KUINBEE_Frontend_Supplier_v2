@@ -1,5 +1,7 @@
 "use client";
 
+import { useSessionDraft } from "@/hooks/useSessionDraft";
+
 import { useEffect, useState } from "react";
 
 import {
@@ -112,50 +114,26 @@ export function SupplierDataRequirementForm() {
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const fallback = { ...empty(), clientRequestId: crypto.randomUUID() };
-    let restored = false;
-
-    try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as {
-          version: number;
-          savedAt: number;
-          data: FormState;
-        };
-        if (saved.version === 1 && Date.now() - saved.savedAt < DRAFT_TTL) {
-          setForm({ ...fallback, ...saved.data });
-          restored = true;
-        } else {
-          sessionStorage.removeItem(DRAFT_KEY);
-        }
-      }
-    } catch {
-      // Browser storage is optional; the form remains usable without it.
-    }
-
-    if (!restored) {
-      setForm(fallback);
-      void getSupplierProfile()
-        .then(({ profile }) => {
-          if (!profile) return;
-          setForm((current) => ({
-            ...current,
-            contactName:
-              current.contactName ||
-              profile.contactPersonName ||
-              profile.individualName ||
-              "",
-            organization: current.organization || profile.companyName || "",
-            industry: current.industry || profile.primaryDomain || "",
-          }));
-        })
-        .catch(() => undefined);
-    }
-
+  const restoredDraft = useSessionDraft(DRAFT_KEY, DRAFT_TTL, empty);
+  if (!hydrated && restoredDraft) {
+    setForm(restoredDraft.data);
     setHydrated(true);
-  }, []);
+  }
+
+  useEffect(() => {
+    if (!restoredDraft || restoredDraft.restored) return;
+    let active = true;
+    void getSupplierProfile().then(({ profile }) => {
+      if (!active || !profile) return;
+      setForm((current) => ({
+        ...current,
+        contactName: current.contactName || profile.contactPersonName || profile.individualName || "",
+        organization: current.organization || profile.companyName || "",
+        industry: current.industry || profile.primaryDomain || "",
+      }));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [restoredDraft]);
 
   useEffect(() => {
     if (!hydrated || receipt) return;

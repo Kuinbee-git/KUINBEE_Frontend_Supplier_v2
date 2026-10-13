@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { useCallback, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BarChart3,
@@ -191,13 +193,13 @@ export default function SupplierReviewsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    void loadDatasets("initial");
-  }, [loadDatasets]);
+  useComponentRequest(() => loadDatasets("initial"), []);
 
-  useEffect(() => {
+  const [pageContext, setPageContext] = useState(searchQuery);
+  if (pageContext !== searchQuery) {
+    setPageContext(searchQuery);
     setDatasetPage(1);
-  }, [searchQuery]);
+  }
 
   const sortedDatasets = useMemo(
     () =>

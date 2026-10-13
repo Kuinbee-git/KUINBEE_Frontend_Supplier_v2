@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -174,13 +176,13 @@ export function SubmittedProposals({
     }
   }, [debouncedSearchQuery, page, statusFilter]);
 
-  useEffect(() => {
-    void fetchProposals();
-  }, [fetchProposals]);
+  useComponentRequest(() => fetchProposals(), [debouncedSearchQuery, page, statusFilter]);
 
-  useEffect(() => {
+  const [pageContext, setPageContext] = useState(statusFilter);
+  if (pageContext !== statusFilter) {
+    setPageContext(statusFilter);
     setPage(1);
-  }, [statusFilter]);
+  }
 
   const metrics: DatasetMetric<FilterStatus>[] = [
     {

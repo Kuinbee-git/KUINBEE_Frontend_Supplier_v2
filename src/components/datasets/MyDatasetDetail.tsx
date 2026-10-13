@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { useCallback, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   DashboardButton,
@@ -343,9 +345,7 @@ export function MyDatasetDetail({
     }
   }, [datasetId, fetchPricing]);
 
-  useEffect(() => {
-    void fetchDataset();
-  }, [fetchDataset]);
+  useComponentRequest(() => fetchDataset(), [datasetId]);
 
   // Loading state
   if (loading) {

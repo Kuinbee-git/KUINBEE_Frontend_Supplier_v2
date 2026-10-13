@@ -1,6 +1,8 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { type FormEvent, useCallback, useState } from "react";
 import Link from "next/link";
 import { Archive, EyeOff, Globe2, ImageIcon, Plus, Search } from "lucide-react";
 
@@ -88,9 +90,7 @@ export function CustomCollectionServicesView() {
     }
   }, [availability, page, query, status]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useComponentRequest(() => load(), [availability, page, query, status]);
 
   const search = (event: FormEvent) => {
     event.preventDefault();

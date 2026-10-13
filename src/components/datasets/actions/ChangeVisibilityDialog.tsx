@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -67,11 +67,11 @@ export function ChangeVisibilityDialog({
   // Discard an unsubmitted selection when the dialog closes. Without this,
   // cancelling and reopening could show (and subsequently save) a visibility
   // value that was never applied to the dataset.
-  useEffect(() => {
-    if (isOpen) {
-      setVisibility(currentVisibility);
-    }
-  }, [currentVisibility, isOpen]);
+  const [dialogContext, setDialogContext] = useState({ isOpen, currentVisibility });
+  if (dialogContext.isOpen !== isOpen || dialogContext.currentVisibility !== currentVisibility) {
+    setDialogContext({ isOpen, currentVisibility });
+    if (isOpen) setVisibility(currentVisibility);
+  }
 
   const handleSave = async () => {
     if (visibility === currentVisibility) {

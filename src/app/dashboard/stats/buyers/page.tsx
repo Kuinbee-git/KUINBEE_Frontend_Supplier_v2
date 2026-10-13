@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { Suspense, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import {
@@ -60,9 +62,7 @@ function BuyersContent() {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchData(range);
-  }, [fetchData, range]);
+  useComponentRequest(() => fetchData(range), [range]);
 
   if (error) {
     return (

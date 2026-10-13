@@ -1,6 +1,8 @@
 import { LucideIcon, Mail, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
 
+const icons = { mail: Mail, alert: AlertCircle, check: CheckCircle2 };
+
 type IconType = "mail" | "alert" | "check" | LucideIcon;
 
 interface InfoCardProps {
@@ -17,24 +19,7 @@ interface InfoCardProps {
 export function InfoCard({ icon, title, description, iconColor }: InfoCardProps) {
   const tokens = useSupplierTokens();
 
-  // Map string icon types to components
-  const getIcon = () => {
-    if (typeof icon === "string") {
-      switch (icon) {
-        case "mail":
-          return Mail;
-        case "alert":
-          return AlertCircle;
-        case "check":
-          return CheckCircle2;
-        default:
-          return AlertCircle;
-      }
-    }
-    return icon;
-  };
-
-  const Icon = getIcon();
+  const Icon = typeof icon === "string" ? (icons[icon] ?? AlertCircle) : icon;
   const defaultIconColor = tokens.textSecondary;
 
   return (

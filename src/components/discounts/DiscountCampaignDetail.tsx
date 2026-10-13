@@ -1,10 +1,11 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import {
   FormEvent,
   ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -204,13 +205,13 @@ export function DiscountCampaignDetail({
     }
   }, [datasetId, proposalPage]);
 
-  useEffect(() => {
-    void loadDetail();
-  }, [loadDetail]);
+  useComponentRequest(() => loadDetail(), [datasetId, proposalPage]);
 
-  useEffect(() => {
+  const [pageContext, setPageContext] = useState(datasetId);
+  if (pageContext !== datasetId) {
+    setPageContext(datasetId);
     setProposalPage(1);
-  }, [datasetId]);
+  }
 
   const activeProposal = useMemo(
     () =>

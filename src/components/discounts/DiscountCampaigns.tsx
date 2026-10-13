@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   BadgePercent,
@@ -128,13 +130,13 @@ export function DiscountCampaigns() {
     }
   }, []);
 
-  useEffect(() => {
-    void loadDatasets();
-  }, [loadDatasets]);
+  useComponentRequest(() => loadDatasets(), []);
 
-  useEffect(() => {
+  const [pageContext, setPageContext] = useState(searchQuery);
+  if (pageContext !== searchQuery) {
+    setPageContext(searchQuery);
     setCurrentPage(1);
-  }, [searchQuery]);
+  }
 
   const rows = useMemo<CampaignDatasetRow[]>(() => {
     const query = searchQuery.trim().toLowerCase();

@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DatasetDetail } from "@/components/datasets";
 import { useThemeStore } from "@/store";
@@ -41,9 +43,7 @@ export default function DatasetDetailPage() {
     }
   }, [datasetId]);
 
-  useEffect(() => {
-    void fetchProposal();
-  }, [fetchProposal]);
+  useComponentRequest(() => fetchProposal(), [datasetId]);
 
   if (loading) {
     return (

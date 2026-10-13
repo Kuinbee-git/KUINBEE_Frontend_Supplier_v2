@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuthTokens } from "@/hooks/useAuthTokens";
 import {
   confirmSupplierPasswordReset,
@@ -53,10 +53,12 @@ export function ForgotPasswordFlow({
 
   const tokens = useAuthTokens(isDark);
 
-  useEffect(() => {
+  const [resetContext, setResetContext] = useState({ step, resetEmail });
+  if (resetContext.step !== step || resetContext.resetEmail !== resetEmail) {
+    setResetContext({ step, resetEmail });
     setCurrentStep(step);
     if (resetEmail) setEmail(resetEmail);
-  }, [resetEmail, step]);
+  }
 
   const handleSendResetInstructions = async () => {
     setEmailError("");

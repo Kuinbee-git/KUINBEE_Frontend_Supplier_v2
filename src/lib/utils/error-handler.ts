@@ -1,3 +1,5 @@
+import { getErrorDetails } from "./error-details";
+
 /**
  * Centralized error message handler
  * Provides user-friendly error messages for various error scenarios
@@ -7,21 +9,22 @@ export interface ErrorResponse {
   code?: string;
   message?: string;
   status?: number;
-  data?: any;
+  data?: unknown;
 }
 
 /**
  * Get a user-friendly error message based on error type and code
  */
-export const getErrorMessage = (error: any): string => {
+export const getErrorMessage = (error: unknown): string => {
   if (!error) {
     return 'An unexpected error occurred. Please try again.';
   }
 
-  // Extract error details
-  const errorCode = error?.data?.code || error?.code;
-  const errorMessage = error?.message || '';
-  const status = error?.status;
+  const details = getErrorDetails(error);
+  const data = typeof error === 'object' && 'data' in error ? error.data : undefined;
+  const errorCode = getErrorDetails(data).code || details.code;
+  const errorMessage = details.message || '';
+  const status = details.status;
 
   // Network/Connectivity errors
   if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network')) {
@@ -32,7 +35,7 @@ export const getErrorMessage = (error: any): string => {
     return 'The request took too long. Please check your internet connection and try again.';
   }
 
-  if (status === 0 || navigator?.onLine === false) {
+  if (status === 0 || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
     return 'You appear to be offline. Please check your internet connection and try again.';
   }
 
@@ -76,12 +79,14 @@ export const getErrorMessage = (error: any): string => {
 /**
  * Check if error is a connectivity issue
  */
-export const isConnectivityError = (error: any): boolean => {
+export const isConnectivityError = (error: unknown): boolean => {
   if (!error) return false;
 
-  const message = error?.message || '';
-  const code = error?.code || error?.data?.code;
-  const status = error?.status;
+  const details = getErrorDetails(error);
+  const data = typeof error === 'object' && 'data' in error ? error.data : undefined;
+  const message = details.message || '';
+  const code = details.code || getErrorDetails(data).code;
+  const status = details.status;
 
   return (
     message.includes('Failed to fetch') ||
@@ -89,14 +94,14 @@ export const isConnectivityError = (error: any): boolean => {
     code === 'NETWORK_ERROR' ||
     code === 'TIMEOUT' ||
     status === 0 ||
-    navigator?.onLine === false
+    (typeof navigator !== 'undefined' && navigator.onLine === false)
   );
 };
 
 /**
  * Suggest retry action based on error type
  */
-export const getRetryAdvice = (error: any): string => {
+export const getRetryAdvice = (error: unknown): string => {
   if (isConnectivityError(error)) {
     return 'Check your internet connection and try again.';
   }

@@ -51,7 +51,7 @@ export interface FullDashboardProps extends DashboardProps {
 export interface NavItem {
   id: DashboardView | string;
   label: string;
-  icon: any; // LucideIcon type
+  icon: import("lucide-react").LucideIcon;
   disabled?: boolean;
 }
 

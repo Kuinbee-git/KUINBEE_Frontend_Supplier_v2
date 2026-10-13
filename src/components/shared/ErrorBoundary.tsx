@@ -1,6 +1,8 @@
 "use client";
 
-import { Component, ReactNode } from "react";
+import { reloadAt } from "@/lib/utils/reload-navigation";
+
+import { Component, ReactNode, type ErrorInfo } from "react";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Error Boundary caught an error:", error, errorInfo);
   }
 
@@ -52,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <Button
                 onClick={() => {
                   this.setState({ hasError: false, error: undefined });
-                  window.location.href = "/dashboard";
+                  reloadAt("/dashboard");
                 }}
                 className="w-full"
               >

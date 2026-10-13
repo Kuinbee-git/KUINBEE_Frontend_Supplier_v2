@@ -1,5 +1,9 @@
 "use client";
 
+import { reloadAt } from "@/lib/utils/reload-navigation";
+
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -98,7 +102,8 @@ export default function VerifyPanPage() {
           setError("PAN verification failed. Please check your details and try again.");
         }
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       // Verification failed (logged silently)
       setError(err.message || "PAN verification failed");
     } finally {
@@ -114,7 +119,7 @@ export default function VerifyPanPage() {
       localStorage.removeItem('onboarding-storage');
     }
     // Hard redirect to ensure clean state
-    window.location.href = '/auth/login';
+    reloadAt("/auth/login");
   }, []);
 
   return (
@@ -231,7 +236,7 @@ export default function VerifyPanPage() {
                       ⓘ Important: Enter your full name exactly as shown on your PAN card
                     </p>
                     <p style={{ color: tokens.textMuted }} className="text-xs leading-relaxed">
-                      Include your complete legal name with parent's name if it appears on your PAN card. Example: "John Kumar Singh" or "Mary Rakesh Sharma "
+                      Include your complete legal name with parent&apos;s name if it appears on your PAN card. Example: &quot;John Kumar Singh&quot; or &quot;Mary Rakesh Sharma &quot;
                     </p>
                   </div>
                 </div>
@@ -374,8 +379,8 @@ export default function VerifyPanPage() {
                 style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.5)' }}
               >
                 <p style={{ color: tokens.textSecondary }} className="text-xs leading-relaxed font-medium">
-                  <strong style={{ color: tokens.textPrimary }}>Note:</strong> Your PAN will be verified using Zoop's PAN Pro API. 
-                  We require a 100% name match and the PAN type must be "Person" for individual suppliers.
+                  <strong style={{ color: tokens.textPrimary }}>Note:</strong> Your PAN will be verified using Zoop&apos;s PAN Pro API.
+                  We require a 100% name match and the PAN type must be &quot;Person&quot; for individual suppliers.
                 </p>
               </div>
             </div>

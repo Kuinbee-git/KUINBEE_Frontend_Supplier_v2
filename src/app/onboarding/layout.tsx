@@ -14,7 +14,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
     async function checkAuth() {
       try {
         await getOnboardingStatus();
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Auth errors (401/403) are handled by global interceptor
         // For other errors (network, etc), we still allow access
         console.error("[OnboardingLayout] Auth check error:", error);

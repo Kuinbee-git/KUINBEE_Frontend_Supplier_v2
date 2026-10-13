@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -135,9 +137,7 @@ export function CustomCollectionServiceDetail({
     [serviceId]
   );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useComponentRequest(() => load(), [serviceId]);
 
   const revision = useMemo(() => {
     if (!service) return null;

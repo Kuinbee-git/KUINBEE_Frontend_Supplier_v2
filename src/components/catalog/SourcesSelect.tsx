@@ -1,11 +1,13 @@
+"use client";
+
+import { useComponentRequest } from "@/hooks/useComponentRequest";
 /**
  * SourcesSelect Component
  * Dropdown for selecting a source with option to create new
  */
 
-"use client";
 
-import { useState, useEffect, useCallback, useId } from "react";
+import { useState, useCallback, useId } from "react";
 import { DashboardButton, DashboardInlineAlert } from "@/components/dashboard";
 import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
 import { listMySources } from "@/lib/api/catalog";
@@ -60,9 +62,7 @@ export function SourcesSelect({
     }
   }, []);
 
-  useEffect(() => {
-    fetchSources();
-  }, [fetchSources]);
+  useComponentRequest(() => fetchSources(), []);
 
   const handleSourceCreated = useCallback(
     (source: Source) => {

@@ -1,3 +1,4 @@
+import { reloadAt } from "@/lib/utils/reload-navigation";
 /**
  * Supplier API Service
  * Handles all supplier-related API calls
@@ -95,7 +96,7 @@ async function apiFetch<T>(
 
           // Redirect to login if not already there
           if (!window.location.pathname.includes("/auth/login")) {
-            window.location.href = "/auth/login";
+            reloadAt("/auth/login");
           }
         }
       }

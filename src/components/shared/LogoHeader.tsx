@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSupplierTokens } from "@/hooks/useSupplierTokens";
@@ -41,10 +43,10 @@ export function LogoHeader({
               border: `1px solid ${tokens.glassBorder}`,
             }}
           >
-            <img
-              src={isDark ? logoDark.src : logoLight.src}
+            <Image
+              src={isDark ? logoDark : logoLight}
               alt="Kuinbee"
-              className="h-16 transition-opacity duration-300"
+              className="h-16 w-auto transition-opacity duration-300"
               style={{ opacity: isDark ? 0.9 : 1 }}
             />
           </div>

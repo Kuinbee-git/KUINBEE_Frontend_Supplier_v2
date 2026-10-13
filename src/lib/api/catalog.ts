@@ -1,21 +1,13 @@
+import { reloadAt } from "@/lib/utils/reload-navigation";
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 /**
  * Catalog API Service
  * Handles all catalog-related API calls (sources, categories)
  */
 
 import { CATALOG_API, API_BASE_URL } from "@/constants/api.constants";
-import type {
-  Source,
-  ListSourcesQuery,
-  ListSourcesResponse,
-  CreateSourceRequest,
-  CreateSourceResponse,
-  UpdateSourceRequest,
-  UpdateSourceResponse,
-  DeleteSourceResponse,
-  ListCategoriesQuery,
-  ListCategoriesResponse,
-} from "@/types/catalog.types";
+import type { ListSourcesQuery, ListSourcesResponse, CreateSourceRequest, CreateSourceResponse, UpdateSourceRequest, UpdateSourceResponse, DeleteSourceResponse, ListCategoriesQuery, ListCategoriesResponse } from "@/types/catalog.types";
 
 // ===== Helper: API Fetch =====
 async function apiFetch<T>(
@@ -43,28 +35,29 @@ async function apiFetch<T>(
           localStorage.removeItem("auth-storage");
           localStorage.removeItem("kuinbee-supplier-storage");
           localStorage.removeItem("onboarding-storage");
-          window.location.href = "/auth/login";
+          reloadAt("/auth/login");
         }
       }
       
-      const error: any = new Error(
+      const error = Object.assign(new Error(
         errorData?.message || `HTTP ${response.status}: ${response.statusText}`
-      );
-      error.status = response.status;
-      error.code = errorData?.code || `HTTP_${response.status}`;
-      error.data = errorData;
+      ), {
+        status: response.status,
+        code: errorData?.code || `HTTP_${response.status}`,
+        data: errorData as unknown,
+      });
       
       console.error(`[API] ${options.method || 'GET'} ${endpoint} failed:`, error);
       throw error;
     }
 
     return response.json();
-  } catch (err: any) {
-    if (err.status) throw err;
+  } catch (err: unknown) {
+    const details = getErrorDetails(err);
+    if (details.status) throw err;
     
     console.error(`[API] Network error for ${endpoint}:`, err);
-    const error: any = new Error(err.message || "Network error");
-    error.code = "NETWORK_ERROR";
+    const error = Object.assign(new Error(details.message || "Network error"), { code: "NETWORK_ERROR" });
     throw error;
   }
 }
