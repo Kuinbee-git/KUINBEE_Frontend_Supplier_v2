@@ -86,3 +86,15 @@ and 2 CSP browser checks, plus its transfer/queue unit contracts.
 These are local results against fixture APIs. GitHub Actions, Vercel check
 integration, staged-domain acceptance and the final live data/traffic handoff
 are separate release checkpoints; public promotion remains held.
+
+## Supplier login readiness regression
+
+A merged-commit browser run exposed a login timeout after compilation succeeded.
+Holding the real Next.js client scripts reproduced a form that accepted typing and
+clicks before event handlers were attached, with no login request reaching the
+fixture API. The login fieldset now stays disabled until client hydration completes.
+
+The compiled release test holds client scripts, asserts the controls cannot be used
+early, then releases scripts and verifies exactly one login request carrying the
+entered credentials and the expected error message. Timeouts and assertions remain
+blocking. On failure the test prints page/network diagnostics for the fixture flow.

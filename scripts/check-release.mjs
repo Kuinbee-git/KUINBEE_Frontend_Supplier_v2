@@ -9,9 +9,10 @@ const origin = "http://127.0.0.1:3020";
 const browserOrigin = "http://supplier.fixture.test:3020";
 let apiOrigin = "http://127.0.0.1";
 const requests = [];
-const fixture = createServer((req, res) => {
+const fixture = createServer(async (req, res) => {
   const url = new URL(req.url, apiOrigin);
-  requests.push({ method: req.method, path: url.pathname });
+  const recorded = { method: req.method, path: url.pathname };
+  requests.push(recorded);
   res.setHeader("Access-Control-Allow-Origin", browserOrigin);
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Headers", "content-type,authorization");
@@ -23,6 +24,11 @@ const fixture = createServer((req, res) => {
   }
   res.setHeader("Content-Type", "application/json");
   if (/\/auth\//.test(url.pathname)) {
+    if (req.method === "POST") {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      recorded.body = JSON.parse(Buffer.concat(chunks).toString());
+    }
     res.writeHead(401);
     res.end(
       JSON.stringify({
@@ -117,6 +123,15 @@ async function waitForServer(child, path) {
   throw new Error("Frontend did not become ready");
 }
 let browser;
+let page;
+const errors = [];
+const wrongApi = [];
+const apiCalls = [];
+const failedRequests = [];
+let releaseClientScripts;
+const clientScripts = new Promise((resolve) => {
+  releaseClientScripts = resolve;
+});
 try {
   await new Promise((resolve, reject) => {
     fixture.once("error", reject);
@@ -156,13 +171,16 @@ try {
       "--no-proxy-server",
     ],
   });
-  const page = await browser.newPage();
-  const errors = [];
-  const wrongApi = [];
-  const apiCalls = [];
+  page = await browser.newPage();
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/*", (route) => {
+  page.on("requestfailed", (request) => {
+    failedRequests.push({ url: request.url(), error: request.failure()?.errorText });
+  });
+  await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname.startsWith("/_next/") && route.request().resourceType() === "script") {
+      await clientScripts;
+    }
     if (url.origin === apiOrigin)
       apiCalls.push({ path: url.pathname, method: route.request().method() });
     if (![origin, browserOrigin, apiOrigin].includes(url.origin)) {
@@ -172,7 +190,15 @@ try {
     }
     return route.continue();
   });
-  await page.goto(browserOrigin + route, { waitUntil: "domcontentloaded" });
+  // Hold client JavaScript to exercise the real server-rendered form before
+  // hydration. A slow connection must not let users enter data or submit into
+  // controls whose event handlers are not attached yet.
+  await page.goto(browserOrigin + route, { waitUntil: "commit" });
+  await page.locator('input[type="email"]').waitFor({ state: "visible" });
+  assert(await page.locator('input[type="email"]').isDisabled());
+  assert(await page.locator('input[type="password"]').isDisabled());
+  assert(await page.getByRole("button", { name: "Sign in", exact: true }).isDisabled());
+  releaseClientScripts();
   if (app === "buyer")
     await page
       .getByRole("button", { name: "Sign In", exact: true })
@@ -201,6 +227,12 @@ try {
     apiCalls.some((r) => r.method === "POST" && r.path.includes("/auth/")),
     "Compiled frontend must send login to the configured API"
   );
+  const submitted = requests.filter((r) => r.method === "POST" && r.path.includes("/auth/"));
+  assert.equal(submitted.length, 1, "Login submits exactly once after hydration");
+  assert.deepEqual(submitted[0].body, {
+    email: "fixture@example.test",
+    password: "Fixture-password-123",
+  });
   assert.deepEqual(wrongApi, []);
   assert.deepEqual(errors, []);
   console.log(
@@ -217,7 +249,20 @@ try {
     await run("scripts/test-claru-bulk-browser.mjs");
     await run("scripts/test-claru-csp-browser.mjs");
   }
+} catch (error) {
+  console.error("Release browser diagnostics", JSON.stringify({
+    message: error.message,
+    page: page?.url(),
+    visibleText: await page?.locator("body").innerText().catch(() => "unavailable"),
+    errors,
+    wrongApi,
+    apiCalls,
+    failedRequests,
+    fixtureRequests: requests.map(({ method, path }) => ({ method, path })),
+  }));
+  throw error;
 } finally {
+  releaseClientScripts();
   await browser?.close();
   for (const child of children) {
     const stopped = once(child, "exit");
