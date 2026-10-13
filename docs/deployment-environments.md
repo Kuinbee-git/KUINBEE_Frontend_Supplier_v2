@@ -1,10 +1,13 @@
 # Frontend release checks and environment separation
 
 `main` is the Vercel Production branch. `staging` is the stable Preview branch.
-GitHub Actions checks each pushed revision and pull request without application,
+GitHub Actions checks each pushed branch revision, including PR branches, without application,
 AWS, payment, SMTP or Vercel deployment credentials. Vercel builds from Git and
 requires **Frontend quality (supplier)** before assigning a deployment's domains.
 The check name must remain aligned with the project's Vercel Deployment Check.
+Push is the authoritative trigger; avoiding a second pull_request-triggered run
+keeps one required check result per pushed revision. Merged revisions run again
+on main/staging. This private repository accepts changes on internal branches.
 
 ## Build configuration
 
