@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, memo } from "react";
+import React, { useState, useCallback, useSyncExternalStore, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthTokens } from "@/hooks/useAuthTokens";
@@ -16,6 +16,10 @@ interface LoginFormProps {
   error?: string;
 }
 
+const subscribeToHydration = () => () => {};
+const clientIsReady = () => true;
+const serverIsReady = () => false;
+
 function LoginFormComponent({
   email,
   onEmailChange,
@@ -25,6 +29,11 @@ function LoginFormComponent({
   isDark = false,
   error: externalError,
 }: LoginFormProps) {
+  const isReady = useSyncExternalStore(
+    subscribeToHydration,
+    clientIsReady,
+    serverIsReady
+  );
   const [localEmail, setLocalEmail] = useState(email);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -66,7 +75,7 @@ function LoginFormComponent({
   );
 
   return (
-    <div className="space-y-5">
+    <fieldset className="min-w-0 space-y-5" disabled={!isReady}>
       <AuthHeader
         title="Sign in to your account"
         subtitle="Enter your credentials to access the supplier portal"
@@ -165,7 +174,7 @@ function LoginFormComponent({
           Access monitored · Additional verification may be required
         </p>
       </div>
-    </div>
+    </fieldset>
   );
 }
 
