@@ -1,5 +1,7 @@
 "use client";
 
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { NewSupplierForm } from "@/components/auth";
@@ -28,7 +30,8 @@ export default function RegisterPage() {
       
       // Navigate to dashboard (will auto-redirect to onboarding)
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       console.error("[REGISTER] Registration failed:", err);
       
       // Extract user-friendly error message based on error code/status

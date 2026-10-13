@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -121,9 +123,7 @@ export function DelistedDatasetEdit({ datasetId }: DelistedDatasetEditProps) {
     }
   }, [datasetId]);
 
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+  useComponentRequest(() => fetchData(), [datasetId]);
 
   // --- Derived state ---
   const canEdit = useMemo(() => {

@@ -1,3 +1,4 @@
+import { reloadAt } from "@/lib/utils/reload-navigation";
 /**
  * Dataset Proposal API Service
  * Handles all dataset proposal-related API calls
@@ -83,7 +84,7 @@ async function apiFetch<T>(
           localStorage.removeItem("auth-storage");
           localStorage.removeItem("kuinbee-supplier-storage");
           localStorage.removeItem("onboarding-storage");
-          window.location.href = "/auth/login";
+          reloadAt("/auth/login");
         }
       }
 

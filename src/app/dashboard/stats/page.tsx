@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { Suspense, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import {
@@ -62,9 +64,7 @@ function StatsOverviewContent() {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchStats(range);
-  }, [fetchStats, range]);
+  useComponentRequest(() => fetchStats(range), [range]);
 
   if (error) {
     return (

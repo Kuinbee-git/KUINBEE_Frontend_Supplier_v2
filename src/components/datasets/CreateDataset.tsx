@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -253,8 +255,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   const tokens = getDatasetThemeTokens(isDark);
 
-  // Load draft on mount
-  useEffect(() => {
+  // Restore local progress only after checking any existing proposal on the server.
+  useComponentRequest(async () => {
     if (draftLoaded || !isDraftStorageReady) return;
 
     const draft = loadDraft() as SavedDraftProposal | null;
@@ -290,7 +292,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
       if (draft.createdProposalId) {
         // Proactively verify the drafted dataset is still editable
-        getProposalDetails(draft.createdProposalId)
+        await getProposalDetails(draft.createdProposalId)
           .then((res) => {
             if (res.verification.status !== "PENDING") {
               clearDraft();
@@ -323,7 +325,7 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     } else {
       setDraftLoaded(true);
     }
-  }, [clearDraft, draftLoaded, isDraftStorageReady, loadDraft]);
+  }, [isDraftStorageReady], isDraftStorageReady && !draftLoaded);
 
   // Auto-save draft whenever form data changes
   useEffect(() => {
@@ -436,26 +438,13 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     return !!(pricingData.price && pricingData.price.trim() !== "");
   };
 
-  useEffect(() => {
-    if (!basicData.isSample) return;
-
-    setPricingData((prev) => {
-      if (
-        prev.isPaid === false &&
-        (prev.price == null || prev.price === "") &&
-        prev.currency === "USD"
-      ) {
-        return prev;
-      }
-      return { ...SAMPLE_FREE_PRICING };
-    });
-  }, [basicData.isSample]);
-
-  useEffect(() => {
-    if (basicData.isSample || !pricingData.isPaid) {
-      setSampleFileUploaded(false);
-    }
-  }, [basicData.isSample, pricingData.isPaid]);
+  if (basicData.isSample && (pricingData.isPaid ||
+      (pricingData.price != null && pricingData.price !== "") || pricingData.currency !== "USD")) {
+    setPricingData({ ...SAMPLE_FREE_PRICING });
+  }
+  if ((basicData.isSample || !pricingData.isPaid) && sampleFileUploaded) {
+    setSampleFileUploaded(false);
+  }
 
   const handleBasicChange = (field: string, value: string | boolean | null) => {
     setBasicData((prev) => {

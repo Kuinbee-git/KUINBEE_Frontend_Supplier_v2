@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -144,9 +146,7 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
     }
   }, [debouncedSearchQuery, legacySubmittedView, page]);
 
-  useEffect(() => {
-    void fetchDrafts();
-  }, [fetchDrafts]);
+  useComponentRequest(() => fetchDrafts(), [debouncedSearchQuery, legacySubmittedView, page]);
 
   if (legacySubmittedView) {
     return <SubmittedProposals isDark={isDark} />;

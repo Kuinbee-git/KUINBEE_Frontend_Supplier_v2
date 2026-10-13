@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -142,13 +142,13 @@ export function PricingEditDialog({
     await submitProposalPricing(datasetId);
   };
 
-  useEffect(() => {
-    if (currentPricing) {
-      setIsPaid(currentPricing.isPaid);
-      setPrice(currentPricing.price ?? "");
-      setCurrency(currentPricing.currency);
-    }
-  }, [currentPricing]);
+  const [loadedPricing, setLoadedPricing] = useState(currentPricing);
+  if (loadedPricing !== currentPricing) {
+    setLoadedPricing(currentPricing);
+    setIsPaid(currentPricing?.isPaid ?? false);
+    setPrice(currentPricing?.price ?? "");
+    setCurrency(currentPricing?.currency ?? "USD");
+  }
 
   const handleSaveAndSubmit = async () => {
     if (!isPaid && !price) {

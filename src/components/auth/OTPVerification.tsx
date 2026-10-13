@@ -11,7 +11,7 @@ export type OTPStateType = 'default' | 'invalid' | 'expired' | 'verifying' | 'su
 
 interface OTPVerificationProps {
   email: string;
-  onVerify?: (code: string) => void;
+  onVerify?: (code: string) => void | Promise<void>;
   onResend?: () => Promise<void>;
   onChangeEmail?: () => void;
   onNeedHelp?: () => void;
@@ -21,7 +21,6 @@ interface OTPVerificationProps {
 }
 
 export function OTPVerification({ 
-  email, 
   onVerify,
   onResend,
   onChangeEmail, 
@@ -33,7 +32,7 @@ export function OTPVerification({
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpState, setOtpState] = useState<OTPStateType>('default');
   const [resendCountdown, setResendCountdown] = useState(30);
-  const [canResend, setCanResend] = useState(false);
+  const canResend = resendCountdown === 0;
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const tokens = useAuthTokens(isDark);
@@ -45,8 +44,6 @@ export function OTPVerification({
         setResendCountdown(resendCountdown - 1);
       }, 1000);
       return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
     }
   }, [resendCountdown]);
 
@@ -119,7 +116,6 @@ export function OTPVerification({
     setOtpDigits(['', '', '', '', '', '']);
     setOtpState('default');
     setResendCountdown(30);
-    setCanResend(false);
     inputRefs.current[0]?.focus();
     
     // Call the parent's onResend handler if provided
@@ -130,7 +126,6 @@ export function OTPVerification({
         console.error('[OTP] Resend failed:', err);
         // Reset countdown so they can try again
         setResendCountdown(0);
-        setCanResend(true);
       }
     }
   };

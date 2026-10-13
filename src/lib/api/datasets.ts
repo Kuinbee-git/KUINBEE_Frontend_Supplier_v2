@@ -1,3 +1,6 @@
+import { reloadAt } from "@/lib/utils/reload-navigation";
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 /**
  * Dataset API Service (Published/Verified Datasets)
  * Handles all published dataset-related API calls (Stage 4)
@@ -79,30 +82,31 @@ async function apiFetch<T>(
           localStorage.removeItem("auth-storage");
           localStorage.removeItem("kuinbee-supplier-storage");
           localStorage.removeItem("onboarding-storage");
-          window.location.href = "/auth/login";
+          reloadAt("/auth/login");
         }
       }
 
-      const error: any = new Error(
+      const error = Object.assign(new Error(
         apiError?.message || `HTTP ${response.status}: ${response.statusText}`
-      );
-      error.status = response.status;
-      error.code = apiError?.code || `HTTP_${response.status}`;
-      error.data = errorData;
+      ), {
+        status: response.status,
+        code: apiError?.code || `HTTP_${response.status}`,
+        data: errorData as unknown,
+      });
 
       throw error;
     }
 
     return response.json();
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const details = getErrorDetails(err);
     // If error already has status, rethrow
-    if (err.status) {
+    if (details.status) {
       throw err;
     }
 
     // Network error or other fetch error
-    const error: any = new Error(err.message || "Network error");
-    error.code = "NETWORK_ERROR";
+    const error = Object.assign(new Error(details.message || "Network error"), { code: "NETWORK_ERROR" });
     throw error;
   }
 }

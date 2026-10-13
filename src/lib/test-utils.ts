@@ -144,7 +144,7 @@ export function checkBrowserCapabilities() {
 /**
  * Format test results for console logging
  */
-export function logTestResults(testName: string, results: any) {
+export function logTestResults(testName: string, results: unknown) {
   console.group(`🧪 ${testName}`);
   console.table(results);
   console.groupEnd();

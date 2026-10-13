@@ -1,5 +1,7 @@
 "use client";
 
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { OTPVerification } from "@/components/auth";
@@ -12,7 +14,6 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const { isDark, toggleTheme } = useThemeStore();
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
   const hasAttemptedSendRef = useRef(false);
@@ -25,7 +26,8 @@ export default function VerifyEmailPage() {
       await sendEmailOtp({ reason: "SUPPLIER_ONBOARDING" });
       resendAttemptCountRef.current = 0;
       // OTP sent successfully
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       const errorMsg = err.message || "Failed to send OTP";
       console.error('[OTP] Failed to send OTP:', errorMsg, err.status);
       
@@ -43,7 +45,7 @@ export default function VerifyEmailPage() {
         }
       }
       
-      throw err;
+      throw caught;
     }
   }, []);
 
@@ -72,7 +74,6 @@ export default function VerifyEmailPage() {
 
   const handleVerifyOtp = useCallback(async (otp: string) => {
     try {
-      setLoading(true);
       setError(null);
       
       // Verify OTP
@@ -89,7 +90,8 @@ export default function VerifyEmailPage() {
       
       // Navigating to next route
       router.push(nextRoute);
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       // Verification failed
       const errorMsg = err.message || "Invalid or expired OTP";
       
@@ -98,9 +100,7 @@ export default function VerifyEmailPage() {
       } else {
         setError(errorMsg);
       }
-      throw err;
-    } finally {
-      setLoading(false);
+      throw caught;
     }
   }, [router]);
 

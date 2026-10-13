@@ -1,5 +1,7 @@
 "use client";
 
+import { reloadAt } from "@/lib/utils/reload-navigation";
+
 import { SupplierAccount } from "@/components/profile";
 import { useAuthStore } from "@/store";
 
@@ -8,7 +10,7 @@ export default function AccountPage() {
 
   const handleLogout = () => {
     logout();
-    window.location.href = "/auth/login";
+    reloadAt("/auth/login");
   };
 
   return (

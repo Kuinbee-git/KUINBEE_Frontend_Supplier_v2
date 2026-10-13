@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useId, useState, type FormEvent } from "react";
 import {
   DashboardButton,
   DashboardDialog,
@@ -79,9 +79,9 @@ export function SourcesDialog({
 }: SourcesDialogProps) {
   const generatedId = useId().replaceAll(":", "");
   const formId = `source-form-${generatedId}`;
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [name, setName] = useState(existingSource?.name ?? "");
+  const [description, setDescription] = useState(existingSource?.description ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(existingSource?.websiteUrl ?? "");
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SourceFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -94,20 +94,17 @@ export function SourcesDialog({
     setFormError(null);
   }, []);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (existingSource) {
-      setName(existingSource.name);
-      setDescription(existingSource.description || "");
-      setWebsiteUrl(existingSource.websiteUrl || "");
+  const [formContext, setFormContext] = useState({ isOpen, existingSource });
+  if (formContext.isOpen !== isOpen || formContext.existingSource !== existingSource) {
+    setFormContext({ isOpen, existingSource });
+    if (isOpen) {
+      setName(existingSource?.name ?? "");
+      setDescription(existingSource?.description ?? "");
+      setWebsiteUrl(existingSource?.websiteUrl ?? "");
       setFieldErrors({});
       setFormError(null);
-      return;
     }
-
-    resetForm();
-  }, [existingSource, isOpen, resetForm]);
+  }
 
   const validateForm = useCallback(() => {
     const nextErrors: SourceFieldErrors = {};

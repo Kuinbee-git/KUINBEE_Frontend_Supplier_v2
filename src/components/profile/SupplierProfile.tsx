@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import * as React from "react";
 import {
   Building2,
@@ -242,9 +244,7 @@ export function SupplierProfile({ onSave }: SupplierProfileProps) {
     }
   }, []);
 
-  React.useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
+  useComponentRequest(() => loadProfile(), []);
 
   const updateField = <Key extends ProfileField>(
     field: Key,

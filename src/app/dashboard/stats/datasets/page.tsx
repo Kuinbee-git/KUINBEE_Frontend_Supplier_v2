@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   BarChart3,
@@ -57,9 +59,7 @@ function DatasetsContent() {
     }
   }, [range]);
 
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+  useComponentRequest(() => fetchData(), [range]);
 
   const metrics = useMemo(() => {
     const totalViews = datasets.reduce(

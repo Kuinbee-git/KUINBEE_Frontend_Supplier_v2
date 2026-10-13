@@ -3,7 +3,7 @@
  * Standard API response formats
  */
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -13,7 +13,7 @@ export interface ApiResponse<T = any> {
 export interface ApiError {
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp?: string;
 }
 
@@ -32,7 +32,7 @@ export interface PaginatedResponse<T> {
 export interface ApiRequestConfig {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   headers?: Record<string, string>;
-  body?: any;
+  body?: unknown;
   params?: Record<string, string | number | boolean>;
   timeout?: number;
 }

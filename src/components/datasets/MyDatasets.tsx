@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -106,19 +108,15 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
     useState<FilterVisibility>("ALL");
   const fetchRequestIdRef = useRef(0);
 
-  useEffect(() => {
-    const statusFromQuery = searchParams.get("status");
-    if (
-      statusFromQuery === "VERIFIED" ||
-      statusFromQuery === "PUBLISHED" ||
-      statusFromQuery === "DELISTED" ||
-      statusFromQuery === "ARCHIVED"
-    ) {
-      setStatusFilter(statusFromQuery);
-      return;
-    }
-    setStatusFilter("ALL");
-  }, [searchParams]);
+  const queryStatus = searchParams.get("status");
+  const [lastQueryStatus, setLastQueryStatus] = useState<string | null | undefined>(undefined);
+  if (lastQueryStatus !== queryStatus) {
+    setLastQueryStatus(queryStatus);
+    setStatusFilter(
+      queryStatus === "VERIFIED" || queryStatus === "PUBLISHED" ||
+      queryStatus === "DELISTED" || queryStatus === "ARCHIVED" ? queryStatus : "ALL"
+    );
+  }
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -163,13 +161,13 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
     }
   }, [debouncedSearchQuery, page, statusFilter, visibilityFilter]);
 
-  useEffect(() => {
-    void fetchDatasets();
-  }, [fetchDatasets]);
+  useComponentRequest(() => fetchDatasets(), [debouncedSearchQuery, page, statusFilter, visibilityFilter]);
 
-  useEffect(() => {
+  const [pageContext, setPageContext] = useState({ statusFilter, visibilityFilter });
+  if (pageContext.statusFilter !== statusFilter || pageContext.visibilityFilter !== visibilityFilter) {
+    setPageContext({ statusFilter, visibilityFilter });
     setPage(1);
-  }, [statusFilter, visibilityFilter]);
+  }
 
   const datasetSummary = summary ?? EMPTY_DATASET_SUMMARY;
   const metrics: DatasetMetric<FilterStatus>[] = [

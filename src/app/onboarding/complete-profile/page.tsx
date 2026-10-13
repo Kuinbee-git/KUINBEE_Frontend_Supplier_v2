@@ -1,5 +1,9 @@
 "use client";
 
+import { reloadAt } from "@/lib/utils/reload-navigation";
+
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -21,7 +25,7 @@ import { BUSINESS_DOMAINS } from "@/types/onboarding.types";
 import { ProgressStepper } from "@/components/onboarding";
 import { useSupplierTokens } from "@/hooks";
 import { useThemeStore } from "@/store";
-import type { SupplierProfile, UpdateProfileRequest, SupplierType } from "@/types";
+import type { UpdateProfileRequest, SupplierType } from "@/types";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -86,7 +90,7 @@ export default function CompleteProfilePage() {
           
           setNaturesOfDataProvided(profile.naturesOfDataProvided || "");
         }
-      } catch (err) {
+      } catch {
         // Failed to fetch profile (logged silently)
       } finally {
         setLoading(false);
@@ -166,7 +170,8 @@ export default function CompleteProfilePage() {
       await partialCompleteOnboarding();
 
       router.push("/onboarding/pending-verification");
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       setError(err.message || "Failed to submit profile for verification");
     } finally {
       setSubmitting(false);
@@ -182,7 +187,8 @@ export default function CompleteProfilePage() {
       await completeOnboarding();
 
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       setError(err.message || "Failed to complete onboarding");
     } finally {
       setLegacySubmitting(false);
@@ -197,7 +203,7 @@ export default function CompleteProfilePage() {
       localStorage.removeItem('onboarding-storage');
     }
     // Hard redirect to ensure clean state
-    window.location.href = '/auth/login';
+    reloadAt("/auth/login");
   }, []);
 
   if (loading) {

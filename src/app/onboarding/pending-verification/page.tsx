@@ -1,5 +1,9 @@
 "use client";
 
+import { reloadAt } from "@/lib/utils/reload-navigation";
+
+import { getErrorDetails } from "@/lib/utils/error-details";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -38,7 +42,7 @@ export default function PendingVerificationPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   const handleRefreshStatus = async () => {
     try {
@@ -52,7 +56,8 @@ export default function PendingVerificationPage() {
         router.push("/dashboard");
         return;
       }
-    } catch (err: any) {
+    } catch (caught: unknown) {
+      const err = getErrorDetails(caught);
       setError(err.message || "Failed to refresh onboarding status");
     } finally {
       setChecking(false);
@@ -65,7 +70,7 @@ export default function PendingVerificationPage() {
       localStorage.removeItem("kuinbee-supplier-storage");
       localStorage.removeItem("onboarding-storage");
     }
-    window.location.href = "/auth/login";
+    reloadAt("/auth/login");
   };
 
   return (

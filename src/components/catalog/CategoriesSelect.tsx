@@ -1,11 +1,13 @@
+"use client";
+
+import { useComponentRequest } from "@/hooks/useComponentRequest";
 /**
  * CategoriesSelect Component
  * Dropdown for selecting a category (read-only, admin managed)
  */
 
-"use client";
 
-import { useState, useEffect, useCallback, useId } from "react";
+import { useState, useCallback, useId } from "react";
 import { DashboardInlineAlert } from "@/components/dashboard";
 import { DatasetSelect } from "@/components/datasets/shared/DatasetSelect";
 import { listCategories } from "@/lib/api/catalog";
@@ -54,9 +56,7 @@ export function CategoriesSelect({
     }
   }, []);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+  useComponentRequest(() => fetchCategories(), []);
 
   const displayError = error || fetchError;
 

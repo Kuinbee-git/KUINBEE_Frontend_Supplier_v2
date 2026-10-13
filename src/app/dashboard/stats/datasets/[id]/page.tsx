@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
 
@@ -96,9 +98,7 @@ function DatasetDetailContent() {
     }
   }, [datasetId, range]);
 
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+  useComponentRequest(() => fetchData(), [datasetId, range]);
 
   const buyerColumns = useMemo<readonly DashboardTableColumn<DatasetBuyer>[]>(
     () => [

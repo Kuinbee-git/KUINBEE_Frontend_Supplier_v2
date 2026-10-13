@@ -1,9 +1,10 @@
+import { useComponentRequest } from "@/hooks/useComponentRequest";
 /**
  * useOnboardingStatus Hook
  * Fetches and caches the supplier onboarding status
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { getOnboardingStatus } from "@/lib/api/supplier";
 import type { OnboardingStatusResponse, OnboardingNextStep } from "@/types";
 
@@ -46,13 +47,7 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
     }
   }, []);
 
-  // Fetch on mount
-  useEffect(() => {
-    // Only fetch on client side
-    if (typeof window === 'undefined') return;
-    
-    fetchStatus();
-  }, [fetchStatus]);
+  useComponentRequest(() => fetchStatus(), []);
 
   // Compute derived values
   const isComplete = data?.onboarding?.nextStep === "DONE";

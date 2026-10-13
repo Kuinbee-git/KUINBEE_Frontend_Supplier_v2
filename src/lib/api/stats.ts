@@ -1,3 +1,4 @@
+import { reloadAt } from "@/lib/utils/reload-navigation";
 /**
  * Supplier Stats API Service
  * Handles fetching supplier dashboard statistics
@@ -194,7 +195,7 @@ async function apiFetch<T>(
                         // Ignore localStorage errors
                     }
                     if (!window.location.pathname.includes("/auth/login")) {
-                        window.location.href = "/auth/login";
+                        reloadAt("/auth/login");
                     }
                 }
             }

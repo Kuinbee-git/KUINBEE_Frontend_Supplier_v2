@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -171,9 +173,7 @@ export function SupplierAccount({
     }
   }, []);
 
-  React.useEffect(() => {
-    void loadOnboardingStatus();
-  }, [loadOnboardingStatus]);
+  useComponentRequest(() => loadOnboardingStatus(), []);
 
   const handlePasswordChange = async (event: React.FormEvent) => {
     event.preventDefault();

@@ -1,5 +1,7 @@
 "use client";
 
+import { useComponentRequest } from "@/hooks/useComponentRequest";
+
 import * as React from "react";
 import { ShieldCheck } from "lucide-react";
 
@@ -66,9 +68,7 @@ export function PanVerificationHistory() {
     }
   }, [page]);
 
-  React.useEffect(() => {
-    void fetchAttempts();
-  }, [fetchAttempts]);
+  useComponentRequest(() => fetchAttempts(), [page]);
 
   return (
     <DashboardCard>

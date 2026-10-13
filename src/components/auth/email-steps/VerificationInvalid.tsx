@@ -1,12 +1,14 @@
 "use client";
 
+import type { AuthTokens } from "@/hooks/useAuthTokens";
+
 import React from 'react';
 import { AuthHeader, InfoCard, AuthButton } from '../shared';
 
 interface VerificationInvalidProps {
   onRequestNew: () => void;
   onBack: () => void;
-  tokens: any;
+  tokens: AuthTokens;
   isDark: boolean;
 }
 
