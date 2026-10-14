@@ -53,14 +53,7 @@ function AuthShellWrapperComponent({
       {/* Optional navigation */}
       {showNav}
 
-      <div className="relative z-0 flex h-screen">
-        {/* Theme toggle - fixed position */}
-        <ThemeToggle 
-          isDark={isDark} 
-          onToggle={onToggleDark}
-          className="fixed top-6 right-6 z-50"
-        />
-
+      <div className="relative z-0 flex min-h-screen">
         {/* Left panel - Brand illustration (hidden on mobile) */}
         <div className="hidden lg:flex lg:w-[55%] items-center justify-center relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
@@ -71,6 +64,9 @@ function AuthShellWrapperComponent({
         {/* Right panel - Auth content */}
         <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
           <div className="w-full max-w-[480px] relative z-10">
+            <div className="mb-4 flex items-center justify-end">
+              <ThemeToggle isDark={isDark} onToggle={onToggleDark} />
+            </div>
             {/* Logo badge */}
             <div className="text-center mb-12">
               <div className="inline-flex items-center gap-3 mb-6">

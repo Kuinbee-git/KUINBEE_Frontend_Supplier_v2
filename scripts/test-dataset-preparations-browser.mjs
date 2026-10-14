@@ -30,30 +30,35 @@ const css =
 const entry = [
   "import React from 'react'; import {createRoot} from 'react-dom/client';",
   "import {QueryProvider} from './src/components/QueryProvider';",
-  "import {DatasetPreparationEditor} from './src/components/datasets/preparation/DatasetPreparationEditor';",
-  "import {DatasetPreparationList} from './src/components/datasets/preparation/DatasetPreparationList';",
-  "import {DatasetPreparationEntry} from './src/components/datasets/preparation/DatasetPreparationEntry';",
+  "import CreateDatasetPage from './src/app/dashboard/datasets/create/page';",
+  "import ProposalsPage from './src/app/dashboard/datasets/page';",
+  "import DraftProposalPage from './src/app/dashboard/datasets/drafts/[draftId]/page';",
+  "import OldDraftListPage from './src/app/dashboard/datasets/prepare/page';",
+  "import OldDraftPage from './src/app/dashboard/datasets/prepare/[draftId]/page';",
+  "import {DatasetPreparationScreen} from './src/components/datasets/preparation/DatasetPreparationScreen';",
   "import {DATASET_PREPARATION_ENABLED} from './src/lib/dataset-preparation-environment';",
   "import {preparationApi} from './src/lib/api/dataset-preparations';",
   "import {DatasetPreparationMetadataSchema} from '@kuinbee/dataset-preparation-contracts';",
   "window.runtimeContract = {partial:DatasetPreparationMetadataSchema.safeParse({title:'Partial'}).success, forged:DatasetPreparationMetadataSchema.safeParse({title:'Bad',scanPassed:true}).success};",
   "window.tryProductionWrite=async()=>{try{await preparationApi.create({requestId:crypto.randomUUID(),metadata:{title:'Blocked'}});}catch(e){return e.code;}};",
   "const root=createRoot(document.getElementById('root')); let mount=0;",
-  "window.showEditor=(id)=>{mount++;root.render(<React.StrictMode><QueryProvider>{DATASET_PREPARATION_ENABLED?<DatasetPreparationEditor key={mount} draftId={id} onCreated={draft=>window.history.replaceState(window.history.state,'','/dashboard/datasets/prepare/'+draft)} onExit={()=>window.location.assign('/dashboard/datasets/prepare')}/>:<DatasetPreparationEntry/>}</QueryProvider></React.StrictMode>);};",
-  "window.showList=()=>root.render(<QueryProvider><DatasetPreparationList/></QueryProvider>);",
-  "const tail=window.location.pathname.split('/').at(-1);",
-  "if(window.location.pathname==='/dashboard/datasets/prepare')window.showList();else window.showEditor(tail?.startsWith('c')?tail:undefined);",
+  "function render(view){root.render(<React.StrictMode><QueryProvider>{view}</QueryProvider></React.StrictMode>)}",
+  "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",
+  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
+  "window.showRoute();",
 ].join("\n");
-const mockedNextLink = {
-  name: "fixture-next-link",
+const mockedNext = {
+  name: "fixture-next",
   setup(builder) {
-    builder.onResolve({ filter: /^next\/link$/ }, () => ({
-      path: "fixture-link",
+    builder.onResolve({ filter: /^next\/(link|navigation)$/ }, (args) => ({
+      path: args.path,
       namespace: "fixture",
     }));
-    builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+    builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => ({
       contents:
-        "import React from 'react'; export default function Link(props){return <a {...props}/>}",
+        args.path === "next/link"
+          ? "import React from 'react'; export default function Link(props){return <a {...props}/>}"
+          : "export function useRouter(){return {push:url=>window.location.assign(url),replace:url=>window.location.replace(url),back:()=>window.history.back()}}; export function useSearchParams(){return new URLSearchParams(window.location.search)}; export function notFound(){throw {notFound:true}}; export function redirect(url){throw {redirect:url}};",
       loader: "jsx",
       resolveDir: process.cwd(),
     }));
@@ -62,7 +67,7 @@ const mockedNextLink = {
 async function bundle(environment) {
   const result = await build({
     stdin: { contents: entry, loader: "jsx", resolveDir: process.cwd() },
-    plugins: [mockedNextLink],
+    plugins: [mockedNext],
     bundle: true,
     write: false,
     metafile: true,
@@ -155,6 +160,7 @@ function json(res, status, value) {
   });
   res.end(JSON.stringify(value));
 }
+const fixtureErrors = [];
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://fixture.test");
@@ -177,7 +183,7 @@ const server = createServer(async (req, res) => {
     if (!url.pathname.startsWith("/api/")) {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(
-        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main class="supplier-dashboard"><div id="root"></div></main><script src="/bundle.js?environment=' +
+        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main class="supplier-dashboard dashboard-canvas"><div id="root"></div></main><script src="/bundle.js?environment=' +
           (url.searchParams.get("environment") === "production"
             ? "production"
             : "local") +
@@ -210,10 +216,13 @@ const server = createServer(async (req, res) => {
       url.pathname === "/api/v1/supplier/categories" ||
       url.pathname === "/api/v1/supplier/sources"
     ) {
+      const pageSize = req.headers.referer?.includes("environment=production")
+        ? 100
+        : 20;
       assert.equal(
         url.searchParams.get("pageSize"),
-        "20",
-        "Catalogue uses its real pageSize parameter"
+        String(pageSize),
+        "Each creator keeps its real catalogue pageSize parameter"
       );
       const collection = url.pathname.endsWith("categories")
         ? categories
@@ -226,23 +235,77 @@ const server = createServer(async (req, res) => {
       json(res, 200, {
         success: true,
         data: {
-          items: matching.slice((page - 1) * 20, page * 20),
+          items: matching.slice((page - 1) * pageSize, page * pageSize),
           total: matching.length,
           page,
-          pageSize: 20,
+          pageSize,
+        },
+      });
+      return;
+    }
+    if (
+      url.pathname === "/api/v1/supplier/dataset-proposals" &&
+      req.method === "GET"
+    ) {
+      const submitted = url.searchParams.get("scope") === "SUBMITTED";
+      const item = {
+        id: cuid(9999),
+        datasetUniqueId: "KB-EARLIER-1",
+        title: submitted
+          ? "Existing submitted proposal"
+          : "Earlier server draft",
+        verificationStatus: submitted ? "SUBMITTED" : "PENDING",
+        updatedAt: "2026-10-14T00:00:00.000Z",
+        currentUploadId: null,
+      };
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const items =
+        !q ||
+        item.title.toLowerCase().includes(q) ||
+        item.datasetUniqueId.toLowerCase().includes(q)
+          ? [item]
+          : [];
+      json(res, 200, {
+        success: true,
+        data: {
+          items,
+          total: items.length,
+          page: 1,
+          pageSize: 10,
+          summary: {
+            total: 1,
+            draftsWithCurrentUpload: 0,
+            draftsWithoutCurrentUpload: 1,
+            byVerificationStatus: {
+              PENDING: submitted ? 0 : 1,
+              SUBMITTED: submitted ? 1 : 0,
+              CHANGES_REQUESTED: 0,
+              RESUBMITTED: 0,
+              UNDER_REVIEW: 0,
+              VERIFIED: 0,
+              REJECTED: 0,
+            },
+          },
         },
       });
       return;
     }
     if (url.pathname === base && req.method === "GET") {
+      assert.equal(url.searchParams.get("limit"), "20");
+      const query = (url.searchParams.get("q") ?? "").toLowerCase();
+      const matching = [...drafts.values()].filter(
+        (item) => !query || item.metadata.title.toLowerCase().includes(query)
+      );
       const page = Number(url.searchParams.get("page") ?? 1);
+      if (query === "speech")
+        await new Promise((resolveWait) => setTimeout(resolveWait, 900));
       json(res, 200, {
         success: true,
         data: {
-          items: [...drafts.values()].slice((page - 1) * 20, page * 20),
+          items: matching.slice((page - 1) * 20, page * 20),
           page,
           limit: 20,
-          total: drafts.size,
+          total: matching.length,
         },
       });
       return;
@@ -359,6 +422,7 @@ const server = createServer(async (req, res) => {
       error: { code: "NOT_FOUND", message: "Unexpected fixture API" },
     });
   } catch (error) {
+    fixtureErrors.push(String(error));
     console.error(error);
     json(res, 500, {
       success: false,
@@ -431,7 +495,31 @@ try {
     }
     return route.continue();
   });
-  await page.goto(origin);
+  await page.goto(origin + "/dashboard/datasets/create");
+  await page
+    .getByRole("heading", { name: "Create proposal", exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Draft proposals", exact: true })
+      .getAttribute("href"),
+    "/dashboard/datasets"
+  );
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Create a dataset proposal", exact: true })
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByText("Prepare a Dataset step by step", { exact: true })
+      .count(),
+    0
+  );
+  console.log(
+    "PASS existing Create proposal route uses one four-step proposal editor"
+  );
   assert.deepEqual(await page.evaluate(() => window.runtimeContract), {
     partial: true,
     forged: false,
@@ -871,7 +959,7 @@ try {
     .fill("Unsaved navigation input");
   page.once("dialog", (dialog) => dialog.dismiss());
   await page
-    .getByRole("link", { name: "Existing proposals", exact: true })
+    .getByRole("link", { name: "Draft proposals", exact: true })
     .click();
   assert.equal(page.url().split("/").at(-1), scopedId);
   assert.equal(
@@ -895,14 +983,32 @@ try {
     (await page.evaluate(() => document.documentElement.scrollWidth)) <= 390,
     "Mobile form must not overflow horizontally"
   );
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-entry-mobile.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await step(page, "1. Basics");
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-entry-light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-entry-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page.setViewportSize({ width: 390, height: 844 });
   console.log(
     "PASS dirty SPA navigation protection, keyboard steps and narrow-screen save with actual generated dashboard CSS"
   );
 
-  await page.goto(origin + "/dashboard/datasets/prepare");
-  await page
-    .getByRole("heading", { name: "Saved drafts", exact: true })
-    .waitFor();
+  await page.goto(origin + "/dashboard/datasets");
+  await page.getByRole("heading", { name: "My Drafts", exact: true }).waitFor();
   assert.equal(
     await page
       .getByRole("link", { name: "Only a title is needed", exact: true })
@@ -915,7 +1021,112 @@ try {
   await page
     .getByRole("link", { name: "Unsaved navigation input", exact: true })
     .waitFor();
-  console.log("PASS paginated saved-draft list/resume discovery");
+  await page
+    .getByRole("link", { name: "Earlier server draft", exact: true })
+    .first()
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Earlier server draft", exact: true })
+      .first()
+      .getAttribute("href"),
+    "/dashboard/datasets/" + cuid(9999)
+  );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Create proposal", exact: true })
+      .count(),
+    1
+  );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Prepare a Dataset", exact: true })
+      .count(),
+    0
+  );
+  const resumeLink = page
+    .getByRole("link", { name: "Unsaved navigation input", exact: true })
+    .first();
+  assert.equal(
+    await resumeLink.getAttribute("href"),
+    "/dashboard/datasets/drafts/" + scopedId
+  );
+  const newDrafts = page.getByRole("region", {
+    name: "Draft proposals",
+    exact: true,
+  });
+  const lateSearch = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === "/api/v2/supplier/dataset-drafts" &&
+      url.searchParams.get("q") === "Speech"
+    );
+  });
+  const slowRequest = page.waitForRequest((request) => {
+    const url = new URL(request.url());
+    return (
+      url.pathname === "/api/v2/supplier/dataset-drafts" &&
+      url.searchParams.get("q") === "Speech"
+    );
+  });
+  await page
+    .getByLabel("Search draft proposals", { exact: true })
+    .fill("Speech");
+  await slowRequest;
+  await page
+    .getByLabel("Search draft proposals", { exact: true })
+    .fill("Only a title");
+  await newDrafts.getByText("1 draft in this view", { exact: true }).waitFor();
+  await lateSearch;
+  assert.equal(
+    await newDrafts.getByText("1 draft in this view", { exact: true }).count(),
+    1
+  );
+  console.log(
+    "PASS late draft search responses cannot replace newer search results"
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Next draft page", exact: true })
+      .count(),
+    0
+  );
+  await page
+    .getByRole("link", { name: "Only a title is needed", exact: true })
+    .first()
+    .click();
+  await page.getByRole("status").filter({ hasText: "Draft saved" }).waitFor();
+  assert.equal(
+    new URL(page.url()).pathname,
+    "/dashboard/datasets/drafts/" + titleOnlyId
+  );
+  console.log(
+    "PASS same My Drafts workspace, bounded paginated/searchable new drafts and unchanged earlier draft links"
+  );
+  for (const [oldPath, expected] of [
+    ["/prepare", ""],
+    ["/prepare/new", "/create"],
+    ["/prepare/" + scopedId, "/drafts/" + scopedId],
+  ]) {
+    await page.goto(origin + "/dashboard/datasets" + oldPath);
+    await page.waitForURL(origin + "/dashboard/datasets" + expected);
+  }
+  const beforeSubmitted = requests.length;
+  await page.goto(origin + "/dashboard/datasets?status=submitted");
+  await page
+    .getByRole("link", { name: "Existing submitted proposal", exact: true })
+    .first()
+    .waitFor();
+  assert(
+    !requests
+      .slice(beforeSubmitted)
+      .some((request) =>
+        request.path.startsWith("/api/v2/supplier/dataset-drafts")
+      )
+  );
+  console.log(
+    "PASS old preparation bookmarks redirect and historical submitted proposal view remains unchanged"
+  );
   await showNew(page);
   await page
     .getByLabel("Dataset title", { exact: true })
@@ -1002,7 +1213,12 @@ try {
 
   const beforeProduction = requests.length;
   const productionPage = await browser.newPage();
-  await productionPage.goto(origin + "/?environment=production");
+  await productionPage.goto(
+    origin + "/dashboard/datasets/create?environment=production"
+  );
+  await productionPage
+    .getByRole("heading", { name: "Create a dataset proposal", exact: true })
+    .waitFor();
   assert.equal(
     await productionPage
       .getByRole("heading", { name: "Prepare a Dataset" })
@@ -1013,13 +1229,36 @@ try {
     await productionPage.evaluate(() => window.tryProductionWrite()),
     "NOT_ENABLED"
   );
-  assert.equal(requests.length, beforeProduction);
+  assert(
+    !requests
+      .slice(beforeProduction)
+      .some((request) =>
+        request.path.startsWith("/api/v2/supplier/dataset-drafts")
+      )
+  );
+  for (const path of [
+    "/prepare",
+    "/prepare/new",
+    "/drafts/" + scopedId,
+    "/drafts/new",
+    "/drafts/bad-id",
+  ]) {
+    await productionPage.goto(
+      origin + "/dashboard/datasets" + path + "?environment=production"
+    );
+    await productionPage
+      .getByRole("heading", { name: "Not found", exact: true })
+      .waitFor();
+  }
+  await page.goto(origin + "/dashboard/datasets/drafts/bad-id");
+  await page.getByRole("heading", { name: "Not found", exact: true }).waitFor();
   await productionPage.close();
   assert(
     !requests.some((request) =>
       /submit|upload|presign|publish|payment/.test(request.path)
     )
   );
+  assert.deepEqual(fixtureErrors, []);
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   console.log(

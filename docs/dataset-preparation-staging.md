@@ -1,4 +1,4 @@
-# Supplier Dataset preparation foundation
+# Supplier Dataset proposal draft foundation
 
 This is the first staging slice of the connected supplier Dataset redesign. The
 four screens are Basics, Files & contents, Dataset details and Review draft.
@@ -9,7 +9,14 @@ The editor uses the real private backend API at
 `/api/v2/supplier/dataset-drafts`. Saves require an acknowledged generation;
 uncertain responses retain the same request ID for retry. Conflicting saves retain
 local input and offer an explicit reconciliation with the latest saved draft.
-Existing proposals and their explicit Submit workflow remain reachable.
+The redesign uses the existing **Create proposal** action at
+`/dashboard/datasets/create` and the existing **My Drafts** workspace at
+`/dashboard/datasets`. There is no separate supplier-facing preparation workflow.
+Saved drafts resume at `/dashboard/datasets/drafts/:draftId`; the old staging
+`/prepare` bookmarks redirect to these proposal routes. Earlier proposals keep
+their existing detail routes and explicit Submit workflow. The new drafts and
+earlier drafts have separately labeled, server-paginated inventories and search
+so their counts never imply a combined result.
 
 Main data types are separate from category, encoding and upload choice. Applicable
 questions cover tables, audio, images, video, text and sensors, with optional
@@ -23,7 +30,11 @@ claim bytes were received. DICOM remains unqualified. The connected implementati
 must provide real capacity, accepted capabilities, exact content references and
 the preserved review/publication/access workflow before final activation.
 
-The creator entry, routes and API client are enabled only in local/staging.
+The new editor, draft routes and API client are enabled only in local/staging.
+Production continues to render the existing CreateDataset form. Its proposal
+workflow is not activated by this draft-testing release. The editor keeps the
+dashboard's glass surfaces and colors, with status, step navigation, divided
+content sections and save actions attached to one bounded proposal panel.
 Deployment targets the supplier staging branch; main remains production.
 
 ## Contract provenance
@@ -40,7 +51,9 @@ The component browser suite exercises all 21 ordinary data-family/upload-choice
 declaration paths, partial saves/readback, three quantity scopes, conditional
 questions, current category/source labels across pages, stale/uncertain saves,
 native transport retransmissions, nested reconciliation, keyboard/mobile behavior
-and production guards. These loopback fixtures test UI behavior; they do not
+canonical proposal routes, old bookmark redirects, bounded inventory search and
+pagination, late search response protection, preserved earlier/submitted proposal
+views and production guards. These loopback fixtures test UI behavior; they do not
 qualify uploads, scanning, archive parsing, purchase access or hosted deployment.
 
 The normal lint, type, runtime dependency audit and compiled release checks are

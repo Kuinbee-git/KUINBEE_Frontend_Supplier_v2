@@ -98,7 +98,12 @@ export function PreparationSection({
   help?: string;
 }) {
   return (
-    <DashboardSection title={title} description={help}>
+    <DashboardSection
+      title={title}
+      description={help}
+      surface="plain"
+      className="border-t border-border pt-5 first:border-0 first:pt-0"
+    >
       <div className="space-y-4">{children}</div>
     </DashboardSection>
   );

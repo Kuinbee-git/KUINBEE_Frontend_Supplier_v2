@@ -32,13 +32,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryProvider>{children}</QueryProvider>
-        <Toaster position="top-right" richColors />
         {isStaging && (
-          <div role="status" data-environment="staging" className="pointer-events-none fixed bottom-2 right-2 z-[9999] rounded bg-amber-200 px-3 py-1 text-xs font-semibold text-amber-950 shadow">
+          <div role="status" data-environment="staging" className="flex h-7 items-center justify-center border-b border-border bg-amber-200 px-3 text-xs font-semibold text-amber-950">
             Staging · Test environment
           </div>
         )}
+        <QueryProvider>{children}</QueryProvider>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );
