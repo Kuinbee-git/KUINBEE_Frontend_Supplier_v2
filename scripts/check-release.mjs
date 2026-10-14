@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { chromium } from "playwright";
 import { app } from "./deployment-environment.mjs";
+import { checkCompiledDashboardGlass } from "./check-compiled-dashboard-glass.mjs";
 
 const origin = "http://127.0.0.1:3020";
 const browserOrigin = "http://supplier.fixture.test:3020";
@@ -238,6 +239,9 @@ try {
   console.log(
     `PASS ${app} compiled API routing and failed-login handling${app === "buyer" ? ", plus fixture-backed SSR" : ""}`
   );
+  if (app === "supplier") {
+    await checkCompiledDashboardGlass({ browser, origin });
+  }
   await browser.close();
   browser = undefined;
   if (app === "admin") {

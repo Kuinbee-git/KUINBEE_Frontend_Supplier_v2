@@ -228,8 +228,8 @@
     background: rgba(255, 255, 255, 0.95) !important;
     border-color: #dde3f0 !important;
     box-shadow: 0 8px 24px rgba(26, 34, 64, 0.12) !important;
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
 
   .dark .custom-collection-dialog {
@@ -442,8 +442,8 @@
     box-shadow:
       0 2px 7px rgba(42, 53, 88, 0.07),
       inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
-    backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
   }
 
   .dataset-workspace-scope [data-variant="outline"]:hover:not(:disabled) {
@@ -468,8 +468,8 @@
     box-shadow:
       0 5px 16px rgba(0, 0, 0, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 
   .dark .dataset-workspace-scope [data-variant="default"]:hover:not(:disabled) {
