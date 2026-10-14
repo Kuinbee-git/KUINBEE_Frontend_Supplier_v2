@@ -4,6 +4,9 @@ import { createHash } from "node:crypto";
 import {
   DATASET_PREPARATION_CONTRACT_VERSION,
   DatasetPreparationMetadataSchema,
+  DatasetFilesContextBodySchema,
+  DatasetFilesInventoryPageQuerySchema,
+  DatasetUploadAdmissionBodySchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 const manifest = JSON.parse(
@@ -24,6 +27,11 @@ assert.equal(packageInfo.name, manifest.package);
 assert.equal(packageInfo.version, manifest.version);
 assert.equal(DATASET_PREPARATION_CONTRACT_VERSION, manifest.contractVersion);
 assert.match(manifest.sourceSha256, /^[a-f0-9]{64}$/);
+assert.match(
+  manifest.sourceCommit,
+  /^[a-f0-9]{40}$/,
+  "Release contracts must come from committed canonical sources"
+);
 assert.equal(manifest.sourceRepository, "Kuinbee-git/KUINBEE");
 assert.equal(
   manifest.sourcePath,
@@ -31,6 +39,28 @@ assert.equal(
 );
 for (const [key, value] of Object.entries(packagedManifest))
   assert.deepEqual(manifest[key], value, `Manifest drift: ${key}`);
+const expectedSources = ["preparation", "content", "files", "intake"].map(
+  (name) => `packages/api-contracts/src/datasets/${name}.schema.ts`
+);
+assert.deepEqual(
+  manifest.sources.map((source) => source.sourcePath),
+  expectedSources
+);
+for (const source of manifest.sources) {
+  assert.match(source.sourceCommit, /^[a-f0-9]{40}$/);
+  assert.match(source.sourceSha256, /^[a-f0-9]{64}$/);
+  const name = source.sourcePath.split("/").at(-1).replace(/\.ts$/, "");
+  assert.equal(
+    sha256(await readFile(installed + name + ".js")),
+    source.javascriptSha256,
+    `Installed canonical runtime drift: ${name}`
+  );
+  assert.equal(
+    sha256(await readFile(installed + name + ".d.ts")),
+    source.declarationSha256,
+    `Installed canonical declarations drift: ${name}`
+  );
+}
 const tarball = await readFile("vendor/" + manifest.tarball);
 assert.equal(sha256(tarball), manifest.tarballSha256, "Pinned tarball changed");
 assert.equal(
@@ -77,6 +107,48 @@ assert.equal(
   }).success,
   false
 );
+const reference = "cjld2cjxh0000qzrmn831i7rn";
+const requestId = "cc343078-c6fc-4b88-bf15-84ea00000001";
+const contextBody = {
+  requestId,
+  expectedPreparationGeneration: 0,
+  expectedContentId: null,
+  expectedContentGeneration: null,
+};
+assert.equal(
+  DatasetFilesContextBodySchema.safeParse(contextBody).success,
+  true
+);
+assert.equal(
+  DatasetFilesContextBodySchema.safeParse({
+    ...contextBody,
+    scanStatus: "CLEAN",
+  }).success,
+  false
+);
+assert.equal(
+  DatasetFilesInventoryPageQuerySchema.safeParse({
+    contentId: reference,
+    contentGeneration: 0,
+    expectedPreparationGeneration: 0,
+    limit: 51,
+  }).success,
+  false
+);
+assert.equal(
+  DatasetUploadAdmissionBodySchema.safeParse({
+    requestId,
+    expectedPreparationGeneration: 0,
+    expectedContentId: reference,
+    expectedContentGeneration: 0,
+    component: "SAMPLE",
+    role: "PRIMARY",
+    originalName: "sample.csv",
+    expectedBytes: "1",
+    accepted: true,
+  }).success,
+  false
+);
 console.log(
-  "PASS pinned preparation tarball, installed runtime/types, manifests, lockfile and strict browser contract"
+  "PASS pinned Dataset tarball, four committed canonical sources, installed runtime/types, manifests, lockfile and strict browser contracts"
 );

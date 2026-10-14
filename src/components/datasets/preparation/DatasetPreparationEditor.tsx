@@ -34,6 +34,7 @@ import {
 import { DATASET_TYPES } from "@/constants/dataset.constants";
 import { PreparationCatalogPicker } from "./PreparationCatalogPicker";
 import { PreparationReview } from "./PreparationReview";
+import { PreparationFilesPanel } from "./PreparationFilesPanel";
 import {
   PreparationField,
   PreparationGrid,
@@ -131,6 +132,15 @@ export function DatasetPreparationEditor({
   const [replayBase, setReplayBase] =
     useState<DatasetPreparationMetadata | null>(null);
   const [error, setError] = useState("");
+  const [filesWriting, setFilesWriting] = useState(false);
+  const [filesUncertain, setFilesUncertain] = useState(false);
+  const onFilesMetadataChanged = useCallback(() => {
+    setConflict(true);
+    setReplayBase(null);
+    setError(
+      "Saved Dataset details changed while reading files. Your local answers are retained; review the latest saved draft before continuing."
+    );
+  }, []);
   const pending = useRef<Pending | null>(null);
   const busy = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -159,7 +169,7 @@ export function DatasetPreparationEditor({
   }, [draftId]);
   useComponentRequest(load, [draftId], Boolean(draftId));
   useEffect(() => {
-    if (!dirty && !retryPending) return;
+    if (!dirty && !retryPending && !filesUncertain && !filesWriting) return;
     const guard = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
@@ -195,7 +205,7 @@ export function DatasetPreparationEditor({
       window.removeEventListener("beforeunload", guard);
       document.removeEventListener("click", guardLink, true);
     };
-  }, [dirty, retryPending]);
+  }, [dirty, retryPending, filesUncertain, filesWriting]);
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
@@ -206,6 +216,8 @@ export function DatasetPreparationEditor({
       busy.current ||
       loading ||
       conflict ||
+      filesWriting ||
+      filesUncertain ||
       (draftId && saved?.id !== draftId)
     )
       return null;
@@ -325,7 +337,12 @@ export function DatasetPreparationEditor({
   }
   const unavailableExisting = Boolean(draftId && saved?.id !== draftId);
   const locked =
-    !hydrated || loading || saving || retryPending || unavailableExisting;
+    !hydrated ||
+    loading ||
+    saving ||
+    retryPending ||
+    unavailableExisting ||
+    filesWriting;
   const hasSample =
     metadata.uploadChoice === "SAMPLE_ONLY" ||
     metadata.uploadChoice === "FULL_AND_SAMPLE";
@@ -398,13 +415,18 @@ export function DatasetPreparationEditor({
               Last saved {new Date(saved.updatedAt).toLocaleString()}
             </span>
           )}
+          {filesUncertain && (
+            <span className="ml-2 text-muted-foreground">
+              File change not confirmed
+            </span>
+          )}
         </div>
         <div className="border-b border-border bg-muted/20 px-4 py-3 text-sm sm:px-6">
           <strong>Draft testing release</strong>
           <p className="mt-1 text-muted-foreground">
-            You can save information for all three upload choices. File intake,
-            required file checks and admin submission are not available in this
-            release. Nothing here is published.
+            You can save information and set up files for all three upload
+            choices. File intake, required file checks and admin submission are
+            not available in this release. Nothing here is published.
           </p>
         </div>
         {error && (
@@ -503,7 +525,7 @@ export function DatasetPreparationEditor({
               key={label}
               aria-current={step === index ? "step" : undefined}
               className="h-auto min-h-10 whitespace-normal px-3 py-2 text-left"
-              disabled={locked}
+              disabled={locked || filesUncertain}
               onClick={() => setStep(index)}
             >
               {index + 1}. {label}
@@ -681,49 +703,17 @@ export function DatasetPreparationEditor({
               </PreparationSection>
             </PreparationGrid>
           )}
-          {step === 1 && (
+          <div hidden={step !== 1} className="min-w-0 space-y-4">
+            <PreparationFilesPanel
+              saved={saved}
+              active={step === 1}
+              metadataDirty={dirty}
+              metadataBlocked={locked || conflict}
+              onUncertainChange={setFilesUncertain}
+              onWritingChange={setFilesWriting}
+              onMetadataChanged={onFilesMetadataChanged}
+            />
             <PreparationGrid>
-              <PreparationSection
-                title="Files & contents"
-                className="lg:col-span-12"
-                help="The confirmed allowance is 5 GB combined for full material, samples and companions, and 100 GB per supplier. No storage usage or file acceptance is claimed by this preparation form."
-              >
-                <p className="text-sm">
-                  Uploads are unavailable in this testing release. No files have
-                  been received through this draft editor.
-                </p>
-                {!metadata.uploadChoice && (
-                  <p>
-                    Choose what you are uploading in Basics to see the relevant
-                    areas.
-                  </p>
-                )}
-              </PreparationSection>
-              {hasFull && (
-                <PreparationSection
-                  title="Full dataset"
-                  className="lg:col-span-6"
-                >
-                  <section aria-label="Full material">
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Prepare all main files and companions for your defined
-                      collection boundary. File selection and checks will be
-                      connected in a later release.
-                    </p>
-                  </section>
-                </PreparationSection>
-              )}
-              {hasSample && (
-                <PreparationSection title="Sample" className="lg:col-span-6">
-                  <section aria-label="Sample material">
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Prepare a usable sample and its needed companions. A
-                      sample inside a full archive cannot expose the full
-                      archive to buyers.
-                    </p>
-                  </section>
-                </PreparationSection>
-              )}
               {hasFull && (
                 <PreparationQuantities
                   field="fullMeasurements"
@@ -741,7 +731,7 @@ export function DatasetPreparationEditor({
                 />
               )}
             </PreparationGrid>
-          )}
+          </div>
           {step === 2 && (
             <PreparationGrid>
               <PreparationSection
@@ -988,7 +978,13 @@ export function DatasetPreparationEditor({
           <DashboardButton
             type="button"
             disabled={
-              !hydrated || loading || saving || conflict || unavailableExisting
+              !hydrated ||
+              loading ||
+              saving ||
+              conflict ||
+              unavailableExisting ||
+              filesWriting ||
+              filesUncertain
             }
             onClick={() => void save()}
           >
@@ -997,7 +993,7 @@ export function DatasetPreparationEditor({
           <DashboardButton
             variant="outline"
             type="button"
-            disabled={locked || conflict}
+            disabled={locked || conflict || filesUncertain}
             onClick={async () => {
               if (await save()) setStep(Math.min(step + 1, 3));
             }}
@@ -1007,7 +1003,7 @@ export function DatasetPreparationEditor({
           <DashboardButton
             variant="outline"
             type="button"
-            disabled={locked || conflict}
+            disabled={locked || conflict || filesUncertain}
             onClick={async () => {
               if (await save()) onExit?.();
             }}

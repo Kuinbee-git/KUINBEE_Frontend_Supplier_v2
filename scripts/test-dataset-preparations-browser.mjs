@@ -8,6 +8,10 @@ import { chromium } from "playwright";
 import {
   DatasetPreparationCreateBodySchema,
   DatasetPreparationPatchBodySchema,
+  DatasetFilesContextBodySchema,
+  DatasetFilesContextResponseSchema,
+  DatasetFilesInventoryPageQuerySchema,
+  DatasetFilesInventoryPageResponseSchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 const require = createRequire(import.meta.url);
@@ -205,6 +209,9 @@ function workspaceRows(q = "") {
     );
 }
 const replays = new Map();
+const fileContexts = new Map();
+const fileReplays = new Map();
+const fileMembers = new Map();
 const requests = [];
 const flags = {
   workspaceTake: null,
@@ -214,6 +221,11 @@ const flags = {
   newerDuringAck: false,
   failRead: "",
   blockedNetworkRequestId: "",
+  filesAcknowledgement: "",
+  filesAdvanceDuringAck: false,
+  filesReadDelay: 0,
+  filesMalformedContext: false,
+  filesMalformedPage: false,
 };
 let sequence = 1;
 function copy(value) {
@@ -253,6 +265,41 @@ function mutate(id, changes) {
   drafts.set(id, next);
   return next;
 }
+function filesContext(id) {
+  const draft = drafts.get(id);
+  const content = fileContexts.get(id);
+  return DatasetFilesContextResponseSchema.parse({
+    contractVersion: 1,
+    preparationId: id,
+    preparationGeneration: draft.generation,
+    contentId: content?.id ?? null,
+    contentGeneration: content?.generation ?? null,
+    sourcePreparationGeneration: content?.sourceGeneration ?? null,
+    serverUploadChoice: draft.metadata.uploadChoice ?? null,
+    editable: true,
+    synchronizationRequired: Boolean(
+      content && content.sourceGeneration !== draft.generation
+    ),
+    usage: {
+      state: "UNAVAILABLE",
+      dataset: {
+        limitBytes: "5000000000",
+        retainedBytes: null,
+        reservedBytes: null,
+        chargedBytes: null,
+        remainingBytes: null,
+      },
+      supplier: {
+        limitBytes: "100000000000",
+        retainedBytes: null,
+        reservedBytes: null,
+        chargedBytes: null,
+        remainingBytes: null,
+      },
+    },
+    admission: { enabled: false, reason: "INTAKE_NOT_ENABLED" },
+  });
+}
 function json(res, status, value) {
   res.writeHead(status, {
     "Content-Type": "application/json",
@@ -266,9 +313,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, "http://fixture.test");
     if (url.pathname === "/bundle.js") {
       res.writeHead(200, { "Content-Type": "text/javascript" });
-      res.end(
-        scripts[fixtureEnvironment(url)]
-      );
+      res.end(scripts[fixtureEnvironment(url)]);
       return;
     }
     if (["/logo-light.png", "/logo-dark.png"].includes(url.pathname)) {
@@ -304,6 +349,171 @@ const server = createServer(async (req, res) => {
     };
     requests.push(recorded);
     const base = "/api/v2/supplier/dataset-drafts";
+    const fileRoute = url.pathname.match(
+      /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files)$/
+    );
+    if (fileRoute) {
+      const [, draftId, action] = fileRoute;
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        json(res, 404, {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Draft files not found" },
+        });
+        return;
+      }
+      if (action === "files-context" && req.method === "GET") {
+        const data = filesContext(draftId);
+        if (flags.filesMalformedContext) data.preparationId = cuid(99999);
+        const delay = flags.filesReadDelay;
+        flags.filesReadDelay = 0;
+        if (delay)
+          await new Promise((resolveDelay) => setTimeout(resolveDelay, delay));
+        json(res, 200, { success: true, data });
+        return;
+      }
+      if (action === "files-context" && req.method === "POST") {
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const body = DatasetFilesContextBodySchema.parse(
+          JSON.parse(Buffer.concat(chunks).toString())
+        );
+        recorded.body = copy(body);
+        let result;
+        if (fileReplays.has(body.requestId)) {
+          const prior = fileReplays.get(body.requestId);
+          assert.deepEqual(
+            body,
+            prior.body,
+            "File retries keep their exact payload"
+          );
+          result = copy(prior.response);
+        } else {
+          const content = fileContexts.get(draftId);
+          if (
+            draft.generation !== body.expectedPreparationGeneration ||
+            (body.expectedContentId === null
+              ? Boolean(content)
+              : content?.id !== body.expectedContentId ||
+                content?.generation !== body.expectedContentGeneration)
+          ) {
+            json(res, 409, {
+              success: false,
+              error: {
+                code: "DRAFT_CHANGED",
+                message: "Saved files changed; refresh before continuing",
+              },
+            });
+            return;
+          }
+          fileContexts.set(
+            draftId,
+            content
+              ? {
+                  ...content,
+                  generation: content.generation + 1,
+                  sourceGeneration: draft.generation,
+                }
+              : {
+                  id: cuid(50_000 + sequence++),
+                  generation: 0,
+                  sourceGeneration: draft.generation,
+                }
+          );
+          result = { ...filesContext(draftId), requestId: body.requestId };
+          fileReplays.set(body.requestId, {
+            body: copy(body),
+            response: copy(result),
+          });
+        }
+        const acknowledgement = flags.filesAcknowledgement;
+        flags.filesAcknowledgement = "";
+        if (flags.filesAdvanceDuringAck) {
+          flags.filesAdvanceDuringAck = false;
+          const content = fileContexts.get(draftId);
+          content.generation++;
+        }
+        if (acknowledgement === "malformed") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end("{not-json");
+          return;
+        }
+        if (acknowledgement === "503") {
+          json(res, 503, {
+            success: false,
+            error: {
+              code: "UNAVAILABLE",
+              message: "File change acknowledgement unavailable",
+            },
+          });
+          return;
+        }
+        json(res, 200, { success: true, data: result });
+        return;
+      }
+      if (action === "files" && req.method === "GET") {
+        const query = DatasetFilesInventoryPageQuerySchema.parse(
+          Object.fromEntries(
+            [...url.searchParams].map(([key, value]) => [
+              key,
+              ["expectedPreparationGeneration", "contentGeneration"].includes(
+                key
+              )
+                ? Number(value)
+                : value,
+            ])
+          )
+        );
+        const content = fileContexts.get(draftId);
+        if (
+          content?.id !== query.contentId ||
+          content?.generation !== query.contentGeneration ||
+          content?.sourceGeneration !== draft.generation ||
+          draft.generation !== query.expectedPreparationGeneration
+        ) {
+          json(res, 409, {
+            success: false,
+            error: {
+              code: "DRAFT_CHANGED",
+              message: "File page generation changed",
+            },
+          });
+          return;
+        }
+        const all = (fileMembers.get(draftId) ?? [])
+          .filter(
+            (member) => !query.component || member.component === query.component
+          )
+          .sort((a, b) => a.id.localeCompare(b.id));
+        const after = all.filter(
+          (member) => !query.afterId || member.id > query.afterId
+        );
+        const items = after.slice(0, query.limit);
+        const data = DatasetFilesInventoryPageResponseSchema.parse({
+          preparationId: draftId,
+          preparationGeneration: draft.generation,
+          contentId: content.id,
+          contentGeneration: content.generation,
+          sourcePreparationGeneration: content.sourceGeneration,
+          items,
+          nextCursor:
+            after.length > query.limit
+              ? {
+                  contentId: content.id,
+                  contentGeneration: content.generation,
+                  afterId: items.at(-1).id,
+                }
+              : null,
+        });
+        if (flags.filesMalformedPage) {
+          data.contentGeneration++;
+          if (data.nextCursor) data.nextCursor.contentGeneration++;
+        }
+        json(res, 200, { success: true, data });
+        return;
+      }
+      throw new Error("Unexpected files action " + req.method);
+    }
     if (url.pathname === base + "/catalog-labels") {
       const category =
         categories.find(
@@ -887,7 +1097,11 @@ try {
             exact: true,
           })
           .check();
+      await save(page);
       await step(page, "2. Files & contents");
+      await page
+        .getByRole("button", { name: "Set up files", exact: true })
+        .waitFor();
       assert.equal(
         await page
           .getByRole("region", { name: "Full material", exact: true })
@@ -956,6 +1170,390 @@ try {
     }
   console.log(
     "PASS all 21 upload-choice/profile paths, conditional questions, raw language typing and unavailable file/Submit controls"
+  );
+
+  await showNew(page);
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Backend files workspace");
+  await page.locator('input[type="radio"][value="FULL_AND_SAMPLE"]').check();
+  const beforeUnsavedFiles = requests.length;
+  await step(page, "2. Files & contents");
+  await page
+    .getByText(
+      "Save your draft and choose what you are uploading in Basics before setting up files.",
+      { exact: true }
+    )
+    .waitFor();
+  assert(
+    !requests
+      .slice(beforeUnsavedFiles)
+      .some((request) => /\/files(?:-context)?$/.test(request.path)),
+    "An unsaved form cannot create/read a files root"
+  );
+  await save(page);
+  const filesId = page.url().split("/").at(-1);
+  await page
+    .getByRole("button", { name: "Set up files", exact: true })
+    .waitFor();
+  flags.filesAcknowledgement = "503";
+  flags.filesAdvanceDuringAck = true;
+  const beforeFilesInit = requests.length;
+  await page.getByRole("button", { name: "Set up files", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Retry file change", exact: true })
+    .waitFor();
+  assert(
+    await page
+      .getByRole("button", { name: "Save draft", exact: true })
+      .isDisabled(),
+    "An uncertain file write pauses other saves"
+  );
+  const content = fileContexts.get(filesId);
+  fileMembers.set(
+    filesId,
+    Array.from({ length: 25 }, (_, index) => ({
+      id: cuid(70_000 + index),
+      contentId: content.id,
+      uploadObjectId: cuid(80_000 + index),
+      component: index % 2 ? "SAMPLE" : "FULL",
+      role: "PRIMARY",
+      relativePath: null,
+      groupId: null,
+      originalFileName:
+        index === 0
+          ? null
+          : index === 1
+            ? "sample-readable-01.csv"
+            : index === 4
+              ? "recording-session-".repeat(25) + ".wav"
+              : "backend-file-" + String(index).padStart(2, "0") + ".txt",
+      measuredSizeBytes: "1250000",
+      inspection: {
+        securityState: index === 2 ? "BLOCKED" : "ACCEPTED",
+        currentEvidenceId: index === 0 ? null : cuid(90_000 + index),
+        recordedOutcome: index === 0 ? "NONE" : "PASS",
+        current: index !== 0,
+        eligibility: "NOT_EVALUATED",
+      },
+    }))
+  );
+  await page
+    .getByRole("button", { name: "Retry file change", exact: true })
+    .click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  const fileWrites = requests
+    .slice(beforeFilesInit)
+    .filter(
+      (request) =>
+        request.method === "POST" && request.path.endsWith("/files-context")
+    );
+  assert.equal(fileWrites.length, 2);
+  assert.deepEqual(fileWrites[0].body, fileWrites[1].body);
+  assert.equal(
+    fileContexts.get(filesId).generation,
+    1,
+    "Original acknowledgment retry cannot undo a newer content generation"
+  );
+  assert.equal(
+    fileReplays.size,
+    1,
+    "Preparation retry creates only one receipt"
+  );
+  assert(
+    await page
+      .getByRole("button", { name: "Save draft", exact: true })
+      .isEnabled()
+  );
+  assert.equal(
+    await page.getByText("Measured size: 1.25 MB", { exact: true }).count(),
+    20
+  );
+  assert.equal(await page.getByText("Received", { exact: true }).count(), 20);
+  assert(
+    (await page
+      .getByText("Recorded pass · eligibility not assessed", { exact: true })
+      .count()) > 0
+  );
+  assert.equal(await page.getByText("Blocked", { exact: true }).count(), 1);
+  assert.equal(await page.locator('input[type="file"]').count(), 0);
+  assert.equal(
+    await page
+      .getByRole("button", { name: /^Upload (full|sample) files/ })
+      .count(),
+    2
+  );
+  assert(
+    await page
+      .getByRole("button", {
+        name: "Upload full files — unavailable",
+        exact: true,
+      })
+      .isDisabled()
+  );
+  assert.equal(
+    await page.getByText("backend-file-24.txt", { exact: true }).count(),
+    0
+  );
+  await page
+    .getByRole("button", { name: "Next files page", exact: true })
+    .click();
+  await page.getByText("backend-file-24.txt", { exact: true }).waitFor();
+  assert.equal(await page.getByText("Received", { exact: true }).count(), 5);
+  await page
+    .getByRole("button", { name: "Previous files page", exact: true })
+    .click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  fileContexts.get(filesId).generation++;
+  const beforeChangedPage = requests.length;
+  await page
+    .getByRole("button", { name: "Next files page", exact: true })
+    .click();
+  await page
+    .getByText(
+      "The file inventory changed. Refresh files to restart from its first page.",
+      { exact: true }
+    )
+    .waitFor();
+  assert(
+    !requests
+      .slice(beforeChangedPage)
+      .some((request) => request.path.endsWith("/files")),
+    "A changed generation cannot reuse an older page cursor"
+  );
+  await page
+    .getByRole("button", { name: "Refresh files", exact: true })
+    .click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  assert.equal(
+    fileMembers.get(filesId).length,
+    25,
+    "Paging never deletes unseen file references"
+  );
+  for (const dark of [false, true]) {
+    await setTheme(page, dark);
+    await scrollMainToTop(page);
+    await page.screenshot({
+      path: `/tmp/kuinbee-files-workspace-combined-${dark ? "dark" : "light"}.png`,
+      fullPage: true,
+      animations: "disabled",
+    });
+  }
+  await setTheme(page, false);
+  console.log(
+    "PASS acknowledged Files initialization, identical uncertain retry, latest-generation refresh, measured inventory and guarded bounded paging"
+  );
+
+  await step(page, "1. Basics");
+  await page.locator('input[type="radio"][value="FULL_ONLY"]').check();
+  await step(page, "2. Files & contents");
+  await page
+    .getByRole("region", { name: "Sample material", exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("region", { name: "Full material", exact: true })
+      .count(),
+    1
+  );
+  assert.equal(
+    await page
+      .getByRole("region", { name: "Sample material", exact: true })
+      .count(),
+    1,
+    "Unsaved local choice cannot reinterpret saved samples"
+  );
+  await save(page);
+  await page
+    .getByRole("button", { name: "Update files", exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("region", { name: "Sample material", exact: true })
+      .count(),
+    0
+  );
+  await page.getByRole("button", { name: "Update files", exact: true }).click();
+  await page
+    .getByRole("heading", {
+      name: "Retained files outside the saved upload choice",
+      exact: true,
+    })
+    .waitFor();
+  await page.getByText("sample-readable-01.csv", { exact: true }).waitFor();
+  assert.equal(
+    fileMembers.get(filesId).length,
+    25,
+    "Explicit choice synchronization retains mismatched selections"
+  );
+
+  await step(page, "1. Basics");
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Unsaved local title survives file reads");
+  await step(page, "2. Files & contents");
+  await page
+    .getByRole("button", { name: "Refresh files", exact: true })
+    .click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  await step(page, "1. Basics");
+  assert.equal(
+    await page.getByLabel("Dataset title", { exact: true }).inputValue(),
+    "Unsaved local title survives file reads"
+  );
+  await save(page);
+  await step(page, "2. Files & contents");
+  await page
+    .getByRole("button", { name: "Update files", exact: true })
+    .waitFor();
+  flags.filesReadDelay = 900;
+  const delayedRead = page.waitForRequest(
+    (request) =>
+      request.method() === "GET" &&
+      new URL(request.url()).pathname.endsWith("/files-context")
+  );
+  await page
+    .getByRole("button", { name: "Refresh files", exact: true })
+    .click();
+  await delayedRead;
+  await step(page, "1. Basics");
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Newer save fences slow file read");
+  await save(page);
+  await step(page, "2. Files & contents");
+  await page
+    .getByRole("button", { name: "Update files", exact: true })
+    .waitFor();
+  await page.waitForTimeout(1100);
+  assert.equal(
+    await page
+      .getByText(
+        "Saved details changed in another tab. Review the latest saved draft before changing its files.",
+        { exact: true }
+      )
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Resolve the changed draft", exact: true })
+      .count(),
+    0
+  );
+  await page.getByRole("button", { name: "Update files", exact: true }).click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  flags.filesMalformedPage = true;
+  await page
+    .getByRole("button", { name: "Refresh files", exact: true })
+    .click();
+  await page
+    .getByText(
+      "The files response does not match this draft. Refresh before continuing.",
+      { exact: true }
+    )
+    .waitFor();
+  assert.equal(
+    await page
+      .getByText("Original filename unavailable", { exact: true })
+      .count(),
+    0,
+    "Mixed-generation page data is not displayed"
+  );
+  flags.filesMalformedPage = false;
+  flags.filesMalformedContext = true;
+  await page
+    .getByRole("button", { name: "Refresh files", exact: true })
+    .click();
+  await page
+    .getByText(
+      "The files response does not match this draft. Refresh before continuing.",
+      { exact: true }
+    )
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Set up files", exact: true })
+      .count(),
+    0
+  );
+  flags.filesMalformedContext = false;
+  await page
+    .getByRole("button", { name: "Refresh files", exact: true })
+    .click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  assert.equal(fileMembers.get(filesId).length, 25);
+  await step(page, "1. Basics");
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Local title kept through Files conflict");
+  mutate(filesId, { overview: "A separate tab saved this overview" });
+  await step(page, "2. Files & contents");
+  await page
+    .getByRole("button", { name: "Review latest saved draft", exact: true })
+    .waitFor();
+  await page
+    .getByRole("button", { name: "Review latest saved draft", exact: true })
+    .click();
+  await page
+    .getByRole("button", {
+      name: "Reapply my changes to latest draft",
+      exact: true,
+    })
+    .click();
+  await step(page, "1. Basics");
+  assert.equal(
+    await page.getByLabel("Dataset title", { exact: true }).inputValue(),
+    "Local title kept through Files conflict"
+  );
+  await save(page);
+  assert.equal(
+    drafts.get(filesId).metadata.overview,
+    "A separate tab saved this overview"
+  );
+  await step(page, "2. Files & contents");
+  await page
+    .getByRole("button", { name: "Update files", exact: true })
+    .waitFor();
+  await page.getByRole("button", { name: "Update files", exact: true }).click();
+  await page
+    .getByText("Original filename unavailable", { exact: true })
+    .waitFor();
+  for (const [width, dark] of [
+    [1280, false],
+    [1280, true],
+    [390, true],
+    [390, false],
+  ]) {
+    await page.setViewportSize({ width, height: 900 });
+    await setTheme(page, dark);
+    await scrollMainToTop(page);
+    assert(
+      (await page.evaluate(() => document.documentElement.scrollWidth)) <=
+        width,
+      "Files workspace fits the viewport"
+    );
+    await page.screenshot({
+      path: `/tmp/kuinbee-files-workspace-${dark ? "dark" : "light"}-${width}.png`,
+      fullPage: true,
+      animations: "disabled",
+    });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  console.log(
+    "PASS saved-choice separation, retained mismatched components, dirty-answer preservation, stale reads, Files-detected metadata conflict and incompatible response rejection"
   );
 
   await showNew(page);
