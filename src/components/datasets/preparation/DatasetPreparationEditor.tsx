@@ -36,6 +36,7 @@ import { PreparationCatalogPicker } from "./PreparationCatalogPicker";
 import { PreparationReview } from "./PreparationReview";
 import {
   PreparationField,
+  PreparationGrid,
   PreparationProfileFields,
   PreparationQuantities,
   PreparationSection,
@@ -362,7 +363,7 @@ export function DatasetPreparationEditor({
   };
 
   return (
-    <DatasetWorkspace className="max-w-[70rem]">
+    <DatasetWorkspace className="dataset-proposal-workspace max-w-[70rem]">
       <DatasetPageHeader
         title={draftId || saved ? "Edit draft proposal" : "Create proposal"}
         description="Save a draft and complete it step by step. Saving does not submit it for review."
@@ -512,10 +513,11 @@ export function DatasetPreparationEditor({
         <fieldset disabled={locked} className="min-w-0 space-y-6 p-4 sm:p-6">
           <legend className="sr-only">{steps[step]}</legend>
           {step === 0 && (
-            <>
+            <PreparationGrid>
               <PreparationSection
                 title="Basics"
-                help="Only a title is needed for the first save. Add your upload choice, main data types, category, source and stated license when you are ready."
+                className="lg:col-span-7"
+                help="Start with a title. You can save now and complete the remaining information step by step."
               >
                 <PreparationField
                   label="Dataset title"
@@ -531,7 +533,8 @@ export function DatasetPreparationEditor({
                   {DATASET_UPLOAD_CHOICES.map((choice) => (
                     <label
                       key={choice.value}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3"
+                      data-selected={metadata.uploadChoice === choice.value}
+                      className="preparation-choice flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-3"
                     >
                       <input
                         type="radio"
@@ -551,89 +554,109 @@ export function DatasetPreparationEditor({
                       </span>
                     </label>
                   ))}
-                </fieldset>
-                <fieldset className="space-y-2">
-                  <legend className="mb-2 text-sm font-medium">
-                    Main types of data
-                  </legend>
-                  <p className="text-xs text-muted-foreground">
-                    Choose one or more. Category and encoding are separate;
-                    changing types keeps your earlier answers.
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {DATASET_MODALITIES.map((modality) => (
-                      <label
-                        key={modality.value}
-                        className="flex items-start gap-2 rounded-lg border border-border p-3"
-                      >
-                        <input
-                          type="checkbox"
-                          className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
-                          checked={
+                </fieldset>{" "}
+                <div className="border-t border-border pt-5">
+                  <fieldset className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium">
+                      Main types of data
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                      Choose one or more. Category and encoding are separate;
+                      changing types keeps your earlier answers.
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {DATASET_MODALITIES.map((modality) => (
+                        <label
+                          key={modality.value}
+                          data-selected={
                             metadata.modalities?.includes(modality.value) ??
                             false
                           }
+                          className="preparation-choice flex items-start gap-2 rounded-lg border border-transparent p-3"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
+                            checked={
+                              metadata.modalities?.includes(modality.value) ??
+                              false
+                            }
+                            onChange={(event) =>
+                              update((previous) => ({
+                                ...previous,
+                                modalities: event.target.checked
+                                  ? [
+                                      ...(previous.modalities ?? []),
+                                      modality.value,
+                                    ]
+                                  : (previous.modalities ?? []).filter(
+                                      (value) => value !== modality.value
+                                    ),
+                              }))
+                            }
+                          />
+                          <span>
+                            <span className="block text-sm font-medium">
+                              {modality.label}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              {modality.help}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>{" "}
+                </div>
+                <div className="border-t border-border pt-5">
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium">
+                      Relevant capture or domain context
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                      A category does not automatically enable these questions
+                      or specialist formats.
+                    </p>
+                    {(
+                      [
+                        ["HEALTHCARE", "Healthcare content"],
+                        ["EGOCENTRIC", "Egocentric / first-person capture"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <label key={value} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="shrink-0 accent-[var(--dashboard-indicator)]"
+                          checked={metadata.contexts?.includes(value) ?? false}
                           onChange={(event) =>
                             update((previous) => ({
                               ...previous,
-                              modalities: event.target.checked
-                                ? [
-                                    ...(previous.modalities ?? []),
-                                    modality.value,
-                                  ]
-                                : (previous.modalities ?? []).filter(
-                                    (value) => value !== modality.value
+                              contexts: event.target.checked
+                                ? [...(previous.contexts ?? []), value]
+                                : (previous.contexts ?? []).filter(
+                                    (item) => item !== value
                                   ),
                             }))
                           }
                         />
-                        <span>
-                          <span className="block text-sm font-medium">
-                            {modality.label}
-                          </span>
-                          <span className="block text-xs text-muted-foreground">
-                            {modality.help}
-                          </span>
-                        </span>
+                        {label}
                       </label>
                     ))}
-                  </div>
-                </fieldset>
-                <fieldset className="space-y-2">
-                  <legend className="text-sm font-medium">
-                    Relevant capture or domain context
-                  </legend>
-                  <p className="text-xs text-muted-foreground">
-                    A category does not automatically enable these questions or
-                    specialist formats.
-                  </p>
-                  {(
-                    [
-                      ["HEALTHCARE", "Healthcare content"],
-                      ["EGOCENTRIC", "Egocentric / first-person capture"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <label key={value} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="shrink-0 accent-[var(--dashboard-indicator)]"
-                        checked={metadata.contexts?.includes(value) ?? false}
-                        onChange={(event) =>
-                          update((previous) => ({
-                            ...previous,
-                            contexts: event.target.checked
-                              ? [...(previous.contexts ?? []), value]
-                              : (previous.contexts ?? []).filter(
-                                  (item) => item !== value
-                                ),
-                          }))
-                        }
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </fieldset>
-                <div className="grid gap-5 sm:grid-cols-2">
+                  </fieldset>
+                  <p className="text-sm text-muted-foreground">
+                    Healthcare describes the domain across tables, images, audio
+                    and other data. Egocentric describes a first-person capture
+                    perspective. Select either when it applies to this
+                    collection.
+                  </p>{" "}
+                </div>
+              </PreparationSection>
+              <PreparationSection
+                title="Category, source & license"
+                className="lg:col-span-5"
+                help="Describe the subject and source of your collection, then record its stated license."
+              >
+                <div className="grid gap-5">
                   <PreparationCatalogPicker
                     kind="categories"
                     value={metadata.primaryCategoryId}
@@ -654,14 +677,15 @@ export function DatasetPreparationEditor({
                   value={metadata.license}
                   onChange={(value) => setCommon("license", value)}
                   help="Enter the supplier's stated standard license or existing license text. Agreements and negotiation stay outside Kuinbee; no license is selected for you."
-                />
+                />{" "}
               </PreparationSection>
-            </>
+            </PreparationGrid>
           )}
           {step === 1 && (
-            <>
+            <PreparationGrid>
               <PreparationSection
                 title="Files & contents"
+                className="lg:col-span-12"
                 help="The confirmed allowance is 5 GB combined for full material, samples and companions, and 100 GB per supplier. No storage usage or file acceptance is claimed by this preparation form."
               >
                 <p className="text-sm">
@@ -674,33 +698,32 @@ export function DatasetPreparationEditor({
                     areas.
                   </p>
                 )}
-                {hasFull && (
-                  <section
-                    aria-label="Full material"
-                    className="rounded-lg border border-border p-4"
-                  >
-                    <h3 className="font-medium">Full dataset</h3>
+              </PreparationSection>
+              {hasFull && (
+                <PreparationSection
+                  title="Full dataset"
+                  className="lg:col-span-6"
+                >
+                  <section aria-label="Full material">
                     <p className="mt-1 text-sm text-muted-foreground">
                       Prepare all main files and companions for your defined
                       collection boundary. File selection and checks will be
                       connected in a later release.
                     </p>
                   </section>
-                )}
-                {hasSample && (
-                  <section
-                    aria-label="Sample material"
-                    className="rounded-lg border border-border p-4"
-                  >
-                    <h3 className="font-medium">Sample</h3>
+                </PreparationSection>
+              )}
+              {hasSample && (
+                <PreparationSection title="Sample" className="lg:col-span-6">
+                  <section aria-label="Sample material">
                     <p className="mt-1 text-sm text-muted-foreground">
                       Prepare a usable sample and its needed companions. A
                       sample inside a full archive cannot expose the full
                       archive to buyers.
                     </p>
                   </section>
-                )}
-              </PreparationSection>
+                </PreparationSection>
+              )}
               {hasFull && (
                 <PreparationQuantities
                   field="fullMeasurements"
@@ -717,17 +740,45 @@ export function DatasetPreparationEditor({
                   label="Declared amount in prepared sample"
                 />
               )}
-            </>
+            </PreparationGrid>
           )}
           {step === 2 && (
-            <>
-              <PreparationSection title="Dataset details">
+            <PreparationGrid>
+              <PreparationSection
+                title="Dataset details"
+                className="lg:col-span-8"
+              >
                 <PreparationField
                   label="What collection does this Dataset cover?"
                   value={metadata.collectionBoundary}
                   onChange={(value) => setCommon("collectionBoundary", value)}
                   help="Full means complete for this honestly defined boundary, not everything you own."
                 />
+                {hasFull && (
+                  <fieldset className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium">
+                      Full collection boundary
+                    </legend>
+                    <label className="flex items-start gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
+                        checked={metadata.fullCompleteness === true}
+                        onChange={(event) =>
+                          setCommon("fullCompleteness", event.target.checked)
+                        }
+                      />
+                      <span>
+                        My planned full material will cover the collection
+                        boundary I defined.
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          This is a supplier declaration. No received files or
+                          verified completeness are implied.
+                        </span>
+                      </span>
+                    </label>{" "}
+                  </fieldset>
+                )}
                 <PreparationField
                   label="Short summary"
                   value={metadata.overview}
@@ -748,6 +799,7 @@ export function DatasetPreparationEditor({
               </PreparationSection>
               <PreparationQuantities
                 field="collectionMeasurements"
+                className="lg:col-span-4"
                 metadata={metadata}
                 onUpdate={update}
                 label="Represented collection quantity"
@@ -810,75 +862,61 @@ export function DatasetPreparationEditor({
                   />
                 </PreparationSection>
               )}
-              {hasFull && (
-                <PreparationSection title="Full collection boundary">
-                  <label className="flex items-start gap-3 text-sm">
-                    <input
-                      type="checkbox"
-                      className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
-                      checked={metadata.fullCompleteness === true}
-                      onChange={(event) =>
-                        setCommon("fullCompleteness", event.target.checked)
-                      }
+              <div className="col-span-full">
+                <PreparationGrid>
+                  <PreparationSection
+                    title="Optional enrichment"
+                    className={hasFull ? "lg:col-span-8" : "lg:col-span-12"}
+                  >
+                    <PreparationField
+                      label="Known limitations"
+                      value={metadata.limitations}
+                      onChange={(value) => setCommon("limitations", value)}
                     />
-                    <span>
-                      My planned full material will cover the collection
-                      boundary I defined.
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        This is a supplier declaration. No received files or
-                        verified completeness are implied.
-                      </span>
-                    </span>
-                  </label>
-                </PreparationSection>
-              )}
-              <PreparationSection title="Optional enrichment">
-                <PreparationField
-                  label="Known limitations"
-                  value={metadata.limitations}
-                  onChange={(value) => setCommon("limitations", value)}
-                />
-                <PreparationField
-                  label="Collection or preparation method"
-                  value={metadata.collectionMethod}
-                  onChange={(value) => setCommon("collectionMethod", value)}
-                />
-                <PreparationField
-                  label="Possible uses"
-                  value={metadata.possibleUses}
-                  onChange={(value) => setCommon("possibleUses", value)}
-                />
-                {metadata.modalities?.includes("TABULAR") && (
-                  <PreparationSelect
-                    label="Statistical study structure (if applicable)"
-                    value={metadata.superType}
-                    onChange={(value) =>
-                      setCommon(
-                        "superType",
-                        value as DatasetPreparationMetadata["superType"]
-                      )
-                    }
-                    options={DATASET_TYPES.map(
-                      (type) => [type.value, type.label] as const
+                    <PreparationField
+                      label="Collection or preparation method"
+                      value={metadata.collectionMethod}
+                      onChange={(value) => setCommon("collectionMethod", value)}
+                    />
+                    <PreparationField
+                      label="Possible uses"
+                      value={metadata.possibleUses}
+                      onChange={(value) => setCommon("possibleUses", value)}
+                    />
+                    {metadata.modalities?.includes("TABULAR") && (
+                      <PreparationSelect
+                        label="Statistical study structure (if applicable)"
+                        value={metadata.superType}
+                        onChange={(value) =>
+                          setCommon(
+                            "superType",
+                            value as DatasetPreparationMetadata["superType"]
+                          )
+                        }
+                        options={DATASET_TYPES.map(
+                          (type) => [type.value, type.label] as const
+                        )}
+                        help="Optional. Media suppliers do not need to invent a statistical type."
+                      />
                     )}
-                    help="Optional. Media suppliers do not need to invent a statistical type."
-                  />
-                )}
-              </PreparationSection>
+                  </PreparationSection>
+                </PreparationGrid>
+              </div>
               {metadata.contexts?.includes("HEALTHCARE") && (
-                <p className="text-sm text-muted-foreground">
+                <p className="col-span-full rounded-xl border border-border bg-muted/10 p-4 text-sm text-muted-foreground">
                   DICOM and other specialist formats require separate
                   qualification. Selecting healthcare context does not enable
                   their upload.
                 </p>
               )}
-            </>
+            </PreparationGrid>
           )}
           {step === 3 && (
-            <>
+            <PreparationGrid>
               {saved && <PreparationReview metadata={saved.metadata} />}
               <PreparationSection
                 title="Preparation checklist"
+                className="lg:col-span-8"
                 help={
                   dirty
                     ? "This checklist describes the last acknowledged save. Save your changes to refresh it."
@@ -922,7 +960,10 @@ export function DatasetPreparationEditor({
                   </>
                 )}
               </PreparationSection>
-              <PreparationSection title="Review remains a separate action">
+              <PreparationSection
+                title="Review remains a separate action"
+                className="lg:col-span-4"
+              >
                 <p className="text-sm">
                   Pricing, file intake and admin submission will be connected
                   after their checks are qualified. Existing proposals retain
@@ -937,7 +978,7 @@ export function DatasetPreparationEditor({
                   Submit for admin review — unavailable
                 </DashboardButton>
               </PreparationSection>
-            </>
+            </PreparationGrid>
           )}
         </fieldset>
         <DashboardFormActions

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Database, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 
 import {
   DashboardButton,
@@ -25,6 +26,9 @@ export function DatasetRecordList<TItem>({
   renderMobile,
   busy = false,
   caption = "Datasets",
+  framed = true,
+  mobileBreakpoint = "md",
+  fixedLayout = false,
 }: {
   items: TItem[];
   columns: DatasetRecordColumn<TItem>[];
@@ -32,6 +36,9 @@ export function DatasetRecordList<TItem>({
   renderMobile: (item: TItem) => ReactNode;
   busy?: boolean;
   caption?: string;
+  framed?: boolean;
+  mobileBreakpoint?: "md" | "xl";
+  fixedLayout?: boolean;
 }) {
   const dashboardColumns: DashboardTableColumn<TItem>[] = columns.map(
     (column, index) => ({
@@ -52,6 +59,9 @@ export function DatasetRecordList<TItem>({
       columns={dashboardColumns}
       getRowId={getKey}
       renderMobileItem={renderMobile}
+      framed={framed}
+      mobileBreakpoint={mobileBreakpoint}
+      fixedLayout={fixedLayout}
     />
   );
 }
@@ -95,6 +105,7 @@ export function DatasetMobileRecordCard({
   badges,
   supportingText,
   actionLabel,
+  framed = true,
 }: {
   href: string;
   title: string;
@@ -103,9 +114,10 @@ export function DatasetMobileRecordCard({
   badges?: ReactNode;
   supportingText: string;
   actionLabel: string;
+  framed?: boolean;
 }) {
   return (
-    <DashboardMobileRecordCard>
+    <DashboardMobileRecordCard framed={framed}>
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="size-4" aria-hidden="true" />
@@ -127,7 +139,12 @@ export function DatasetMobileRecordCard({
 
       {badges && <div className="mt-4 flex flex-wrap gap-2">{badges}</div>}
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+      <div
+        className={cn(
+          "mt-4 flex items-center justify-between gap-3",
+          framed ? "border-t border-border/70 pt-3" : "pt-1"
+        )}
+      >
         <span className="min-w-0 truncate text-xs text-muted-foreground">
           {supportingText}
         </span>
@@ -135,7 +152,7 @@ export function DatasetMobileRecordCard({
           asChild
           variant="ghost"
           size="compact"
-          className="-mr-2 shrink-0"
+          className={cn("shrink-0", framed && "-mr-2")}
         >
           <Link href={href}>
             {actionLabel} <ArrowRight />

@@ -1,14 +1,14 @@
 {
   "package": "@kuinbee/dataset-preparation-contracts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "contractVersion": 1,
   "sourceRepository": "Kuinbee-git/KUINBEE",
   "sourcePath": "packages/api-contracts/src/datasets/preparation.schema.ts",
-  "baseCommit": "1f95dadf5b09e45d0543def0c849509b40ccf3e6",
-  "sourceCommit": "1f95dadf5b09e45d0543def0c849509b40ccf3e6",
-  "sourceSha256": "20b032aa4d084014c738a101127bdaa2d5ee8eef311d3b3744a2f307f83d8952",
-  "javascriptSha256": "2abfa42b89c11a16ac5e51afd099b64b2965c2f21579e27bcbdd33bcf768f14a",
-  "declarationSha256": "04e765b1e2c97e54ad64b4ce0721ebd618a673b7a507df8b2eaa16edac65b9c6",
-  "tarball": "kuinbee-dataset-preparation-contracts-0.1.0.tgz",
-  "tarballSha256": "eaee01195a30a6543f36914f9da7866063aa4f68322cdfafccc869370fd0451f"
+  "baseCommit": "0f4b61606385fca4d1a42fcc18357028a972f9a9",
+  "sourceCommit": "0f4b61606385fca4d1a42fcc18357028a972f9a9",
+  "sourceSha256": "2731ff7fdf9f9c948bb471ce2164d2b9b6cf1490ab534c8a49407a368cfa430b",
+  "javascriptSha256": "82097be5eec43063bf003fe005fdf0f051a544d1d4993ed70dcf2d2d236a158f",
+  "declarationSha256": "92feb74cf2e058667183acbf39509807e4ffa8591567b7a8bbd9b1d46f45c6b1",
+  "tarball": "kuinbee-dataset-preparation-contracts-0.2.0.tgz",
+  "tarballSha256": "f81e7c26ae5d010ccfbaaf6c9a4ac927ed2b19cf239438eb2896176f89291af1"
 }

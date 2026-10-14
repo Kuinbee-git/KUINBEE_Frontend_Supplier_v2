@@ -931,3 +931,89 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   border-color: var(--dashboard-glass-border) !important;
   color: var(--dashboard-text) !important;
 }
+
+/* New proposal bento workspaces use edges and spacing for structure. Keep the
+   glass surfaces, blur and colours without decorative elevation inside them. */
+.supplier-dashboard
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"]),
+.supplier-dashboard
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"])
+  :is(.dashboard-glass-card, .dashboard-button):not(:focus-visible) {
+  box-shadow: none;
+}
+
+.supplier-dashboard
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"])
+  .dashboard-button:not(:disabled):hover {
+  transform: none;
+}
+
+/* Keep keyboard focus distinct even where older dataset field rules remove
+   input shadows. Button rings retain their functional ring shadows only. */
+.supplier-dashboard
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"])
+  .dashboard-button:focus-visible {
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow);
+}
+
+.supplier-dashboard
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"])
+  :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--dashboard-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Dark bento boundaries use the existing firmer edge colour rather than the
+   faint background-grid edge. The palette and glass surfaces are unchanged. */
+.supplier-dashboard:is(.dark *)
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"])
+  [data-proposal-tile="true"],
+.supplier-dashboard:is(.dark *)
+  [data-proposal-panel="true"]
+  > :is(nav, .dashboard-form-actions, [data-preparation-status="true"]) {
+  border-color: var(--dashboard-button-outline-border-hover);
+}
+
+/* Use the dashboard's existing legible placeholder colour inside the new
+   workspaces; globals.css already provides this scoped placeholder hook. */
+.supplier-dashboard
+  :is([data-proposal-panel="true"], [data-draft-workspace="true"]) {
+  --placeholder-color: var(--dashboard-text-muted);
+}
+
+.supplier-dashboard [data-proposal-panel="true"] .preparation-choice[data-selected="true"] {
+  border-color: var(--dashboard-control-border);
+  background: var(--dashboard-control-background-hover);
+}
+
+/* Header actions belong to the same proposal workspace, so they stay flat
+   alongside the attached board actions. Global shell controls keep their style. */
+.supplier-dashboard .dataset-proposal-workspace .dashboard-button:not(:focus-visible) {
+  box-shadow: none;
+}
+
+.supplier-dashboard .dataset-proposal-workspace .dashboard-button:not(:disabled):not(:focus-visible):hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.supplier-dashboard .dataset-proposal-workspace .dashboard-button:focus-visible {
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow);
+  outline: 2px solid var(--dashboard-focus-ring);
+  outline-offset: 2px;
+  transform: none;
+}
+
+/* Native menus need an explicit existing surface colour: Chromium does not
+   consistently apply the dark scheme to option popups by itself. */
+.supplier-dashboard:is(.dark *) [data-proposal-panel="true"] {
+  color-scheme: dark;
+}
+
+.supplier-dashboard:is(.dark *)
+  [data-proposal-panel="true"]
+  select
+  :is(option, optgroup) {
+  background-color: var(--dashboard-surface);
+  color: var(--dashboard-text);
+}

@@ -214,44 +214,46 @@ export function PreparationCatalogPicker({
           {items.length} of {total} matching {kind} loaded.
         </p>
       )}
-      {items.length < total && (
-        <DashboardButton
-          variant="outline"
-          type="button"
-          disabled={loading || disabled}
-          onClick={() => setPage((previous) => previous + 1)}
-        >
-          Load more {kind}
-        </DashboardButton>
-      )}
-      {kind === "sources" && (
-        <>
+      <div className="flex flex-wrap items-center gap-2">
+        {items.length < total && (
           <DashboardButton
             variant="outline"
             type="button"
-            disabled={disabled}
-            onClick={() => setSourceDialog(true)}
+            disabled={loading || disabled}
+            onClick={() => setPage((previous) => previous + 1)}
           >
-            Create a source
+            Load more {kind}
           </DashboardButton>
-          <SourcesDialog
-            isOpen={sourceDialog}
-            onClose={() => setSourceDialog(false)}
-            onSuccess={(source) => {
-              known.current.set(source.id, source);
-              setKnownOptions((previous) => ({
-                ...previous,
-                [source.id]: source,
-              }));
-              setItems((previous) => [
-                source,
-                ...previous.filter((item) => item.id !== source.id),
-              ]);
-              onChange(source.id);
-            }}
-          />
-        </>
-      )}
+        )}
+        {kind === "sources" && (
+          <>
+            <DashboardButton
+              variant="outline"
+              type="button"
+              disabled={disabled}
+              onClick={() => setSourceDialog(true)}
+            >
+              Create a source
+            </DashboardButton>
+            <SourcesDialog
+              isOpen={sourceDialog}
+              onClose={() => setSourceDialog(false)}
+              onSuccess={(source) => {
+                known.current.set(source.id, source);
+                setKnownOptions((previous) => ({
+                  ...previous,
+                  [source.id]: source,
+                }));
+                setItems((previous) => [
+                  source,
+                  ...previous.filter((item) => item.id !== source.id),
+                ]);
+                onChange(source.id);
+              }}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

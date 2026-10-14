@@ -17,7 +17,6 @@ import {
 
 import {
   DashboardButton,
-  DashboardCard,
   DashboardPagination,
   DashboardStatusBadge,
 } from "@/components/dashboard";
@@ -29,7 +28,7 @@ import type {
 import { DatasetStatusBadge } from "./shared";
 import { SubmittedProposals } from "./SubmittedProposals";
 import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
-import { DatasetPreparationList } from "./preparation/DatasetPreparationList";
+import { DatasetDraftWorkspace } from "./DatasetDraftWorkspace";
 import {
   DatasetEmptyState,
   DatasetErrorBanner,
@@ -100,7 +99,7 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
   }, [searchQuery]);
 
   const fetchDrafts = useCallback(async () => {
-    if (legacySubmittedView) return;
+    if (legacySubmittedView || DATASET_PREPARATION_ENABLED) return;
     const requestId = ++requestIdRef.current;
 
     try {
@@ -151,16 +150,19 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
 
   useComponentRequest(
     () => fetchDrafts(),
-    [debouncedSearchQuery, legacySubmittedView, page]
+    [debouncedSearchQuery, legacySubmittedView, page],
+    !DATASET_PREPARATION_ENABLED && !legacySubmittedView
   );
 
   if (legacySubmittedView) {
     return <SubmittedProposals isDark={isDark} />;
   }
 
+  if (DATASET_PREPARATION_ENABLED) return <DatasetDraftWorkspace />;
+
   const metrics: DatasetMetric[] = [
     {
-      label: DATASET_PREPARATION_ENABLED ? "Earlier drafts" : "All drafts",
+      label: "All drafts",
       supportingText: "Work still in progress",
       value: summary.byVerificationStatus.PENDING,
       icon: Database,
@@ -226,24 +228,21 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
     },
   ];
 
-  const earlierDraftInventory = (
-    <>
-      <section
-        aria-label={
-          DATASET_PREPARATION_ENABLED
-            ? "Earlier draft overview"
-            : "Draft overview"
+  return (
+    <DatasetWorkspace>
+      <DatasetPageHeader
+        title="My Drafts"
+        description="Continue incomplete proposals, attach the required files, and review everything before submission."
+        action={
+          <DashboardButton asChild className="w-full sm:w-auto">
+            <Link href="/dashboard/datasets/create">
+              <Plus /> Create proposal
+            </Link>
+          </DashboardButton>
         }
-      >
-        {DATASET_PREPARATION_ENABLED && (
-          <div className="mb-4">
-            <h2 className="text-base font-semibold">Earlier drafts</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              These proposals keep their existing files and review workflow. The
-              counts and search below apply to earlier drafts only.
-            </p>
-          </div>
-        )}
+      />
+
+      <section aria-label="Draft overview">
         <DatasetMetricStrip
           metrics={metrics}
           loading={loading && drafts.length === 0}
@@ -253,16 +252,8 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
       <DatasetFilterToolbar
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder={
-          DATASET_PREPARATION_ENABLED
-            ? "Search earlier draft title or dataset ID"
-            : "Search draft title or dataset ID"
-        }
-        searchAriaLabel={
-          DATASET_PREPARATION_ENABLED
-            ? "Search earlier draft proposals"
-            : "Search draft proposals"
-        }
+        searchPlaceholder="Search draft title or dataset ID"
+        searchAriaLabel="Search draft proposals"
         onClear={() => setSearchQuery("")}
         isDark={isDark}
       />
@@ -278,11 +269,7 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
       <section aria-labelledby="draft-inventory-title">
         <DatasetInventoryHeader
           id="draft-inventory-title"
-          title={
-            DATASET_PREPARATION_ENABLED
-              ? "Earlier draft inventory"
-              : "Draft inventory"
-          }
+          title="Draft inventory"
           loading={loading}
           total={totalDrafts}
           singularLabel="draft"
@@ -295,26 +282,16 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
           <DatasetEmptyState
             filtered={Boolean(searchQuery.trim())}
             onClear={() => setSearchQuery("")}
-            title={
-              DATASET_PREPARATION_ENABLED
-                ? "No earlier draft proposals"
-                : "No draft proposals"
-            }
-            description={
-              DATASET_PREPARATION_ENABLED
-                ? "Your earlier drafts will appear here when available."
-                : "Start a dataset proposal and save it as a draft while you prepare the details and files."
-            }
+            title="No draft proposals"
+            description="Start a dataset proposal and save it as a draft while you prepare the details and files."
             filteredTitle="No drafts match this search"
             filteredDescription="Try another title or dataset ID."
             action={
-              DATASET_PREPARATION_ENABLED ? undefined : (
-                <DashboardButton asChild>
-                  <Link href="/dashboard/datasets/create">
-                    <Plus /> Create proposal
-                  </Link>
-                </DashboardButton>
-              )
+              <DashboardButton asChild>
+                <Link href="/dashboard/datasets/create">
+                  <Plus /> Create proposal
+                </Link>
+              </DashboardButton>
             }
           />
         ) : drafts.length > 0 ? (
@@ -358,38 +335,6 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
           </>
         ) : null}
       </section>
-    </>
-  );
-
-  return (
-    <DatasetWorkspace>
-      <DatasetPageHeader
-        title="My Drafts"
-        description="Continue incomplete proposals, attach the required files, and review everything before submission."
-        action={
-          <DashboardButton asChild className="w-full sm:w-auto">
-            <Link href="/dashboard/datasets/create">
-              <Plus /> Create proposal
-            </Link>
-          </DashboardButton>
-        }
-      />
-
-      {DATASET_PREPARATION_ENABLED ? (
-        <DashboardCard className="overflow-hidden" data-draft-workspace="true">
-          <div className="p-4 sm:p-6">
-            <DatasetPreparationList />
-          </div>
-          <section
-            aria-label="Earlier draft proposals"
-            className="space-y-5 border-t border-border p-4 sm:p-6"
-          >
-            {earlierDraftInventory}
-          </section>
-        </DashboardCard>
-      ) : (
-        earlierDraftInventory
-      )}
     </DatasetWorkspace>
   );
 }
