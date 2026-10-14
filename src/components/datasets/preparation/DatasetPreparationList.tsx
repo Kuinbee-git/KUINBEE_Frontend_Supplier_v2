@@ -8,7 +8,15 @@ import {
 } from "@kuinbee/dataset-preparation-contracts";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 import { preparationApi } from "@/lib/api/dataset-preparations";
-import { DatasetWorkspace } from "@/components/datasets/workspace/DatasetWorkspace";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardEmptyState,
+} from "@/components/dashboard";
+import {
+  DatasetPageHeader,
+  DatasetWorkspace,
+} from "@/components/datasets/workspace/DatasetWorkspace";
 
 export function DatasetPreparationList() {
   const [page, setPage] = useState(1);
@@ -34,97 +42,114 @@ export function DatasetPreparationList() {
   }, [page]);
   useComponentRequest(load, [page]);
   return (
-    <DatasetWorkspace className="mx-auto max-w-5xl space-y-5">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Saved drafts</h1>
-        <p className="text-sm text-muted-foreground">
-          Prepare Dataset information and return to finish it. These drafts have
-          not been submitted or published.
-        </p>
-        <div className="flex flex-wrap gap-4 text-sm">
-          <Link
-            className="rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground"
-            href="/dashboard/datasets/prepare/new"
-          >
-            Prepare a Dataset
-          </Link>
-          <Link className="self-center underline" href="/dashboard/datasets">
-            Existing proposals
-          </Link>
-          <Link
-            className="self-center underline"
-            href="/dashboard/datasets/create"
-          >
-            Existing creation workflow
-          </Link>
-        </div>
-      </header>
-      <p className="rounded-lg border border-border bg-card p-4 text-sm">
+    <DatasetWorkspace className="max-w-[70rem]">
+      <DatasetPageHeader
+        title="Saved drafts"
+        description="Prepare Dataset information and return to finish it. These drafts have not been submitted or published."
+        action={
+          <DashboardButton asChild>
+            <Link href="/dashboard/datasets/prepare/new">
+              Prepare a Dataset
+            </Link>
+          </DashboardButton>
+        }
+        meta={
+          <>
+            <DashboardButton
+              asChild
+              variant="link"
+              size="compact"
+              className="h-auto p-0"
+            >
+              <Link href="/dashboard/datasets">Existing proposals</Link>
+            </DashboardButton>
+            <DashboardButton
+              asChild
+              variant="link"
+              size="compact"
+              className="h-auto p-0"
+            >
+              <Link href="/dashboard/datasets/create">
+                Existing creation workflow
+              </Link>
+            </DashboardButton>
+          </>
+        }
+      />
+      <DashboardCard className="p-4 text-sm">
         File intake and admin submission are unavailable in this preparation
         testing release. Existing proposals continue through their current
         workflow.
-      </p>
+      </DashboardCard>
       {loading && <p role="status">Loading saved drafts…</p>}
       {error && (
         <div role="alert" className="rounded-lg border border-destructive p-4">
           {error}{" "}
-          <button type="button" className="underline" onClick={load}>
+          <DashboardButton
+            variant="link"
+            size="compact"
+            type="button"
+            className="h-auto p-0"
+            onClick={load}
+          >
             Retry loading drafts
-          </button>
+          </DashboardButton>
         </div>
       )}
       {!loading && !error && result?.items.length === 0 && (
-        <p className="rounded-lg border border-border p-6">
-          No saved drafts yet. Start with a title, save it, and complete the
-          information step by step.
-        </p>
+        <DashboardEmptyState
+          title="No saved drafts yet"
+          description="Start with a title, save it, and complete the information step by step."
+        />
       )}
       <ul className="space-y-3">
         {result?.items.map((item) => (
-          <li
-            key={item.id}
-            className="rounded-xl border border-border bg-card p-4"
-          >
-            <Link
-              href={`/dashboard/datasets/prepare/${item.id}`}
-              className="block text-lg font-semibold underline"
-            >
-              {item.metadata.title}
-            </Link>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {DATASET_UPLOAD_CHOICES.find(
-                (choice) => choice.value === item.metadata.uploadChoice
-              )?.label ?? "Upload choice not selected"}{" "}
-              · Updated {new Date(item.updatedAt).toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs">
-              Saved privately · Continue preparing · Admin submission
-              unavailable
-            </p>
+          <li key={item.id}>
+            <DashboardCard className="p-4">
+              <Link
+                href={`/dashboard/datasets/prepare/${item.id}`}
+                className="block text-lg font-semibold underline"
+              >
+                {item.metadata.title}
+              </Link>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {DATASET_UPLOAD_CHOICES.find(
+                  (choice) => choice.value === item.metadata.uploadChoice
+                )?.label ?? "Upload choice not selected"}{" "}
+                · Updated {new Date(item.updatedAt).toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs">
+                Saved privately · Continue preparing · Admin submission
+                unavailable
+              </p>
+            </DashboardCard>
           </li>
         ))}
       </ul>
       {result && result.total > 20 && (
-        <nav aria-label="Saved draft pages" className="flex items-center gap-3">
-          <button
+        <nav
+          aria-label="Saved draft pages"
+          className="flex flex-wrap items-center gap-3"
+        >
+          <DashboardButton
+            variant="outline"
             type="button"
-            className="rounded-lg border border-border px-3 py-2"
             disabled={loading || page <= 1}
             onClick={() => setPage((value) => value - 1)}
           >
             Previous draft page
-          </button>
+          </DashboardButton>
           <span>
             Page {page} of {Math.ceil(result.total / 20)}
           </span>
-          <button
+          <DashboardButton
+            variant="outline"
             type="button"
-            className="rounded-lg border border-border px-3 py-2"
             disabled={loading || page * 20 >= result.total}
             onClick={() => setPage((value) => value + 1)}
           >
             Next draft page
-          </button>
+          </DashboardButton>
         </nav>
       )}
     </DatasetWorkspace>
