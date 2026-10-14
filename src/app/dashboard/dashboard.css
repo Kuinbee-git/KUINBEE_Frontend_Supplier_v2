@@ -447,8 +447,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
 .supplier-dashboard-portal.dashboard-shell-sidebar,
 .supplier-dashboard-portal.dashboard-shell-topbar {
   background: var(--dashboard-shell-background);
-  backdrop-filter: blur(var(--dashboard-shell-blur));
   -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+  backdrop-filter: blur(var(--dashboard-shell-blur));
 }
 
 .supplier-dashboard .dashboard-glass-card,
@@ -458,8 +458,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   background: var(--dashboard-glass-background);
   border-color: var(--dashboard-glass-border);
   box-shadow: var(--dashboard-glass-shadow);
-  backdrop-filter: blur(var(--dashboard-glass-blur));
   -webkit-backdrop-filter: blur(var(--dashboard-glass-blur));
+  backdrop-filter: blur(var(--dashboard-glass-blur));
 }
 
 .supplier-dashboard .dashboard-glass-card::before,
@@ -479,8 +479,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   background: var(--dashboard-glass-background-strong);
   border-color: var(--dashboard-glass-border);
   box-shadow: var(--dashboard-glass-shadow);
-  backdrop-filter: blur(var(--dashboard-shell-blur));
   -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+  backdrop-filter: blur(var(--dashboard-shell-blur));
 }
 
 .supplier-dashboard .dashboard-glass-control,
@@ -488,8 +488,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
 .supplier-dashboard-portal .dashboard-glass-control {
   background: var(--dashboard-control-background);
   border-color: var(--dashboard-glass-border);
-  backdrop-filter: blur(var(--dashboard-shell-blur));
   -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+  backdrop-filter: blur(var(--dashboard-shell-blur));
 }
 
 .supplier-dashboard .dashboard-glass-control:hover,
@@ -518,8 +518,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
 .supplier-dashboard-portal.dashboard-form-actions,
 .supplier-dashboard-portal .dashboard-form-actions {
   background: var(--dashboard-glass-background-soft);
-  backdrop-filter: blur(var(--dashboard-shell-blur));
   -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+  backdrop-filter: blur(var(--dashboard-shell-blur));
 }
 
 @media (hover: hover) {
@@ -650,8 +650,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   background: var(--dashboard-button-secondary-background);
   border-color: var(--dashboard-button-secondary-border);
   color: var(--dashboard-button-secondary-foreground);
-  backdrop-filter: blur(var(--dashboard-shell-blur));
   -webkit-backdrop-filter: blur(var(--dashboard-shell-blur));
+  backdrop-filter: blur(var(--dashboard-shell-blur));
 }
 
 .supplier-dashboard .dashboard-button-secondary:not(:disabled):hover,
@@ -752,8 +752,8 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   .supplier-dashboard-portal .dashboard-form-actions,
   .supplier-dashboard-portal.dashboard-button-secondary {
     background: var(--dashboard-surface);
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 

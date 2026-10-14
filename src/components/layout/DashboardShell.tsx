@@ -407,7 +407,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
         <aside
           className={cn(
-            "dashboard-shell-sidebar hidden h-dvh shrink-0 flex-col border-r border-border transition-[width] duration-200 motion-reduce:transition-none lg:flex",
+            "dashboard-shell-sidebar hidden h-full min-h-0 shrink-0 flex-col border-r border-border transition-[width] duration-200 motion-reduce:transition-none lg:flex",
             sidebarCollapsed
               ? "w-[var(--dashboard-sidebar-collapsed-width)]"
               : "w-[var(--dashboard-sidebar-width)]"

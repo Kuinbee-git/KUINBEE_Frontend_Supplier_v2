@@ -101,8 +101,15 @@ async function bundle(environment) {
 }
 const scripts = {
   local: await bundle("local"),
+  staging: await bundle("staging"),
   production: await bundle("production"),
 };
+function fixtureEnvironment(url) {
+  const environment = url.searchParams.get("environment");
+  return environment === "production" || environment === "staging"
+    ? environment
+    : "local";
+}
 const cuid = (n) => "c" + String(n).padStart(24, "0");
 const categories = Array.from({ length: 113 }, (_, index) => ({
   id: cuid(index + 1000),
@@ -260,11 +267,7 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/bundle.js") {
       res.writeHead(200, { "Content-Type": "text/javascript" });
       res.end(
-        scripts[
-          url.searchParams.get("environment") === "production"
-            ? "production"
-            : "local"
-        ]
+        scripts[fixtureEnvironment(url)]
       );
       return;
     }
@@ -279,12 +282,17 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (!url.pathname.startsWith("/api/")) {
-      res.writeHead(200, { "Content-Type": "text/html" });
+      const environment = fixtureEnvironment(url);
+      const environmentStrip =
+        environment === "staging"
+          ? '<div role="status" data-environment="staging" class="flex h-7 items-center justify-center border-b border-border bg-amber-200 px-3 text-xs font-semibold text-amber-950">Staging · Test environment</div>'
+          : "";
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(
-        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/bundle.js?environment=' +
-          (url.searchParams.get("environment") === "production"
-            ? "production"
-            : "local") +
+        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body>' +
+          environmentStrip +
+          '<div id="root"></div><script src="/bundle.js?environment=' +
+          environment +
           '"></script></body></html>'
       );
       return;
@@ -1942,6 +1950,64 @@ try {
     "PASS responsive bento placement, tile-contained controls, retained mixed modality/context state, mobile reading order and shadow-free panels with visible keyboard focus"
   );
 
+  const stagingPage = await browser.newPage();
+  stagingPage.on("pageerror", (error) => errors.push(error.message));
+  await stagingPage.goto(origin + "/dashboard/datasets?environment=staging");
+  await stagingPage
+    .getByRole("heading", { name: "My Drafts", exact: true })
+    .waitFor();
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 1280, height: 768 },
+    { width: 1024, height: 600 },
+  ]) {
+    await stagingPage.setViewportSize(viewport);
+    const strip = await stagingPage
+      .locator('[data-environment="staging"]')
+      .boundingBox();
+    const shell = await stagingPage
+      .locator('[data-ui-scope="supplier-dashboard"]')
+      .boundingBox();
+    const sidebar = await stagingPage
+      .locator(".dashboard-shell-sidebar")
+      .boundingBox();
+    const toggle = stagingPage.getByRole("button", {
+      name: "Collapse navigation",
+      exact: true,
+    });
+    const toggleBox = await toggle.boundingBox();
+    assert(strip && shell && sidebar && toggleBox);
+    assert.equal(strip.height, 28);
+    assert.equal(shell.y, 28);
+    assert.equal(shell.height, viewport.height - 28);
+    assert.equal(sidebar.height, shell.height);
+    assert(
+      toggleBox.y >= sidebar.y &&
+        toggleBox.y + toggleBox.height <= viewport.height,
+      "Staging navigation toggle must remain completely visible below the inline environment strip"
+    );
+    await toggle.click();
+    const expand = stagingPage.getByRole("button", {
+      name: "Expand navigation",
+      exact: true,
+    });
+    const expandBox = await expand.boundingBox();
+    assert(expandBox && expandBox.y + expandBox.height <= viewport.height);
+    await expand.click();
+  }
+  await stagingPage.setViewportSize({ width: 1280, height: 900 });
+  await setTheme(stagingPage, true);
+  await scrollMainToTop(stagingPage);
+  await stagingPage.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-staging-shell-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await stagingPage.close();
+  console.log(
+    "PASS staging sidebar inherits height below its 28px strip; navigation controls stay fully visible in expanded and collapsed desktop layouts"
+  );
+
   const beforeProduction = requests.length;
   const productionPage = await browser.newPage();
   await productionPage.goto(
@@ -1950,6 +2016,16 @@ try {
   await productionPage
     .getByRole("heading", { name: "Create a dataset proposal", exact: true })
     .waitFor();
+  assert.equal(
+    await productionPage.locator('[data-environment="staging"]').count(),
+    0
+  );
+  assert.equal(
+    (await productionPage.locator(".dashboard-shell-sidebar").boundingBox())
+      .height,
+    productionPage.viewportSize().height,
+    "Production retains its full viewport sidebar height"
+  );
   assert.equal(
     await productionPage
       .getByRole("heading", { name: "Prepare a Dataset" })
