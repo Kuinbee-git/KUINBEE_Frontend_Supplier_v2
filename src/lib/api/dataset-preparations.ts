@@ -75,6 +75,9 @@ async function request<T>(
   }
 }
 
+// Companion Dataset APIs use the same gated, strict response/error handling.
+export { request as requestPreparationResource };
+
 export const preparationApi = {
   list: (page = 1, q?: string) => {
     const query = DatasetPreparationsListQuerySchema.parse({
