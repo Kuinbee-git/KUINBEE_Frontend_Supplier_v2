@@ -5,6 +5,7 @@ import { once } from "node:events";
 import { chromium } from "playwright";
 import { app } from "./deployment-environment.mjs";
 import { checkCompiledDashboardGlass } from "./check-compiled-dashboard-glass.mjs";
+import { checkCompiledDashboardBrand } from "./check-compiled-dashboard-brand.mjs";
 
 const origin = "http://127.0.0.1:3020";
 const browserOrigin = "http://supplier.fixture.test:3020";
@@ -241,6 +242,7 @@ try {
   );
   if (app === "supplier") {
     await checkCompiledDashboardGlass({ browser, origin });
+    await checkCompiledDashboardBrand({ browser, origin, apiOrigin });
   }
   await browser.close();
   browser = undefined;
