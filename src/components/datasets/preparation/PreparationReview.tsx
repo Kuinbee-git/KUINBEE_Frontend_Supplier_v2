@@ -102,9 +102,10 @@ export function PreparationReview({
     <>
       <PreparationSection
         title="Saved draft summary"
+        className="lg:col-span-8"
         help="This is the last acknowledged save. Category/source names are current lookup labels. License and quantities are supplier statements; no file inspection or publication is implied."
       >
-        <dl className="space-y-4">
+        <dl className="grid gap-4 sm:grid-cols-2">
           {rows.map(([label, value]) => (
             <div key={label}>
               <dt className="text-sm font-medium">{label}</dt>
@@ -117,6 +118,7 @@ export function PreparationReview({
       </PreparationSection>
       <PreparationSection
         title="Saved declared quantities"
+        className="lg:col-span-4"
         help="Collection, planned full material and planned sample remain separate; none is an observed upload measurement."
       >
         {[

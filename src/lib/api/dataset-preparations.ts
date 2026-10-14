@@ -3,6 +3,7 @@ import {
   DatasetPreparationPatchBodySchema,
   DatasetPreparationResponseSchema,
   DatasetPreparationsListResponseSchema,
+  DatasetPreparationsListQuerySchema,
   DatasetPreparationCatalogLabelsQuerySchema,
   DatasetPreparationCatalogLabelsResponseSchema,
   type DatasetPreparationCreateBody,
@@ -75,11 +76,22 @@ async function request<T>(
 }
 
 export const preparationApi = {
-  list: (page = 1) =>
-    request(
-      `${base}?page=${page}&limit=20`,
+  list: (page = 1, q?: string) => {
+    const query = DatasetPreparationsListQuerySchema.parse({
+      page,
+      limit: 20,
+      ...(q?.trim() ? { q: q.trim() } : {}),
+    });
+    const parameters = new URLSearchParams({
+      page: String(query.page),
+      limit: String(query.limit),
+    });
+    if (query.q) parameters.set("q", query.q);
+    return request(
+      `${base}?${parameters}`,
       DatasetPreparationsListResponseSchema
-    ),
+    );
+  },
   get: (id: string) =>
     request(
       `${base}/${encodeURIComponent(id)}`,

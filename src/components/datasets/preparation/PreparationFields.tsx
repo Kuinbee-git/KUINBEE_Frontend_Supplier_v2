@@ -92,15 +92,31 @@ export function PreparationSection({
   title,
   children,
   help,
+  className,
 }: {
   title: string;
   children: ReactNode;
   help?: string;
+  className?: string;
 }) {
   return (
-    <DashboardSection title={title} description={help}>
+    <DashboardSection
+      title={title}
+      description={help}
+      surface="plain"
+      data-proposal-tile="true"
+      className={`@container col-span-full min-w-0 rounded-xl border border-border p-4 sm:p-5 ${className ?? "lg:col-span-6"}`}
+    >
       <div className="space-y-4">{children}</div>
     </DashboardSection>
+  );
+}
+
+export function PreparationGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12">
+      {children}
+    </div>
   );
 }
 
@@ -140,11 +156,13 @@ export function PreparationQuantities({
   metadata,
   onUpdate,
   label,
+  className,
 }: {
   field: MeasurementField;
   metadata: DatasetPreparationMetadata;
   onUpdate: PreparationUpdate;
   label: string;
+  className?: string;
 }) {
   const rows = metadata[field] ?? [];
   const write = (
@@ -160,17 +178,18 @@ export function PreparationQuantities({
   return (
     <PreparationSection
       title={label}
+      className={className}
       help="These are your declarations, not measured uploads or storage usage. Unknown has no numeric value. Each quantity applies only to the scope named above."
     >
       {rows.map((row, index) => (
         <fieldset
           key={row.metric}
-          className="space-y-3 rounded-lg border border-border p-3"
+          className="space-y-3 border-t border-border pt-4 first:border-t-0 first:pt-0"
         >
           <legend className="px-1 text-sm font-medium">
             {metricLabels[row.metric]}
           </legend>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 @md:grid-cols-3">
             <PreparationSelect
               label={`${label}: ${metricLabels[row.metric]} answer`}
               value={row.state}

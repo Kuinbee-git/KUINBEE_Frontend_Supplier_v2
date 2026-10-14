@@ -167,6 +167,9 @@ export interface DashboardDataTableProps<TItem> {
   getRowId: (item: TItem) => React.Key;
   items: readonly TItem[];
   renderMobileItem?: (item: TItem) => React.ReactNode;
+  framed?: boolean;
+  mobileBreakpoint?: "md" | "xl";
+  fixedLayout?: boolean;
 }
 
 export function DashboardDataTable<TItem>({
@@ -178,11 +181,14 @@ export function DashboardDataTable<TItem>({
   getRowId,
   items,
   renderMobileItem,
+  framed = true,
+  mobileBreakpoint = "md",
+  fixedLayout = false,
 }: DashboardDataTableProps<TItem>) {
   const hasMobileLayout = Boolean(renderMobileItem);
 
   return (
-    <div className={cn("grid gap-3", className)}>
+    <div className={cn("grid gap-3", !framed && "min-w-0 grid-cols-1", className)}>
       <span className="sr-only" role="status" aria-live="polite">
         {busy
           ? `Loading ${caption}`
@@ -190,15 +196,17 @@ export function DashboardDataTable<TItem>({
       </span>
       <div
         className={cn(
-          "dashboard-glass-card dashboard-scroll-region overflow-x-auto rounded-xl border outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]",
-          hasMobileLayout && "hidden md:block"
+          "dashboard-scroll-region overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]",
+          framed && "dashboard-glass-card rounded-xl border",
+          hasMobileLayout &&
+            (mobileBreakpoint === "xl" ? "hidden xl:block" : "hidden md:block")
         )}
         tabIndex={0}
         role="region"
         aria-label={caption}
         aria-busy={busy || undefined}
       >
-        <DashboardTable>
+        <DashboardTable className={fixedLayout ? "table-fixed" : undefined}>
           <caption className="sr-only">{caption}</caption>
           <DashboardTableHeader>
             <DashboardTableRow className="hover:bg-transparent">
@@ -284,20 +292,31 @@ export function DashboardDataTable<TItem>({
 
       {renderMobileItem ? (
         <div
-          className="grid gap-3 md:hidden"
+          className={cn(
+            "grid",
+            mobileBreakpoint === "xl" ? "xl:hidden" : "md:hidden",
+            framed ? "gap-3" : "min-w-0 grid-cols-1 divide-y divide-border"
+          )}
           role="list"
           aria-label={caption}
           aria-busy={busy || undefined}
         >
           {items.length ? (
             items.map((item) => (
-              <div key={getRowId(item)} role="listitem">
+              <div
+                key={getRowId(item)}
+                className={!framed ? "min-w-0" : undefined}
+                role="listitem"
+              >
                 {renderMobileItem(item)}
               </div>
             ))
           ) : (
             <div
-              className="dashboard-glass-card rounded-xl border px-4 py-10 text-center text-sm text-muted-foreground"
+              className={cn(
+                "px-4 py-10 text-center text-sm text-muted-foreground",
+                framed && "dashboard-glass-card rounded-xl border"
+              )}
               role="listitem"
             >
               {emptyMessage}
@@ -311,12 +330,13 @@ export function DashboardDataTable<TItem>({
 
 export const DashboardMobileRecordCard = React.forwardRef<
   HTMLElement,
-  React.HTMLAttributes<HTMLElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLElement> & { framed?: boolean }
+>(({ className, framed = true, ...props }, ref) => (
   <article
     ref={ref}
     className={cn(
-      "dashboard-glass-card rounded-xl border p-4 text-card-foreground",
+      "text-card-foreground",
+      framed ? "dashboard-glass-card rounded-xl border p-4" : "min-w-0 py-4",
       className
     )}
     {...props}

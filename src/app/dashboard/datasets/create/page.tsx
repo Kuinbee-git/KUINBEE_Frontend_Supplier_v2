@@ -1,12 +1,17 @@
-'use client';
+"use client";
 
-import { CreateDataset } from '@/components/datasets';
-import { useThemeStore } from '@/store';
-import { DatasetPreparationEntry } from '@/components/datasets/preparation/DatasetPreparationEntry';
+import { CreateDataset } from "@/components/datasets";
+import { useThemeStore } from "@/store";
+import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
+import { DatasetPreparationScreen } from "@/components/datasets/preparation/DatasetPreparationScreen";
 
 export default function CreateDatasetPage() {
   const { theme } = useThemeStore();
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
 
-  return <><DatasetPreparationEntry /><CreateDataset isDark={isDark} /></>;
+  return DATASET_PREPARATION_ENABLED ? (
+    <DatasetPreparationScreen />
+  ) : (
+    <CreateDataset isDark={isDark} />
+  );
 }

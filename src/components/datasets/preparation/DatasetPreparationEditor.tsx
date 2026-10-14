@@ -36,6 +36,7 @@ import { PreparationCatalogPicker } from "./PreparationCatalogPicker";
 import { PreparationReview } from "./PreparationReview";
 import {
   PreparationField,
+  PreparationGrid,
   PreparationProfileFields,
   PreparationQuantities,
   PreparationSection,
@@ -362,615 +363,659 @@ export function DatasetPreparationEditor({
   };
 
   return (
-    <DatasetWorkspace className="max-w-[70rem]">
+    <DatasetWorkspace className="dataset-proposal-workspace max-w-[70rem]">
       <DatasetPageHeader
-        title="Prepare a Dataset"
+        title={draftId || saved ? "Edit draft proposal" : "Create proposal"}
         description="Save a draft and complete it step by step. Saving does not submit it for review."
         action={
-          <>
-            <DashboardButton asChild variant="outline" size="compact">
-              <Link href="/dashboard/datasets/prepare">Saved drafts</Link>
-            </DashboardButton>
-            <DashboardButton asChild variant="outline" size="compact">
-              <Link href="/dashboard/datasets">Existing proposals</Link>
-            </DashboardButton>
-          </>
+          <DashboardButton asChild variant="outline" size="compact">
+            <Link href="/dashboard/datasets">Draft proposals</Link>
+          </DashboardButton>
         }
       />
-      <DashboardCard
-        role="status"
-        aria-live="polite"
-        data-preparation-status="true"
-        data-saved-id={saved?.id}
-        data-saved-generation={saved?.generation}
-        className="p-3 text-sm"
-      >
-        {loading
-          ? "Loading saved draft…"
-          : saving
-            ? "Saving draft…"
-            : retryPending
-              ? "Save not confirmed — retry required"
-              : dirty
-                ? "Unsaved changes"
-                : saved
-                  ? "Draft saved"
-                  : "Not saved yet"}
-        {saved && !loading && (
-          <span className="ml-2 text-muted-foreground">
-            Last acknowledged {new Date(saved.updatedAt).toLocaleString()}
-          </span>
-        )}
-      </DashboardCard>
-      <DashboardCard className="p-4 text-sm">
-        <strong>Preparation testing release</strong>
-        <p className="mt-1 text-muted-foreground">
-          You can save information for all three upload choices. File intake,
-          required file checks and admin submission are not available in this
-          release. Nothing here is published.
-        </p>
-      </DashboardCard>
-      {error && (
+      <DashboardCard className="overflow-hidden" data-proposal-panel="true">
         <div
-          ref={errorRef}
-          tabIndex={-1}
-          role="alert"
-          className="space-y-3 rounded-lg border border-destructive p-4 text-sm"
+          role="status"
+          aria-live="polite"
+          data-preparation-status="true"
+          data-saved-id={saved?.id}
+          data-saved-generation={saved?.generation}
+          className="border-b border-border px-4 py-3 text-sm sm:px-6"
         >
-          <p>{error}</p>
-          {!saved && draftId && (
-            <DashboardButton variant="outline" type="button" onClick={load}>
-              Reload saved draft
-            </DashboardButton>
+          {loading
+            ? "Loading saved draft…"
+            : saving
+              ? "Saving draft…"
+              : retryPending
+                ? "Save not confirmed — retry required"
+                : dirty
+                  ? "Unsaved changes"
+                  : saved
+                    ? "Draft saved"
+                    : "Not saved yet"}
+          {saved && !loading && (
+            <span className="ml-2 text-muted-foreground">
+              Last saved {new Date(saved.updatedAt).toLocaleString()}
+            </span>
           )}
-          {retryPending && (
-            <p>
-              Your input is retained. Retry uses the same save request; editing
-              is paused until its result is confirmed.
-            </p>
-          )}
-          {conflict && (
-            <>
+        </div>
+        <div className="border-b border-border bg-muted/20 px-4 py-3 text-sm sm:px-6">
+          <strong>Draft testing release</strong>
+          <p className="mt-1 text-muted-foreground">
+            You can save information for all three upload choices. File intake,
+            required file checks and admin submission are not available in this
+            release. Nothing here is published.
+          </p>
+        </div>
+        {error && (
+          <div
+            ref={errorRef}
+            tabIndex={-1}
+            role="alert"
+            className="m-4 space-y-3 rounded-lg border border-destructive p-4 text-sm sm:mx-6"
+          >
+            <p>{error}</p>
+            {!saved && draftId && (
+              <DashboardButton variant="outline" type="button" onClick={load}>
+                Reload saved draft
+              </DashboardButton>
+            )}
+            {retryPending && (
               <p>
-                Another save changed this draft. Your local answers have been
-                kept.
+                Your input is retained. Retry uses the same save request;
+                editing is paused until its result is confirmed.
               </p>
+            )}
+            {conflict && (
+              <>
+                <p>
+                  Another save changed this draft. Your local answers have been
+                  kept.
+                </p>
+                <DashboardButton
+                  variant="outline"
+                  type="button"
+                  disabled={saving}
+                  onClick={reviewLatest}
+                >
+                  Review latest saved draft
+                </DashboardButton>
+              </>
+            )}
+          </div>
+        )}
+        {latest && saved && (
+          <PreparationSection
+            title="Resolve the changed draft"
+            help="Choose explicitly. Using your changes may replace the same fields changed in the newer draft; fields you did not edit are retained."
+          >
+            <p>
+              Latest saved title: <strong>{latest.metadata.title}</strong>
+            </p>
+            <div className="flex flex-wrap gap-3">
               <DashboardButton
                 variant="outline"
                 type="button"
-                disabled={saving}
-                onClick={reviewLatest}
+                onClick={() => {
+                  setMetadata(latest.metadata);
+                  setSaved(latest);
+                  setLatest(null);
+                  setReplayBase(null);
+                  setConflict(false);
+                  setError("");
+                }}
               >
-                Review latest saved draft
+                Use latest saved draft
               </DashboardButton>
-            </>
-          )}
-        </div>
-      )}
-      {latest && saved && (
-        <PreparationSection
-          title="Resolve the changed draft"
-          help="Choose explicitly. Using your changes may replace the same fields changed in the newer draft; fields you did not edit are retained."
-        >
-          <p>
-            Latest saved title: <strong>{latest.metadata.title}</strong>
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <DashboardButton
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setMetadata(latest.metadata);
-                setSaved(latest);
-                setLatest(null);
-                setReplayBase(null);
-                setConflict(false);
-                setError("");
-              }}
-            >
-              Use latest saved draft
-            </DashboardButton>
-            <DashboardButton
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setMetadata(
-                  DatasetPreparationMetadataSchema.parse(
-                    reapplyLocal(
-                      replayBase ?? saved.metadata,
-                      metadata,
-                      latest.metadata
+              <DashboardButton
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setMetadata(
+                    DatasetPreparationMetadataSchema.parse(
+                      reapplyLocal(
+                        replayBase ?? saved.metadata,
+                        metadata,
+                        latest.metadata
+                      )
                     )
-                  )
-                );
-                setSaved(latest);
-                setLatest(null);
-                setReplayBase(null);
-                setConflict(false);
-                setError("");
-              }}
+                  );
+                  setSaved(latest);
+                  setLatest(null);
+                  setReplayBase(null);
+                  setConflict(false);
+                  setError("");
+                }}
+              >
+                Reapply my changes to latest draft
+              </DashboardButton>
+            </div>
+          </PreparationSection>
+        )}
+        <nav
+          aria-label="Proposal creation steps"
+          className="grid grid-cols-2 gap-2 border-b border-border bg-muted/20 px-4 py-4 sm:grid-cols-4 sm:px-6"
+        >
+          {steps.map((label, index) => (
+            <DashboardButton
+              variant={step === index ? "default" : "outline"}
+              type="button"
+              key={label}
+              aria-current={step === index ? "step" : undefined}
+              className="h-auto min-h-10 whitespace-normal px-3 py-2 text-left"
+              disabled={locked}
+              onClick={() => setStep(index)}
             >
-              Reapply my changes to latest draft
+              {index + 1}. {label}
             </DashboardButton>
-          </div>
-        </PreparationSection>
-      )}
-      <nav
-        aria-label="Dataset preparation steps"
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-      >
-        {steps.map((label, index) => (
-          <DashboardButton
-            variant={step === index ? "default" : "outline"}
-            type="button"
-            key={label}
-            aria-current={step === index ? "step" : undefined}
-            className="h-auto min-h-10 whitespace-normal px-3 py-2 text-left"
-            disabled={locked}
-            onClick={() => setStep(index)}
-          >
-            {index + 1}. {label}
-          </DashboardButton>
-        ))}
-      </nav>
-      <fieldset disabled={locked} className="min-w-0 space-y-5">
-        <legend className="sr-only">{steps[step]}</legend>
-        {step === 0 && (
-          <>
-            <PreparationSection
-              title="Basics"
-              help="Only a title is needed for the first save. Add your upload choice, main data types, category, source and stated license when you are ready."
-            >
-              <PreparationField
-                label="Dataset title"
-                multiline={false}
-                maxLength={200}
-                value={metadata.title}
-                onChange={(value) => setCommon("title", value ?? "")}
-              />
-              <fieldset className="space-y-2">
-                <legend className="mb-2 text-sm font-medium">
-                  What are you uploading?
-                </legend>
-                {DATASET_UPLOAD_CHOICES.map((choice) => (
-                  <label
-                    key={choice.value}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3"
-                  >
-                    <input
-                      type="radio"
-                      className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
-                      name="upload-choice"
-                      value={choice.value}
-                      checked={metadata.uploadChoice === choice.value}
-                      onChange={() => setCommon("uploadChoice", choice.value)}
-                    />
-                    <span>
-                      <span className="block font-medium">{choice.label}</span>
-                      <span className="block text-xs text-muted-foreground">
-                        {choice.help}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              <fieldset className="space-y-2">
-                <legend className="mb-2 text-sm font-medium">
-                  Main types of data
-                </legend>
-                <p className="text-xs text-muted-foreground">
-                  Choose one or more. Category and encoding are separate;
-                  changing types keeps your earlier answers.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {DATASET_MODALITIES.map((modality) => (
+          ))}
+        </nav>
+        <fieldset disabled={locked} className="min-w-0 space-y-6 p-4 sm:p-6">
+          <legend className="sr-only">{steps[step]}</legend>
+          {step === 0 && (
+            <PreparationGrid>
+              <PreparationSection
+                title="Basics"
+                className="lg:col-span-7"
+                help="Start with a title. You can save now and complete the remaining information step by step."
+              >
+                <PreparationField
+                  label="Dataset title"
+                  multiline={false}
+                  maxLength={200}
+                  value={metadata.title}
+                  onChange={(value) => setCommon("title", value ?? "")}
+                />
+                <fieldset className="space-y-2">
+                  <legend className="mb-2 text-sm font-medium">
+                    What are you uploading?
+                  </legend>
+                  {DATASET_UPLOAD_CHOICES.map((choice) => (
                     <label
-                      key={modality.value}
-                      className="flex items-start gap-2 rounded-lg border border-border p-3"
+                      key={choice.value}
+                      data-selected={metadata.uploadChoice === choice.value}
+                      className="preparation-choice flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-3"
                     >
                       <input
-                        type="checkbox"
+                        type="radio"
                         className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
-                        checked={
-                          metadata.modalities?.includes(modality.value) ?? false
-                        }
-                        onChange={(event) =>
-                          update((previous) => ({
-                            ...previous,
-                            modalities: event.target.checked
-                              ? [...(previous.modalities ?? []), modality.value]
-                              : (previous.modalities ?? []).filter(
-                                  (value) => value !== modality.value
-                                ),
-                          }))
-                        }
+                        name="upload-choice"
+                        value={choice.value}
+                        checked={metadata.uploadChoice === choice.value}
+                        onChange={() => setCommon("uploadChoice", choice.value)}
                       />
                       <span>
-                        <span className="block text-sm font-medium">
-                          {modality.label}
+                        <span className="block font-medium">
+                          {choice.label}
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          {modality.help}
+                          {choice.help}
                         </span>
                       </span>
                     </label>
                   ))}
+                </fieldset>{" "}
+                <div className="border-t border-border pt-5">
+                  <fieldset className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium">
+                      Main types of data
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                      Choose one or more. Category and encoding are separate;
+                      changing types keeps your earlier answers.
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {DATASET_MODALITIES.map((modality) => (
+                        <label
+                          key={modality.value}
+                          data-selected={
+                            metadata.modalities?.includes(modality.value) ??
+                            false
+                          }
+                          className="preparation-choice flex items-start gap-2 rounded-lg border border-transparent p-3"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
+                            checked={
+                              metadata.modalities?.includes(modality.value) ??
+                              false
+                            }
+                            onChange={(event) =>
+                              update((previous) => ({
+                                ...previous,
+                                modalities: event.target.checked
+                                  ? [
+                                      ...(previous.modalities ?? []),
+                                      modality.value,
+                                    ]
+                                  : (previous.modalities ?? []).filter(
+                                      (value) => value !== modality.value
+                                    ),
+                              }))
+                            }
+                          />
+                          <span>
+                            <span className="block text-sm font-medium">
+                              {modality.label}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              {modality.help}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>{" "}
                 </div>
-              </fieldset>
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">
-                  Relevant capture or domain context
-                </legend>
-                <p className="text-xs text-muted-foreground">
-                  A category does not automatically enable these questions or
-                  specialist formats.
+                <div className="border-t border-border pt-5">
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium">
+                      Relevant capture or domain context
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                      A category does not automatically enable these questions
+                      or specialist formats.
+                    </p>
+                    {(
+                      [
+                        ["HEALTHCARE", "Healthcare content"],
+                        ["EGOCENTRIC", "Egocentric / first-person capture"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <label key={value} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="shrink-0 accent-[var(--dashboard-indicator)]"
+                          checked={metadata.contexts?.includes(value) ?? false}
+                          onChange={(event) =>
+                            update((previous) => ({
+                              ...previous,
+                              contexts: event.target.checked
+                                ? [...(previous.contexts ?? []), value]
+                                : (previous.contexts ?? []).filter(
+                                    (item) => item !== value
+                                  ),
+                            }))
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </fieldset>
+                  <p className="text-sm text-muted-foreground">
+                    Healthcare describes the domain across tables, images, audio
+                    and other data. Egocentric describes a first-person capture
+                    perspective. Select either when it applies to this
+                    collection.
+                  </p>{" "}
+                </div>
+              </PreparationSection>
+              <PreparationSection
+                title="Category, source & license"
+                className="lg:col-span-5"
+                help="Describe the subject and source of your collection, then record its stated license."
+              >
+                <div className="grid gap-5">
+                  <PreparationCatalogPicker
+                    kind="categories"
+                    value={metadata.primaryCategoryId}
+                    onChange={(value) => setCommon("primaryCategoryId", value)}
+                    disabled={locked}
+                  />
+                  <PreparationCatalogPicker
+                    kind="sources"
+                    value={metadata.sourceId}
+                    onChange={(value) => setCommon("sourceId", value)}
+                    disabled={locked}
+                  />
+                </div>
+                <PreparationField
+                  label="Dataset license"
+                  multiline={false}
+                  maxLength={1000}
+                  value={metadata.license}
+                  onChange={(value) => setCommon("license", value)}
+                  help="Enter the supplier's stated standard license or existing license text. Agreements and negotiation stay outside Kuinbee; no license is selected for you."
+                />{" "}
+              </PreparationSection>
+            </PreparationGrid>
+          )}
+          {step === 1 && (
+            <PreparationGrid>
+              <PreparationSection
+                title="Files & contents"
+                className="lg:col-span-12"
+                help="The confirmed allowance is 5 GB combined for full material, samples and companions, and 100 GB per supplier. No storage usage or file acceptance is claimed by this preparation form."
+              >
+                <p className="text-sm">
+                  Uploads are unavailable in this testing release. No files have
+                  been received through this draft editor.
                 </p>
-                {(
-                  [
-                    ["HEALTHCARE", "Healthcare content"],
-                    ["EGOCENTRIC", "Egocentric / first-person capture"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <label key={value} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="shrink-0 accent-[var(--dashboard-indicator)]"
-                      checked={metadata.contexts?.includes(value) ?? false}
-                      onChange={(event) =>
-                        update((previous) => ({
-                          ...previous,
-                          contexts: event.target.checked
-                            ? [...(previous.contexts ?? []), value]
-                            : (previous.contexts ?? []).filter(
-                                (item) => item !== value
-                              ),
-                        }))
-                      }
-                    />
-                    {label}
-                  </label>
-                ))}
-              </fieldset>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <PreparationCatalogPicker
-                  kind="categories"
-                  value={metadata.primaryCategoryId}
-                  onChange={(value) => setCommon("primaryCategoryId", value)}
-                  disabled={locked}
-                />
-                <PreparationCatalogPicker
-                  kind="sources"
-                  value={metadata.sourceId}
-                  onChange={(value) => setCommon("sourceId", value)}
-                  disabled={locked}
-                />
-              </div>
-              <PreparationField
-                label="Dataset license"
-                multiline={false}
-                maxLength={1000}
-                value={metadata.license}
-                onChange={(value) => setCommon("license", value)}
-                help="Enter the supplier's stated standard license or existing license text. Agreements and negotiation stay outside Kuinbee; no license is selected for you."
-              />
-            </PreparationSection>
-          </>
-        )}
-        {step === 1 && (
-          <>
-            <PreparationSection
-              title="Files & contents"
-              help="The confirmed allowance is 5 GB combined for full material, samples and companions, and 100 GB per supplier. No storage usage or file acceptance is claimed by this preparation form."
-            >
-              <p className="text-sm">
-                Uploads are unavailable in this testing release. No files have
-                been received through this draft editor.
-              </p>
-              {!metadata.uploadChoice && (
-                <p>
-                  Choose what you are uploading in Basics to see the relevant
-                  areas.
-                </p>
-              )}
-              {hasFull && (
-                <section
-                  aria-label="Full material"
-                  className="rounded-lg border border-border p-4"
-                >
-                  <h3 className="font-medium">Full dataset</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Prepare all main files and companions for your defined
-                    collection boundary. File selection and checks will be
-                    connected in a later release.
+                {!metadata.uploadChoice && (
+                  <p>
+                    Choose what you are uploading in Basics to see the relevant
+                    areas.
                   </p>
-                </section>
+                )}
+              </PreparationSection>
+              {hasFull && (
+                <PreparationSection
+                  title="Full dataset"
+                  className="lg:col-span-6"
+                >
+                  <section aria-label="Full material">
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Prepare all main files and companions for your defined
+                      collection boundary. File selection and checks will be
+                      connected in a later release.
+                    </p>
+                  </section>
+                </PreparationSection>
               )}
               {hasSample && (
-                <section
-                  aria-label="Sample material"
-                  className="rounded-lg border border-border p-4"
-                >
-                  <h3 className="font-medium">Sample</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Prepare a usable sample and its needed companions. A sample
-                    inside a full archive cannot expose the full archive to
-                    buyers.
-                  </p>
-                </section>
+                <PreparationSection title="Sample" className="lg:col-span-6">
+                  <section aria-label="Sample material">
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Prepare a usable sample and its needed companions. A
+                      sample inside a full archive cannot expose the full
+                      archive to buyers.
+                    </p>
+                  </section>
+                </PreparationSection>
               )}
-            </PreparationSection>
-            {hasFull && (
-              <PreparationQuantities
-                field="fullMeasurements"
-                metadata={metadata}
-                onUpdate={update}
-                label="Declared amount in prepared full material"
-              />
-            )}
-            {hasSample && (
-              <PreparationQuantities
-                field="sampleMeasurements"
-                metadata={metadata}
-                onUpdate={update}
-                label="Declared amount in prepared sample"
-              />
-            )}
-          </>
-        )}
-        {step === 2 && (
-          <>
-            <PreparationSection title="Dataset details">
-              <PreparationField
-                label="What collection does this Dataset cover?"
-                value={metadata.collectionBoundary}
-                onChange={(value) => setCommon("collectionBoundary", value)}
-                help="Full means complete for this honestly defined boundary, not everything you own."
-              />
-              <PreparationField
-                label="Short summary"
-                value={metadata.overview}
-                onChange={(value) => setCommon("overview", value)}
-              />
-              <PreparationField
-                label="Detailed description"
-                value={metadata.description}
-                onChange={(value) => setCommon("description", value)}
-                help="Explain organization and interpretation, rather than repeating the summary."
-              />
-              <PreparationField
-                label="Quality checks and known quality"
-                value={metadata.dataQuality}
-                onChange={(value) => setCommon("dataQuality", value)}
-                help="Not assessed is an honest answer. File checks do not prove research quality."
-              />
-            </PreparationSection>
-            <PreparationQuantities
-              field="collectionMeasurements"
-              metadata={metadata}
-              onUpdate={update}
-              label="Represented collection quantity"
-            />
-            <PreparationProfileFields metadata={metadata} onUpdate={update} />
-            {hasSample && (
-              <PreparationSection title="How the sample represents the collection">
-                <PreparationField
-                  label="How was the sample selected?"
-                  value={sample.selectionMethod}
-                  onChange={(value) => setSample("selectionMethod", value)}
-                />
-                <PreparationField
-                  label="What does the sample cover?"
-                  value={sample.coverage}
-                  onChange={(value) => setSample("coverage", value)}
-                  help="Explain what is known or unknown about representativeness."
-                />
-                <PreparationSelect
-                  label="What is missing from the sample?"
-                  value={sample.omissions}
-                  onChange={(value) => setSample("omissions", value)}
-                  options={[
-                    ["DESCRIBED", "Describe omissions"],
-                    ["NONE_KNOWN", "None known"],
-                    ["UNKNOWN", "Unknown"],
-                  ]}
-                />
-                {sample.omissions === "DESCRIBED" && (
-                  <PreparationField
-                    label="Sample omissions"
-                    value={sample.omissionNotes}
-                    onChange={(value) => setSample("omissionNotes", value)}
-                  />
-                )}
-                <PreparationSelect
-                  label="How was the sample changed from its source?"
-                  value={sample.transformations}
-                  onChange={(value) => setSample("transformations", value)}
-                  options={[
-                    ["NONE_DECLARED", "No changes declared"],
-                    ["DESCRIBED", "Describe changes"],
-                    ["UNKNOWN", "Unknown"],
-                  ]}
-                />
-                {sample.transformations === "DESCRIBED" && (
-                  <PreparationField
-                    label="Sample preparation or changes"
-                    value={sample.transformationNotes}
-                    onChange={(value) =>
-                      setSample("transformationNotes", value)
-                    }
-                  />
-                )}
-                <PreparationField
-                  label="Relationship to full material"
-                  value={sample.relationshipNotes}
-                  onChange={(value) => setSample("relationshipNotes", value)}
-                  help="Optional correspondence declaration; this does not grant full-file access."
-                />
-              </PreparationSection>
-            )}
-            {hasFull && (
-              <PreparationSection title="Full collection boundary">
-                <label className="flex items-start gap-3 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
-                    checked={metadata.fullCompleteness === true}
-                    onChange={(event) =>
-                      setCommon("fullCompleteness", event.target.checked)
-                    }
-                  />
-                  <span>
-                    My planned full material will cover the collection boundary
-                    I defined.
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      This is a supplier declaration. No received files or
-                      verified completeness are implied.
-                    </span>
-                  </span>
-                </label>
-              </PreparationSection>
-            )}
-            <PreparationSection title="Optional enrichment">
-              <PreparationField
-                label="Known limitations"
-                value={metadata.limitations}
-                onChange={(value) => setCommon("limitations", value)}
-              />
-              <PreparationField
-                label="Collection or preparation method"
-                value={metadata.collectionMethod}
-                onChange={(value) => setCommon("collectionMethod", value)}
-              />
-              <PreparationField
-                label="Possible uses"
-                value={metadata.possibleUses}
-                onChange={(value) => setCommon("possibleUses", value)}
-              />
-              {metadata.modalities?.includes("TABULAR") && (
-                <PreparationSelect
-                  label="Statistical study structure (if applicable)"
-                  value={metadata.superType}
-                  onChange={(value) =>
-                    setCommon(
-                      "superType",
-                      value as DatasetPreparationMetadata["superType"]
-                    )
-                  }
-                  options={DATASET_TYPES.map(
-                    (type) => [type.value, type.label] as const
-                  )}
-                  help="Optional. Media suppliers do not need to invent a statistical type."
+              {hasFull && (
+                <PreparationQuantities
+                  field="fullMeasurements"
+                  metadata={metadata}
+                  onUpdate={update}
+                  label="Declared amount in prepared full material"
                 />
               )}
-            </PreparationSection>
-            {metadata.contexts?.includes("HEALTHCARE") && (
-              <p className="text-sm text-muted-foreground">
-                DICOM and other specialist formats require separate
-                qualification. Selecting healthcare context does not enable
-                their upload.
-              </p>
-            )}
-          </>
-        )}
-        {step === 3 && (
-          <>
-            {saved && <PreparationReview metadata={saved.metadata} />}
-            <PreparationSection
-              title="Preparation checklist"
-              help={
-                dirty
-                  ? "This checklist describes the last acknowledged save. Save your changes to refresh it."
-                  : "This is preparation guidance, not final submission validation. File intake and review integration remain unavailable."
-              }
-            >
-              {!saved ? (
-                <p>Save the draft to get the server preparation checklist.</p>
-              ) : (
-                <>
-                  <p className="text-sm">
-                    Saved title: <strong>{saved.metadata.title}</strong>
-                  </p>
-                  <p className="text-sm">
-                    Saved upload choice:{" "}
-                    {DATASET_UPLOAD_CHOICES.find(
-                      (choice) => choice.value === saved.metadata.uploadChoice
-                    )?.label ?? "Not chosen"}
-                  </p>
-                  <ul className="space-y-3">
-                    {saved.readiness.issues.map((issue, i) => (
-                      <li
-                        key={`${issue.code}-${issue.field ?? i}`}
-                        className="rounded-lg border border-border p-3 text-sm"
-                      >
-                        <p>{issue.message}</p>
-                        {issue.field && (
-                          <DashboardButton
-                            type="button"
-                            variant="link"
-                            size="compact"
-                            className="mt-1 h-auto whitespace-normal p-0 text-left"
-                            onClick={() => moveToField(issue.field)}
-                          >
-                            Go to this section
-                          </DashboardButton>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </>
+              {hasSample && (
+                <PreparationQuantities
+                  field="sampleMeasurements"
+                  metadata={metadata}
+                  onUpdate={update}
+                  label="Declared amount in prepared sample"
+                />
               )}
-            </PreparationSection>
-            <PreparationSection title="Review remains a separate action">
-              <p className="text-sm">
-                Pricing, file intake and admin submission will be connected
-                after their checks are qualified. Existing proposals retain
-                their existing explicit Submit workflow.
-              </p>
-              <DashboardButton
-                variant="outline"
-                type="button"
-                disabled
-                className="h-auto min-h-10 whitespace-normal"
+            </PreparationGrid>
+          )}
+          {step === 2 && (
+            <PreparationGrid>
+              <PreparationSection
+                title="Dataset details"
+                className="lg:col-span-8"
               >
-                Submit for admin review — unavailable
-              </DashboardButton>
-            </PreparationSection>
-          </>
-        )}
-      </fieldset>
-      <DashboardFormActions
-        status={`Step ${step + 1} of ${steps.length} · All saves are private. Saving never submits.`}
-      >
-        <DashboardButton
-          type="button"
-          disabled={
-            !hydrated || loading || saving || conflict || unavailableExisting
-          }
-          onClick={() => void save()}
+                <PreparationField
+                  label="What collection does this Dataset cover?"
+                  value={metadata.collectionBoundary}
+                  onChange={(value) => setCommon("collectionBoundary", value)}
+                  help="Full means complete for this honestly defined boundary, not everything you own."
+                />
+                {hasFull && (
+                  <fieldset className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium">
+                      Full collection boundary
+                    </legend>
+                    <label className="flex items-start gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
+                        checked={metadata.fullCompleteness === true}
+                        onChange={(event) =>
+                          setCommon("fullCompleteness", event.target.checked)
+                        }
+                      />
+                      <span>
+                        My planned full material will cover the collection
+                        boundary I defined.
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          This is a supplier declaration. No received files or
+                          verified completeness are implied.
+                        </span>
+                      </span>
+                    </label>{" "}
+                  </fieldset>
+                )}
+                <PreparationField
+                  label="Short summary"
+                  value={metadata.overview}
+                  onChange={(value) => setCommon("overview", value)}
+                />
+                <PreparationField
+                  label="Detailed description"
+                  value={metadata.description}
+                  onChange={(value) => setCommon("description", value)}
+                  help="Explain organization and interpretation, rather than repeating the summary."
+                />
+                <PreparationField
+                  label="Quality checks and known quality"
+                  value={metadata.dataQuality}
+                  onChange={(value) => setCommon("dataQuality", value)}
+                  help="Not assessed is an honest answer. File checks do not prove research quality."
+                />
+              </PreparationSection>
+              <PreparationQuantities
+                field="collectionMeasurements"
+                className="lg:col-span-4"
+                metadata={metadata}
+                onUpdate={update}
+                label="Represented collection quantity"
+              />
+              <PreparationProfileFields metadata={metadata} onUpdate={update} />
+              {hasSample && (
+                <PreparationSection title="How the sample represents the collection">
+                  <PreparationField
+                    label="How was the sample selected?"
+                    value={sample.selectionMethod}
+                    onChange={(value) => setSample("selectionMethod", value)}
+                  />
+                  <PreparationField
+                    label="What does the sample cover?"
+                    value={sample.coverage}
+                    onChange={(value) => setSample("coverage", value)}
+                    help="Explain what is known or unknown about representativeness."
+                  />
+                  <PreparationSelect
+                    label="What is missing from the sample?"
+                    value={sample.omissions}
+                    onChange={(value) => setSample("omissions", value)}
+                    options={[
+                      ["DESCRIBED", "Describe omissions"],
+                      ["NONE_KNOWN", "None known"],
+                      ["UNKNOWN", "Unknown"],
+                    ]}
+                  />
+                  {sample.omissions === "DESCRIBED" && (
+                    <PreparationField
+                      label="Sample omissions"
+                      value={sample.omissionNotes}
+                      onChange={(value) => setSample("omissionNotes", value)}
+                    />
+                  )}
+                  <PreparationSelect
+                    label="How was the sample changed from its source?"
+                    value={sample.transformations}
+                    onChange={(value) => setSample("transformations", value)}
+                    options={[
+                      ["NONE_DECLARED", "No changes declared"],
+                      ["DESCRIBED", "Describe changes"],
+                      ["UNKNOWN", "Unknown"],
+                    ]}
+                  />
+                  {sample.transformations === "DESCRIBED" && (
+                    <PreparationField
+                      label="Sample preparation or changes"
+                      value={sample.transformationNotes}
+                      onChange={(value) =>
+                        setSample("transformationNotes", value)
+                      }
+                    />
+                  )}
+                  <PreparationField
+                    label="Relationship to full material"
+                    value={sample.relationshipNotes}
+                    onChange={(value) => setSample("relationshipNotes", value)}
+                    help="Optional correspondence declaration; this does not grant full-file access."
+                  />
+                </PreparationSection>
+              )}
+              <div className="col-span-full">
+                <PreparationGrid>
+                  <PreparationSection
+                    title="Optional enrichment"
+                    className={hasFull ? "lg:col-span-8" : "lg:col-span-12"}
+                  >
+                    <PreparationField
+                      label="Known limitations"
+                      value={metadata.limitations}
+                      onChange={(value) => setCommon("limitations", value)}
+                    />
+                    <PreparationField
+                      label="Collection or preparation method"
+                      value={metadata.collectionMethod}
+                      onChange={(value) => setCommon("collectionMethod", value)}
+                    />
+                    <PreparationField
+                      label="Possible uses"
+                      value={metadata.possibleUses}
+                      onChange={(value) => setCommon("possibleUses", value)}
+                    />
+                    {metadata.modalities?.includes("TABULAR") && (
+                      <PreparationSelect
+                        label="Statistical study structure (if applicable)"
+                        value={metadata.superType}
+                        onChange={(value) =>
+                          setCommon(
+                            "superType",
+                            value as DatasetPreparationMetadata["superType"]
+                          )
+                        }
+                        options={DATASET_TYPES.map(
+                          (type) => [type.value, type.label] as const
+                        )}
+                        help="Optional. Media suppliers do not need to invent a statistical type."
+                      />
+                    )}
+                  </PreparationSection>
+                </PreparationGrid>
+              </div>
+              {metadata.contexts?.includes("HEALTHCARE") && (
+                <p className="col-span-full rounded-xl border border-border bg-muted/10 p-4 text-sm text-muted-foreground">
+                  DICOM and other specialist formats require separate
+                  qualification. Selecting healthcare context does not enable
+                  their upload.
+                </p>
+              )}
+            </PreparationGrid>
+          )}
+          {step === 3 && (
+            <PreparationGrid>
+              {saved && <PreparationReview metadata={saved.metadata} />}
+              <PreparationSection
+                title="Preparation checklist"
+                className="lg:col-span-8"
+                help={
+                  dirty
+                    ? "This checklist describes the last acknowledged save. Save your changes to refresh it."
+                    : "This is preparation guidance, not final submission validation. File intake and review integration remain unavailable."
+                }
+              >
+                {!saved ? (
+                  <p>Save the draft to get the server preparation checklist.</p>
+                ) : (
+                  <>
+                    <p className="text-sm">
+                      Saved title: <strong>{saved.metadata.title}</strong>
+                    </p>
+                    <p className="text-sm">
+                      Saved upload choice:{" "}
+                      {DATASET_UPLOAD_CHOICES.find(
+                        (choice) => choice.value === saved.metadata.uploadChoice
+                      )?.label ?? "Not chosen"}
+                    </p>
+                    <ul className="space-y-3">
+                      {saved.readiness.issues.map((issue, i) => (
+                        <li
+                          key={`${issue.code}-${issue.field ?? i}`}
+                          className="rounded-lg border border-border p-3 text-sm"
+                        >
+                          <p>{issue.message}</p>
+                          {issue.field && (
+                            <DashboardButton
+                              type="button"
+                              variant="link"
+                              size="compact"
+                              className="mt-1 h-auto whitespace-normal p-0 text-left"
+                              onClick={() => moveToField(issue.field)}
+                            >
+                              Go to this section
+                            </DashboardButton>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </PreparationSection>
+              <PreparationSection
+                title="Review remains a separate action"
+                className="lg:col-span-4"
+              >
+                <p className="text-sm">
+                  Pricing, file intake and admin submission will be connected
+                  after their checks are qualified. Existing proposals retain
+                  their existing explicit Submit workflow.
+                </p>
+                <DashboardButton
+                  variant="outline"
+                  type="button"
+                  disabled
+                  className="h-auto min-h-10 whitespace-normal"
+                >
+                  Submit for admin review — unavailable
+                </DashboardButton>
+              </PreparationSection>
+            </PreparationGrid>
+          )}
+        </fieldset>
+        <DashboardFormActions
+          className="bg-muted/20 px-4 sm:px-6"
+          status={`Step ${step + 1} of ${steps.length} · All saves are private. Saving never submits.`}
         >
-          {saving ? "Saving…" : retryPending ? "Retry save" : "Save draft"}
-        </DashboardButton>
-        <DashboardButton
-          variant="outline"
-          type="button"
-          disabled={locked || conflict}
-          onClick={async () => {
-            if (await save()) setStep(Math.min(step + 1, 3));
-          }}
-        >
-          Save and {step === 3 ? "stay on review" : "continue"}
-        </DashboardButton>
-        <DashboardButton
-          variant="outline"
-          type="button"
-          disabled={locked || conflict}
-          onClick={async () => {
-            if (await save()) onExit?.();
-          }}
-        >
-          Save and exit
-        </DashboardButton>
-      </DashboardFormActions>
+          <DashboardButton
+            type="button"
+            disabled={
+              !hydrated || loading || saving || conflict || unavailableExisting
+            }
+            onClick={() => void save()}
+          >
+            {saving ? "Saving…" : retryPending ? "Retry save" : "Save draft"}
+          </DashboardButton>
+          <DashboardButton
+            variant="outline"
+            type="button"
+            disabled={locked || conflict}
+            onClick={async () => {
+              if (await save()) setStep(Math.min(step + 1, 3));
+            }}
+          >
+            Save and {step === 3 ? "stay on review" : "continue"}
+          </DashboardButton>
+          <DashboardButton
+            variant="outline"
+            type="button"
+            disabled={locked || conflict}
+            onClick={async () => {
+              if (await save()) onExit?.();
+            }}
+          >
+            Save and exit
+          </DashboardButton>
+        </DashboardFormActions>
+      </DashboardCard>
     </DatasetWorkspace>
   );
 }

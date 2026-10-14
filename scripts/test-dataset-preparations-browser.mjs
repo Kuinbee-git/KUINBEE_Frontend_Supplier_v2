@@ -30,30 +30,41 @@ const css =
 const entry = [
   "import React from 'react'; import {createRoot} from 'react-dom/client';",
   "import {QueryProvider} from './src/components/QueryProvider';",
-  "import {DatasetPreparationEditor} from './src/components/datasets/preparation/DatasetPreparationEditor';",
-  "import {DatasetPreparationList} from './src/components/datasets/preparation/DatasetPreparationList';",
-  "import {DatasetPreparationEntry} from './src/components/datasets/preparation/DatasetPreparationEntry';",
+  "import {DashboardShell} from './src/components/layout/DashboardShell';",
+  "import CreateDatasetPage from './src/app/dashboard/datasets/create/page';",
+  "import ProposalsPage from './src/app/dashboard/datasets/page';",
+  "import DraftProposalPage from './src/app/dashboard/datasets/drafts/[draftId]/page';",
+  "import OldDraftListPage from './src/app/dashboard/datasets/prepare/page';",
+  "import OldDraftPage from './src/app/dashboard/datasets/prepare/[draftId]/page';",
+  "import {DatasetPreparationScreen} from './src/components/datasets/preparation/DatasetPreparationScreen';",
   "import {DATASET_PREPARATION_ENABLED} from './src/lib/dataset-preparation-environment';",
   "import {preparationApi} from './src/lib/api/dataset-preparations';",
   "import {DatasetPreparationMetadataSchema} from '@kuinbee/dataset-preparation-contracts';",
   "window.runtimeContract = {partial:DatasetPreparationMetadataSchema.safeParse({title:'Partial'}).success, forged:DatasetPreparationMetadataSchema.safeParse({title:'Bad',scanPassed:true}).success};",
   "window.tryProductionWrite=async()=>{try{await preparationApi.create({requestId:crypto.randomUUID(),metadata:{title:'Blocked'}});}catch(e){return e.code;}};",
   "const root=createRoot(document.getElementById('root')); let mount=0;",
-  "window.showEditor=(id)=>{mount++;root.render(<React.StrictMode><QueryProvider>{DATASET_PREPARATION_ENABLED?<DatasetPreparationEditor key={mount} draftId={id} onCreated={draft=>window.history.replaceState(window.history.state,'','/dashboard/datasets/prepare/'+draft)} onExit={()=>window.location.assign('/dashboard/datasets/prepare')}/>:<DatasetPreparationEntry/>}</QueryProvider></React.StrictMode>);};",
-  "window.showList=()=>root.render(<QueryProvider><DatasetPreparationList/></QueryProvider>);",
-  "const tail=window.location.pathname.split('/').at(-1);",
-  "if(window.location.pathname==='/dashboard/datasets/prepare')window.showList();else window.showEditor(tail?.startsWith('c')?tail:undefined);",
+  "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
+  "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",
+  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
+  "window.showRoute();",
 ].join("\n");
-const mockedNextLink = {
-  name: "fixture-next-link",
+const mockedNext = {
+  name: "fixture-next",
   setup(builder) {
-    builder.onResolve({ filter: /^next\/link$/ }, () => ({
-      path: "fixture-link",
-      namespace: "fixture",
-    }));
-    builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+    builder.onResolve(
+      { filter: /^next\/(link|navigation|image)$/ },
+      (args) => ({
+        path: args.path,
+        namespace: "fixture",
+      })
+    );
+    builder.onLoad({ filter: /.*/, namespace: "fixture" }, (args) => ({
       contents:
-        "import React from 'react'; export default function Link(props){return <a {...props}/>}",
+        args.path === "next/link"
+          ? "import React from 'react'; export default function Link(props){return <a {...props}/>}"
+          : args.path === "next/image"
+            ? "import React from 'react'; export default function Image({priority,fill,quality,unoptimized,...props}){return <img {...props}/>}"
+            : "export function usePathname(){return window.location.pathname}; export function useRouter(){return {push:url=>window.location.assign(url),replace:url=>window.location.replace(url),back:()=>window.history.back()}}; export function useSearchParams(){return new URLSearchParams(window.location.search)}; export function notFound(){throw {notFound:true}}; export function redirect(url){throw {redirect:url}};",
       loader: "jsx",
       resolveDir: process.cwd(),
     }));
@@ -62,7 +73,7 @@ const mockedNextLink = {
 async function bundle(environment) {
   const result = await build({
     stdin: { contents: entry, loader: "jsx", resolveDir: process.cwd() },
-    plugins: [mockedNextLink],
+    plugins: [mockedNext],
     bundle: true,
     write: false,
     metafile: true,
@@ -101,10 +112,97 @@ const sources = Array.from({ length: 42 }, (_, index) => ({
   id: cuid(index + 5000),
   name: "Source " + (index + 1),
 }));
+const legacyDrafts = [
+  {
+    id: "legacy-draft-001",
+    kind: "PROPOSAL",
+    title: "Existing supplier proposal",
+    datasetUniqueId: "KB-LEGACY-001",
+    uploadChoice: null,
+    currentUploadId: "upload-001",
+    updatedAt: "2026-10-14T00:00:10.000Z",
+  },
+  {
+    id: "legacy-draft-002",
+    kind: "PROPOSAL",
+    title: "Audio reference collection",
+    datasetUniqueId: "KB-LEGACY-002",
+    uploadChoice: null,
+    currentUploadId: null,
+    updatedAt: "2026-10-14T00:00:08.000Z",
+  },
+  {
+    id: "legacy-draft-003",
+    kind: "PROPOSAL",
+    title: "Motion study collection",
+    datasetUniqueId: "KB-LEGACY-003",
+    uploadChoice: null,
+    currentUploadId: "upload-003",
+    updatedAt: "2026-10-14T00:00:06.000Z",
+  },
+  {
+    id: "legacy-draft-004",
+    kind: "PROPOSAL",
+    title: "Image annotation collection",
+    datasetUniqueId: "KB-LEGACY-004",
+    uploadChoice: null,
+    currentUploadId: null,
+    updatedAt: "2026-10-14T00:00:04.000Z",
+  },
+  {
+    id: "legacy-draft-005",
+    kind: "PROPOSAL",
+    title: "Archived sensor study draft",
+    datasetUniqueId: "KB-LEGACY-005",
+    uploadChoice: null,
+    currentUploadId: "upload-005",
+    updatedAt: "2026-10-14T00:00:02.000Z",
+  },
+  {
+    id: "legacy-draft-006",
+    kind: "PROPOSAL",
+    title: "Pathology 100%_ benchmark",
+    datasetUniqueId: "KB-LEGACY-006",
+    uploadChoice: null,
+    currentUploadId: null,
+    updatedAt: "2026-10-14T00:00:01.000Z",
+  },
+];
 const drafts = new Map();
+function workspaceRows(q = "") {
+  const query = q.toLowerCase();
+  return [
+    ...legacyDrafts,
+    ...[...drafts.values()].map((item) => ({
+      id: item.id,
+      kind: "PREPARATION",
+      title: item.metadata.title,
+      datasetUniqueId: null,
+      uploadChoice: item.metadata.uploadChoice ?? null,
+      currentUploadId: null,
+      updatedAt: item.updatedAt,
+    })),
+  ]
+    .filter(
+      (row) =>
+        !query ||
+        [row.title, row.id, row.datasetUniqueId ?? ""].some((value) =>
+          value.toLowerCase().includes(query)
+        )
+    )
+    .sort(
+      (a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt) ||
+        b.id.localeCompare(a.id) ||
+        b.kind.localeCompare(a.kind)
+    );
+}
 const replays = new Map();
 const requests = [];
 const flags = {
+  workspaceTake: null,
+  workspaceFailure: "",
+  workspaceMalformed: false,
   acknowledgement: "",
   newerDuringAck: false,
   failRead: "",
@@ -155,6 +253,7 @@ function json(res, status, value) {
   });
   res.end(JSON.stringify(value));
 }
+const fixtureErrors = [];
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://fixture.test");
@@ -169,6 +268,11 @@ const server = createServer(async (req, res) => {
       );
       return;
     }
+    if (["/logo-light.png", "/logo-dark.png"].includes(url.pathname)) {
+      res.writeHead(200, { "Content-Type": "image/png" });
+      res.end(await readFile(resolve("public", url.pathname.slice(1))));
+      return;
+    }
     if (url.pathname === "/style.css") {
       res.writeHead(200, { "Content-Type": "text/css" });
       res.end(css);
@@ -177,7 +281,7 @@ const server = createServer(async (req, res) => {
     if (!url.pathname.startsWith("/api/")) {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(
-        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main class="supplier-dashboard"><div id="root"></div></main><script src="/bundle.js?environment=' +
+        '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/bundle.js?environment=' +
           (url.searchParams.get("environment") === "production"
             ? "production"
             : "local") +
@@ -210,10 +314,13 @@ const server = createServer(async (req, res) => {
       url.pathname === "/api/v1/supplier/categories" ||
       url.pathname === "/api/v1/supplier/sources"
     ) {
+      const pageSize = req.headers.referer?.includes("environment=production")
+        ? 100
+        : 20;
       assert.equal(
         url.searchParams.get("pageSize"),
-        "20",
-        "Catalogue uses its real pageSize parameter"
+        String(pageSize),
+        "Each creator keeps its real catalogue pageSize parameter"
       );
       const collection = url.pathname.endsWith("categories")
         ? categories
@@ -226,23 +333,116 @@ const server = createServer(async (req, res) => {
       json(res, 200, {
         success: true,
         data: {
-          items: matching.slice((page - 1) * 20, page * 20),
+          items: matching.slice((page - 1) * pageSize, page * pageSize),
           total: matching.length,
           page,
-          pageSize: 20,
+          pageSize,
         },
       });
       return;
     }
-    if (url.pathname === base && req.method === "GET") {
-      const page = Number(url.searchParams.get("page") ?? 1);
+    if (
+      url.pathname === "/api/v1/supplier/dataset-proposals" &&
+      req.method === "GET"
+    ) {
+      const submitted = url.searchParams.get("scope") === "SUBMITTED";
+      const item = {
+        id: cuid(9999),
+        datasetUniqueId: "KB-EARLIER-1",
+        title: submitted
+          ? "Existing submitted proposal"
+          : "Existing supplier proposal",
+        verificationStatus: submitted ? "SUBMITTED" : "PENDING",
+        updatedAt: "2026-10-14T00:00:00.000Z",
+        currentUploadId: null,
+      };
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const items =
+        !q ||
+        item.title.toLowerCase().includes(q) ||
+        item.datasetUniqueId.toLowerCase().includes(q)
+          ? [item]
+          : [];
       json(res, 200, {
         success: true,
         data: {
-          items: [...drafts.values()].slice((page - 1) * 20, page * 20),
+          items,
+          total: items.length,
+          page: 1,
+          pageSize: 10,
+          summary: {
+            total: 1,
+            draftsWithCurrentUpload: 0,
+            draftsWithoutCurrentUpload: 1,
+            byVerificationStatus: {
+              PENDING: submitted ? 0 : 1,
+              SUBMITTED: submitted ? 1 : 0,
+              CHANGES_REQUESTED: 0,
+              RESUBMITTED: 0,
+              UNDER_REVIEW: 0,
+              VERIFIED: 0,
+              REJECTED: 0,
+            },
+          },
+        },
+      });
+      return;
+    }
+    if (url.pathname === base + "/workspace" && req.method === "GET") {
+      assert.equal(url.searchParams.get("limit"), "20");
+      if (flags.workspaceFailure) {
+        json(res, 403, {
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Fixture inventory access denied",
+          },
+        });
+        return;
+      }
+      const q = url.searchParams.get("q") ?? "";
+      const matching =
+        flags.workspaceTake === null
+          ? workspaceRows(q)
+          : workspaceRows(q).slice(0, flags.workspaceTake);
+      const page = Number(url.searchParams.get("page") ?? 1);
+      if (q.toLowerCase() === "speech")
+        await new Promise((resolveWait) => setTimeout(resolveWait, 900));
+      const withCurrentUpload = matching.filter(
+        (row) => row.currentUploadId !== null
+      ).length;
+      const data = {
+        items: matching.slice((page - 1) * 20, page * 20),
+        page,
+        limit: 20,
+        total: matching.length,
+        summary: {
+          total: matching.length,
+          withCurrentUpload,
+          withoutCurrentUpload: matching.length - withCurrentUpload,
+        },
+      };
+      if (flags.workspaceMalformed)
+        data.items = [{ ...data.items[0], kind: "INVALID" }];
+      json(res, 200, { success: true, data });
+      return;
+    }
+    if (url.pathname === base && req.method === "GET") {
+      assert.equal(url.searchParams.get("limit"), "20");
+      const query = (url.searchParams.get("q") ?? "").toLowerCase();
+      const matching = [...drafts.values()].filter(
+        (item) => !query || item.metadata.title.toLowerCase().includes(query)
+      );
+      const page = Number(url.searchParams.get("page") ?? 1);
+      if (query === "speech")
+        await new Promise((resolveWait) => setTimeout(resolveWait, 900));
+      json(res, 200, {
+        success: true,
+        data: {
+          items: matching.slice((page - 1) * 20, page * 20),
           page,
           limit: 20,
-          total: drafts.size,
+          total: matching.length,
         },
       });
       return;
@@ -359,6 +559,7 @@ const server = createServer(async (req, res) => {
       error: { code: "NOT_FOUND", message: "Unexpected fixture API" },
     });
   } catch (error) {
+    fixtureErrors.push(String(error));
     console.error(error);
     json(res, 500, {
       success: false,
@@ -418,6 +619,136 @@ async function showNew(page) {
   await page.evaluate(() => window.showEditor());
   await sleepReady(page);
 }
+async function setTheme(page, dark) {
+  const action = page.getByRole("button", {
+    name: dark ? "Use dark theme" : "Use light theme",
+    exact: true,
+  });
+  if (await action.count()) await action.click();
+  await page.waitForFunction(
+    (expected) =>
+      document.documentElement.classList.contains("dark") === expected &&
+      !document.documentElement.dataset.dashboardThemeTransition,
+    dark
+  );
+}
+async function scrollMainToTop(page) {
+  await page
+    .locator("#supplier-dashboard-main")
+    .evaluate((node) =>
+      node.scrollTo({ top: 0, left: 0, behavior: "instant" })
+    );
+}
+async function tileForHeading(page, name) {
+  return page
+    .getByRole("heading", { name, exact: true })
+    .locator("xpath=ancestor::section[1]");
+}
+async function assertNoDecorativeShadows(page) {
+  const shadows = await page.evaluate(() =>
+    [...document.querySelectorAll(".dataset-proposal-workspace")]
+      .flatMap((root) => [
+        root,
+        ...root.querySelectorAll(".dashboard-glass-card,.dashboard-button"),
+      ])
+      .filter((el) => {
+        return (
+          el.getClientRects().length &&
+          !el.matches(":focus-visible") &&
+          getComputedStyle(el).boxShadow !== "none"
+        );
+      })
+      .map(
+        (el) =>
+          el.tagName +
+          ": " +
+          (el.getAttribute("aria-label") || el.textContent?.trim().slice(0, 80))
+      )
+  );
+  assert.deepEqual(
+    shadows,
+    [],
+    "Proposal bento workspaces must not use decorative panel or button shadows"
+  );
+}
+async function assertVisibleKeyboardFocus(page) {
+  await page.getByRole("button", { name: "Save draft", exact: true }).focus();
+  await page.keyboard.press("Shift+Tab");
+  const focus = await page.evaluate(() => {
+    const el = document.activeElement;
+    const style = getComputedStyle(el);
+    return {
+      keyboard: el.matches(":focus-visible"),
+      width: parseFloat(style.outlineWidth),
+      style: style.outlineStyle,
+      color: style.outlineColor,
+    };
+  });
+  assert(
+    focus.keyboard &&
+      focus.width >= 2 &&
+      focus.style !== "none" &&
+      focus.color !== "transparent",
+    "Keyboard focus must remain visibly outlined without decorative shadows"
+  );
+  await page.evaluate(() => document.activeElement.blur());
+}
+async function assertTileLayout(page, first, second, width) {
+  const left = await (await tileForHeading(page, first)).boundingBox();
+  const right = await (await tileForHeading(page, second)).boundingBox();
+  assert(left && right, "Both named content tiles must be visible");
+  if (width >= 1024) {
+    assert(
+      Math.abs(left.y - right.y) <= 2,
+      "Related desktop tiles start on the same row"
+    );
+    assert(
+      right.x >= left.x + left.width + 10,
+      "Related desktop tiles occupy distinct columns"
+    );
+  } else {
+    assert(
+      Math.abs(left.x - right.x) <= 2,
+      "Mobile tiles align to the same content edge"
+    );
+    assert(
+      right.y >= left.y + left.height + 10,
+      "Mobile tiles stack in reading order"
+    );
+  }
+  const overflowing = await page.evaluate(() =>
+    [...document.querySelectorAll("input,select,textarea,button")]
+      .filter((el) => {
+        if (
+          !el.getClientRects().length ||
+          getComputedStyle(el).visibility === "hidden"
+        )
+          return false;
+        const rect = el.getBoundingClientRect();
+        const section = el.closest("section");
+        const bounds = section?.getBoundingClientRect();
+        return (
+          rect.left < -1 ||
+          rect.right > document.documentElement.clientWidth + 1 ||
+          (bounds &&
+            (rect.left < bounds.left - 1 || rect.right > bounds.right + 1))
+        );
+      })
+      .map(
+        (el) =>
+          el.getAttribute("aria-label") || el.textContent?.trim() || el.tagName
+      )
+  );
+  assert.deepEqual(
+    overflowing,
+    [],
+    "Controls must fit their tile and viewport"
+  );
+  assert(
+    (await page.evaluate(() => document.documentElement.scrollWidth)) <= width,
+    "The responsive page must not scroll horizontally"
+  );
+}
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({
@@ -431,7 +762,31 @@ try {
     }
     return route.continue();
   });
-  await page.goto(origin);
+  await page.goto(origin + "/dashboard/datasets/create");
+  await page
+    .getByRole("heading", { name: "Create proposal", exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Draft proposals", exact: true })
+      .getAttribute("href"),
+    "/dashboard/datasets"
+  );
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Create a dataset proposal", exact: true })
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByText("Prepare a Dataset step by step", { exact: true })
+      .count(),
+    0
+  );
+  console.log(
+    "PASS existing Create proposal route uses one four-step proposal editor"
+  );
   assert.deepEqual(await page.evaluate(() => window.runtimeContract), {
     partial: true,
     forged: false,
@@ -871,7 +1226,7 @@ try {
     .fill("Unsaved navigation input");
   page.once("dialog", (dialog) => dialog.dismiss());
   await page
-    .getByRole("link", { name: "Existing proposals", exact: true })
+    .getByRole("link", { name: "Draft proposals", exact: true })
     .click();
   assert.equal(page.url().split("/").at(-1), scopedId);
   assert.equal(
@@ -895,27 +1250,295 @@ try {
     (await page.evaluate(() => document.documentElement.scrollWidth)) <= 390,
     "Mobile form must not overflow horizontally"
   );
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-entry-mobile.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await step(page, "1. Basics");
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-entry-light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await setTheme(page, true);
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-entry-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await setTheme(page, false);
+  await page.setViewportSize({ width: 390, height: 844 });
   console.log(
     "PASS dirty SPA navigation protection, keyboard steps and narrow-screen save with actual generated dashboard CSS"
   );
 
-  await page.goto(origin + "/dashboard/datasets/prepare");
-  await page
-    .getByRole("heading", { name: "Saved drafts", exact: true })
-    .waitFor();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const beforeList = requests.length;
+  await page.goto(origin + "/dashboard/datasets");
+  await page.getByRole("heading", { name: "My Drafts", exact: true }).waitFor();
+  const table = page.getByRole("table", {
+    name: "Draft dataset proposals",
+    exact: true,
+  });
+  await table.waitFor();
+  const firstRows = workspaceRows().slice(0, 20);
+  const displayedRows = await table.locator("tbody tr").evaluateAll((rows) =>
+    rows.map((row) => {
+      const link = row.querySelector("a");
+      return {
+        title: link.textContent.trim(),
+        href: link.getAttribute("href"),
+      };
+    })
+  );
+  assert.deepEqual(
+    displayedRows,
+    firstRows.map((row) => ({
+      title: row.title,
+      href:
+        row.kind === "PREPARATION"
+          ? "/dashboard/datasets/drafts/" + row.id
+          : "/dashboard/datasets/" + row.id,
+    }))
+  );
+  const overview = page.getByRole("region", {
+    name: "Draft overview",
+    exact: true,
+  });
+  const total = workspaceRows().length;
+  const attached = legacyDrafts.filter((row) => row.currentUploadId).length;
+  for (const [label, value] of [
+    ["All drafts", total],
+    ["File attached", attached],
+    ["Needs a file", total - attached],
+  ])
+    assert.equal(
+      await overview
+        .getByText(label, { exact: true })
+        .locator("..")
+        .locator("dd")
+        .textContent(),
+      String(value)
+    );
+  const listRequests = requests.slice(beforeList);
+  assert.equal(
+    listRequests.filter(
+      (request) => request.path === "/api/v2/supplier/dataset-drafts/workspace"
+    ).length,
+    1
+  );
+  assert(
+    !listRequests.some(
+      (request) =>
+        request.path === "/api/v1/supplier/dataset-proposals" ||
+        request.path === "/api/v2/supplier/dataset-drafts"
+    )
+  );
   assert.equal(
     await page
-      .getByRole("link", { name: "Only a title is needed", exact: true })
+      .getByRole("heading", { name: /Earlier|New draft|Saved drafts/ })
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Create proposal", exact: true })
       .count(),
     1
   );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Prepare a Dataset", exact: true })
+      .count(),
+    0
+  );
+  const pageTwo = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        "/api/v2/supplier/dataset-drafts/workspace" &&
+      new URL(response.url()).searchParams.get("page") === "2"
+  );
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
+  await pageTwo;
   await page
-    .getByRole("button", { name: "Next draft page", exact: true })
-    .click();
-  await page
-    .getByRole("link", { name: "Unsaved navigation input", exact: true })
+    .getByText("Showing 21–" + total + " of " + total + " drafts", {
+      exact: true,
+    })
     .waitFor();
-  console.log("PASS paginated saved-draft list/resume discovery");
+  const displayedPageTwo = await table
+    .locator("tbody tr")
+    .evaluateAll((rows) =>
+      rows.map((row) => row.querySelector("a").textContent.trim())
+    );
+  assert.deepEqual(
+    displayedPageTwo,
+    workspaceRows()
+      .slice(20)
+      .map((row) => row.title)
+  );
+  const returnFirst = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        "/api/v2/supplier/dataset-drafts/workspace" &&
+      new URL(response.url()).searchParams.get("page") === "1"
+  );
+  await page
+    .getByRole("button", { name: "Previous page", exact: true })
+    .click();
+  await returnFirst;
+  await page
+    .getByText("Showing 1–20 of " + total + " drafts", { exact: true })
+    .waitFor();
+  flags.workspaceTake = 12;
+  const beforeShrink = requests.length;
+  const clamped = page.waitForResponse(async (response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === "/api/v2/supplier/dataset-drafts/workspace" &&
+      url.searchParams.get("page") === "1" &&
+      (await response.json()).data.total === 12
+    );
+  });
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
+  await clamped;
+  await page.getByText("12 drafts in this view", { exact: true }).waitFor();
+  assert.equal(await table.locator("tbody tr").count(), 12);
+  assert.deepEqual(
+    requests.slice(beforeShrink).map((request) => ({
+      path: request.path,
+      page: new URLSearchParams(request.query).get("page"),
+    })),
+    [
+      { path: "/api/v2/supplier/dataset-drafts/workspace", page: "2" },
+      { path: "/api/v2/supplier/dataset-drafts/workspace", page: "1" },
+    ]
+  );
+  flags.workspaceTake = null;
+  await page.reload();
+  await table.waitFor();
+  console.log(
+    "PASS shrinking draft inventories clamp to a freshly read valid page without an empty-inventory claim or cross-source fallback"
+  );
+  const lateSearch = page
+    .waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          "/api/v2/supplier/dataset-drafts/workspace" &&
+        new URL(response.url()).searchParams.get("q") === "Speech"
+    )
+    .catch(() => null);
+  const slowRequest = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname ===
+        "/api/v2/supplier/dataset-drafts/workspace" &&
+      new URL(request.url()).searchParams.get("q") === "Speech"
+  );
+  await page
+    .getByLabel("Search draft proposals", { exact: true })
+    .fill("Speech");
+  await slowRequest;
+  await page
+    .getByLabel("Search draft proposals", { exact: true })
+    .fill("Only a title");
+  await page.getByText("1 draft in this view", { exact: true }).waitFor();
+  await lateSearch;
+  assert.equal(
+    await page.getByText("1 draft in this view", { exact: true }).count(),
+    1
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Next page", exact: true }).count(),
+    0
+  );
+  for (const [query, id, title] of [
+    ["KB-LEGACY-001", legacyDrafts[0].id, legacyDrafts[0].title],
+    [titleOnlyId, titleOnlyId, "Only a title is needed"],
+    ["%_", legacyDrafts[5].id, legacyDrafts[5].title],
+  ]) {
+    await page
+      .getByLabel("Search draft proposals", { exact: true })
+      .fill(query);
+    const link = page.getByRole("link", { name: title, exact: true }).first();
+    await link.waitFor();
+    assert.equal(
+      await link.getAttribute("href"),
+      id.startsWith("legacy")
+        ? "/dashboard/datasets/" + id
+        : "/dashboard/datasets/drafts/" + id
+    );
+    assert.equal(
+      await page.getByText("1 draft in this view", { exact: true }).count(),
+      1
+    );
+  }
+  await page
+    .getByLabel("Search draft proposals", { exact: true })
+    .fill(titleOnlyId);
+  await page
+    .getByRole("link", { name: "Only a title is needed", exact: true })
+    .first()
+    .click();
+  await page.getByRole("status").filter({ hasText: "Draft saved" }).waitFor();
+  assert.equal(
+    new URL(page.url()).pathname,
+    "/dashboard/datasets/drafts/" + titleOnlyId
+  );
+  flags.workspaceFailure = "FORBIDDEN";
+  const beforeFailure = requests.length;
+  await page.goto(origin + "/dashboard/datasets");
+  await page
+    .getByText("Fixture inventory access denied", { exact: true })
+    .waitFor();
+  assert(
+    !requests
+      .slice(beforeFailure)
+      .some((request) => request.path === "/api/v1/supplier/dataset-proposals")
+  );
+  flags.workspaceFailure = "";
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await table.waitFor();
+  flags.workspaceMalformed = true;
+  await page.reload();
+  await page
+    .getByText("The draft inventory response could not be read. Try again.", {
+      exact: true,
+    })
+    .waitFor();
+  flags.workspaceMalformed = false;
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await table.waitFor();
+  console.log(
+    "PASS single combined inventory/counts/search/paging, mixed resume identities, literal ID search, stale-response protection and fail-closed reads without legacy fallback"
+  );
+  for (const [oldPath, expected] of [
+    ["/prepare", ""],
+    ["/prepare/new", "/create"],
+    ["/prepare/" + scopedId, "/drafts/" + scopedId],
+  ]) {
+    await page.goto(origin + "/dashboard/datasets" + oldPath);
+    await page.waitForURL(origin + "/dashboard/datasets" + expected);
+  }
+  const beforeSubmitted = requests.length;
+  await page.goto(origin + "/dashboard/datasets?status=submitted");
+  await page
+    .getByRole("link", { name: "Existing submitted proposal", exact: true })
+    .first()
+    .waitFor();
+  assert(
+    !requests
+      .slice(beforeSubmitted)
+      .some((request) =>
+        request.path.startsWith("/api/v2/supplier/dataset-drafts")
+      )
+  );
+  console.log(
+    "PASS old preparation bookmarks redirect and historical submitted proposal view remains unchanged"
+  );
   await showNew(page);
   await page
     .getByLabel("Dataset title", { exact: true })
@@ -1000,9 +1623,333 @@ try {
     "PASS newly introduced nested answers reapply without losing unedited remote profile fields"
   );
 
+  await showNew(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Mixed first-person training collection");
+  await page.locator('input[type="radio"][value="FULL_AND_SAMPLE"]').check();
+  for (const name of ["Video", "Speech and other audio", "Sensor readings"])
+    await page.getByRole("checkbox", { name: new RegExp("^" + name) }).check();
+  for (const name of [
+    "Healthcare content",
+    "Egocentric / first-person capture",
+  ])
+    await page.getByRole("checkbox", { name, exact: true }).check();
+  await page.getByLabel("Dataset license", { exact: true }).fill("CC BY 4.0");
+  for (const width of [1280, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await assertTileLayout(page, "Basics", "Category, source & license", width);
+    assert.equal(
+      await page.getByLabel("Dataset title", { exact: true }).inputValue(),
+      "Mixed first-person training collection"
+    );
+    assert.equal(
+      await page
+        .locator('input[type="radio"][value="FULL_AND_SAMPLE"]')
+        .isChecked(),
+      true
+    );
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await save(page);
+  const bentoId = page.url().split("/").at(-1);
+  await assertNoDecorativeShadows(page);
+  await assertVisibleKeyboardFocus(page);
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-basics-light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await setTheme(page, true);
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-basics-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  const categorySelect = page.getByLabel("Primary category", { exact: true });
+  const darkMenuColours = await categorySelect.evaluate((select) => {
+    const option = select.querySelector("option");
+    const styles = getComputedStyle(option);
+    return {
+      scheme: getComputedStyle(select).colorScheme,
+      background: styles.backgroundColor,
+      foreground: styles.color,
+      surface: getComputedStyle(select).getPropertyValue("--dashboard-surface"),
+    };
+  });
+  assert.equal(darkMenuColours.scheme, "dark");
+  assert.notEqual(darkMenuColours.background, "rgba(0, 0, 0, 0)");
+  assert.notEqual(darkMenuColours.background, darkMenuColours.foreground);
+  await categorySelect.click();
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-dark-native-select.png",
+    animations: "disabled",
+  });
+  await page.keyboard.press("Escape");
+  await setTheme(page, false);
+  await step(page, "3. Dataset details");
+  const bentoBoundary =
+    "First-person hospital training recordings, with synchronized audio and sensor streams, covering the declared collection period.";
+  await page
+    .getByLabel("What collection does this Dataset cover?", { exact: true })
+    .fill(bentoBoundary);
+  await page
+    .getByLabel("Short summary", { exact: true })
+    .fill("Video, speech and motion signals in one represented collection.");
+  await page
+    .getByLabel("Quality checks and known quality", { exact: true })
+    .fill("Supplier-described checks; file inspection remains pending.");
+  await page
+    .getByLabel("Recording context", { exact: true })
+    .fill("Training conversations recorded alongside video");
+  await page
+    .getByLabel("What do the videos show?", { exact: true })
+    .fill("Supervised training activities");
+  await page
+    .getByLabel("Sensor channels and units", { exact: true })
+    .fill(
+      "Acceleration in m/s squared; angular velocity in radians per second"
+    );
+  await page
+    .getByLabel("Camera mounting position", { exact: true })
+    .fill("Head-mounted");
+  await page
+    .getByLabel("How were personal identifiers handled?", { exact: true })
+    .fill("Supplier declaration of pseudonymisation; inspection pending");
+  await page
+    .getByLabel("How was the sample selected?", { exact: true })
+    .fill("A short continuous interval from the collection");
+  await page
+    .getByLabel("Add a quantity to Represented collection quantity", {
+      exact: true,
+    })
+    .selectOption("AUDIO_DURATION");
+  await page
+    .getByLabel("Represented collection quantity: Audio duration answer", {
+      exact: true,
+    })
+    .selectOption("ESTIMATED");
+  await page
+    .getByLabel("Represented collection quantity: Audio duration value", {
+      exact: true,
+    })
+    .fill("200");
+  await page
+    .getByLabel("Represented collection quantity: Audio duration unit", {
+      exact: true,
+    })
+    .selectOption("HOUR");
+  await save(page);
+  const bentoMetadata = copy(drafts.get(bentoId).metadata);
+  for (const width of [1280, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await assertTileLayout(
+      page,
+      "Dataset details",
+      "Represented collection quantity",
+      width
+    );
+    assert.equal(
+      await page
+        .getByLabel("What collection does this Dataset cover?", { exact: true })
+        .inputValue(),
+      bentoBoundary
+    );
+    assert.equal(
+      await page
+        .getByLabel("Camera mounting position", { exact: true })
+        .inputValue(),
+      "Head-mounted"
+    );
+    assert.equal(
+      await page
+        .getByLabel("Represented collection quantity: Audio duration value", {
+          exact: true,
+        })
+        .inputValue(),
+      "200"
+    );
+  }
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-details-mobile.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-details-light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await setTheme(page, true);
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-details-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-details-mobile-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await setTheme(page, false);
+  await step(page, "4. Review draft");
+  await assertTileLayout(
+    page,
+    "Saved draft summary",
+    "Saved declared quantities",
+    1280
+  );
+  await page.getByText("CC BY 4.0", { exact: true }).waitFor();
+  await step(page, "3. Dataset details");
+  assert.deepEqual(
+    drafts.get(bentoId).metadata,
+    bentoMetadata,
+    "Changing viewports and review steps must not mutate or reset saved answers"
+  );
+  await page.goto(origin + "/dashboard/datasets");
+  await page.getByRole("heading", { name: "My Drafts", exact: true }).waitFor();
+  await page
+    .getByRole("link", { name: "Existing supplier proposal", exact: true })
+    .first()
+    .waitFor();
+  for (const width of [1280, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const header = await page
+      .getByLabel("Search draft proposals", { exact: true })
+      .boundingBox();
+    const guidance = await page
+      .getByText(
+        "Open a draft to continue its information and files. Saving stays separate from submitting it for admin review.",
+        { exact: true }
+      )
+      .boundingBox();
+    assert(header && guidance);
+    if (width >= 1024)
+      assert(
+        guidance.x > header.x + 100 && Math.abs(guidance.y - header.y) <= 24,
+        "Desktop inventory summary and guidance occupy aligned tiles"
+      );
+    else
+      assert(
+        guidance.y > header.y + 30,
+        "Mobile inventory tiles preserve reading order"
+      );
+    assert(
+      (await page.evaluate(() => document.documentElement.scrollWidth)) <=
+        width,
+      "Inventory layout must fit the viewport"
+    );
+    const records =
+      width >= 1280
+        ? page.getByRole("region", {
+            name: "Draft dataset proposals",
+            exact: true,
+          })
+        : page.getByRole("list", {
+            name: "Draft dataset proposals",
+            exact: true,
+          });
+    await records.waitFor();
+    const clipped = await records
+      .getByRole("link", { name: "Continue", exact: true })
+      .evaluateAll(
+        (links) =>
+          links.filter((link) => {
+            const rect = link.getBoundingClientRect();
+            return (
+              rect.right > document.documentElement.clientWidth + 1 ||
+              rect.left < 0
+            );
+          }).length
+      );
+    assert.equal(
+      clipped,
+      0,
+      `Every resume action must remain within the ${width}px viewport`
+    );
+    if (width === 1024 || width === 390) {
+      await setTheme(page, true);
+      await scrollMainToTop(page);
+      await page.screenshot({
+        path:
+          width === 1024
+            ? "/tmp/kuinbee-proposal-bento-drafts-1024-dark.png"
+            : "/tmp/kuinbee-proposal-bento-drafts-mobile-dark.png",
+        fullPage: true,
+        animations: "disabled",
+      });
+      await setTheme(page, false);
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const desktopFrame = page.getByRole("region", {
+    name: "Draft dataset proposals",
+    exact: true,
+  });
+  assert(
+    await desktopFrame.evaluate(
+      (node) => node.scrollWidth <= node.clientWidth + 1
+    ),
+    "Desktop draft table must keep actions visible without horizontal scrolling"
+  );
+  await assertNoDecorativeShadows(page);
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-drafts-light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await setTheme(page, true);
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-drafts-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Collapse navigation", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Expand navigation", exact: true })
+    .waitFor();
+  assert(
+    await desktopFrame.evaluate(
+      (node) => node.scrollWidth <= node.clientWidth + 1
+    ),
+    "Collapsed navigation must retain visible table actions"
+  );
+  await scrollMainToTop(page);
+  await page.screenshot({
+    path: "/tmp/kuinbee-proposal-bento-drafts-collapsed-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Expand navigation", exact: true })
+    .click();
+  await setTheme(page, false);
+  console.log(
+    "PASS responsive bento placement, tile-contained controls, retained mixed modality/context state, mobile reading order and shadow-free panels with visible keyboard focus"
+  );
+
   const beforeProduction = requests.length;
   const productionPage = await browser.newPage();
-  await productionPage.goto(origin + "/?environment=production");
+  await productionPage.goto(
+    origin + "/dashboard/datasets/create?environment=production"
+  );
+  await productionPage
+    .getByRole("heading", { name: "Create a dataset proposal", exact: true })
+    .waitFor();
   assert.equal(
     await productionPage
       .getByRole("heading", { name: "Prepare a Dataset" })
@@ -1013,13 +1960,36 @@ try {
     await productionPage.evaluate(() => window.tryProductionWrite()),
     "NOT_ENABLED"
   );
-  assert.equal(requests.length, beforeProduction);
+  assert(
+    !requests
+      .slice(beforeProduction)
+      .some((request) =>
+        request.path.startsWith("/api/v2/supplier/dataset-drafts")
+      )
+  );
+  for (const path of [
+    "/prepare",
+    "/prepare/new",
+    "/drafts/" + scopedId,
+    "/drafts/new",
+    "/drafts/bad-id",
+  ]) {
+    await productionPage.goto(
+      origin + "/dashboard/datasets" + path + "?environment=production"
+    );
+    await productionPage
+      .getByRole("heading", { name: "Not found", exact: true })
+      .waitFor();
+  }
+  await page.goto(origin + "/dashboard/datasets/drafts/bad-id");
+  await page.getByRole("heading", { name: "Not found", exact: true }).waitFor();
   await productionPage.close();
   assert(
     !requests.some((request) =>
       /submit|upload|presign|publish|payment/.test(request.path)
     )
   );
+  assert.deepEqual(fixtureErrors, []);
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   console.log(

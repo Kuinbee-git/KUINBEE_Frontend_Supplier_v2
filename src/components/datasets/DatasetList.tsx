@@ -27,6 +27,8 @@ import type {
 } from "@/types/dataset-proposal.types";
 import { DatasetStatusBadge } from "./shared";
 import { SubmittedProposals } from "./SubmittedProposals";
+import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
+import { DatasetDraftWorkspace } from "./DatasetDraftWorkspace";
 import {
   DatasetEmptyState,
   DatasetErrorBanner,
@@ -97,7 +99,7 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
   }, [searchQuery]);
 
   const fetchDrafts = useCallback(async () => {
-    if (legacySubmittedView) return;
+    if (legacySubmittedView || DATASET_PREPARATION_ENABLED) return;
     const requestId = ++requestIdRef.current;
 
     try {
@@ -146,11 +148,17 @@ export function DatasetList({ isDark = false }: DatasetListProps) {
     }
   }, [debouncedSearchQuery, legacySubmittedView, page]);
 
-  useComponentRequest(() => fetchDrafts(), [debouncedSearchQuery, legacySubmittedView, page]);
+  useComponentRequest(
+    () => fetchDrafts(),
+    [debouncedSearchQuery, legacySubmittedView, page],
+    !DATASET_PREPARATION_ENABLED && !legacySubmittedView
+  );
 
   if (legacySubmittedView) {
     return <SubmittedProposals isDark={isDark} />;
   }
+
+  if (DATASET_PREPARATION_ENABLED) return <DatasetDraftWorkspace />;
 
   const metrics: DatasetMetric[] = [
     {

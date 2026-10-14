@@ -14,10 +14,10 @@ export function DatasetPreparationScreen({ draftId }: { draftId?: string }) {
         window.history.replaceState(
           window.history.state,
           "",
-          `/dashboard/datasets/prepare/${id}`
+          `/dashboard/datasets/drafts/${id}`
         );
       }}
-      onExit={() => router.push("/dashboard/datasets/prepare")}
+      onExit={() => router.push("/dashboard/datasets")}
     />
   );
 }

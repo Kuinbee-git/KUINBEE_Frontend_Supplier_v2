@@ -390,7 +390,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <DashboardTooltipProvider delayDuration={250}>
       <div
-        className="supplier-dashboard dashboard-canvas flex h-dvh min-h-0 w-full overflow-hidden text-foreground"
+        className={cn(
+          "supplier-dashboard dashboard-canvas flex min-h-0 w-full overflow-hidden text-foreground",
+          process.env.NEXT_PUBLIC_APP_ENV === "staging"
+            ? "h-[calc(100dvh-1.75rem)]"
+            : "h-dvh"
+        )}
         data-ui-scope="supplier-dashboard"
       >
         <a

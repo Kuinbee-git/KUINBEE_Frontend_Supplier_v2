@@ -1,7 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DatasetPreparationIdParamsSchema } from "@kuinbee/dataset-preparation-contracts";
 import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
-import { DatasetPreparationScreen } from "@/components/datasets/preparation/DatasetPreparationScreen";
 
 export default async function PrepareDatasetPage({
   params,
@@ -15,9 +14,9 @@ export default async function PrepareDatasetPage({
     !DatasetPreparationIdParamsSchema.safeParse({ draftId }).success
   )
     notFound();
-  return (
-    <DatasetPreparationScreen
-      draftId={draftId === "new" ? undefined : draftId}
-    />
+  redirect(
+    draftId === "new"
+      ? "/dashboard/datasets/create"
+      : `/dashboard/datasets/drafts/${draftId}`
   );
 }
