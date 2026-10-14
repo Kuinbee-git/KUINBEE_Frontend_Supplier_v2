@@ -95,7 +95,7 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
     var(--brand-primary) 18%,
     transparent
   );
-  --dashboard-grid-opacity: 0.45;
+  --dashboard-grid-opacity: 0.3;
   --dashboard-glass-background: color-mix(
     in srgb,
     var(--dashboard-surface) 88%,
