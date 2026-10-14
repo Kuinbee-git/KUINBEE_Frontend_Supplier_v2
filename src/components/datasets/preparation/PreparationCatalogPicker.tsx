@@ -8,9 +8,8 @@ import {
   type PreparationCatalogOption,
 } from "@/lib/api/dataset-preparations";
 import { SourcesDialog } from "@/components/catalog/SourcesDialog";
-
-const control =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+import { DashboardButton, DashboardInput } from "@/components/dashboard";
+import { preparationControl } from "./PreparationFields";
 
 export function PreparationCatalogPicker({
   kind,
@@ -126,7 +125,7 @@ export function PreparationCatalogPicker({
       </p>
       <select
         id={id}
-        className={control}
+        className={preparationControl}
         value={value ?? ""}
         disabled={disabled}
         aria-describedby={`${id}-help`}
@@ -151,8 +150,8 @@ export function PreparationCatalogPicker({
         ))}
       </select>
       <div className="flex flex-wrap gap-2">
-        <input
-          className={`${control} min-w-0 flex-1`}
+        <DashboardInput
+          className="min-w-0 flex-1"
           aria-label={`Search ${kind}`}
           value={search}
           disabled={disabled}
@@ -165,9 +164,9 @@ export function PreparationCatalogPicker({
             }
           }}
         />
-        <button
+        <DashboardButton
+          variant="outline"
           type="button"
-          className="rounded-lg border border-border px-3 py-2 text-sm"
           disabled={disabled || loading}
           onClick={() => {
             setPage(1);
@@ -175,7 +174,7 @@ export function PreparationCatalogPicker({
           }}
         >
           Search {kind}
-        </button>
+        </DashboardButton>
       </div>
       {loading && (
         <p role="status" className="text-xs">
@@ -185,17 +184,29 @@ export function PreparationCatalogPicker({
       {error && (
         <div role="alert" className="text-sm text-destructive">
           {error}{" "}
-          <button type="button" className="underline" onClick={load}>
+          <DashboardButton
+            variant="link"
+            size="compact"
+            type="button"
+            className="h-auto p-0"
+            onClick={load}
+          >
             Retry {kind}
-          </button>
+          </DashboardButton>
         </div>
       )}
       {resolved && resolved.id === value && resolved.error && (
         <p role="status" className="text-xs">
           {resolved.error}{" "}
-          <button type="button" className="underline" onClick={loadSelected}>
+          <DashboardButton
+            variant="link"
+            size="compact"
+            type="button"
+            className="h-auto p-0"
+            onClick={loadSelected}
+          >
             Retry selected label
-          </button>
+          </DashboardButton>
         </p>
       )}
       {!loading && !error && (
@@ -204,25 +215,25 @@ export function PreparationCatalogPicker({
         </p>
       )}
       {items.length < total && (
-        <button
+        <DashboardButton
+          variant="outline"
           type="button"
-          className="rounded-lg border border-border px-3 py-2 text-sm"
           disabled={loading || disabled}
           onClick={() => setPage((previous) => previous + 1)}
         >
           Load more {kind}
-        </button>
+        </DashboardButton>
       )}
       {kind === "sources" && (
         <>
-          <button
+          <DashboardButton
+            variant="outline"
             type="button"
-            className="rounded-lg border border-border px-3 py-2 text-sm"
             disabled={disabled}
             onClick={() => setSourceDialog(true)}
           >
             Create a source
-          </button>
+          </DashboardButton>
           <SourcesDialog
             isOpen={sourceDialog}
             onClose={() => setSourceDialog(false)}

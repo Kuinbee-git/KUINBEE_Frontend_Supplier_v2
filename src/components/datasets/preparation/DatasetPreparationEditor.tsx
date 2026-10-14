@@ -22,7 +22,15 @@ import {
   preparationApi,
   PreparationApiError,
 } from "@/lib/api/dataset-preparations";
-import { DatasetWorkspace } from "@/components/datasets/workspace/DatasetWorkspace";
+import {
+  DashboardButton,
+  DashboardCard,
+  DashboardFormActions,
+} from "@/components/dashboard";
+import {
+  DatasetPageHeader,
+  DatasetWorkspace,
+} from "@/components/datasets/workspace/DatasetWorkspace";
 import { DATASET_TYPES } from "@/constants/dataset.constants";
 import { PreparationCatalogPicker } from "./PreparationCatalogPicker";
 import { PreparationReview } from "./PreparationReview";
@@ -36,8 +44,6 @@ import {
 } from "./PreparationFields";
 
 const steps = ["Basics", "Files & contents", "Dataset details", "Review draft"];
-const button =
-  "rounded-lg border border-border px-4 py-2 text-sm font-medium disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 const equal = (a: unknown, b: unknown) =>
   JSON.stringify(a) === JSON.stringify(b);
 const subscribeHydration = () => () => {};
@@ -356,30 +362,28 @@ export function DatasetPreparationEditor({
   };
 
   return (
-    <DatasetWorkspace className="mx-auto max-w-5xl space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Prepare a Dataset</h1>
-        <p className="text-sm text-muted-foreground">
-          Save a draft and complete it step by step. Saving does not submit it
-          for review.
-        </p>
-        <p className="text-sm">
-          <Link href="/dashboard/datasets/prepare" className="underline">
-            Saved drafts
-          </Link>{" "}
-          ·{" "}
-          <Link href="/dashboard/datasets" className="underline">
-            Existing proposals
-          </Link>
-        </p>
-      </header>
-      <div
+    <DatasetWorkspace className="max-w-[70rem]">
+      <DatasetPageHeader
+        title="Prepare a Dataset"
+        description="Save a draft and complete it step by step. Saving does not submit it for review."
+        action={
+          <>
+            <DashboardButton asChild variant="outline" size="compact">
+              <Link href="/dashboard/datasets/prepare">Saved drafts</Link>
+            </DashboardButton>
+            <DashboardButton asChild variant="outline" size="compact">
+              <Link href="/dashboard/datasets">Existing proposals</Link>
+            </DashboardButton>
+          </>
+        }
+      />
+      <DashboardCard
         role="status"
         aria-live="polite"
         data-preparation-status="true"
         data-saved-id={saved?.id}
         data-saved-generation={saved?.generation}
-        className="rounded-lg border border-border bg-card p-3 text-sm"
+        className="p-3 text-sm"
       >
         {loading
           ? "Loading saved draft…"
@@ -397,15 +401,15 @@ export function DatasetPreparationEditor({
             Last acknowledged {new Date(saved.updatedAt).toLocaleString()}
           </span>
         )}
-      </div>
-      <div className="rounded-lg border border-border bg-card p-4 text-sm">
+      </DashboardCard>
+      <DashboardCard className="p-4 text-sm">
         <strong>Preparation testing release</strong>
         <p className="mt-1 text-muted-foreground">
           You can save information for all three upload choices. File intake,
           required file checks and admin submission are not available in this
           release. Nothing here is published.
         </p>
-      </div>
+      </DashboardCard>
       {error && (
         <div
           ref={errorRef}
@@ -415,9 +419,9 @@ export function DatasetPreparationEditor({
         >
           <p>{error}</p>
           {!saved && draftId && (
-            <button type="button" className={button} onClick={load}>
+            <DashboardButton variant="outline" type="button" onClick={load}>
               Reload saved draft
-            </button>
+            </DashboardButton>
           )}
           {retryPending && (
             <p>
@@ -431,14 +435,14 @@ export function DatasetPreparationEditor({
                 Another save changed this draft. Your local answers have been
                 kept.
               </p>
-              <button
+              <DashboardButton
+                variant="outline"
                 type="button"
-                className={button}
                 disabled={saving}
                 onClick={reviewLatest}
               >
                 Review latest saved draft
-              </button>
+              </DashboardButton>
             </>
           )}
         </div>
@@ -452,9 +456,9 @@ export function DatasetPreparationEditor({
             Latest saved title: <strong>{latest.metadata.title}</strong>
           </p>
           <div className="flex flex-wrap gap-3">
-            <button
+            <DashboardButton
+              variant="outline"
               type="button"
-              className={button}
               onClick={() => {
                 setMetadata(latest.metadata);
                 setSaved(latest);
@@ -465,10 +469,10 @@ export function DatasetPreparationEditor({
               }}
             >
               Use latest saved draft
-            </button>
-            <button
+            </DashboardButton>
+            <DashboardButton
+              variant="outline"
               type="button"
-              className={button}
               onClick={() => {
                 setMetadata(
                   DatasetPreparationMetadataSchema.parse(
@@ -487,7 +491,7 @@ export function DatasetPreparationEditor({
               }}
             >
               Reapply my changes to latest draft
-            </button>
+            </DashboardButton>
           </div>
         </PreparationSection>
       )}
@@ -496,16 +500,17 @@ export function DatasetPreparationEditor({
         className="grid grid-cols-2 gap-2 sm:grid-cols-4"
       >
         {steps.map((label, index) => (
-          <button
+          <DashboardButton
+            variant={step === index ? "default" : "outline"}
             type="button"
             key={label}
             aria-current={step === index ? "step" : undefined}
-            className={`${button} ${step === index ? "bg-primary text-primary-foreground" : "bg-card"}`}
+            className="h-auto min-h-10 whitespace-normal px-3 py-2 text-left"
             disabled={locked}
             onClick={() => setStep(index)}
           >
             {index + 1}. {label}
-          </button>
+          </DashboardButton>
         ))}
       </nav>
       <fieldset disabled={locked} className="min-w-0 space-y-5">
@@ -534,7 +539,7 @@ export function DatasetPreparationEditor({
                   >
                     <input
                       type="radio"
-                      className="mt-1"
+                      className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
                       name="upload-choice"
                       value={choice.value}
                       checked={metadata.uploadChoice === choice.value}
@@ -565,7 +570,7 @@ export function DatasetPreparationEditor({
                     >
                       <input
                         type="checkbox"
-                        className="mt-1"
+                        className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
                         checked={
                           metadata.modalities?.includes(modality.value) ?? false
                         }
@@ -609,6 +614,7 @@ export function DatasetPreparationEditor({
                   <label key={value} className="flex items-center gap-2">
                     <input
                       type="checkbox"
+                      className="shrink-0 accent-[var(--dashboard-indicator)]"
                       checked={metadata.contexts?.includes(value) ?? false}
                       onChange={(event) =>
                         update((previous) => ({
@@ -807,7 +813,7 @@ export function DatasetPreparationEditor({
                 <label className="flex items-start gap-3 text-sm">
                   <input
                     type="checkbox"
-                    className="mt-1"
+                    className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
                     checked={metadata.fullCompleteness === true}
                     onChange={(event) =>
                       setCommon("fullCompleteness", event.target.checked)
@@ -898,13 +904,15 @@ export function DatasetPreparationEditor({
                       >
                         <p>{issue.message}</p>
                         {issue.field && (
-                          <button
+                          <DashboardButton
                             type="button"
-                            className="mt-1 underline"
+                            variant="link"
+                            size="compact"
+                            className="mt-1 h-auto whitespace-normal p-0 text-left"
                             onClick={() => moveToField(issue.field)}
                           >
                             Go to this section
-                          </button>
+                          </DashboardButton>
                         )}
                       </li>
                     ))}
@@ -918,48 +926,51 @@ export function DatasetPreparationEditor({
                 after their checks are qualified. Existing proposals retain
                 their existing explicit Submit workflow.
               </p>
-              <button type="button" className={button} disabled>
+              <DashboardButton
+                variant="outline"
+                type="button"
+                disabled
+                className="h-auto min-h-10 whitespace-normal"
+              >
                 Submit for admin review — unavailable
-              </button>
+              </DashboardButton>
             </PreparationSection>
           </>
         )}
       </fieldset>
-      <footer className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-        <button
+      <DashboardFormActions
+        status={`Step ${step + 1} of ${steps.length} · All saves are private. Saving never submits.`}
+      >
+        <DashboardButton
           type="button"
-          className={`${button} bg-primary text-primary-foreground`}
           disabled={
             !hydrated || loading || saving || conflict || unavailableExisting
           }
           onClick={() => void save()}
         >
           {saving ? "Saving…" : retryPending ? "Retry save" : "Save draft"}
-        </button>
-        <button
+        </DashboardButton>
+        <DashboardButton
+          variant="outline"
           type="button"
-          className={button}
           disabled={locked || conflict}
           onClick={async () => {
             if (await save()) setStep(Math.min(step + 1, 3));
           }}
         >
           Save and {step === 3 ? "stay on review" : "continue"}
-        </button>
-        <button
+        </DashboardButton>
+        <DashboardButton
+          variant="outline"
           type="button"
-          className={button}
           disabled={locked || conflict}
           onClick={async () => {
             if (await save()) onExit?.();
           }}
         >
           Save and exit
-        </button>
-        <p className="text-xs text-muted-foreground">
-          All saves are private. Saving never submits.
-        </p>
-      </footer>
+        </DashboardButton>
+      </DashboardFormActions>
     </DatasetWorkspace>
   );
 }

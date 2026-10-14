@@ -2,6 +2,13 @@
 
 import { useId, type ReactNode } from "react";
 import {
+  DashboardButton,
+  DashboardField,
+  DashboardInput,
+  DashboardSection,
+  DashboardTextarea,
+} from "@/components/dashboard";
+import {
   DatasetDeclaredMetricSchema,
   type DatasetPreparationMetadata,
   type DatasetPreparationProfiles,
@@ -9,7 +16,7 @@ import {
 } from "@kuinbee/dataset-preparation-contracts";
 
 export const preparationControl =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-60";
+  "dashboard-field-control h-10 w-full rounded-lg border px-3 py-2 text-sm text-foreground transition-colors focus-visible:border-[var(--dashboard-focus-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50";
 export function PreparationField({
   label,
   value,
@@ -29,7 +36,6 @@ export function PreparationField({
   const props = {
     id,
     value: value ?? "",
-    className: preparationControl,
     maxLength,
     "aria-describedby": help ? `${id}-help` : undefined,
     onChange: (
@@ -37,17 +43,15 @@ export function PreparationField({
     ) => onChange(event.target.value || null),
   };
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      {multiline ? <textarea {...props} rows={3} /> : <input {...props} />}
-      {help && (
-        <p id={`${id}-help`} className="text-xs text-muted-foreground">
-          {help}
-        </p>
-      )}
-    </div>
+    <DashboardField id={id} label={label} description={help}>
+      {(controlProps) =>
+        multiline ? (
+          <DashboardTextarea {...props} {...controlProps} rows={3} />
+        ) : (
+          <DashboardInput {...props} {...controlProps} />
+        )
+      }
+    </DashboardField>
   );
 }
 export function PreparationSelect({
@@ -65,30 +69,23 @@ export function PreparationSelect({
 }) {
   const id = useId();
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      <select
-        id={id}
-        className={preparationControl}
-        value={value ?? ""}
-        aria-describedby={help ? `${id}-help` : undefined}
-        onChange={(event) => onChange(event.target.value || null)}
-      >
-        <option value="">Choose later</option>
-        {options.map(([key, text]) => (
-          <option key={key} value={key}>
-            {text}
-          </option>
-        ))}
-      </select>
-      {help && (
-        <p id={`${id}-help`} className="text-xs text-muted-foreground">
-          {help}
-        </p>
+    <DashboardField id={id} label={label} description={help}>
+      {(controlProps) => (
+        <select
+          {...controlProps}
+          className={preparationControl}
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value || null)}
+        >
+          <option value="">Choose later</option>
+          {options.map(([key, text]) => (
+            <option key={key} value={key}>
+              {text}
+            </option>
+          ))}
+        </select>
       )}
-    </div>
+    </DashboardField>
   );
 }
 export function PreparationSection({
@@ -101,11 +98,9 @@ export function PreparationSection({
   help?: string;
 }) {
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {help && <p className="text-sm text-muted-foreground">{help}</p>}
-      {children}
-    </section>
+    <DashboardSection title={title} description={help}>
+      <div className="space-y-4">{children}</div>
+    </DashboardSection>
   );
 }
 
@@ -236,9 +231,11 @@ export function PreparationQuantities({
               }
             />
           </div>
-          <button
+          <DashboardButton
             type="button"
-            className="text-sm underline"
+            variant="link"
+            size="compact"
+            className="h-auto whitespace-normal p-0 text-left"
             onClick={() =>
               onUpdate((previous) => ({
                 ...previous,
@@ -247,7 +244,7 @@ export function PreparationQuantities({
             }
           >
             Remove {metricLabels[row.metric]} from {label.toLowerCase()}
-          </button>
+          </DashboardButton>
         </fieldset>
       ))}
       <label className="block text-sm font-medium">
