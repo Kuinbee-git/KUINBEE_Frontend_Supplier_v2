@@ -278,16 +278,16 @@ function DashboardBrand({ compact = false }: { compact?: boolean }) {
         <Image
           src="/logo-light.png"
           alt=""
-          width={32}
-          height={32}
+          width={256}
+          height={256}
           className="size-8 scale-[2.4] object-contain dark:hidden"
           priority
         />
         <Image
           src="/logo-dark.png"
           alt=""
-          width={32}
-          height={32}
+          width={256}
+          height={256}
           className="hidden size-8 scale-[2.4] object-contain dark:block"
           priority
         />
