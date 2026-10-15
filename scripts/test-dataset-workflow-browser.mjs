@@ -391,6 +391,7 @@ function submission(draft) {
   return DatasetSubmissionResponseSchema.parse({
     state: state(draft),
     submittedContent: draft.frozen,
+    ...(draft.reviewFeedback ? { reviewFeedback: draft.reviewFeedback } : {}),
   });
 }
 function inventory(draft, query) {
@@ -1088,6 +1089,31 @@ try {
   }
   console.log(
     "PASS all three choices use explicit free Submit; initial business status does not freeze the draft, successful Submit does not publish"
+  );
+
+  const feedbackDraft = seed("FULL_AND_SAMPLE");
+  feedbackDraft.frozen = freeze(feedbackDraft);
+  feedbackDraft.reviewedContentId = feedbackDraft.frozen.id;
+  feedbackDraft.verificationStatus = "SUBMITTED";
+  feedbackDraft.reviewFeedback = {
+    notes: "Explain the recorded sample coverage before resubmitting.",
+    rejectionReason: "Recorded correction reason",
+    submittedAt: now,
+    verifiedAt: null,
+    rejectedAt: null,
+  };
+  const frozenBeforeFeedback = JSON.stringify(feedbackDraft.frozen);
+  await open(page, feedbackDraft);
+  await page
+    .getByText(feedbackDraft.reviewFeedback.notes, { exact: true })
+    .waitFor();
+  await page
+    .getByText(feedbackDraft.reviewFeedback.rejectionReason, { exact: true })
+    .waitFor();
+  assert.equal(JSON.stringify(feedbackDraft.frozen), frozenBeforeFeedback);
+  assert.equal(writes(feedbackDraft).length, 0);
+  console.log(
+    "PASS current admin feedback renders separately from unchanged frozen content and requires no read-side write"
   );
 
   for (const choice of ["FULL_ONLY", "FULL_AND_SAMPLE"]) {

@@ -529,6 +529,11 @@ export function PreparationFrozenSubmission({
               rows={[
                 ["Dataset status", words(state.datasetStatus)],
                 ["Admin review status", words(state.verificationStatus)],
+                ["Admin review feedback", submission.reviewFeedback?.notes],
+                [
+                  "Rejection reason",
+                  submission.reviewFeedback?.rejectionReason,
+                ],
                 [
                   "Current pricing",
                   state.pricing
