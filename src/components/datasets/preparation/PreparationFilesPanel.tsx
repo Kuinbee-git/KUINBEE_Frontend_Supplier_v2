@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   type DatasetFilesContextBody,
   type DatasetFilesContextResponse,
@@ -9,9 +15,11 @@ import {
 } from "@kuinbee/dataset-preparation-contracts";
 import { DashboardButton } from "@/components/dashboard";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
+import { usePreparationUploads } from "@/hooks/usePreparationUploads";
 import { datasetFilesApi } from "@/lib/api/dataset-files";
 import { PreparationApiError } from "@/lib/api/dataset-preparations";
 import { PreparationGrid, PreparationSection } from "./PreparationFields";
+import { PreparationUploadPanel } from "./PreparationUploadPanel";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 const purpose: Record<Member["role"], string> = {
@@ -53,7 +61,15 @@ function checkLabel(member: Member) {
     return "Recorded pass · eligibility not assessed";
   return "Check result unavailable";
 }
-function FilesRows({ members }: { members: Member[] }) {
+function FilesRows({
+  members,
+  onRemove,
+  disabled,
+}: {
+  members: Member[];
+  onRemove: (member: Member) => void;
+  disabled: boolean;
+}) {
   if (!members.length)
     return (
       <p className="text-sm text-muted-foreground">
@@ -88,6 +104,16 @@ function FilesRows({ members }: { members: Member[] }) {
             >
               Measured size: {decimalSize(member.measuredSizeBytes)}
             </p>
+            <DashboardButton
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={disabled}
+              onClick={() => onRemove(member)}
+            >
+              Remove from{" "}
+              {member.component === "FULL" ? "full dataset" : "sample"}
+            </DashboardButton>
           </div>
           <dl className="space-y-1 text-xs">
             <div>
@@ -114,17 +140,21 @@ export function PreparationFilesPanel({
   active,
   metadataDirty,
   metadataBlocked,
+  metadataUnsettled = false,
   onUncertainChange,
   onWritingChange,
   onMetadataChanged,
+  onActivityChange,
 }: {
   saved: DatasetPreparationResponse | null;
   active: boolean;
   metadataDirty: boolean;
   metadataBlocked: boolean;
+  metadataUnsettled?: boolean;
   onUncertainChange: (value: boolean) => void;
   onWritingChange: (value: boolean) => void;
   onMetadataChanged: () => void;
+  onActivityChange: (value: boolean, pause?: () => void) => void;
 }) {
   const [context, setContext] = useState<DatasetFilesContextResponse | null>(
     null
@@ -134,6 +164,11 @@ export function PreparationFilesPanel({
   const [loading, setLoading] = useState(false);
   const [writing, setWriting] = useState(false);
   const [uncertain, setUncertain] = useState(false);
+  const [uploadUncertain, setUploadUncertain] = useState(false);
+  useEffect(
+    () => onUncertainChange(uncertain || uploadUncertain),
+    [uncertain, uploadUncertain, onUncertainChange]
+  );
   const [error, setError] = useState("");
   const [readFailed, setReadFailed] = useState(true);
   const [history, setHistory] = useState<Array<string | undefined>>([
@@ -146,6 +181,12 @@ export function PreparationFilesPanel({
     null
   );
   const writeBusy = useRef(false);
+  useLayoutEffect(() => {
+    if (metadataUnsettled) {
+      epoch.current++;
+      reader.current?.abort();
+    }
+  }, [metadataUnsettled]);
   useEffect(
     () => () => {
       epoch.current++;
@@ -160,7 +201,8 @@ export function PreparationFilesPanel({
       index = 0,
       pinned?: { contentId: string; contentGeneration: number }
     ) => {
-      if (!saved || pending.current || writeBusy.current) return;
+      if (!saved || metadataUnsettled || pending.current || writeBusy.current)
+        return;
       const generation = ++epoch.current;
       reader.current?.abort();
       const controller = new AbortController();
@@ -226,12 +268,12 @@ export function PreparationFilesPanel({
         if (generation === epoch.current) setLoading(false);
       }
     },
-    [saved, onMetadataChanged]
+    [saved, onMetadataChanged, metadataUnsettled]
   );
   useComponentRequest(
     read,
-    [saved?.id, saved?.generation, active],
-    Boolean(saved && active)
+    [saved?.id, saved?.generation, active, metadataUnsettled],
+    Boolean(saved && active && !metadataUnsettled)
   );
 
   const current = Boolean(
@@ -254,6 +296,19 @@ export function PreparationFilesPanel({
     !context.synchronizationRequired
       ? inventory
       : null;
+  const onFilesChanged = useCallback(() => read(), [read]);
+  const uploads = usePreparationUploads({
+    saved,
+    context: current ? context : null,
+    active,
+    metadataDirty,
+    metadataUnsettled,
+    blocked: metadataBlocked || writing || uncertain || loading,
+    onWritingChange,
+    onUncertainChange: setUploadUncertain,
+    onActivityChange,
+    onFilesChanged,
+  });
 
   async function synchronize() {
     if (
@@ -288,7 +343,6 @@ export function PreparationFilesPanel({
       );
       pending.current = null;
       setUncertain(false);
-      onUncertainChange(false);
       // The original acknowledgement can predate another save. Read current
       // context rather than promoting the receipt to a latest inventory.
       writeBusy.current = false;
@@ -301,7 +355,6 @@ export function PreparationFilesPanel({
       if (!ambiguous) pending.current = null;
       if (!ambiguous) setReadFailed(true);
       setUncertain(Boolean(ambiguous && pending.current));
-      onUncertainChange(Boolean(ambiguous && pending.current));
       setError(
         failure instanceof Error
           ? failure.message
@@ -448,6 +501,12 @@ export function PreparationFilesPanel({
           not free stored bytes.
         </p>
       </section>
+      <PreparationUploadPanel
+        model={uploads}
+        hasFull={hasFull}
+        hasSample={hasSample}
+        members={members}
+      />
       {hasFull && (
         <PreparationSection
           title="Full dataset"
@@ -457,6 +516,11 @@ export function PreparationFilesPanel({
           <section aria-label="Full material">
             {usableInventory ? (
               <FilesRows
+                onRemove={(member) => {
+                  if (usableInventory)
+                    void uploads.removeMember(member, usableInventory);
+                }}
+                disabled={!uploads.canChange}
                 members={members.filter(
                   (member) => member.component === "FULL"
                 )}
@@ -469,9 +533,11 @@ export function PreparationFilesPanel({
               </p>
             )}
           </section>
-          <DashboardButton type="button" variant="outline" disabled>
-            Upload full files — unavailable
-          </DashboardButton>
+          {!uploads.config?.admission.enabled && (
+            <DashboardButton type="button" variant="outline" disabled>
+              Upload full files — unavailable
+            </DashboardButton>
+          )}
         </PreparationSection>
       )}
       {hasSample && (
@@ -483,6 +549,11 @@ export function PreparationFilesPanel({
           <section aria-label="Sample material">
             {usableInventory ? (
               <FilesRows
+                onRemove={(member) => {
+                  if (usableInventory)
+                    void uploads.removeMember(member, usableInventory);
+                }}
+                disabled={!uploads.canChange}
                 members={members.filter(
                   (member) => member.component === "SAMPLE"
                 )}
@@ -495,9 +566,11 @@ export function PreparationFilesPanel({
               </p>
             )}
           </section>
-          <DashboardButton type="button" variant="outline" disabled>
-            Upload sample files — unavailable
-          </DashboardButton>
+          {!uploads.config?.admission.enabled && (
+            <DashboardButton type="button" variant="outline" disabled>
+              Upload sample files — unavailable
+            </DashboardButton>
+          )}
         </PreparationSection>
       )}
       {outside.length > 0 && (
@@ -506,7 +579,14 @@ export function PreparationFilesPanel({
           className="lg:col-span-12"
           help="Changing the upload choice did not delete these references or their stored bytes. They must be resolved before submission becomes available."
         >
-          <FilesRows members={outside} />
+          <FilesRows
+            members={outside}
+            onRemove={(member) => {
+              if (usableInventory)
+                void uploads.removeMember(member, usableInventory);
+            }}
+            disabled={!uploads.canChange}
+          />
         </PreparationSection>
       )}
       {usableInventory && (

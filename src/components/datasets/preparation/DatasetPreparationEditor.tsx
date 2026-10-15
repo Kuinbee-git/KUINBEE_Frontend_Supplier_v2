@@ -134,6 +134,12 @@ export function DatasetPreparationEditor({
   const [error, setError] = useState("");
   const [filesWriting, setFilesWriting] = useState(false);
   const [filesUncertain, setFilesUncertain] = useState(false);
+  const [uploadsActive, setUploadsActive] = useState(false);
+  const pauseActiveUpload = useRef<(() => void) | null>(null);
+  const onUploadActivity = useCallback((value: boolean, pause?: () => void) => {
+    pauseActiveUpload.current = value && pause ? pause : null;
+    setUploadsActive(value);
+  }, []);
   const onFilesMetadataChanged = useCallback(() => {
     setConflict(true);
     setReplayBase(null);
@@ -169,7 +175,14 @@ export function DatasetPreparationEditor({
   }, [draftId]);
   useComponentRequest(load, [draftId], Boolean(draftId));
   useEffect(() => {
-    if (!dirty && !retryPending && !filesUncertain && !filesWriting) return;
+    if (
+      !dirty &&
+      !retryPending &&
+      !filesUncertain &&
+      !filesWriting &&
+      !uploadsActive
+    )
+      return;
     const guard = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
@@ -194,7 +207,13 @@ export function DatasetPreparationEditor({
         target.search === window.location.search
       )
         return;
-      if (!window.confirm("Leave without saving your current input?")) {
+      if (
+        !window.confirm(
+          uploadsActive
+            ? "Leave this page and pause the active file transfer? Save any unsaved answers before leaving. You can reselect the original file to resume later."
+            : "Leave without saving your current input?"
+        )
+      ) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -205,7 +224,7 @@ export function DatasetPreparationEditor({
       window.removeEventListener("beforeunload", guard);
       document.removeEventListener("click", guardLink, true);
     };
-  }, [dirty, retryPending, filesUncertain, filesWriting]);
+  }, [dirty, retryPending, filesUncertain, filesWriting, uploadsActive]);
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
@@ -424,9 +443,9 @@ export function DatasetPreparationEditor({
         <div className="border-b border-border bg-muted/20 px-4 py-3 text-sm sm:px-6">
           <strong>Draft testing release</strong>
           <p className="mt-1 text-muted-foreground">
-            You can save information and set up files for all three upload
-            choices. File intake, required file checks and admin submission are
-            not available in this release. Nothing here is published.
+            Save your draft step by step. File upload availability and check
+            results are shown in Files &amp; contents. Submitting for admin
+            review is a separate action. Nothing is published automatically.
           </p>
         </div>
         {error && (
@@ -709,9 +728,11 @@ export function DatasetPreparationEditor({
               active={step === 1}
               metadataDirty={dirty}
               metadataBlocked={locked || conflict}
+              metadataUnsettled={saving || retryPending}
               onUncertainChange={setFilesUncertain}
               onWritingChange={setFilesWriting}
               onMetadataChanged={onFilesMetadataChanged}
+              onActivityChange={onUploadActivity}
             />
             <PreparationGrid>
               {hasFull && (
@@ -1005,11 +1026,29 @@ export function DatasetPreparationEditor({
             type="button"
             disabled={locked || conflict || filesUncertain}
             onClick={async () => {
-              if (await save()) onExit?.();
+              if (await save()) {
+                if (
+                  uploadsActive &&
+                  !window.confirm(
+                    "Your draft is saved. Leave this page and pause the active file transfer? You can reselect the original file to resume later."
+                  )
+                )
+                  return;
+                onExit?.();
+              }
             }}
           >
             Save and exit
           </DashboardButton>
+          {uploadsActive && (locked || conflict) && (
+            <DashboardButton
+              type="button"
+              variant="outline"
+              onClick={() => pauseActiveUpload.current?.()}
+            >
+              Pause active upload
+            </DashboardButton>
+          )}
         </DashboardFormActions>
       </DashboardCard>
     </DatasetWorkspace>

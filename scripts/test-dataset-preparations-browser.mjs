@@ -2659,15 +2659,17 @@ try {
   await page.getByRole("heading", { name: "Not found", exact: true }).waitFor();
   await productionPage.close();
   assert(
-    !requests.some((request) =>
-      /submit|upload|presign|publish|payment/.test(request.path)
+    !requests.some(
+      (request) =>
+        /submit|presign|publish|payment/.test(request.path) ||
+        (request.method !== "GET" && /upload/.test(request.path))
     )
   );
   assert.deepEqual(fixtureErrors, []);
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   console.log(
-    "PASS production UI/API guard, pinned browser runtime and zero intake/submission/payment effects"
+    "PASS production UI/API guard, pinned browser runtime and zero intake writes/submission/payment effects"
   );
 } finally {
   await browser?.close();
