@@ -95,10 +95,11 @@ export const preparationApi = {
       DatasetPreparationsListResponseSchema
     );
   },
-  get: (id: string) =>
+  get: (id: string, signal?: AbortSignal) =>
     request(
       `${base}/${encodeURIComponent(id)}`,
-      DatasetPreparationResponseSchema
+      DatasetPreparationResponseSchema,
+      { signal, cache: "no-store" }
     ),
   create: (body: DatasetPreparationCreateBody) =>
     request(base, DatasetPreparationResponseSchema, {

@@ -329,6 +329,22 @@ const server = createServer(async (req, res) => {
     }
     const draft = drafts.get(match[1]),
       tail = match[2] ?? "";
+    // This upload-only fixture does not qualify the separate review workflow.
+    // Owned read probes may be unavailable; workflow writes still fail below.
+    if (
+      req.method === "GET" &&
+      ["workflow", "readiness", "edit-context", "edit-base"].includes(tail)
+    ) {
+      json(res, 404, {
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message:
+            "Review workflow is not configured in the upload-only fixture",
+        },
+      });
+      return;
+    }
     if (!tail && req.method === "GET") {
       ok(res, dto(draft));
       return;
@@ -800,10 +816,7 @@ try {
       );
       await namedButton(page, "Review draft").click();
       assert(
-        await namedButton(
-          page,
-          "Submit for admin review — unavailable"
-        ).isDisabled()
+        await namedButton(page, "Submit proposal for admin review").isDisabled()
       );
     }
   console.log(

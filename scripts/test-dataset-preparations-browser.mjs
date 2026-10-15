@@ -1156,7 +1156,7 @@ try {
       assert(
         await page
           .getByRole("button", {
-            name: "Submit for admin review — unavailable",
+            name: "Submit proposal for admin review",
             exact: true,
           })
           .isDisabled()

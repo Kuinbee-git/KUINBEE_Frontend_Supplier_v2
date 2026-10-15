@@ -24,6 +24,7 @@ export function PreparationField({
   help,
   multiline = true,
   maxLength = 4000,
+  disabled = false,
 }: {
   label: string;
   value?: string | null;
@@ -31,12 +32,14 @@ export function PreparationField({
   help?: string;
   multiline?: boolean;
   maxLength?: number;
+  disabled?: boolean;
 }) {
   const id = useId();
   const props = {
     id,
     value: value ?? "",
     maxLength,
+    disabled,
     "aria-describedby": help ? `${id}-help` : undefined,
     onChange: (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -60,12 +63,14 @@ export function PreparationSelect({
   onChange,
   options,
   help,
+  disabled = false,
 }: {
   label: string;
   value?: string | null;
   onChange: (value: string | null) => void;
   options: ReadonlyArray<readonly [string, string]>;
   help?: string;
+  disabled?: boolean;
 }) {
   const id = useId();
   return (
@@ -74,6 +79,7 @@ export function PreparationSelect({
         <select
           {...controlProps}
           className={preparationControl}
+          disabled={disabled}
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value || null)}
         >

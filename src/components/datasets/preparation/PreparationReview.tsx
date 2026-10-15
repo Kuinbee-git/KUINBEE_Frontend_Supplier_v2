@@ -17,8 +17,10 @@ import {
 
 export function PreparationReview({
   metadata,
+  correctionBase = false,
 }: {
   metadata: DatasetPreparationMetadata;
+  correctionBase?: boolean;
 }) {
   const [labels, setLabels] =
     useState<DatasetPreparationCatalogLabelsResponse | null>(null);
@@ -101,9 +103,15 @@ export function PreparationReview({
   return (
     <>
       <PreparationSection
-        title="Saved draft summary"
+        title={
+          correctionBase ? "Correction base summary" : "Saved draft summary"
+        }
         className="lg:col-span-8"
-        help="This is the last acknowledged save. Category/source names are current lookup labels. License and quantities are supplier statements; no file inspection or publication is implied."
+        help={
+          correctionBase
+            ? "These answers come from the exact backend-selected frozen correction base. The first saved change creates the correction draft. Category/source names here are current lookup labels; the submitted record retains captured labels."
+            : "This is the last acknowledged save. Category/source names are current lookup labels. License and quantities are supplier statements; no file inspection or publication is implied."
+        }
       >
         <dl className="grid gap-4 sm:grid-cols-2">
           {rows.map(([label, value]) => (
@@ -117,7 +125,11 @@ export function PreparationReview({
         </dl>
       </PreparationSection>
       <PreparationSection
-        title="Saved declared quantities"
+        title={
+          correctionBase
+            ? "Correction base quantities"
+            : "Saved declared quantities"
+        }
         className="lg:col-span-4"
         help="Collection, planned full material and planned sample remain separate; none is an observed upload measurement."
       >
@@ -155,7 +167,13 @@ export function PreparationReview({
         ))}
       </PreparationSection>
       {hasFull && (
-        <PreparationSection title="Saved full-material declaration">
+        <PreparationSection
+          title={
+            correctionBase
+              ? "Correction base full-material declaration"
+              : "Saved full-material declaration"
+          }
+        >
           <p className="text-sm">
             {metadata.fullCompleteness === true
               ? "Supplier declares planned full material covers the defined collection boundary."
@@ -166,7 +184,13 @@ export function PreparationReview({
         </PreparationSection>
       )}
       {hasSample && (
-        <PreparationSection title="Saved sample coverage">
+        <PreparationSection
+          title={
+            correctionBase
+              ? "Correction base sample coverage"
+              : "Saved sample coverage"
+          }
+        >
           <dl className="space-y-3">
             {[
               ["Selection method", metadata.sample?.selectionMethod],
@@ -209,7 +233,7 @@ export function PreparationReview({
       {getPreparationProfileSummary(metadata).map((group) => (
         <PreparationSection
           key={group.title}
-          title={`Saved ${group.title.toLowerCase()} answers`}
+          title={`${correctionBase ? "Correction base" : "Saved"} ${group.title.toLowerCase()} answers`}
           help={
             group.title === "Healthcare context"
               ? "Private preparation/review information. No de-identification or clinical suitability is certified."
