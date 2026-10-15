@@ -7,6 +7,8 @@ import {
   DatasetFilesContextBodySchema,
   DatasetFilesInventoryPageQuerySchema,
   DatasetUploadAdmissionBodySchema,
+  DatasetUploadPartStatusSchema,
+  DATASET_UPLOAD_FILE_LIMIT_BYTES,
 } from "@kuinbee/dataset-preparation-contracts";
 
 const manifest = JSON.parse(
@@ -39,15 +41,31 @@ assert.equal(
 );
 for (const [key, value] of Object.entries(packagedManifest))
   assert.deepEqual(manifest[key], value, `Manifest drift: ${key}`);
-const expectedSources = ["preparation", "content", "files", "intake"].map(
-  (name) => `packages/api-contracts/src/datasets/${name}.schema.ts`
-);
+const expectedSources = [
+  "preparation",
+  "content",
+  "files",
+  "intake",
+  "workflow",
+  "proposals",
+  "publication",
+  "access",
+  "acquisition",
+  "inspectionProfile",
+  "reader",
+  "catalogue",
+  "legacyCatalogue",
+  "legacyCatalogueEndpoints",
+  "edit",
+  "cataloguePrimitives",
+].map((name) => `packages/api-contracts/src/datasets/${name}.schema.ts`);
 assert.deepEqual(
   manifest.sources.map((source) => source.sourcePath),
   expectedSources
 );
 for (const source of manifest.sources) {
   assert.match(source.sourceCommit, /^[a-f0-9]{40}$/);
+  assert.equal(source.sourceCommit, manifest.sourceCommit);
   assert.match(source.sourceSha256, /^[a-f0-9]{64}$/);
   const name = source.sourcePath.split("/").at(-1).replace(/\.ts$/, "");
   assert.equal(
@@ -149,6 +167,30 @@ assert.equal(
   }).success,
   false
 );
+assert.equal(DATASET_UPLOAD_FILE_LIMIT_BYTES, "2000000000");
+const received = {
+  partNumber: 1,
+  expectedBytes: 5,
+  measuredBytes: 5,
+  state: "RECEIVED",
+  receivedAt: "2026-10-16T00:00:00.000Z",
+  checksumSha256: "a".repeat(64),
+};
+assert.equal(DatasetUploadPartStatusSchema.safeParse(received).success, true);
+assert.equal(
+  DatasetUploadPartStatusSchema.safeParse({ ...received, checksumSha256: null })
+    .success,
+  false
+);
+assert.equal(
+  DatasetUploadPartStatusSchema.safeParse({
+    ...received,
+    state: "UNCERTAIN",
+    measuredBytes: null,
+    receivedAt: null,
+  }).success,
+  false
+);
 console.log(
-  "PASS pinned Dataset tarball, four committed canonical sources, installed runtime/types, manifests, lockfile and strict browser contracts"
+  "PASS pinned Dataset tarball, sixteen committed canonical sources, installed runtime/types, manifests, lockfile, file ceiling and exact resume receipts"
 );
