@@ -5,10 +5,13 @@ import {
   DatasetFilesInventoryPageResponseSchema,
   DatasetFilesMutationBodySchema,
   DatasetMaterialMutationResponseSchema,
+  DatasetFilesOrganizationQuerySchema,
+  DatasetFilesOrganizationPageResponseSchema,
   type DatasetFilesContextBody,
   type DatasetFilesContextResponse,
   type DatasetFilesInventoryPageQuery,
   type DatasetFilesMutationBody,
+  type DatasetFilesOrganizationQuery,
 } from "@kuinbee/dataset-preparation-contracts";
 import {
   PreparationApiError,
@@ -48,8 +51,45 @@ export const datasetFilesApi = {
       response.results.some((result, index) => {
         const operation = body.operations[index];
         if (result.operation !== operation.operation) return true;
-        return "memberId" in operation && result.id !== operation.memberId;
+        const expectedId =
+          "memberId" in operation
+            ? operation.memberId
+            : operation.operation === "REMOVE_LINK"
+              ? operation.linkId
+              : operation.operation === "RENAME_GROUP" ||
+                  operation.operation === "REMOVE_GROUP"
+                ? operation.groupId
+                : undefined;
+        return expectedId !== undefined && result.id !== expectedId;
       })
+    )
+      incompatible();
+    return response;
+  },
+  organization: async (
+    id: string,
+    supplied: DatasetFilesOrganizationQuery,
+    signal?: AbortSignal
+  ) => {
+    const query = DatasetFilesOrganizationQuerySchema.parse(supplied);
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query))
+      if (value !== undefined) params.set(key, String(value));
+    const response = await requestPreparationResource(
+      `${base(id)}/files/organization?${params}`,
+      DatasetFilesOrganizationPageResponseSchema,
+      { signal }
+    );
+    if (
+      response.preparationId !== id ||
+      response.preparationGeneration !== query.expectedPreparationGeneration ||
+      response.contentId !== query.contentId ||
+      response.contentGeneration !== query.contentGeneration ||
+      response.section !== query.section ||
+      response.component !== (query.component ?? null) ||
+      response.memberId !== (query.memberId ?? null) ||
+      response.inventoryId !== (query.inventoryId ?? null) ||
+      response.items.length > query.limit
     )
       incompatible();
     return response;

@@ -17,6 +17,7 @@ await build({
     contents: [
       "export {receiveDatasetFile} from './src/lib/datasets/receive-dataset-file';",
       "export {datasetIntakeApi} from './src/lib/api/dataset-intake';",
+      "export {datasetFilesApi} from './src/lib/api/dataset-files';",
       "export {PreparationApiError} from './src/lib/api/dataset-preparations';",
     ].join("\n"),
     resolveDir: process.cwd(),
@@ -31,8 +32,12 @@ await build({
     "process.env.NODE_ENV": '"test"',
   },
 });
-const { receiveDatasetFile, datasetIntakeApi, PreparationApiError } =
-  await import(pathToFileURL(output).href);
+const {
+  receiveDatasetFile,
+  datasetIntakeApi,
+  datasetFilesApi,
+  PreparationApiError,
+} = await import(pathToFileURL(output).href);
 const ids = {
   draft: "cm000000000000000000000001",
   attempt: "cm000000000000000000000002",
@@ -258,6 +263,118 @@ test("all three upload choices receive exact bytes without submitting, selecting
     );
     assert.equal(progress.at(-1).phase, "RECEIVED");
     assert.equal(progress.at(-1).verifiedBytes, f.file.size);
+  }
+});
+
+test("organization pages reject foreign generations, filters and exact-file identities before exposing rows", async () => {
+  const query = {
+    expectedPreparationGeneration: 3,
+    contentId: ids.content,
+    contentGeneration: 2,
+    section: "MEMBERS",
+    component: "FULL",
+    memberId: ids.attempt,
+    limit: 20,
+  };
+  const page = {
+    preparationId: ids.draft,
+    preparationGeneration: 3,
+    contentId: ids.content,
+    contentGeneration: 2,
+    section: "MEMBERS",
+    component: "FULL",
+    memberId: ids.attempt,
+    inventoryId: null,
+    uploadObjectId: null,
+    items: [
+      {
+        kind: "MEMBER",
+        id: ids.attempt,
+        uploadObjectId: ids.content,
+        component: "FULL",
+        role: "PRIMARY",
+        originalFileName: "records.csv",
+        relativePath: null,
+        group: null,
+      },
+    ],
+    nextCursor: null,
+  };
+  const original = globalThis.fetch;
+  let value = page;
+  globalThis.fetch = async (url, options) => {
+    assert.match(url, /\/files\/organization\?/);
+    assert.equal(options.credentials, "include");
+    return new Response(JSON.stringify({ success: true, data: value }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+  try {
+    assert.equal(
+      (await datasetFilesApi.organization(ids.draft, query)).items[0].id,
+      ids.attempt
+    );
+    for (const change of [
+      { preparationId: ids.attempt },
+      { preparationGeneration: 4 },
+      { contentId: ids.draft },
+      { contentGeneration: 3 },
+      { component: "SAMPLE", items: [] },
+      { memberId: ids.content, items: [] },
+      { section: "GROUPS", memberId: null, items: [] },
+    ]) {
+      value = { ...page, ...change };
+      await assert.rejects(
+        datasetFilesApi.organization(ids.draft, query),
+        code("INCOMPATIBLE_RESPONSE")
+      );
+    }
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("organization command acknowledgements bind exact group and relationship IDs", async () => {
+  const original = globalThis.fetch;
+  const targetId = "cm000000000000000000000004";
+  let response;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ success: true, data: response }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  try {
+    for (const operation of [
+      { operation: "RENAME_GROUP", groupId: targetId, label: "Session" },
+      { operation: "REMOVE_GROUP", groupId: targetId },
+      { operation: "REMOVE_LINK", linkId: targetId },
+    ]) {
+      const body = {
+        requestId: crypto.randomUUID(),
+        expectedContentId: ids.content,
+        expectedGeneration: 2,
+        expectedPreparationGeneration: 3,
+        operations: [operation],
+      };
+      response = {
+        requestId: body.requestId,
+        contentId: ids.content,
+        generation: 3,
+        results: [{ index: 0, operation: operation.operation, id: targetId }],
+      };
+      assert.equal(
+        (await datasetFilesApi.mutate(ids.draft, body)).results[0].id,
+        targetId
+      );
+      response.results[0].id = ids.attempt;
+      await assert.rejects(
+        datasetFilesApi.mutate(ids.draft, body),
+        code("INCOMPATIBLE_RESPONSE")
+      );
+    }
+  } finally {
+    globalThis.fetch = original;
   }
 });
 

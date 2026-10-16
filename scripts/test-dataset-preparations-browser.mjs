@@ -12,6 +12,8 @@ import {
   DatasetFilesContextResponseSchema,
   DatasetFilesInventoryPageQuerySchema,
   DatasetFilesInventoryPageResponseSchema,
+  DatasetFilesOrganizationQuerySchema,
+  DatasetFilesOrganizationPageResponseSchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 const require = createRequire(import.meta.url);
@@ -350,7 +352,7 @@ const server = createServer(async (req, res) => {
     requests.push(recorded);
     const base = "/api/v2/supplier/dataset-drafts";
     const fileRoute = url.pathname.match(
-      /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files)$/
+      /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files\/organization|files)$/
     );
     if (fileRoute) {
       const [, draftId, action] = fileRoute;
@@ -449,6 +451,68 @@ const server = createServer(async (req, res) => {
           return;
         }
         json(res, 200, { success: true, data: result });
+        return;
+      }
+      if (action === "files/organization" && req.method === "GET") {
+        const q = DatasetFilesOrganizationQuerySchema.parse(
+          Object.fromEntries(url.searchParams)
+        );
+        const content = fileContexts.get(draftId);
+        if (
+          content?.id !== q.contentId ||
+          content?.generation !== q.contentGeneration ||
+          draft.generation !== q.expectedPreparationGeneration ||
+          content?.sourceGeneration !== draft.generation
+        ) {
+          json(res, 409, {
+            success: false,
+            error: {
+              code: "DRAFT_CHANGED",
+              message: "Organization context changed",
+            },
+          });
+          return;
+        }
+        assert(["GROUPS", "MEMBERS"].includes(q.section));
+        const all =
+          q.section === "MEMBERS"
+            ? (fileMembers.get(draftId) ?? [])
+                .filter(
+                  (m) =>
+                    (!q.component || m.component === q.component) &&
+                    (!q.memberId || m.id === q.memberId) &&
+                    (!q.afterId || m.id > q.afterId)
+                )
+                .sort((a, b) => a.id.localeCompare(b.id))
+                .map((m) => ({
+                  kind: "MEMBER",
+                  id: m.id,
+                  uploadObjectId: m.uploadObjectId,
+                  component: m.component,
+                  role: m.role,
+                  originalFileName: m.originalFileName,
+                  relativePath: m.relativePath,
+                  group: null,
+                }))
+            : [];
+        const items = all.slice(0, q.limit);
+        json(res, 200, {
+          success: true,
+          data: DatasetFilesOrganizationPageResponseSchema.parse({
+            preparationId: draftId,
+            preparationGeneration: draft.generation,
+            contentId: content.id,
+            contentGeneration: content.generation,
+            section: q.section,
+            component: q.component ?? null,
+            memberId: q.memberId ?? null,
+            inventoryId: null,
+            uploadObjectId: null,
+            items,
+            nextCursor:
+              all.length > q.limit ? { ...q, afterId: items.at(-1).id } : null,
+          }),
+        });
         return;
       }
       if (action === "files" && req.method === "GET") {
@@ -1294,13 +1358,19 @@ try {
       .isDisabled()
   );
   assert.equal(
-    await page.getByText("backend-file-24.txt", { exact: true }).count(),
+    await page
+      .getByRole("list", { name: "Stored file references", exact: true })
+      .getByText("backend-file-24.txt", { exact: true })
+      .count(),
     0
   );
   await page
     .getByRole("button", { name: "Next files page", exact: true })
     .click();
-  await page.getByText("backend-file-24.txt", { exact: true }).waitFor();
+  await page
+    .getByRole("list", { name: "Stored file references", exact: true })
+    .getByText("backend-file-24.txt", { exact: true })
+    .waitFor();
   assert.equal(await page.getByText("Received", { exact: true }).count(), 5);
   await page
     .getByRole("button", { name: "Previous files page", exact: true })

@@ -10,6 +10,7 @@ import {
 import type {
   DatasetFilesContextResponse,
   DatasetFilesInventoryPageResponse,
+  DatasetFilesMutationBody,
   DatasetInspectionProfile,
   DatasetIntakeConfigResponse,
   DatasetMaterialComponent,
@@ -287,7 +288,7 @@ export function usePreparationUploads(options: Options) {
       if (alive.current) {
         setNotice(
           command.kind === "MEMBERS"
-            ? "File selection saved. Stored bytes are unchanged."
+            ? "File selection and organization saved. Stored bytes are unchanged."
             : command.kind === "FINALIZE"
               ? "Receipt finalization requested. Check the file's current status below before selecting it."
               : command.kind === "CANCEL" || command.kind === "REMOVE"
@@ -482,6 +483,32 @@ export function usePreparationUploads(options: Options) {
     setHistory((previous) => [...previous.slice(0, pageIndex + 1), afterId]);
     void refresh(afterId, pageIndex + 1);
   }
+  async function organize(
+    basis: Pick<
+      DatasetFilesInventoryPageResponse,
+      | "preparationId"
+      | "preparationGeneration"
+      | "contentId"
+      | "contentGeneration"
+    >,
+    operations: DatasetFilesMutationBody["operations"]
+  ) {
+    if (!canChange || busy.current || basis.preparationId !== options.saved?.id)
+      return null;
+    // Keep the rendered inventory's exact basis; never rebase an old selection
+    // onto the newest context. The server repeats every ownership/state check.
+    return perform({
+      kind: "MEMBERS",
+      draftId: basis.preparationId,
+      body: {
+        requestId: crypto.randomUUID(),
+        expectedPreparationGeneration: basis.preparationGeneration,
+        expectedContentId: basis.contentId,
+        expectedGeneration: basis.contentGeneration,
+        operations,
+      },
+    });
+  }
   return {
     config: configCurrent ? config : null,
     hasUploadForm,
@@ -508,6 +535,7 @@ export function usePreparationUploads(options: Options) {
     cleanup,
     select,
     removeMember,
+    organize,
     pause: () => transfer.current?.abort(),
     nextPage,
     previousPage: () => {

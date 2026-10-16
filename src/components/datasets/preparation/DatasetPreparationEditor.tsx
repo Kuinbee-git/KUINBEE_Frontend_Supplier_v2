@@ -138,6 +138,7 @@ export function DatasetPreparationEditor({
   const [error, setError] = useState("");
   const [filesWriting, setFilesWriting] = useState(false);
   const [filesUncertain, setFilesUncertain] = useState(false);
+  const [fileInputsDirty, setFileInputsDirty] = useState(false);
   const [uploadsActive, setUploadsActive] = useState(false);
   const [editBase, setEditBase] = useState<DatasetEditBase | null>(null);
   const editBaseRef = useRef<DatasetEditBase | null>(null);
@@ -245,6 +246,7 @@ export function DatasetPreparationEditor({
       !retryPending &&
       !filesUncertain &&
       !filesWriting &&
+      !fileInputsDirty &&
       !uploadsActive &&
       !workflow.priceDirty &&
       !workflow.pending &&
@@ -297,6 +299,7 @@ export function DatasetPreparationEditor({
     retryPending,
     filesUncertain,
     filesWriting,
+    fileInputsDirty,
     uploadsActive,
     workflow.priceDirty,
     workflow.pending,
@@ -505,7 +508,7 @@ export function DatasetPreparationEditor({
     }));
   const moveToField = (field?: string) => {
     setStep(
-      !field
+      !field || field === "files"
         ? 1
         : [
               "uploadChoice",
@@ -905,6 +908,7 @@ export function DatasetPreparationEditor({
               onWritingChange={onFilesWriting}
               onMetadataChanged={onFilesMetadataChanged}
               onActivityChange={onUploadActivity}
+              onInputsDirtyChange={setFileInputsDirty}
             />
             <PreparationGrid>
               {hasFull && (
@@ -1123,6 +1127,7 @@ export function DatasetPreparationEditor({
             saved={saved}
             metadataDirty={dirty}
             uploadsActive={uploadsActive}
+            filesUnapplied={fileInputsDirty}
             onSave={workflow.readOnly ? () => workflow.savePricing() : saveAll}
             onRetry={async () => {
               setStep(3);
@@ -1169,6 +1174,13 @@ export function DatasetPreparationEditor({
             disabled={locked || conflict || filesUncertain}
             onClick={async () => {
               if (await saveAll()) {
+                if (
+                  fileInputsDirty &&
+                  !window.confirm(
+                    "Your draft answers are saved, but file organization input has not been applied. Leave and discard that input?"
+                  )
+                )
+                  return;
                 if (
                   uploadsActive &&
                   !window.confirm(

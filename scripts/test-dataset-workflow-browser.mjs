@@ -13,6 +13,8 @@ import {
   DatasetFilesContextResponseSchema,
   DatasetFilesInventoryPageQuerySchema,
   DatasetFilesInventoryPageResponseSchema,
+  DatasetFilesOrganizationQuerySchema,
+  DatasetFilesOrganizationPageResponseSchema,
   DatasetIntakeConfigResponseSchema,
   DatasetUploadsPageResponseSchema,
   DatasetWorkflowResponseSchema,
@@ -232,6 +234,12 @@ function editBase(draft, operation) {
 }
 function readiness(draft) {
   const issues = [];
+  if (draft.fileIssue)
+    issues.push({
+      code: "COMPANION_TARGET_REQUIRED",
+      field: "files",
+      message: "Connect the supplied transcript to its material.",
+    });
   if (!draft.members.length)
     issues.push({
       code: "FILES_REQUIRED",
@@ -772,6 +780,60 @@ const server = createServer(async (req, res) => {
       ok(res, { ...filesContext(draft), requestId: parsed.requestId });
       return;
     }
+    if (tail === "files/organization" && req.method === "GET") {
+      const query = DatasetFilesOrganizationQuerySchema.parse(queryObject(url));
+      assert(["MEMBERS", "GROUPS"].includes(query.section));
+      if (
+        draft.frozen ||
+        query.expectedPreparationGeneration !== draft.generation ||
+        query.contentId !== draft.contentId ||
+        query.contentGeneration !== draft.contentGeneration
+      ) {
+        deny(res, "DRAFT_CHANGED", "The exact file organization changed.");
+        return;
+      }
+      const all =
+        query.section === "MEMBERS"
+          ? draft.members
+              .filter(
+                (m) =>
+                  (!query.component || m.component === query.component) &&
+                  (!query.memberId || m.id === query.memberId) &&
+                  (!query.afterId || m.id > query.afterId)
+              )
+              .map((m) => ({
+                kind: "MEMBER",
+                id: m.id,
+                uploadObjectId: m.uploadObjectId,
+                component: m.component,
+                role: m.role,
+                originalFileName: m.originalFileName,
+                relativePath: m.relativePath,
+                group: null,
+              }))
+          : [];
+      const items = all.slice(0, query.limit);
+      ok(
+        res,
+        DatasetFilesOrganizationPageResponseSchema.parse({
+          preparationId: draft.id,
+          preparationGeneration: draft.generation,
+          contentId: draft.contentId,
+          contentGeneration: draft.contentGeneration,
+          section: query.section,
+          component: query.component ?? null,
+          memberId: query.memberId ?? null,
+          inventoryId: null,
+          uploadObjectId: null,
+          items,
+          nextCursor:
+            all.length > query.limit
+              ? { ...query, afterId: items.at(-1).id }
+              : null,
+        })
+      );
+      return;
+    }
     if (tail === "files") {
       const query = DatasetFilesInventoryPageQuerySchema.parse(
         queryObject(url)
@@ -1051,6 +1113,48 @@ try {
     }
     return route.continue();
   });
+
+  const unapplied = seed("FULL_ONLY");
+  await open(page, unapplied);
+  await enabled(button(page, "Submit proposal for admin review"));
+  await button(page, "2. Files & contents").click();
+  await page
+    .getByLabel("New group name", { exact: true })
+    .fill("Do not silently submit this group");
+  await button(page, "4. Review draft").click();
+  await page
+    .getByText(
+      "Apply or discard the file organization input in Files & contents before submitting.",
+      { exact: true }
+    )
+    .waitFor();
+  assert(await button(page, "Submit proposal for admin review").isDisabled());
+  assert.equal(writes(unapplied).length, 0);
+  await button(page, "2. Files & contents").click();
+  assert.equal(
+    await page.getByLabel("New group name", { exact: true }).inputValue(),
+    "Do not silently submit this group"
+  );
+  await button(page, "Discard organization input").click();
+  await button(page, "4. Review draft").click();
+  await enabled(button(page, "Submit proposal for admin review"));
+  assert.equal(writes(unapplied).length, 0);
+  unapplied.fileIssue = true;
+  await button(page, "Refresh review checks").click();
+  await page
+    .getByText("Connect the supplied transcript to its material.", {
+      exact: true,
+    })
+    .waitFor();
+  await button(page, "Go to this section").click();
+  await page
+    .getByRole("region", { name: "Files and contents", exact: true })
+    .waitFor();
+  assert.equal(writes(unapplied).length, 0);
+  unapplied.fileIssue = false;
+  console.log(
+    "PASS unapplied file organization survives wizard steps, blocks otherwise-ready Submit, and explicit discard restores readiness without a write"
+  );
 
   // Initial Dataset business status is SUBMITTED for compatibility; verification
   // PENDING and no frozen snapshot keep it a private editable proposal.

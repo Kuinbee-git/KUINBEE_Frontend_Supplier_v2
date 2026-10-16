@@ -13,6 +13,8 @@ import {
   DatasetFilesContextResponseSchema,
   DatasetFilesInventoryPageResponseSchema,
   DatasetFilesMutationBodySchema,
+  DatasetFilesOrganizationQuerySchema,
+  DatasetFilesOrganizationPageResponseSchema,
   DatasetMaterialMutationResponseSchema,
   DatasetIntakeConfigResponseSchema,
   DatasetUploadAdmissionBodySchema,
@@ -52,7 +54,7 @@ const bundle = await build({
     import {DashboardShell} from './src/components/layout/DashboardShell';
     import {DatasetPreparationEditor} from './src/components/datasets/preparation/DatasetPreparationEditor';
     const root=createRoot(document.getElementById('root'));let mount=0;
-    window.mount=(id)=>root.render(<React.StrictMode><QueryProvider><DashboardShell><DatasetPreparationEditor key={++mount} draftId={id}/></DashboardShell></QueryProvider></React.StrictMode>);
+    window.mount=(id)=>root.render(<React.StrictMode><QueryProvider><DashboardShell><DatasetPreparationEditor key={++mount} draftId={id} onExit={()=>window.fixtureExits=(window.fixtureExits??0)+1}/></DashboardShell></QueryProvider></React.StrictMode>);
     window.mount(window.location.pathname.split('/').at(-1));
   `,
     loader: "jsx",
@@ -124,6 +126,9 @@ function seed(choice) {
     contentGeneration: 0,
     sourceGeneration: 0,
     members: [],
+    groups: [],
+    links: [],
+    inventories: [],
     protectedObjects: new Set(),
     metadata: {
       title: "Dataset uploader exercise",
@@ -452,6 +457,161 @@ const server = createServer(async (req, res) => {
       );
       return;
     }
+    if (tail === "files/organization" && req.method === "GET") {
+      const q = DatasetFilesOrganizationQuerySchema.parse(
+        Object.fromEntries(url.searchParams)
+      );
+      if (
+        q.expectedPreparationGeneration !== draft.generation ||
+        q.contentId !== draft.contentId ||
+        q.contentGeneration !== draft.contentGeneration ||
+        draft.sourceGeneration !== draft.generation
+      ) {
+        deny(
+          res,
+          "DRAFT_CHANGED",
+          "File organization changed. Refresh before continuing."
+        );
+        return;
+      }
+      const selected = q.memberId
+        ? draft.members.find(
+            (item) =>
+              item.id === q.memberId &&
+              (!q.component || item.component === q.component)
+          )
+        : null;
+      if (q.memberId && !selected) {
+        json(res, 404, {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Selected file not found." },
+        });
+        return;
+      }
+      const target = (ref) => {
+        const selected = draft.members.find((item) => item.id === ref.memberId);
+        assert(selected);
+        const inventory = draft.inventories.find(
+          (item) =>
+            item.uploadObjectId === selected.uploadObjectId &&
+            item.entries.some((entry) => entry.id === ref.logicalEntryId)
+        );
+        const entry = inventory?.entries.find(
+          (item) => item.id === ref.logicalEntryId
+        );
+        return {
+          ...ref,
+          displayName: selected.relativePath ?? selected.originalFileName,
+          logicalEntry: entry
+            ? {
+                id: entry.id,
+                inventoryId: inventory.id,
+                locator: entry.locator,
+              }
+            : null,
+        };
+      };
+      let all;
+      if (q.section === "GROUPS")
+        all = draft.groups.map((item) => ({ ...item, kind: "GROUP" }));
+      else if (q.section === "MEMBERS")
+        all = draft.members
+          .filter((item) => !q.memberId || item.id === q.memberId)
+          .map((item) => ({
+            kind: "MEMBER",
+            id: item.id,
+            uploadObjectId: item.uploadObjectId,
+            component: item.component,
+            role: item.role,
+            originalFileName: item.originalFileName,
+            relativePath: item.relativePath,
+            group: item.groupId
+              ? {
+                  id: item.groupId,
+                  label: draft.groups.find((group) => group.id === item.groupId)
+                    .label,
+                }
+              : null,
+          }));
+      else if (q.section === "RELATIONSHIPS")
+        all = draft.links
+          .filter(
+            (item) =>
+              !q.memberId ||
+              item.source.memberId === q.memberId ||
+              item.target.memberId === q.memberId
+          )
+          .map((item) => ({
+            ...item,
+            kind: "RELATIONSHIP",
+            source: target(item.source),
+            target: target(item.target),
+          }));
+      else if (q.section === "INVENTORIES")
+        all = draft.inventories
+          .filter(
+            (item) =>
+              item.uploadObjectId === selected.uploadObjectId && item.sealedAt
+          )
+          .map(({ entries: ignored, ...item }) => {
+            void ignored;
+            return { ...item, kind: "INVENTORY" };
+          });
+      else {
+        const inventory = draft.inventories.find(
+          (item) =>
+            item.id === q.inventoryId &&
+            item.uploadObjectId === selected.uploadObjectId &&
+            item.sealedAt
+        );
+        if (!inventory) {
+          json(res, 404, {
+            success: false,
+            error: {
+              code: "NOT_FOUND",
+              message: "Exact sealed inventory not found.",
+            },
+          });
+          return;
+        }
+        all = inventory.entries.map((item) => ({
+          ...item,
+          kind: "ENTRY",
+          uploadObjectId: selected.uploadObjectId,
+          inventoryId: inventory.id,
+        }));
+      }
+      all = all
+        .filter(
+          (item) =>
+            (!q.component ||
+              !item.component ||
+              item.component === q.component) &&
+            (!q.afterId || item.id > q.afterId)
+        )
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const visible = all.slice(0, q.limit);
+      ok(
+        res,
+        DatasetFilesOrganizationPageResponseSchema.parse({
+          preparationId: draft.id,
+          preparationGeneration: draft.generation,
+          contentId: draft.contentId,
+          contentGeneration: draft.contentGeneration,
+          section: q.section,
+          component: q.component ?? null,
+          memberId: q.memberId ?? null,
+          inventoryId: q.inventoryId ?? null,
+          uploadObjectId: ["INVENTORIES", "ENTRIES"].includes(q.section)
+            ? selected.uploadObjectId
+            : null,
+          items: visible,
+          nextCursor:
+            all.length > q.limit ? { ...q, afterId: visible.at(-1).id } : null,
+        })
+      );
+      return;
+    }
     const key = body?.requestId ? draft.id + ":" + body.requestId : null;
     if (key && receipts.has(key)) {
       const prior = receipts.get(key);
@@ -494,30 +654,143 @@ const server = createServer(async (req, res) => {
         );
         return;
       }
-      const results = body.operations.map((operation, index) => {
-        if (operation.operation === "ADD_MEMBER") {
-          const item = scopedAttempts(draft).find(
-            (value) =>
-              value.uploadObjectId === operation.uploadObjectId &&
-              value.state === "ACCEPTED"
-          );
-          assert(item);
-          const added = member(draft, item, operation.component);
-          draft.members.push(added);
-          return { index, operation: operation.operation, id: added.id };
+      const next = {
+        members: structuredClone(draft.members),
+        groups: structuredClone(draft.groups),
+        links: structuredClone(draft.links),
+      };
+      let results;
+      try {
+        results = body.operations.map((operation, index) => {
+          const missing = (code) => {
+            throw Object.assign(new Error(code), { code });
+          };
+          let resultId;
+          if (operation.operation === "ADD_MEMBER") {
+            const item = scopedAttempts(draft).find(
+              (value) =>
+                value.uploadObjectId === operation.uploadObjectId &&
+                value.state === "ACCEPTED"
+            );
+            assert(item);
+            const added = member(draft, item, operation.component);
+            added.role = operation.role;
+            added.groupId = operation.groupId ?? null;
+            added.relativePath = operation.relativePath ?? null;
+            next.members.push(added);
+            return { index, operation: operation.operation, id: added.id };
+          }
+          if (operation.operation === "REMOVE_MEMBER") {
+            const indexOf = next.members.findIndex(
+              (item) => item.id === operation.memberId
+            );
+            assert(indexOf >= 0);
+            if (
+              next.links.some(
+                (item) =>
+                  item.source.memberId === operation.memberId ||
+                  item.target.memberId === operation.memberId
+              )
+            )
+              missing("MEMBER_HAS_RELATIONSHIPS");
+            next.members.splice(indexOf, 1);
+            resultId = operation.memberId;
+          } else if (operation.operation === "ADD_GROUP") {
+            const group = {
+              id: newId(),
+              component: operation.component,
+              label: operation.label,
+            };
+            next.groups.push(group);
+            resultId = group.id;
+          } else if (
+            ["RENAME_GROUP", "REMOVE_GROUP"].includes(operation.operation)
+          ) {
+            const group = next.groups.find(
+              (item) => item.id === operation.groupId
+            );
+            assert(group);
+            if (operation.operation === "RENAME_GROUP")
+              group.label = operation.label;
+            else {
+              if (next.members.some((item) => item.groupId === group.id))
+                missing("GROUP_HAS_MEMBERS");
+              next.groups = next.groups.filter((item) => item.id !== group.id);
+            }
+            resultId = group.id;
+          } else if (
+            ["SET_MEMBER_ROLE", "SET_MEMBER_GROUP"].includes(
+              operation.operation
+            )
+          ) {
+            const item = next.members.find(
+              (item) => item.id === operation.memberId
+            );
+            assert(item);
+            if (operation.operation === "SET_MEMBER_ROLE")
+              item.role = operation.role;
+            else {
+              if (
+                operation.groupId &&
+                !next.groups.some(
+                  (group) =>
+                    group.id === operation.groupId &&
+                    group.component === item.component
+                )
+              )
+                missing("INVALID_MEMBER_GROUP");
+              item.groupId = operation.groupId;
+            }
+            resultId = item.id;
+          } else if (operation.operation === "ADD_LINK") {
+            for (const ref of [operation.source, operation.target]) {
+              const item = next.members.find(
+                (item) => item.id === ref.memberId
+              );
+              assert(item);
+              if (item.component !== operation.component)
+                missing("INVALID_RELATIONSHIP_COMPONENT");
+              if (
+                ref.logicalEntryId &&
+                !draft.inventories.some(
+                  (inv) =>
+                    inv.uploadObjectId === item.uploadObjectId &&
+                    inv.sealedAt &&
+                    inv.entries.some((entry) => entry.id === ref.logicalEntryId)
+                )
+              )
+                missing("INVALID_LOGICAL_ENTRY");
+            }
+            const relation = {
+              id: newId(),
+              component: operation.component,
+              relationship: operation.kind,
+              required: operation.required,
+              source: operation.source,
+              target: operation.target,
+            };
+            next.links.push(relation);
+            resultId = relation.id;
+          } else {
+            assert.equal(operation.operation, "REMOVE_LINK");
+            assert(next.links.some((item) => item.id === operation.linkId));
+            next.links = next.links.filter(
+              (item) => item.id !== operation.linkId
+            );
+            resultId = operation.linkId;
+          }
+          return { index, operation: operation.operation, id: resultId };
+        });
+      } catch (error) {
+        if (error.code) {
+          deny(res, error.code, error.code);
+          return;
         }
-        assert.equal(operation.operation, "REMOVE_MEMBER");
-        const indexOf = draft.members.findIndex(
-          (item) => item.id === operation.memberId
-        );
-        assert(indexOf >= 0);
-        draft.members.splice(indexOf, 1);
-        return {
-          index,
-          operation: operation.operation,
-          id: operation.memberId,
-        };
-      });
+        throw error;
+      }
+      draft.members = next.members;
+      draft.groups = next.groups;
+      draft.links = next.links;
       draft.contentGeneration++;
       saveReceipt(
         res,
@@ -746,6 +1019,7 @@ try {
   const page = await browser.newPage({
     viewport: { width: 1366, height: 1000 },
   });
+  page.setDefaultTimeout(15000);
   page.on("pageerror", (error) => browserErrors.push(error.message));
   await page.route("**/*", (route) => {
     if (new URL(route.request().url()).origin !== origin) {
@@ -1190,6 +1464,390 @@ try {
     "PASS compact ZIP type declarations and failed-check selection denial"
   );
 
+  // Exercise organization on actual UI-uploaded files for every creation choice.
+  const organized = [];
+  const org = page.getByRole("region", {
+    name: "Organize selected files",
+    exact: true,
+  });
+  const selectOrg = (label, value) =>
+    org.getByLabel(label, { exact: true }).selectOption(value);
+  async function selectedFile(value) {
+    await selectOrg("File to organize", value);
+    await org.getByLabel("Selected file purpose", { exact: true }).waitFor();
+  }
+  for (const choice of choices) {
+    const draft = [...drafts.values()].find(
+      (d) => d.metadata.uploadChoice === choice && d.members.length
+    );
+    organized.push(draft);
+    await open(page, draft);
+    for (const area of choice === "FULL_AND_SAMPLE"
+      ? ["FULL", "SAMPLE"]
+      : [choice === "SAMPLE_ONLY" ? "SAMPLE" : "FULL"]) {
+      if (choice === "FULL_AND_SAMPLE")
+        await page.getByLabel("Upload to", { exact: true }).selectOption(area);
+      await page
+        .getByLabel("File purpose", { exact: true })
+        .selectOption("TRANSCRIPT");
+      await choose(page, file(`transcript-${area}.csv`));
+      await namedButton(page, "Upload file").click();
+      await page
+        .getByText(
+          "All file bytes were received. Choose Finish upload to start backend checks.",
+          { exact: true }
+        )
+        .waitFor();
+      const item = scopedAttempts(draft).at(-1),
+        row = uploadRow(page, item);
+      await row
+        .getByRole("button", { name: "Finish upload", exact: true })
+        .click();
+      await row.getByText(/Backend checks in progress/).waitFor();
+      accept(item);
+      await namedButton(page, "Refresh upload status").click();
+      await row
+        .getByRole("button", {
+          name: area === "FULL" ? "Use in full dataset" : "Use as sample",
+          exact: true,
+        })
+        .click();
+      await row.getByText("Selected in this draft", { exact: true }).waitFor();
+      const primary = draft.members.find(
+        (m) => m.component === area && m.role === "PRIMARY"
+      );
+      const companion = draft.members.find(
+        (m) => m.component === area && m.uploadObjectId === item.uploadObjectId
+      );
+      const before = structuredClone(draft.members),
+        charge = account(draft, "5000000000").chargedBytes;
+      if (await namedButton(org, "Use refreshed file view").count())
+        await namedButton(org, "Use refreshed file view").click();
+      await selectOrg("Organize area", area);
+      await org
+        .getByLabel("New group name", { exact: true })
+        .fill(`Session ${area}`);
+      await namedButton(org, "Add group").click();
+      await org.getByLabel("Group name", { exact: true }).waitFor();
+      const group = draft.groups.at(-1);
+      await org
+        .getByLabel("Group name", { exact: true })
+        .fill(`Reviewed session ${area}`);
+      await namedButton(org, "Rename group").click();
+      await org
+        .getByLabel("Existing group", { exact: true })
+        .locator("option:checked")
+        .filter({ hasText: `Reviewed session ${area}` })
+        .waitFor({ state: "attached" });
+      await selectedFile(companion.id);
+      await selectOrg("Selected file group", group.id);
+      await namedButton(org, "Save file details").click();
+      await org.getByLabel("Selected file group", { exact: true }).waitFor();
+      assert.equal(
+        draft.members.find((m) => m.id === companion.id).groupId,
+        group.id
+      );
+      await selectOrg("Relationship purpose", "TRANSCRIPT_FOR");
+      await selectOrg("Related material", primary.id);
+      await namedButton(org, "Add relationship").click();
+      await org
+        .getByRole("list", { name: "Selected file relationships" })
+        .getByText(/Transcript for/)
+        .waitFor();
+      assert.equal(draft.links.at(-1).source.memberId, companion.id);
+      assert.equal(draft.links.at(-1).target.memberId, primary.id);
+      assert.equal(draft.links.at(-1).component, area);
+      assert.equal(draft.links.at(-1).required, true);
+      const targets = await org
+        .getByLabel("Related material", { exact: true })
+        .locator("option")
+        .evaluateAll((nodes) => nodes.map((n) => n.value).filter(Boolean));
+      assert(
+        targets.every(
+          (value) =>
+            draft.members.find((m) => m.id === value).component === area
+        )
+      );
+      await org
+        .getByLabel("Selected file purpose", { exact: true })
+        .selectOption("ANNOTATION");
+      await namedButton(org, "Save file details").click();
+      await org.getByLabel("Selected file purpose", { exact: true }).waitFor();
+      assert.equal(
+        draft.members.find((m) => m.id === companion.id).role,
+        "ANNOTATION"
+      );
+      assert.equal(
+        draft.links.length,
+        1,
+        "Changing purpose never silently deletes the previous relationship"
+      );
+      await namedButton(org, "Remove relationship").click();
+      await org
+        .getByText("No relationships for this file.", { exact: true })
+        .waitFor();
+      await selectOrg("Selected file group", "");
+      await namedButton(org, "Save file details").click();
+      await org.getByLabel("Selected file group", { exact: true }).waitFor();
+      await namedButton(org, "Remove group").click();
+      await org
+        .getByLabel("Group name", { exact: true })
+        .waitFor({ state: "hidden" });
+      assert.equal(draft.groups.length, 0);
+      assert.equal(draft.links.length, 0);
+      assert.equal(account(draft, "5000000000").chargedBytes, charge);
+      assert.deepEqual(
+        draft.members.filter((m) => m.id !== companion.id),
+        before.filter((m) => m.id !== companion.id),
+        "Unseen/other-component files are unchanged"
+      );
+    }
+  }
+  console.log(
+    "PASS organization across all three choices and both areas: UI-uploaded companions, rename/assign/clear/remove groups, exact relationships and purpose correction; no unseen deletion or capacity release"
+  );
+
+  const organizationDraft = organized.at(-1);
+  await open(page, organizationDraft);
+  // A real exit guard keeps unapplied input, including after metadata Save.
+  await org
+    .getByLabel("New group name", { exact: true })
+    .fill("Unapplied group");
+  const discardDialog = page.waitForEvent("dialog").then(async (dialog) => {
+    assert.match(dialog.message(), /file organization input/);
+    await dialog.dismiss();
+  });
+  await namedButton(page, "Save and exit").click();
+  await discardDialog;
+  assert.equal(await page.evaluate(() => window.fixtureExits ?? 0), 0);
+  assert.equal(
+    await org.getByLabel("New group name", { exact: true }).inputValue(),
+    "Unapplied group"
+  );
+  // Metadata Save is independent. Reconcile its acknowledged file context
+  // explicitly before testing another, external content generation change.
+  if (await namedButton(page, "Update files").count()) {
+    await namedButton(page, "Update files").click();
+    await namedButton(page, "Update files").waitFor({ state: "hidden" });
+  }
+  // External mutation forces an explicit refresh without replacing typed inputs.
+  organizationDraft.contentGeneration++;
+  await namedButton(page, "Refresh files").click();
+  await namedButton(org, "Use refreshed file view").waitFor();
+  assert(await namedButton(org, "Add group").isDisabled());
+  await namedButton(org, "Use refreshed file view").click();
+  assert.equal(
+    await org.getByLabel("New group name", { exact: true }).inputValue(),
+    "Unapplied group"
+  );
+  await namedButton(org, "Add group").click();
+  await org.getByLabel("Group name", { exact: true }).waitFor();
+  assert.equal(organizationDraft.groups.at(-1).label, "Unapplied group");
+  console.log(
+    "PASS unapplied organization input survives Save and exit cancellation and generation refresh; stale form cannot mutate until explicitly refreshed"
+  );
+
+  // Lost group ACK uses the same durable file command through a full reload.
+  await org
+    .getByLabel("New group name", { exact: true })
+    .fill("Recover one exact group");
+  flags.lose = "MEMBERS";
+  await namedButton(org, "Add group").click();
+  await namedButton(page, "Retry upload request").waitFor();
+  const lostGroupCommand = requests
+    .filter(
+      (r) =>
+        r.method === "PATCH" && r.path.endsWith(organizationDraft.id + "/files")
+    )
+    .at(-1).body;
+  assert.equal(
+    organizationDraft.groups.filter(
+      (g) => g.label === "Recover one exact group"
+    ).length,
+    1
+  );
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.reload();
+  await filesStep(page);
+  flags.lose = null;
+  await namedButton(page, "Retry upload request").click();
+  await namedButton(page, "Retry upload request").waitFor({ state: "hidden" });
+  const groupRetries = requests.filter(
+    (r) => r.body?.requestId === lostGroupCommand.requestId
+  );
+  assert(groupRetries.length >= 2);
+  for (const r of groupRetries) assert.deepEqual(r.body, lostGroupCommand);
+  assert.equal(
+    organizationDraft.groups.filter(
+      (g) => g.label === "Recover one exact group"
+    ).length,
+    1
+  );
+  console.log(
+    "PASS lost organization ACK recovers one exact group through reload and immutable retry without duplicate creation"
+  );
+
+  // Physical and logical inventories paginate separately; choosing a file does
+  // not imply a latest sealed inventory or a separate downloadable entitlement.
+  const selectedArea = organizationDraft.members.find(
+    (m) => m.role === "PRIMARY"
+  ).component;
+  await selectOrg("Organize area", selectedArea);
+  const archiveMember = organizationDraft.members.find(
+    (m) => m.component === selectedArea && m.role === "PRIMARY"
+  );
+  for (let index = 0; index < 23; index++)
+    organizationDraft.groups.push({
+      id: newId(),
+      component: selectedArea,
+      label: `Paged group ${index}`,
+    });
+  const moreMembers = Array.from({ length: 23 }, (_, index) => ({
+    ...structuredClone(archiveMember),
+    id: newId(),
+    uploadObjectId: newId(),
+    originalFileName: `paged-${index}.csv`,
+    groupId: null,
+  }));
+  organizationDraft.members.push(...moreMembers);
+  const makeInventory = (prefix, digest) => ({
+    id: newId(),
+    uploadObjectId: archiveMember.uploadObjectId,
+    structuralDigest: digest.repeat(64),
+    sealedAt: "2026-10-16T01:00:00.000Z",
+    entries: Array.from({ length: 24 }, (_, index) => ({
+      id: newId(),
+      locator: { kind: "ARCHIVE_ENTRY", path: `${prefix}/item-${index}.csv` },
+    })),
+  });
+  const firstInventory = makeInventory("first", "a"),
+    secondInventory = makeInventory("second", "b");
+  organizationDraft.inventories.push(firstInventory, secondInventory);
+  organizationDraft.contentGeneration++;
+  await namedButton(page, "Refresh files").click();
+  if (await namedButton(org, "Use refreshed file view").count())
+    await namedButton(org, "Use refreshed file view").click();
+  await namedButton(org, "Next source files page").click();
+  const lastMember = moreMembers.at(-1);
+  await selectedFile(lastMember.id);
+  await namedButton(org, "Previous source files page").click();
+  assert.equal(
+    await org.getByLabel("File to organize", { exact: true }).inputValue(),
+    lastMember.id
+  );
+  await namedButton(org, "Next groups page").click();
+  const lastGroup = organizationDraft.groups.at(-1);
+  await selectOrg("Selected file group", lastGroup.id);
+  await namedButton(org, "Previous groups page").click();
+  assert.equal(
+    await org.getByLabel("Selected file group", { exact: true }).inputValue(),
+    lastGroup.id
+  );
+  await namedButton(org, "Save file details").click();
+  await org.getByLabel("Selected file group", { exact: true }).waitFor();
+  assert.equal(
+    organizationDraft.members.find((m) => m.id === lastMember.id).groupId,
+    lastGroup.id
+  );
+  await selectedFile(archiveMember.id);
+  await selectOrg("Related material", archiveMember.id);
+  await selectOrg("Relationship purpose", "ANNOTATION_FOR");
+  await org
+    .getByRole("checkbox", {
+      name: "Select an item inside the source file",
+      exact: true,
+    })
+    .check();
+  await org
+    .getByRole("checkbox", {
+      name: "Select an item inside the related file",
+      exact: true,
+    })
+    .check();
+  assert(await namedButton(org, "Add relationship").isDisabled());
+  assert.equal(
+    await org
+      .getByLabel("Source container inventory", { exact: true })
+      .inputValue(),
+    ""
+  );
+  await selectOrg("Source container inventory", firstInventory.id);
+  await namedButton(org, "Next source entries page").click();
+  const sourceEntry = firstInventory.entries.at(-1);
+  await selectOrg("Source container item", sourceEntry.id);
+  await namedButton(org, "Previous source entries page").click();
+  assert.equal(
+    await org.getByLabel("Source container item", { exact: true }).inputValue(),
+    sourceEntry.id
+  );
+  await selectOrg("Related container inventory", secondInventory.id);
+  const targetEntry = secondInventory.entries[0];
+  await selectOrg("Related container item", targetEntry.id);
+  await namedButton(page, "Review draft").click();
+  await filesStep(page);
+  assert.equal(
+    await org.getByLabel("Source container item", { exact: true }).inputValue(),
+    sourceEntry.id
+  );
+  assert.equal(
+    await org
+      .getByLabel("Related container item", { exact: true })
+      .inputValue(),
+    targetEntry.id
+  );
+  assert(
+    await org
+      .getByRole("checkbox", {
+        name: "Select an item inside the source file",
+        exact: true,
+      })
+      .isChecked()
+  );
+  assert(
+    await org
+      .getByRole("checkbox", {
+        name: "Select an item inside the related file",
+        exact: true,
+      })
+      .isChecked()
+  );
+  await namedButton(org, "Add relationship").click();
+  await org
+    .getByRole("list", { name: "Selected file relationships" })
+    .getByText(/first\/item-23.csv.*second\/item-0.csv/)
+    .waitFor();
+  assert.equal(
+    organizationDraft.links.at(-1).source.logicalEntryId,
+    sourceEntry.id
+  );
+  assert.equal(
+    organizationDraft.links.at(-1).target.logicalEntryId,
+    targetEntry.id
+  );
+  assert.equal(
+    organizationDraft.links.at(-1).source.memberId,
+    organizationDraft.links.at(-1).target.memberId
+  );
+  console.log(
+    "PASS paginated source and group selection keeps exact IDs off-page; explicit two-inventory entry selection retains original logical references in one physical container"
+  );
+
+  const literalName =
+    '<img src=x onerror="window.organizationInjected=true">' +
+    " very long session".repeat(8);
+  await org.getByLabel("New group name", { exact: true }).fill(literalName);
+  await namedButton(org, "Add group").click();
+  await org.getByLabel("Group name", { exact: true }).waitFor();
+  assert.equal(organizationDraft.groups.at(-1).label, literalName);
+  assert.equal(
+    await page.evaluate(() => window.organizationInjected ?? false),
+    false
+  );
+  assert.equal(await org.locator("img").count(), 0);
+  console.log(
+    "PASS long and markup-like group labels remain literal text without injected content"
+  );
+
   const output = process.argv[2];
   if (output) await mkdir(resolve(output), { recursive: true });
   for (const width of [1366, 390])
@@ -1200,13 +1858,23 @@ try {
         exact: true,
       });
       if (await toggle.count()) await toggle.click();
-      await page.evaluate((dark) => {
-        document.documentElement.classList.toggle("dark", dark);
-      }, dark);
+      await page.waitForFunction(
+        (dark) =>
+          document.documentElement.classList.contains("dark") === dark &&
+          document.documentElement.dataset.dashboardThemeTransition !== "true",
+        dark
+      );
+      await org
+        .getByRole("heading", { name: "Organize selected files", exact: true })
+        .scrollIntoViewIfNeeded();
       assert.equal(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth
-        ),
+        await page.evaluate(() => {
+          const main = document.querySelector("#supplier-dashboard-main");
+          return (
+            document.documentElement.scrollWidth <= window.innerWidth &&
+            main.scrollWidth <= main.clientWidth
+          );
+        }),
         true
       );
       assert.equal(
@@ -1234,8 +1902,10 @@ try {
             `uploader-${width}-${dark ? "dark" : "light"}.png`
           ),
           fullPage: true,
+          animations: "disabled",
         });
     }
+  await open(page, zip);
   flags.closed = true;
   await namedButton(page, "Refresh upload status").click();
   await page

@@ -20,6 +20,7 @@ import { datasetFilesApi } from "@/lib/api/dataset-files";
 import { PreparationApiError } from "@/lib/api/dataset-preparations";
 import { PreparationGrid, PreparationSection } from "./PreparationFields";
 import { PreparationUploadPanel } from "./PreparationUploadPanel";
+import { PreparationOrganization } from "./PreparationOrganization";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 const purpose: Record<Member["role"], string> = {
@@ -145,6 +146,7 @@ export function PreparationFilesPanel({
   onWritingChange,
   onMetadataChanged,
   onActivityChange,
+  onInputsDirtyChange,
 }: {
   saved: DatasetPreparationResponse | null;
   active: boolean;
@@ -155,6 +157,7 @@ export function PreparationFilesPanel({
   onWritingChange: (value: boolean) => void;
   onMetadataChanged: () => void;
   onActivityChange: (value: boolean, pause?: () => void) => void;
+  onInputsDirtyChange: (value: boolean) => void;
 }) {
   const [context, setContext] = useState<DatasetFilesContextResponse | null>(
     null
@@ -641,6 +644,27 @@ export function PreparationFilesPanel({
             </DashboardButton>
           </div>
         </div>
+      )}
+      {context?.contentId && context.contentGeneration !== null && (
+        <PreparationOrganization
+          basis={{
+            preparationId: context.preparationId,
+            preparationGeneration: context.preparationGeneration,
+            contentId: context.contentId,
+            contentGeneration: context.contentGeneration,
+          }}
+          active={Boolean(
+            active &&
+            current &&
+            context.editable &&
+            !context.synchronizationRequired
+          )}
+          canChange={uploads.canChange}
+          hasFull={hasFull}
+          hasSample={hasSample}
+          mutate={uploads.organize}
+          onDirtyChange={onInputsDirtyChange}
+        />
       )}
     </PreparationGrid>
   );

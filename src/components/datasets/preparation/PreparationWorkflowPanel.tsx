@@ -18,6 +18,7 @@ export function PreparationWorkflowPanel({
   saved,
   metadataDirty,
   uploadsActive,
+  filesUnapplied = false,
   onSave,
   onRetry,
   onIssue,
@@ -26,6 +27,7 @@ export function PreparationWorkflowPanel({
   saved: DatasetPreparationResponse | null;
   metadataDirty: boolean;
   uploadsActive: boolean;
+  filesUnapplied?: boolean;
   onSave: () => Promise<unknown>;
   onRetry: () => Promise<unknown>;
   onIssue: (field?: string) => void;
@@ -318,14 +320,22 @@ export function PreparationWorkflowPanel({
             </ul>
           )}
           {!workflow.readOnly && (
-            <DashboardButton
-              type="button"
-              className="h-auto min-h-10 whitespace-normal"
-              disabled={!workflow.canSubmit}
-              onClick={() => void workflow.submit()}
-            >
-              Submit proposal for admin review
-            </DashboardButton>
+            <>
+              {filesUnapplied && (
+                <p role="status" className="text-sm text-muted-foreground">
+                  Apply or discard the file organization input in Files &amp;
+                  contents before submitting.
+                </p>
+              )}
+              <DashboardButton
+                type="button"
+                className="h-auto min-h-10 whitespace-normal"
+                disabled={!workflow.canSubmit || filesUnapplied}
+                onClick={() => void workflow.submit()}
+              >
+                Submit proposal for admin review
+              </DashboardButton>
+            </>
           )}
           <p className="text-sm text-muted-foreground">
             {workflow.readOnly
