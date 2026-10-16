@@ -3,6 +3,8 @@ import { useCallback, useState } from "react";
 import {
   DATASET_MODALITIES,
   DATASET_UPLOAD_CHOICES,
+  formatDatasetGeographicCoverage,
+  formatDatasetCollectionPeriod,
   type DatasetPreparationMetadata,
   type DatasetPreparationCatalogLabelsResponse,
 } from "@kuinbee/dataset-preparation-contracts";
@@ -14,6 +16,7 @@ import {
   formatDeclaredMeasurement,
   getPreparationProfileSummary,
 } from "./PreparationFields";
+import { PreparationCategoryName } from "./PreparationDiscoveryFields";
 
 export function PreparationReview({
   metadata,
@@ -75,6 +78,15 @@ export function PreparationReview({
     ],
     ["Dataset license", metadata.license],
     ["Collection boundary", metadata.collectionBoundary],
+    [
+      "Geographic coverage · supplier declared",
+      formatDatasetGeographicCoverage(metadata.geographicCoverage),
+    ],
+    [
+      "Collection or capture period · supplier declared",
+      formatDatasetCollectionPeriod(metadata.collectionPeriod),
+    ],
+    ["Tags", metadata.tags?.join(", ")],
     ["Short summary", metadata.overview],
     ["Detailed description", metadata.description],
     ["Quality statement", metadata.dataQuality],
@@ -122,6 +134,24 @@ export function PreparationReview({
               </dd>
             </div>
           ))}
+          <div>
+            <dt className="text-sm font-medium">
+              Additional categories · current labels
+            </dt>
+            <dd className="mt-1 text-sm text-muted-foreground">
+              {metadata.secondaryCategoryIds?.length ? (
+                <ul className="space-y-1">
+                  {metadata.secondaryCategoryIds.map((id) => (
+                    <li key={id}>
+                      <PreparationCategoryName id={id} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                "None selected"
+              )}
+            </dd>
+          </div>
         </dl>
       </PreparationSection>
       <PreparationSection

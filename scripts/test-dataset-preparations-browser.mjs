@@ -1755,6 +1755,185 @@ try {
     "PASS actual pageSize catalogue pagination beyond 100, selection retention through search and current-label readback"
   );
 
+  await step(page, "3. Dataset details");
+  const additional = page.getByLabel("Add an additional category", {
+    exact: true,
+  });
+  await additional
+    .locator("option", { hasText: /^Subject 1$/ })
+    .waitFor({ state: "attached" });
+  await additional.selectOption(categories[0].id);
+  for (let pageIndex = 0; pageIndex < 5; pageIndex++) {
+    await page
+      .getByRole("button", { name: "Load more categories", exact: true })
+      .click();
+    await page
+      .getByText(
+        String(Math.min((pageIndex + 2) * 20, 113)) +
+          " of 113 matching categories loaded.",
+        { exact: true }
+      )
+      .waitFor();
+  }
+  await additional.selectOption(categories[111].id);
+  for (const selectedId of [
+    categories[0].id,
+    categories[111].id,
+    categories[112].id,
+  ])
+    assert.equal(
+      await additional.locator('option[value="' + selectedId + '"]').count(),
+      0
+    );
+  const tags = page.getByLabel("Tags (one per line)", { exact: true });
+  await tags.fill("Marathi conversations");
+  await tags.press("End");
+  await tags.press("Enter");
+  await tags.pressSequentially("Sensor context");
+  assert.equal(
+    await tags.inputValue(),
+    "Marathi conversations\nSensor context"
+  );
+  await tags.fill("  Marathi conversations  \nSensor context\n\n");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.secondaryCategoryIds, [
+    categories[0].id,
+    categories[111].id,
+  ]);
+  assert.deepEqual(drafts.get(scopedId).metadata.tags, [
+    "Marathi conversations",
+    "Sensor context",
+  ]);
+  const tagWrites = requests.filter((request) =>
+    ["POST", "PATCH"].includes(request.method)
+  ).length;
+  await tags.fill("Repeated tag\nRepeated tag");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "Tags must be unique" })
+    .waitFor();
+  assert.equal(
+    requests.filter((request) => ["POST", "PATCH"].includes(request.method))
+      .length,
+    tagWrites
+  );
+  assert.equal(await tags.inputValue(), "Repeated tag\nRepeated tag");
+  await tags.fill("Marathi conversations\nSensor context");
+  await page.reload();
+  await sleepReady(page);
+  await step(page, "3. Dataset details");
+  await page
+    .getByRole("list", { name: "Additional categories", exact: true })
+    .getByText("Subject 112", { exact: true })
+    .waitFor();
+  await page
+    .getByRole("button", {
+      name: "Remove additional category " + categories[0].id,
+      exact: true,
+    })
+    .click();
+  await tags.fill("");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.secondaryCategoryIds, [
+    categories[111].id,
+  ]);
+  assert.deepEqual(drafts.get(scopedId).metadata.tags, []);
+  console.log(
+    "PASS additional categories beyond 100 retain named selections and exclude primary/duplicates; multiline tags round-trip and explicit empty lists clear"
+  );
+
+  await page
+    .getByLabel("Geographic coverage", { exact: true })
+    .selectOption("KNOWN");
+  await page
+    .getByLabel("Collection or capture period", { exact: true })
+    .selectOption("KNOWN");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.geographicCoverage, {
+    state: "KNOWN",
+  });
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionPeriod, {
+    state: "KNOWN",
+  });
+  await page
+    .getByLabel("Places or regions represented", { exact: true })
+    .fill("India, mainly Maharashtra");
+  const coverageWrites = requests.filter((request) =>
+    ["POST", "PATCH"].includes(request.method)
+  ).length;
+  await page.getByLabel("Collection start", { exact: true }).fill("2023-02-29");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "collectionPeriod.start.value" })
+    .waitFor();
+  assert.equal(
+    await page.getByLabel("Collection start", { exact: true }).inputValue(),
+    "2023-02-29"
+  );
+  await page.getByLabel("Collection start", { exact: true }).fill("2025");
+  await page.getByLabel("Collection end", { exact: true }).fill("2024-06");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "cannot end before it starts" })
+    .waitFor();
+  assert.equal(
+    requests.filter((request) => ["POST", "PATCH"].includes(request.method))
+      .length,
+    coverageWrites
+  );
+  assert.equal(
+    await page.getByLabel("Collection start", { exact: true }).inputValue(),
+    "2025"
+  );
+  await page.getByLabel("Collection start", { exact: true }).fill("2019");
+  await page.getByLabel("Collection end", { exact: true }).fill("2024-06");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionPeriod, {
+    state: "KNOWN",
+    start: { precision: "YEAR", value: "2019" },
+    end: { precision: "MONTH", value: "2024-06" },
+  });
+  await step(page, "4. Review draft");
+  await page.getByText("India, mainly Maharashtra", { exact: true }).waitFor();
+  await page
+    .getByText("2019 (year) to 2024-06 (month)", { exact: true })
+    .waitFor();
+  await page.getByText("Subject 112", { exact: true }).waitFor();
+  await step(page, "3. Dataset details");
+  await page
+    .getByLabel("Geographic coverage", { exact: true })
+    .selectOption("UNKNOWN");
+  await page
+    .getByLabel("Collection or capture period", { exact: true })
+    .selectOption("NOT_APPLICABLE");
+  await save(page);
+  await page.reload();
+  await sleepReady(page);
+  await step(page, "3. Dataset details");
+  assert.equal(
+    await page.getByLabel("Geographic coverage", { exact: true }).inputValue(),
+    "UNKNOWN"
+  );
+  assert.equal(
+    await page
+      .getByLabel("Collection or capture period", { exact: true })
+      .inputValue(),
+    "NOT_APPLICABLE"
+  );
+  assert.deepEqual(drafts.get(scopedId).metadata.geographicCoverage, {
+    state: "UNKNOWN",
+  });
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionPeriod, {
+    state: "NOT_APPLICABLE",
+  });
+  console.log(
+    "PASS incomplete coverage claims save progressively, exact year/month precision reaches saved review and explicit unknown/not-applicable choices clear stale claims"
+  );
+  await step(page, "1. Basics");
+
   await page
     .getByLabel("Dataset title", { exact: true })
     .fill("Local title survives stale save");

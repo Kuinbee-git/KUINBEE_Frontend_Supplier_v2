@@ -79,6 +79,15 @@ function seed(choice, options = {}) {
       modalities: ["TABULAR"],
       contexts: [],
       collectionBoundary: "The complete defined test collection",
+      geographicCoverage: {
+        state: "KNOWN",
+        description: "Frozen supplier-declared region",
+      },
+      collectionPeriod: {
+        state: "KNOWN",
+        start: { precision: "YEAR", value: "2019" },
+        end: { precision: "MONTH", value: "2024-06" },
+      },
       overview: "Collection overview",
       description: "Each record represents a test event.",
       dataQuality: "Supplier declared test quality",
@@ -1179,6 +1188,14 @@ try {
     }
     await button(page, "Submit proposal for admin review").click();
     await page.locator("[data-frozen-submission]").waitFor();
+    await page
+      .locator("[data-frozen-submission]")
+      .getByText("Frozen supplier-declared region", { exact: true })
+      .waitFor();
+    await page
+      .locator("[data-frozen-submission]")
+      .getByText("2019 (year) to 2024-06 (month)", { exact: true })
+      .waitFor();
     assert.equal(commandWrites(draft, "/submit").length, 1);
     assert.equal(commandWrites(draft, "/pricing").length, 0);
     assert.equal(draft.verificationStatus, "SUBMITTED");

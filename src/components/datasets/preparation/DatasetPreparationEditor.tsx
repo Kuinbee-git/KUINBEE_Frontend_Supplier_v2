@@ -35,6 +35,8 @@ import {
 } from "@/components/datasets/workspace/DatasetWorkspace";
 import { DATASET_TYPES } from "@/constants/dataset.constants";
 import { PreparationCatalogPicker } from "./PreparationCatalogPicker";
+import { PreparationCoverageFields } from "./PreparationCoverageFields";
+import { PreparationDiscoveryFields } from "./PreparationDiscoveryFields";
 import { PreparationReview } from "./PreparationReview";
 import { PreparationFilesPanel } from "./PreparationFilesPanel";
 import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
@@ -103,7 +105,13 @@ function metadataForSave(metadata: DatasetPreparationMetadata) {
           .filter(Boolean),
       };
   }
-  return DatasetPreparationMetadataSchema.parse({ ...metadata, profiles });
+  return DatasetPreparationMetadataSchema.parse({
+    ...metadata,
+    profiles,
+    ...(metadata.tags !== undefined
+      ? { tags: metadata.tags.map((value) => value.trim()).filter(Boolean) }
+      : {}),
+  });
 }
 type Pending =
   | { kind: "create"; body: DatasetPreparationCreateBody }
@@ -870,7 +878,21 @@ export function DatasetPreparationEditor({
                   <PreparationCatalogPicker
                     kind="categories"
                     value={metadata.primaryCategoryId}
-                    onChange={(value) => setCommon("primaryCategoryId", value)}
+                    onChange={(value) =>
+                      update((previous) => ({
+                        ...previous,
+                        primaryCategoryId: value,
+                        ...(value &&
+                        previous.secondaryCategoryIds?.includes(value)
+                          ? {
+                              secondaryCategoryIds:
+                                previous.secondaryCategoryIds.filter(
+                                  (id) => id !== value
+                                ),
+                            }
+                          : {}),
+                      }))
+                    }
                     disabled={fieldsLocked || workflow.managed}
                   />
                   <PreparationCatalogPicker
@@ -1057,6 +1079,15 @@ export function DatasetPreparationEditor({
                     title="Optional enrichment"
                     className={hasFull ? "lg:col-span-8" : "lg:col-span-12"}
                   >
+                    <PreparationDiscoveryFields
+                      metadata={metadata}
+                      onUpdate={update}
+                      disabled={fieldsLocked}
+                    />
+                    <PreparationCoverageFields
+                      metadata={metadata}
+                      onUpdate={update}
+                    />
                     <PreparationField
                       label="Known limitations"
                       value={metadata.limitations}

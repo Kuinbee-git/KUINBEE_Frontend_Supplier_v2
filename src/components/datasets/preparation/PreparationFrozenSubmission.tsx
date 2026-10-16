@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   DATASET_MODALITIES,
   DATASET_UPLOAD_CHOICES,
+  formatDatasetGeographicCoverage,
+  formatDatasetCollectionPeriod,
   type DatasetDeclaredMeasurement,
 } from "@kuinbee/dataset-preparation-contracts";
 import { DashboardButton } from "@/components/dashboard";
@@ -452,6 +454,14 @@ export function PreparationFrozenSubmission({
               ],
               ["Dataset license", common.license],
               ["Collection boundary", metadata.collectionBoundary],
+              [
+                "Geographic coverage at submission · supplier declared",
+                formatDatasetGeographicCoverage(metadata.geographicCoverage),
+              ],
+              [
+                "Collection or capture period at submission · supplier declared",
+                formatDatasetCollectionPeriod(metadata.collectionPeriod),
+              ],
               ["Short summary", common.overview],
               ["Detailed description", common.description],
               ["Quality statement", common.dataQuality],
