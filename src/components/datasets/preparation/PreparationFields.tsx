@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard";
 import {
   DatasetDeclaredMetricSchema,
+  isDatasetPreparationProfileFieldApplicable,
   type DatasetPreparationMetadata,
   type DatasetPreparationProfiles,
   type DatasetDeclaredMeasurement,
@@ -318,16 +319,50 @@ type Definition = {
   key: string;
   label: string;
   help?: string;
-  kind?: "availability" | "languages" | "audio" | "sync";
-  condition?: (values: Record<string, unknown>) => boolean;
+  kind?:
+    | "availability"
+    | "languages"
+    | "audio"
+    | "sync"
+    | "textContent"
+    | "transcriptTiming"
+    | "videoReferences";
 };
 const availability = [
-  ["PRESENT", "Available / planned to be included"],
-  ["ABSENT", "Not available / not included"],
+  ["PRESENT", "Available in the represented collection"],
+  ["ABSENT", "Not available in the represented collection"],
   ["UNKNOWN", "Unknown"],
 ] as const;
-const included = (key: string) => (value: Record<string, unknown>) =>
-  value[key] === "PRESENT";
+const profileOptions = {
+  availability,
+  audio: [
+    ["SPEECH", "Speech"],
+    ["NON_SPEECH", "Other sounds"],
+    ["MIXED", "Speech and other sounds"],
+    ["UNKNOWN", "Unknown"],
+  ],
+  sync: [
+    ["NO_CLAIM", "No synchronization claimed"],
+    ["DESCRIBED", "Describe synchronization"],
+    ["UNKNOWN", "Unknown"],
+  ],
+  textContent: [
+    ["HUMAN_LANGUAGE", "Human language"],
+    ["NON_LANGUAGE", "Other content, such as codes or numbers"],
+    ["MIXED", "Human language and other content"],
+    ["UNKNOWN", "Unknown"],
+  ],
+  transcriptTiming: [
+    ["UNTIMED", "Untimed transcripts"],
+    ["TIMED", "Timed transcripts"],
+    ["UNKNOWN", "Timing not assessed"],
+  ],
+  videoReferences: [
+    ["WHOLE_ITEM", "Whole clips or items"],
+    ["TIME_OR_FRAME", "Times or frames within a video"],
+    ["UNKNOWN", "References not assessed"],
+  ],
+} as const;
 const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
   {
     tabular: {
@@ -366,7 +401,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
           label: "Spoken languages",
           kind: "languages",
           help: "Separate languages with commas; explicitly enter Unknown if unassessed.",
-          condition: (value) => value.content !== "NON_SPEECH",
         },
         {
           key: "recordingContext",
@@ -377,17 +411,23 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
           key: "transcriptAvailability",
           label: "Transcript availability",
           kind: "availability",
+          help: "Describe the collection, including unseen material. Actual Full/Sample inclusion is established separately by the selected files and their links.",
         },
         {
           key: "transcriptMeaning",
           label: "Transcript meaning and conventions",
-          condition: included("transcriptAvailability"),
+          help: "Required when available. Explain the conventions or state what is undocumented; technical checks do not verify transcription accuracy.",
+        },
+        {
+          key: "transcriptTiming",
+          label: "Are the available transcripts timed?",
+          kind: "transcriptTiming",
+          help: "Untimed transcripts need no invented timestamps. Timing not assessed makes no exact alignment claim.",
         },
         {
           key: "alignmentNotes",
           label: "Transcript timing and matching",
           help: "Explain only alignment that is actually claimed.",
-          condition: included("transcriptAvailability"),
         },
         {
           key: "annotationAvailability",
@@ -397,7 +437,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Audio label meanings",
-          condition: included("annotationAvailability"),
         },
         {
           key: "speakerCoverage",
@@ -419,12 +458,11 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Image annotation type and meaning",
-          condition: included("annotationAvailability"),
+          help: "Required when available. Explain labels, boxes, masks or other annotations; state which meanings are undocumented.",
         },
         {
           key: "classDefinitions",
           label: "Class or label-code definitions",
-          condition: included("annotationAvailability"),
         },
         {
           key: "coverage",
@@ -455,12 +493,16 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Video annotation meanings",
-          condition: included("annotationAvailability"),
+        },
+        {
+          key: "annotationReferences",
+          label: "What do the available video annotations refer to?",
+          kind: "videoReferences",
+          help: "A whole-clip label needs no frame or timestamp convention. Unassessed references make no precise alignment claim.",
         },
         {
           key: "timingConvention",
           label: "Annotation time or frame convention",
-          condition: included("annotationAvailability"),
         },
       ],
     },
@@ -470,6 +512,12 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "recordUnit",
           label: "What does one document or text record represent?",
+        },
+        {
+          key: "languageContent",
+          label: "Do the text records contain human language?",
+          kind: "textContent",
+          help: "Human-language text needs known languages or an explicit Unknown answer. Codes or numbers need no invented human language.",
         },
         {
           key: "languages",
@@ -485,12 +533,10 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Text annotation meanings",
-          condition: included("annotationAvailability"),
         },
         {
           key: "recordConvention",
           label: "Record, span or offset convention",
-          condition: included("annotationAvailability"),
         },
       ],
     },
@@ -521,7 +567,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "synchronizationNotes",
           label: "How are streams synchronized?",
-          condition: (value) => value.synchronization === "DESCRIBED",
         },
         {
           key: "calibrationAvailability",
@@ -531,7 +576,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "calibrationMeaning",
           label: "Calibration meaning",
-          condition: included("calibrationAvailability"),
         },
         {
           key: "coordinateConventions",
@@ -595,27 +639,39 @@ export function getPreparationProfileSummary(
   if (metadata.contexts?.includes("HEALTHCARE")) active.push("healthcare");
   if (metadata.contexts?.includes("EGOCENTRIC")) active.push("egocentric");
   const display: Record<string, string> = {
-    PRESENT: "Available / planned to be included",
-    ABSENT: "Not available / not included",
+    PRESENT: "Available in the represented collection",
+    ABSENT: "Not available in the represented collection",
     UNKNOWN: "Unknown",
     SPEECH: "Speech",
     NON_SPEECH: "Other sounds",
     MIXED: "Speech and other sounds",
     NO_CLAIM: "No synchronization claimed",
     DESCRIBED: "Described by supplier",
+    HUMAN_LANGUAGE: "Human language",
+    NON_LANGUAGE: "Other content, such as codes or numbers",
+    UNTIMED: "Untimed transcripts",
+    TIMED: "Timed transcripts",
+    WHOLE_ITEM: "Whole clips or items",
+    TIME_OR_FRAME: "Times or frames within a video",
   };
   return active.map((name) => {
     const values = (metadata.profiles?.[name] ?? {}) as Record<string, unknown>;
     return {
       title: definitions[name].title,
       fields: definitions[name].fields
-        .filter((field) => !field.condition || field.condition(values))
+        .filter((field) =>
+          isDatasetPreparationProfileFieldApplicable(name, field.key, values)
+        )
         .map((field) => {
           const raw = values[field.key];
           const value = Array.isArray(raw)
             ? raw.filter(Boolean).join(", ")
             : typeof raw === "string" && raw
-              ? (display[raw] ?? raw)
+              ? field.key === "languageContent" && raw === "MIXED"
+                ? "Human language and other content"
+                : field.kind && Object.hasOwn(display, raw)
+                  ? display[raw]
+                  : raw
               : "Not answered";
           return { label: field.label, value };
         }),
@@ -669,10 +725,16 @@ export function PreparationProfileFields({
           <PreparationSection
             key={name}
             title={group.title}
-            help="Describe the represented collection. Optional answers can remain incomplete in a saved draft; these are declarations, not inspected file facts."
+            help="Describe the represented collection. Required answers may stay incomplete while saving a draft. Before Submit, complete applicable questions or state Unknown where allowed. Available does not mean included in the selected Full or Sample files."
           >
             {group.fields
-              .filter((field) => !field.condition || field.condition(values))
+              .filter((field) =>
+                isDatasetPreparationProfileFieldApplicable(
+                  name,
+                  field.key,
+                  values
+                )
+              )
               .map((field) => {
                 if (field.kind === "languages")
                   return (
@@ -703,22 +765,7 @@ export function PreparationProfileFields({
                       }
                       onChange={(value) => write(field.key, value)}
                       help={field.help}
-                      options={
-                        field.kind === "availability"
-                          ? availability
-                          : field.kind === "audio"
-                            ? [
-                                ["SPEECH", "Speech"],
-                                ["NON_SPEECH", "Other sounds"],
-                                ["MIXED", "Speech and other sounds"],
-                                ["UNKNOWN", "Unknown"],
-                              ]
-                            : [
-                                ["NO_CLAIM", "No synchronization claimed"],
-                                ["DESCRIBED", "Describe synchronization"],
-                                ["UNKNOWN", "Unknown"],
-                              ]
-                      }
+                      options={profileOptions[field.kind]}
                     />
                   );
                 return (

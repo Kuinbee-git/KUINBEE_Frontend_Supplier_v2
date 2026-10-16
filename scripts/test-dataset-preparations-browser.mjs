@@ -45,8 +45,10 @@ const entry = [
   "import {DatasetPreparationScreen} from './src/components/datasets/preparation/DatasetPreparationScreen';",
   "import {DATASET_PREPARATION_ENABLED} from './src/lib/dataset-preparation-environment';",
   "import {preparationApi} from './src/lib/api/dataset-preparations';",
+  "import {getPreparationProfileSummary} from './src/components/datasets/preparation/PreparationFields';",
   "import {DatasetPreparationMetadataSchema} from '@kuinbee/dataset-preparation-contracts';",
   "window.runtimeContract = {partial:DatasetPreparationMetadataSchema.safeParse({title:'Partial'}).success, forged:DatasetPreparationMetadataSchema.safeParse({title:'Bad',scanPassed:true}).success};",
+  "window.profileSummaryProbes=['constructor','UNKNOWN'].map(recordUnit=>getPreparationProfileSummary({title:'Literal record meaning',modalities:['TABULAR'],profiles:{tabular:{recordUnit}}})[0].fields.find(field=>field.label==='What does one record represent?').value);",
   "window.tryProductionWrite=async()=>{try{await preparationApi.create({requestId:crypto.randomUUID(),metadata:{title:'Blocked'}});}catch(e){return e.code;}};",
   "const root=createRoot(document.getElementById('root')); let mount=0;",
   "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
@@ -1073,6 +1075,10 @@ try {
     partial: true,
     forged: false,
   });
+  assert.deepEqual(await page.evaluate(() => window.profileSummaryProbes), [
+    "constructor",
+    "UNKNOWN",
+  ]);
   await page
     .getByLabel("Dataset title", { exact: true })
     .fill("Only a title is needed");

@@ -29,6 +29,7 @@ import {
   DatasetEditContextQuerySchema,
   DatasetEditContextResponseSchema,
   DatasetEditBaseResponseSchema,
+  getDatasetPreparationReadiness,
 } from "@kuinbee/dataset-preparation-contracts";
 
 // Real Editor, workflow hook, native sessionStorage and HTTP against an explicit
@@ -91,6 +92,10 @@ function seed(choice, options = {}) {
       overview: "Collection overview",
       description: "Each record represents a test event.",
       dataQuality: "Supplier declared test quality",
+      collectionMeasurements: [
+        { metric: "RECORD_COUNT", unit: "COUNT", state: "UNKNOWN" },
+      ],
+      profiles: { tabular: { recordUnit: "One synthetic event" } },
       fullCompleteness: choice === "SAMPLE_ONLY" ? null : true,
       sample:
         choice === "FULL_ONLY"
@@ -98,6 +103,8 @@ function seed(choice, options = {}) {
           : {
               selectionMethod: "Representative subset",
               coverage: "One test session",
+              omissions: "UNKNOWN",
+              transformations: "NONE_DECLARED",
             },
     },
     pricing: {
@@ -242,7 +249,10 @@ function editBase(draft, operation) {
   });
 }
 function readiness(draft) {
-  const issues = [];
+  const issues = getDatasetPreparationReadiness(draft.metadata).issues.filter(
+    (issue) =>
+      !["FILES_NOT_ENABLED", "SUBMISSION_NOT_ENABLED"].includes(issue.code)
+  );
   if (draft.fileIssue)
     issues.push({
       code: "COMPANION_TARGET_REQUIRED",
@@ -254,18 +264,6 @@ function readiness(draft) {
       code: "FILES_REQUIRED",
       message:
         "Upload and select the required checked material before submission.",
-    });
-  if (!draft.metadata.license)
-    issues.push({
-      code: "LICENSE_REQUIRED",
-      field: "license",
-      message: "Choose a Dataset license before submission.",
-    });
-  if (!draft.metadata.overview)
-    issues.push({
-      code: "OVERVIEW_REQUIRED",
-      field: "overview",
-      message: "Complete the collection summary before submission.",
     });
   if (!hasWorking(draft))
     issues.push({
@@ -1212,6 +1210,199 @@ try {
     "PASS all three choices use explicit free Submit; initial business status does not freeze the draft, successful Submit does not publish"
   );
 
+  for (const choice of choices)
+    for (const modality of ["AUDIO", "VIDEO", "TEXT"]) {
+      const draft = seed(choice);
+      draft.metadata.modalities = [modality];
+      draft.metadata.profiles =
+        modality === "AUDIO"
+          ? {
+              audio: {
+                content: "SPEECH",
+                transcriptAvailability: "UNKNOWN",
+                annotationAvailability: "UNKNOWN",
+              },
+            }
+          : modality === "VIDEO"
+            ? {
+                video: {
+                  content: "Silent labelled clips",
+                  annotationAvailability: "PRESENT",
+                  annotationMeaning: "Whole-clip activity labels",
+                  timingConvention: "Retained obsolete frame claim",
+                },
+              }
+            : {
+                text: {
+                  recordUnit: "One code record",
+                  annotationAvailability: "ABSENT",
+                },
+              };
+      await open(page, draft);
+      assert(
+        await button(page, "Submit proposal for admin review").isDisabled()
+      );
+      await button(page, "3. Dataset details").click();
+      if (modality === "AUDIO")
+        await page
+          .getByLabel("Spoken languages", { exact: true })
+          .fill("Unknown");
+      if (modality === "VIDEO") {
+        await page
+          .getByLabel("What do the available video annotations refer to?", {
+            exact: true,
+          })
+          .selectOption("TIME_OR_FRAME");
+        assert.equal(
+          await page
+            .getByLabel("Annotation time or frame convention", { exact: true })
+            .inputValue(),
+          "Retained obsolete frame claim"
+        );
+        await page
+          .getByLabel("What do the available video annotations refer to?", {
+            exact: true,
+          })
+          .selectOption("UNKNOWN");
+        assert.equal(
+          await page
+            .getByLabel("Annotation time or frame convention", { exact: true })
+            .count(),
+          0
+        );
+        await page
+          .getByLabel("What do the available video annotations refer to?", {
+            exact: true,
+          })
+          .selectOption("WHOLE_ITEM");
+        assert.equal(
+          await page
+            .getByLabel("Annotation time or frame convention", { exact: true })
+            .count(),
+          0
+        );
+      }
+      if (modality === "TEXT") {
+        await page
+          .getByLabel("Do the text records contain human language?", {
+            exact: true,
+          })
+          .selectOption("NON_LANGUAGE");
+        assert.equal(
+          await page.getByLabel("Text languages", { exact: true }).count(),
+          0
+        );
+      }
+      const ack = page.waitForResponse(
+        (response) =>
+          response.request().method() === "PATCH" &&
+          new URL(response.url()).pathname ===
+            `/api/v2/supplier/dataset-drafts/${draft.id}`
+      );
+      await button(page, "Save draft").click();
+      assert.equal((await ack).status(), 200);
+      await page.waitForFunction(() =>
+        document
+          .querySelector("[data-preparation-status]")
+          ?.textContent.includes("Draft saved")
+      );
+      await review(page);
+      await enabled(button(page, "Submit proposal for admin review"));
+      assert.equal(commandWrites(draft, "/submit").length, 0);
+      await button(page, "Submit proposal for admin review").click();
+      const frozenPanel = page.locator("[data-frozen-submission]");
+      await frozenPanel.waitFor();
+      if (modality === "AUDIO")
+        assert.deepEqual(draft.frozen.metadata.profiles.audio.languages, [
+          "Unknown",
+        ]);
+      if (modality === "TEXT")
+        assert.equal(
+          Object.hasOwn(draft.frozen.metadata.profiles.text, "languages"),
+          false
+        );
+      if (modality === "VIDEO") {
+        assert.equal(
+          draft.frozen.metadata.profiles.video.timingConvention,
+          "Retained obsolete frame claim"
+        );
+        assert.equal(
+          await frozenPanel
+            .getByText("Retained obsolete frame claim", { exact: true })
+            .count(),
+          0
+        );
+      }
+      assert.equal(commandWrites(draft, "/submit").length, 1);
+    }
+  console.log(
+    "PASS canonical profile readiness across all choices: explicit Unknown speech languages, non-language exemptions and whole-clip annotations save before explicit Submit; obsolete timing stays retained without an active claim"
+  );
+
+  const timedDraft = seed("FULL_ONLY");
+  timedDraft.metadata.modalities = ["AUDIO"];
+  timedDraft.metadata.profiles = {
+    audio: {
+      content: "SPEECH",
+      languages: ["Marathi"],
+      transcriptAvailability: "PRESENT",
+      transcriptMeaning: "Original supplier conventions",
+      transcriptTiming: "TIMED",
+      alignmentNotes: "Retained exact audio timing",
+      annotationAvailability: "ABSENT",
+    },
+  };
+  await open(page, timedDraft);
+  await enabled(button(page, "Submit proposal for admin review"));
+  await button(page, "3. Dataset details").click();
+  assert.equal(
+    await page
+      .getByLabel("Transcript timing and matching", { exact: true })
+      .inputValue(),
+    "Retained exact audio timing"
+  );
+  for (const state of ["UNTIMED", "UNKNOWN"]) {
+    await page
+      .getByLabel("Are the available transcripts timed?", { exact: true })
+      .selectOption(state);
+    assert.equal(
+      await page
+        .getByLabel("Transcript timing and matching", { exact: true })
+        .count(),
+      0
+    );
+  }
+  const timingAck = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" &&
+      new URL(response.url()).pathname.endsWith(timedDraft.id)
+  );
+  await button(page, "Save draft").click();
+  assert.equal((await timingAck).status(), 200);
+  await page.waitForFunction(() =>
+    document
+      .querySelector("[data-preparation-status]")
+      ?.textContent.includes("Draft saved")
+  );
+  await review(page);
+  await enabled(button(page, "Submit proposal for admin review"));
+  await button(page, "Submit proposal for admin review").click();
+  await page.locator("[data-frozen-submission]").waitFor();
+  assert.equal(
+    timedDraft.frozen.metadata.profiles.audio.alignmentNotes,
+    "Retained exact audio timing"
+  );
+  assert.equal(
+    await page
+      .locator("[data-frozen-submission]")
+      .getByText("Retained exact audio timing", { exact: true })
+      .count(),
+    0
+  );
+  console.log(
+    "PASS changing timed transcripts to untimed or unassessed retains captured notes while suppressing obsolete timing claims through Save and frozen Submit"
+  );
+
   const feedbackDraft = seed("FULL_AND_SAMPLE");
   feedbackDraft.frozen = freeze(feedbackDraft);
   feedbackDraft.reviewedContentId = feedbackDraft.frozen.id;
@@ -1387,9 +1578,7 @@ try {
   partial.metadata.license = null;
   partial.metadata.overview = null;
   await open(page, partial);
-  await page
-    .getByText("Choose a Dataset license before submission.", { exact: true })
-    .waitFor();
+  await page.getByText("State the dataset license.", { exact: true }).waitFor();
   assert.equal(
     await button(page, "Submit proposal for admin review").isDisabled(),
     true
