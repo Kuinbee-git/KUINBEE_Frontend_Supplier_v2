@@ -591,7 +591,7 @@ export function PreparationUploadPanel({
                         onClick={() => {
                           if (
                             window.confirm(
-                              "Delete this stored file? It must first be removed from editable selections. Files protecting a review or past access cannot be deleted. Storage stays charged until cleanup completes."
+                              "Delete this stored file? It must first be removed from editable selections. Files needed for active review, approval, publication or purchases cannot be deleted. Storage stays charged until cleanup completes."
                             )
                           )
                             void model.cleanup(status, true);
