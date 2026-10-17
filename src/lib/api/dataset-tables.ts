@@ -70,7 +70,7 @@ export const datasetTablesApi = {
       ack.results.length !== body.operations.length ||
       (initial
         ? ack.contentId === body.expectedContentId ||
-          ack.generation !== 1 ||
+          ack.generation !== 2 ||
           ack.preparationGeneration !== body.expectedPreparationGeneration + 1
         : ack.contentId !== body.expectedContentId ||
           ack.generation !== body.expectedGeneration + 1 ||

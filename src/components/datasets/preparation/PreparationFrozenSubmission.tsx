@@ -9,6 +9,7 @@ import {
   type DatasetDeclaredMeasurement,
 } from "@kuinbee/dataset-preparation-contracts";
 import { DashboardButton } from "@/components/dashboard";
+import { PreparationFrozenTables } from "./PreparationFrozenTables";
 import { DATASET_TYPES } from "@/constants/dataset.constants";
 import {
   datasetWorkflowApi,
@@ -222,6 +223,19 @@ function InventoryRows({ page }: { page: DatasetFrozenInventory }) {
                 </dd>
               </div>
             </dl>
+            <div className="sm:col-span-2">
+              <PreparationFrozenTables
+                datasetId={page.datasetId}
+                context={{
+                  scope: "REVIEWED",
+                  component: member.component,
+                  contentId: page.contentId,
+                  contentGeneration: page.contentGeneration,
+                  expectedWorkflowRevision: page.workflowRevision,
+                  memberId: member.id,
+                }}
+              />
+            </div>
           </li>
         ))}
       </ul>

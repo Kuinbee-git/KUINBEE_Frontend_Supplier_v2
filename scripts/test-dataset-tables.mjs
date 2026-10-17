@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { tableMetadataFixture } from "./table-metadata-fixtures.mjs";
 const temporary = await mkdtemp(join(tmpdir(), "kuinbee-table-protocol-"));
 const originalFetch = globalThis.fetch,
   originalStorage = Object.getOwnPropertyDescriptor(
@@ -23,7 +24,7 @@ async function load(environment) {
   await build({
     stdin: {
       contents:
-        "export {datasetTablesApi} from './src/lib/api/dataset-tables';export * from './src/lib/datasets/dataset-upload-commands';export {PreparationApiError} from './src/lib/api/dataset-preparations';",
+        "export {datasetTablesApi} from './src/lib/api/dataset-tables';export {datasetTableMetadataApi} from './src/lib/api/dataset-table-metadata';export * from './src/lib/datasets/dataset-upload-commands';export {PreparationApiError} from './src/lib/api/dataset-preparations';",
       resolveDir: process.cwd(),
     },
     bundle: true,
@@ -199,7 +200,7 @@ test("initial correction acknowledgements may remap membership only with the exa
   const response = {
     ...ack,
     contentId: ids.next,
-    generation: 1,
+    generation: 2,
     preparationGeneration: 4,
     results: [{ ...ack.results[0], memberId: ids.next }],
   };
@@ -314,4 +315,99 @@ test("auth, scope, throttle and unknown failures cannot disprove a lost table wr
       ),
       false
     );
+});
+
+test("private table metadata preserves exact working, reviewed and permitted correction bases", async () => {
+  for (const scope of ["WORKING", "REVIEWED", "PUBLISHED", "EDIT_BASE"]) {
+    const context = {
+      datasetId: ids.draft,
+      scope,
+      component: "FULL",
+      contentId: ids.content,
+      contentGeneration: 2,
+      workflowRevision: 4,
+      frozen: scope !== "WORKING",
+      publicationId: scope === "PUBLISHED" ? ids.next : null,
+      editOperation: scope === "EDIT_BASE" ? "METADATA" : null,
+    };
+    const value = tableMetadataFixture(context, ids.member);
+    const query = {
+      scope,
+      component: "FULL",
+      contentId: ids.content,
+      contentGeneration: 2,
+      expectedWorkflowRevision: 4,
+      memberId: ids.member,
+      ...(scope === "EDIT_BASE" ? { editOperation: "METADATA" } : {}),
+      limit: 20,
+    };
+    let sent;
+    globalThis.fetch = async (url, options) => {
+      sent = { url: new URL(url), options };
+      return Response.json({ success: true, data: value });
+    };
+    assert.deepEqual(
+      await local.datasetTableMetadataApi.page(ids.draft, query),
+      value
+    );
+    assert.equal(sent.options.credentials, "include");
+    assert.equal(sent.options.cache, "no-store");
+    assert(
+      sent.url.pathname.endsWith("/dataset-files/" + ids.draft + "/tables")
+    );
+    for (const mutate of [
+      (v) => v.context.workflowRevision++,
+      (v) => v.page.contentGeneration++,
+      (v) => (v.context.datasetId = ids.next),
+      (v) => (v.memberId = ids.next),
+      (v) => (v.targets[0].memberId = ids.next),
+      (v) => (v.page.items[0].missingValues.value = "inactive private claim"),
+      (v) => (v.page.items[0].storageKey = "private"),
+      (v) => (v.page.tableId = ids.next),
+    ]) {
+      const wrong = structuredClone(value);
+      mutate(wrong);
+      respond(wrong);
+      await assert.rejects(
+        local.datasetTableMetadataApi.page(ids.draft, query),
+        incompatible
+      );
+    }
+  }
+});
+test("metadata-only correction inventory and table views refuse granted scope and production before dispatch", async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    throw Error("must not send");
+  };
+  const context = {
+    scope: "EDIT_BASE",
+    editOperation: "METADATA",
+    component: "FULL",
+    contentId: ids.content,
+    contentGeneration: 2,
+    expectedWorkflowRevision: 4,
+    limit: 20,
+  };
+  await assert.rejects(
+    local.datasetTableMetadataApi.editMembers(ids.draft, {
+      ...context,
+      editOperation: "MATERIALS",
+    }),
+    (e) => e.code === "INVALID_FILE_SCOPE"
+  );
+  await assert.rejects(
+    local.datasetTableMetadataApi.page(ids.draft, {
+      ...context,
+      scope: "GRANTED",
+      editOperation: undefined,
+    }),
+    (e) => e.code === "INVALID_FILE_SCOPE"
+  );
+  await assert.rejects(
+    production.datasetTableMetadataApi.page(ids.draft, context),
+    (e) => e.code === "NOT_ENABLED"
+  );
+  assert.equal(calls, 0);
 });

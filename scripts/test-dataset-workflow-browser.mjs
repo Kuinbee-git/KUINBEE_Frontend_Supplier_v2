@@ -6,6 +6,10 @@ import { resolve } from "node:path";
 import { build } from "esbuild";
 import { chromium } from "playwright";
 import {
+  tableMetadataFixture,
+  captureTableMetadataViews,
+} from "./table-metadata-fixtures.mjs";
+import {
   DatasetPreparationResponseSchema,
   DatasetPreparationPatchBodySchema,
   DatasetPreparationCatalogLabelsResponseSchema,
@@ -29,6 +33,14 @@ import {
   DatasetEditContextQuerySchema,
   DatasetEditContextResponseSchema,
   DatasetEditBaseResponseSchema,
+  DatasetPrivateTableMetadataQuerySchema,
+  DatasetPrivateTableMetadataResponseSchema,
+  DatasetFileAccessPageQuerySchema,
+  DatasetFileAccessPageResponseSchema,
+  DatasetTableDescriptionsPageQuerySchema,
+  DatasetTableDescriptionsPageResponseSchema,
+  DatasetTableDescriptionsMutationBodySchema,
+  DatasetTableDescriptionsMutationResponseSchema,
   getDatasetPreparationReadiness,
 } from "@kuinbee/dataset-preparation-contracts";
 
@@ -40,6 +52,9 @@ let sequence = 2000;
 const newId = () => id(sequence++);
 const now = "2026-10-16T00:00:00.000Z";
 const fingerprint = "a".repeat(64);
+const tableScreenshots = process.argv
+  .find((value) => value.startsWith("--screenshots="))
+  ?.slice("--screenshots=".length);
 const drafts = new Map(),
   receipts = new Map();
 const requests = [],
@@ -203,7 +218,7 @@ function editContext(draft, operation) {
     preparationGeneration: draft.generation,
     workflowRevision:
       draft.workflowRevision + (flags.mismatchedContext ? 1 : 0),
-    managementContext: "INITIAL_PROPOSAL",
+    managementContext: draft.managed ? "MANAGED" : "INITIAL_PROPOSAL",
     editable: allowed,
     precondition:
       allowed && draft.correction && !draft.initialized
@@ -645,6 +660,69 @@ const server = createServer(async (req, res) => {
       );
       return;
     }
+    const access = url.pathname.match(
+      /^\/api\/v2\/supplier\/dataset-files\/([^/]+)\/(inventory|tables)$/
+    );
+    if (access && drafts.has(access[1])) {
+      const draft = drafts.get(access[1]),
+        parameters = Object.fromEntries(url.searchParams);
+      const query = (
+        access[2] === "tables"
+          ? DatasetPrivateTableMetadataQuerySchema
+          : DatasetFileAccessPageQuerySchema
+      ).parse(parameters);
+      const reference =
+        query.scope === "EDIT_BASE"
+          ? editBase(draft, "METADATA").contentReference
+          : {
+              contentId: draft.frozen.id,
+              generation: draft.frozen.generation,
+              frozen: true,
+            };
+      assert.equal(query.contentId, reference.contentId);
+      assert.equal(query.contentGeneration, reference.generation);
+      assert.equal(query.expectedWorkflowRevision, draft.workflowRevision);
+      const context = {
+        datasetId: draft.id,
+        scope: query.scope,
+        component: query.component,
+        contentId: reference.contentId,
+        contentGeneration: reference.generation,
+        workflowRevision: draft.workflowRevision,
+        frozen: reference.frozen,
+        publicationId: null,
+        editOperation: query.scope === "EDIT_BASE" ? "METADATA" : null,
+      };
+      if (access[2] === "tables") {
+        ok(
+          res,
+          DatasetPrivateTableMetadataResponseSchema.parse(
+            tableMetadataFixture(
+              context,
+              query.memberId,
+              Boolean(query.tableId)
+            )
+          )
+        );
+      } else {
+        const selected = draft.members
+          .filter((member) => member.component === query.component)
+          .map(({ inspectionAtSubmissionId, ...member }) => ({
+            ...member,
+            membershipEvidenceId: inspectionAtSubmissionId,
+          }));
+        ok(
+          res,
+          DatasetFileAccessPageResponseSchema.parse({
+            context,
+            items: selected,
+            total: selected.length,
+            nextCursor: null,
+          })
+        );
+      }
+      return;
+    }
     const match = url.pathname.match(
       /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)(?:\/(.*))?$/
     );
@@ -720,6 +798,120 @@ const server = createServer(async (req, res) => {
     }
     if (tail === "workflow" && req.method === "GET") {
       ok(res, DatasetWorkflowResponseSchema.parse({ state: state(draft) }));
+      return;
+    }
+    if (tail === "files/tables" && draft.managed) {
+      if (req.method === "GET") {
+        const query = DatasetTableDescriptionsPageQuerySchema.parse(
+          Object.fromEntries(url.searchParams)
+        );
+        const reference = editBase(draft, "METADATA").contentReference;
+        assert.equal(query.contentId, reference.contentId);
+        assert.equal(query.contentGeneration, reference.generation);
+        assert.equal(query.expectedPreparationGeneration, draft.generation);
+        assert(draft.members.some((member) => member.id === query.memberId));
+        const table = {
+          kind: "TABLE",
+          id: id(9001),
+          syntaxProfileId: "UTF8_CSV_SYNTAX_V1",
+          headerConvention: "PRESENT",
+          logicalEntryId: null,
+          locator: null,
+          columnCount: 1,
+          recordCount: "3",
+          dataRecordCount: "2",
+          description: {
+            displayName: draft.tableName ?? "Original reviewed table",
+            recordUnit: "One event",
+            missingConventionState: "UNKNOWN",
+            missingConventionDetails: null,
+          },
+        };
+        const column = {
+          kind: "COLUMN",
+          id: id(9002),
+          tableId: table.id,
+          position: 1,
+          observedName: "value",
+          storageRepresentation: "UTF8_TEXT",
+          description: {
+            meaningState: "UNKNOWN",
+            description: null,
+            semanticType: "UNKNOWN",
+            unitState: "NOT_APPLICABLE",
+            unit: null,
+          },
+        };
+        ok(
+          res,
+          DatasetTableDescriptionsPageResponseSchema.parse({
+            contentId: reference.contentId,
+            contentGeneration: reference.generation,
+            preparationGeneration: draft.generation,
+            frozen: reference.frozen,
+            memberId: query.memberId,
+            component: draft.members.find((m) => m.id === query.memberId)
+              .component,
+            tableId: query.tableId ?? null,
+            table: query.tableId ? table : null,
+            items: query.tableId ? [column] : [table],
+            nextCursor: null,
+          })
+        );
+      } else {
+        const parsed = DatasetTableDescriptionsMutationBodySchema.parse(body),
+          prior = receipts.get(`${draft.id}:${parsed.requestId}`);
+        if (prior) {
+          assert.equal(prior.kind, "TABLES");
+          assert.deepEqual(prior.body, parsed);
+          if (flags.retryStatus) {
+            deny(
+              res,
+              "FORBIDDEN",
+              "Temporary fixture authorization refusal",
+              flags.retryStatus
+            );
+            return;
+          }
+          replyCommand(res, "TABLES", draft, parsed, prior.response);
+          return;
+        }
+        assert.equal(parsed.expectedPreparationGeneration, draft.generation);
+        const oldMembers = clone(draft.members);
+        if (parsed.editContext.mode === "INITIALIZE") {
+          assert.equal(parsed.expectedContentId, draft.frozen.id);
+          assert.equal(parsed.expectedGeneration, draft.frozen.generation);
+          initializeCorrection(draft, parsed.editContext);
+          draft.contentGeneration = 2;
+          draft.generation++;
+        } else {
+          assert.equal(parsed.expectedContentId, draft.contentId);
+          assert.equal(parsed.expectedGeneration, draft.contentGeneration);
+          draft.contentGeneration++;
+        }
+        const results = parsed.operations.map((op, index) => {
+          const memberIndex = oldMembers.findIndex((m) => m.id === op.memberId);
+          assert(memberIndex >= 0);
+          assert.equal(op.tableId, id(9001));
+          if (op.operation === "SET_TABLE")
+            draft.tableName = op.changes.displayName ?? draft.tableName;
+          return {
+            index,
+            operation: op.operation,
+            memberId: draft.members[memberIndex].id,
+            tableId: op.tableId,
+            columnId: op.columnId ?? null,
+          };
+        });
+        const ack = DatasetTableDescriptionsMutationResponseSchema.parse({
+          requestId: parsed.requestId,
+          contentId: draft.contentId,
+          generation: draft.contentGeneration,
+          preparationGeneration: draft.generation,
+          results,
+        });
+        replyCommand(res, "TABLES", draft, parsed, ack);
+      }
       return;
     }
     if (tail === "edit-context") {
@@ -1200,6 +1392,18 @@ try {
     assert.equal(draft.frozen.uploadChoice, choice);
     assert.equal(draft.pricing.isPaid, false);
     assert.equal(draft.publishedContentId, null);
+    const definitions = page
+      .getByRole("button", { name: "View table definitions", exact: true })
+      .first();
+    await definitions.click();
+    await page
+      .getByRole("button", { name: "View columns", exact: true })
+      .click();
+    await page.getByText("Column 1: No header", { exact: true }).waitFor();
+    await page.getByText("Column 2: Blank header", { exact: true }).waitFor();
+    await page
+      .getByText("In this file: private-session/events.csv", { exact: true })
+      .waitFor();
     const title = page.getByLabel("Dataset title", { exact: true });
     assert(
       (await title.count()) === 0 || (await title.isDisabled()),
@@ -1660,6 +1864,106 @@ try {
   assert.equal(correction.pricing.price, "15.00");
   console.log(
     "PASS exact frozen correction base survives no-op Save; pricing-first initialization restores that base with workflow +2 and preparation +1"
+  );
+
+  for (const choice of choices) {
+    const managed = seed(choice);
+    managed.managed = true;
+    managed.baseMetadata = clone(managed.metadata);
+    managed.frozen = freeze(managed);
+    managed.reviewedContentId = managed.frozen.id;
+    managed.verificationStatus = "CHANGES_REQUESTED";
+    managed.workflowRevision = 1;
+    managed.correction = true;
+    managed.initialized = false;
+    await open(page, managed);
+    await button(page, "2. Files & contents").click();
+    const area = choice === "SAMPLE_ONLY" ? "SAMPLE" : "FULL",
+      selected = managed.members.find((m) => m.component === area);
+    await page
+      .getByLabel("File to describe", { exact: true })
+      .selectOption(selected.id);
+    await page
+      .getByLabel("Inspected table", { exact: true })
+      .selectOption(id(9001));
+    await enabled(page.getByLabel("Table display name", { exact: true }));
+    if (choice === "FULL_ONLY")
+      await captureTableMetadataViews(
+        page,
+        tableScreenshots,
+        "managed-table",
+        page.getByLabel("Table display name", { exact: true })
+      );
+    assert.equal(
+      writes(managed).length,
+      0,
+      "Exact frozen edit-base GET never initializes"
+    );
+    await page
+      .getByLabel("Table display name", { exact: true })
+      .fill("Supplier corrected table " + choice);
+    flags.lose = "TABLES";
+    await button(page, "Save table descriptions").click();
+    await enabled(button(page, "Confirm table change"));
+    assert.equal(managed.initialized, true);
+    assert.equal(managed.contentGeneration, 2);
+    const first = commandWrites(managed, "/files/tables")[0];
+    assert.equal(first.body.editContext.mode, "INITIALIZE");
+    assert.equal(first.body.expectedContentId, managed.frozen.id);
+    await page.reload();
+    await enabled(button(page, "Confirm table change"));
+    flags.lose = null;
+    flags.retryStatus = 403;
+    await button(page, "Confirm table change").click();
+    await enabled(button(page, "Confirm table change"));
+    assert.equal(
+      managed.contentGeneration,
+      2,
+      "Auth refusal cannot disprove or repeat the earlier save"
+    );
+    flags.retryStatus = 0;
+    if (choice === "FULL_AND_SAMPLE") managed.failPreparationReads = true;
+    await button(page, "Confirm table change").click();
+    await page
+      .getByText("Table descriptions saved. The Dataset files are unchanged.", {
+        exact: true,
+      })
+      .waitFor();
+    if (choice === "FULL_AND_SAMPLE") {
+      await enabled(button(page, "Refresh saved table context"));
+      assert.equal(
+        await button(page, "2. Files & contents").isDisabled(),
+        true
+      );
+      managed.failPreparationReads = false;
+      await button(page, "Refresh saved table context").click();
+    }
+    await enabled(button(page, "2. Files & contents"));
+    await button(page, "2. Files & contents").click();
+    const all = commandWrites(managed, "/files/tables");
+    assert(all.length >= 2);
+    assert(
+      all.every(
+        (request) => JSON.stringify(request.body) === JSON.stringify(first.body)
+      )
+    );
+    assert.equal(new Set(all.map((request) => request.body.requestId)).size, 1);
+    assert.equal(managed.generation, 1);
+    assert.equal(managed.contentGeneration, 2);
+    assert.equal(
+      await page.locator('input[type="file"]').count(),
+      0,
+      "Managed update cannot add or replace files"
+    );
+    assert(
+      writes(managed).every((request) =>
+        request.path.endsWith("/files/tables")
+      ),
+      "Only metadata table changes are sent"
+    );
+  }
+  console.log(
+    "PASS all three managed choices edit exact frozen tables, initialize generation two once, and recover a lost ACK after reload without material changes"
   );
 
   for (const resolveChoice of [

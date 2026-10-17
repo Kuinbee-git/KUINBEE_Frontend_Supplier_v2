@@ -262,6 +262,7 @@ export function PreparationTables({
   members,
   active,
   canChange,
+  canInitializeFrozen = false,
   pending,
   acknowledgement,
   mutate,
@@ -272,6 +273,7 @@ export function PreparationTables({
   members: Member[];
   active: boolean;
   canChange: boolean;
+  canInitializeFrozen?: boolean;
   pending: boolean;
   acknowledgement: DatasetTableDescriptionsMutationBody | null;
   mutate: (basis: Basis, operations: Operation[]) => Promise<unknown>;
@@ -376,7 +378,7 @@ export function PreparationTables({
     writing ||
     pending ||
     stale ||
-    Boolean(columns.data?.frozen) ||
+    (Boolean(columns.data?.frozen) && !canInitializeFrozen) ||
     !columns.data;
   const navigationLocked = dirty || writing || pending;
   async function save() {

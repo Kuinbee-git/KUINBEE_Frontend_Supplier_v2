@@ -39,6 +39,7 @@ import { PreparationCoverageFields } from "./PreparationCoverageFields";
 import { PreparationDiscoveryFields } from "./PreparationDiscoveryFields";
 import { PreparationReview } from "./PreparationReview";
 import { PreparationFilesPanel } from "./PreparationFilesPanel";
+import { PreparationManagedTables } from "./PreparationManagedTables";
 import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
 import { PreparationFrozenSubmission } from "./PreparationFrozenSubmission";
 import {
@@ -723,6 +724,32 @@ export function DatasetPreparationEditor({
             does not change saved files or access.
           </div>
         )}
+        {workflow.managed && saved && (
+          <div
+            className="min-w-0 px-4 py-4 sm:px-6"
+            hidden={activeStep !== 1 && !filesUncertain}
+          >
+            <PreparationManagedTables
+              key={saved.id}
+              saved={saved}
+              base={editBase}
+              active={activeStep === 1}
+              blocked={fieldsLocked || conflict}
+              metadataDirty={dirty}
+              onWritingChange={onFilesWriting}
+              onUncertainChange={onFilesUncertain}
+              onDirtyChange={setFileInputsDirty}
+              onAccepted={async () => {
+                const current = await preparationApi.get(saved.id);
+                onWorkflowSaved(current);
+                if (!(await workflow.refresh(current)))
+                  throw new Error(
+                    "The table change was saved, but the current edit context could not be loaded. Refresh the saved table context before continuing."
+                  );
+              }}
+            />
+          </div>
+        )}
         <fieldset
           disabled={fieldsLocked}
           className="min-w-0 space-y-6 p-4 sm:p-6"
@@ -915,23 +942,25 @@ export function DatasetPreparationEditor({
             </PreparationGrid>
           )}
           <div hidden={activeStep !== 1} className="min-w-0 space-y-4">
-            <PreparationFilesPanel
-              saved={saved}
-              active={activeStep === 1}
-              metadataDirty={dirty}
-              metadataBlocked={fieldsLocked || conflict || workflow.managed}
-              metadataUnsettled={
-                saving ||
-                retryPending ||
-                workflow.writing ||
-                Boolean(workflow.pending)
-              }
-              onUncertainChange={onFilesUncertain}
-              onWritingChange={onFilesWriting}
-              onMetadataChanged={onFilesMetadataChanged}
-              onActivityChange={onUploadActivity}
-              onInputsDirtyChange={setFileInputsDirty}
-            />
+            {!workflow.managed && (
+              <PreparationFilesPanel
+                saved={saved}
+                active={activeStep === 1}
+                metadataDirty={dirty}
+                metadataBlocked={fieldsLocked || conflict || workflow.managed}
+                metadataUnsettled={
+                  saving ||
+                  retryPending ||
+                  workflow.writing ||
+                  Boolean(workflow.pending)
+                }
+                onUncertainChange={onFilesUncertain}
+                onWritingChange={onFilesWriting}
+                onMetadataChanged={onFilesMetadataChanged}
+                onActivityChange={onUploadActivity}
+                onInputsDirtyChange={setFileInputsDirty}
+              />
+            )}
             <PreparationGrid>
               {hasFull && (
                 <PreparationQuantities
