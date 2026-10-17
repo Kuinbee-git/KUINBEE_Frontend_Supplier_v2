@@ -315,6 +315,126 @@ export function PreparationQuantities({
 }
 
 type ProfileKey = keyof DatasetPreparationProfiles;
+type SensorChannel = NonNullable<
+  NonNullable<DatasetPreparationProfiles["sensors"]>["channels"]
+>[number];
+
+function PreparationSensorChannels({
+  channels,
+  onUpdate,
+}: {
+  channels: SensorChannel[];
+  onUpdate: PreparationUpdate;
+}) {
+  const change = (update: (rows: SensorChannel[]) => SensorChannel[]) =>
+    onUpdate((previous) => ({
+      ...previous,
+      profiles: {
+        ...(previous.profiles ?? {}),
+        sensors: {
+          ...(previous.profiles?.sensors ?? {}),
+          channels: update(previous.profiles?.sensors?.channels ?? []),
+        },
+      },
+    }));
+  const edit = (index: number, values: Partial<SensorChannel>) =>
+    change((rows) =>
+      rows.map((row, position) =>
+        position === index ? { ...row, ...values } : row
+      )
+    );
+  return (
+    <details className="space-y-4 border-t border-border pt-4">
+      <summary className="cursor-pointer text-sm font-medium">
+        Individual channel descriptions ({channels.length})
+      </summary>
+      <p className="text-xs text-muted-foreground">
+        Optional detail about channels in the represented collection. Name each
+        channel you add before saving; meaning and units can be completed later.
+        State Unknown or Not applicable where appropriate. For actual uploaded
+        tables, use the exact file and column definitions in Files &amp;
+        contents. These declarations do not prove that a channel is included in
+        either uploaded component.
+      </p>
+      {channels.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No individual channels described. You can still use the channel notes
+          below.
+        </p>
+      )}
+      {channels.map((channel, index) => (
+        <fieldset
+          key={index}
+          className="min-w-0 space-y-3 border-t border-border pt-4"
+        >
+          <legend className="px-1 text-sm font-medium">
+            Channel {index + 1}
+          </legend>
+          <div className="grid min-w-0 gap-3 @md:grid-cols-2">
+            <PreparationField
+              label={`Channel ${index + 1} name`}
+              multiline={false}
+              value={channel.name}
+              maxLength={200}
+              onChange={(name) => edit(index, { name: name ?? "" })}
+              help={
+                !channel.name.trim()
+                  ? "A channel name is needed before saving this added row."
+                  : undefined
+              }
+            />
+            <PreparationField
+              label={`Channel ${index + 1} unit`}
+              multiline={false}
+              value={channel.unit}
+              maxLength={500}
+              onChange={(unit) => edit(index, { unit })}
+              help="For example, m/s². Unknown or Not applicable can be stated explicitly; no unit is inferred."
+            />
+          </div>
+          <PreparationField
+            label={`Channel ${index + 1} meaning`}
+            value={channel.meaning}
+            maxLength={4000}
+            onChange={(meaning) => edit(index, { meaning })}
+            help="Explain what this reading represents, including any uncertainty."
+          />
+          <DashboardButton
+            type="button"
+            size="compact"
+            variant="outline"
+            aria-label={`Remove channel description ${index + 1}`}
+            onClick={() =>
+              change((rows) => rows.filter((_, position) => position !== index))
+            }
+          >
+            Remove channel description
+          </DashboardButton>
+        </fieldset>
+      ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <DashboardButton
+          type="button"
+          size="compact"
+          variant="outline"
+          disabled={channels.length >= 100}
+          onClick={() =>
+            change((rows) =>
+              rows.length >= 100
+                ? rows
+                : [...rows, { name: "", meaning: null, unit: null }]
+            )
+          }
+        >
+          Add a channel description
+        </DashboardButton>
+        <span className="text-xs text-muted-foreground">
+          {channels.length} of 100 channel descriptions
+        </span>
+      </div>
+    </details>
+  );
+}
 type Definition = {
   key: string;
   label: string;
@@ -322,6 +442,7 @@ type Definition = {
   kind?:
     | "availability"
     | "languages"
+    | "channels"
     | "audio"
     | "sync"
     | "textContent"
@@ -544,6 +665,11 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
       title: "Sensor readings",
       fields: [
         {
+          key: "channels",
+          label: "Individual channel descriptions",
+          kind: "channels",
+        },
+        {
           key: "channelNotes",
           label: "Sensor channels and units",
           help: "Explain the readings; state which meanings or units are unknown.",
@@ -664,15 +790,25 @@ export function getPreparationProfileSummary(
         )
         .map((field) => {
           const raw = values[field.key];
-          const value = Array.isArray(raw)
-            ? raw.filter(Boolean).join(", ")
-            : typeof raw === "string" && raw
-              ? field.key === "languageContent" && raw === "MIXED"
-                ? "Human language and other content"
-                : field.kind && Object.hasOwn(display, raw)
-                  ? display[raw]
-                  : raw
-              : "Not answered";
+          const value =
+            field.kind === "channels" && Array.isArray(raw)
+              ? raw.length
+                ? (raw as SensorChannel[])
+                    .map(
+                      (channel, index) =>
+                        `${index + 1}. ${channel.name.trim() || "Unnamed channel"} — ${channel.meaning?.trim() || "Meaning not specified"}; unit: ${channel.unit?.trim() || "Not specified"}`
+                    )
+                    .join("\n")
+                : "No individual channel descriptions recorded"
+              : Array.isArray(raw)
+                ? raw.filter(Boolean).join(", ")
+                : typeof raw === "string" && raw
+                  ? field.key === "languageContent" && raw === "MIXED"
+                    ? "Human language and other content"
+                    : field.kind && Object.hasOwn(display, raw)
+                      ? display[raw]
+                      : raw
+                  : "Not answered";
           return { label: field.label, value };
         }),
     };
@@ -736,6 +872,14 @@ export function PreparationProfileFields({
                 )
               )
               .map((field) => {
+                if (field.kind === "channels")
+                  return (
+                    <PreparationSensorChannels
+                      key={field.key}
+                      channels={metadata.profiles?.sensors?.channels ?? []}
+                      onUpdate={onUpdate}
+                    />
+                  );
                 if (field.kind === "languages")
                   return (
                     <PreparationField
