@@ -110,7 +110,13 @@ const requests = [],
   fixtureErrors = [],
   browserErrors = [],
   external = [];
-const flags = { closed: false, lose: null, holdPart: null, failChecks: false };
+const flags = {
+  closed: false,
+  lose: null,
+  holdPart: null,
+  failChecks: false,
+  packagedZip: false,
+};
 const held = new Set();
 const choices = ["SAMPLE_ONLY", "FULL_ONLY", "FULL_AND_SAMPLE"];
 const capabilities = [
@@ -120,6 +126,10 @@ const capabilities = [
   ["RIFF_INTEGER_PCM_WAVE_V1", ".wav", "audio/wav"],
   ["PNG_STATIC_8BIT_V1", ".png", "image/png"],
   ["ZIP32_CONTAINER_V1", ".zip", "application/zip"],
+  ["JPEG_BASELINE_STRUCTURE_V1", ".jpg", "image/jpeg"],
+  ["MPEG_AUDIO_UPLOAD_V1", ".mp3", "audio/mpeg"],
+  ["ISO_BMFF_VIDEO_UPLOAD_V1", ".mp4", "video/mp4"],
+  ["UTF8_TEXT_UPLOAD_V1", ".txt", "text/plain"],
 ].map(([profileId, extension, mime]) => ({
   profileId,
   maximumObjectBytes: "2000000000",
@@ -463,7 +473,13 @@ const server = createServer(async (req, res) => {
                 reason: "INTAKE_PAUSED",
                 policyVersion: "synthetic-ui-v1",
               },
-          capabilities: ready ? capabilities : [],
+          capabilities: ready
+            ? capabilities.map((item) =>
+                item.profileId === "ZIP32_CONTAINER_V1" && flags.packagedZip
+                  ? { ...item, archiveContents: "PACKAGED_FILE" }
+                  : item
+              )
+            : [],
           transport: ready
             ? {
                 kind: "BOUNDED_PARTS_V1",
@@ -1230,6 +1246,9 @@ async function open(page, draft) {
   await filesStep(page);
 }
 async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
+  await page
+    .getByLabel("File to upload or resume", { exact: true })
+    .setInputFiles(fixtureFile);
   await page.getByLabel("File format", { exact: true }).selectOption(format);
   if (format === "UTF8_CSV_SYNTAX_V1" || format === "UTF8_TSV_SYNTAX_V1")
     await page
@@ -1247,9 +1266,6 @@ async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
       .getByLabel("CSV / TSV first row", { exact: true })
       .selectOption("PRESENT");
   }
-  await page
-    .getByLabel("File to upload or resume", { exact: true })
-    .setInputFiles(fixtureFile);
 }
 const uploadRow = (page, item) =>
   page.locator(`[data-upload-attempt="${item.id}"]`);
@@ -1333,7 +1349,7 @@ try {
       );
     }
   console.log(
-    "PASS six advertised formats across all three choices (24 component uploads): native browser transfer, separate finalize/check/selection and no implicit Submit; synthetic inspection only"
+    `PASS ${capabilities.length} advertised formats across all three choices (${capabilities.length * 4} component uploads): native browser transfer, separate finalize/selection and no implicit Submit; synthetic backend status only`
   );
 
   // A committed admission with a lost response survives a real page reload.
@@ -1671,9 +1687,7 @@ try {
   await page
     .getByRole("checkbox", { name: "CSV · UTF-8 text", exact: true })
     .check();
-  await page
-    .getByRole("checkbox", { name: "WAV · integer PCM audio", exact: true })
-    .check();
+  await page.getByRole("checkbox", { name: "WAV audio", exact: true }).check();
   await page
     .getByLabel("CSV / TSV first row", { exact: true })
     .selectOption("PRESENT");
@@ -1708,6 +1722,59 @@ try {
   assert.equal(await namedButton(page, "Use in full dataset").count(), 0);
   console.log(
     "PASS compact ZIP type declarations and failed-check selection denial"
+  );
+
+  flags.packagedZip = true;
+  for (const choice of choices) {
+    const draft = seed(choice);
+    await open(page, draft);
+    await page
+      .getByLabel("File to upload or resume", { exact: true })
+      .setInputFiles(file("normal-collection.zip"));
+    assert.equal(
+      await page.getByLabel("File format", { exact: true }).inputValue(),
+      "ZIP32_CONTAINER_V1"
+    );
+    assert.equal(
+      await page
+        .getByRole("group", { name: "File types inside this ZIP" })
+        .count(),
+      0
+    );
+    assert.equal(
+      await page.getByLabel("CSV / TSV first row", { exact: true }).count(),
+      0
+    );
+    await page
+      .getByText("This ZIP is uploaded and delivered as one file.", {
+        exact: false,
+      })
+      .waitFor();
+    await namedButton(page, "Upload file").click();
+    await namedButton(page, "Finish upload").waitFor();
+    const item = scopedAttempts(draft)[0];
+    assert.deepEqual(item.inspectionProfile, {
+      profileId: "ZIP32_CONTAINER_V1",
+      leafProfiles: [],
+    });
+    assert.equal(item.component, choice === "SAMPLE_ONLY" ? "SAMPLE" : "FULL");
+    await namedButton(page, "Finish upload").click();
+    await uploadRow(page, item)
+      .getByText(/Preparing file/)
+      .waitFor();
+    accept(item);
+    await namedButton(page, "Refresh upload status").click();
+    await namedButton(
+      page,
+      item.component === "SAMPLE" ? "Use as sample" : "Use in full dataset"
+    ).click();
+    await uploadRow(page, item)
+      .getByText("Selected in this draft", { exact: true })
+      .waitFor();
+  }
+  flags.packagedZip = false;
+  console.log(
+    "PASS ordinary ZIP uploads infer type from the filename and need no inner-entry forms for all three choices"
   );
 
   // Exercise organization on actual UI-uploaded files for every creation choice.

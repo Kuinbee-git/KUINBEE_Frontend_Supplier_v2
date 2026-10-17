@@ -189,15 +189,17 @@ function workspaceRows(q = "") {
   const query = q.toLowerCase();
   return [
     ...legacyDrafts,
-    ...[...drafts.values()].map((item) => ({
-      id: item.id,
-      kind: "PREPARATION",
-      title: item.metadata.title,
-      datasetUniqueId: null,
-      uploadChoice: item.metadata.uploadChoice ?? null,
-      currentUploadId: null,
-      updatedAt: item.updatedAt,
-    })),
+    ...[...drafts.values()]
+      .filter((item) => !item.legacyBaseFingerprint)
+      .map((item) => ({
+        id: item.id,
+        kind: "PREPARATION",
+        title: item.metadata.title,
+        datasetUniqueId: null,
+        uploadChoice: item.metadata.uploadChoice ?? null,
+        currentUploadId: null,
+        updatedAt: item.updatedAt,
+      })),
   ]
     .filter(
       (row) =>
@@ -1338,17 +1340,22 @@ try {
       .getByRole("button", { name: "Save draft", exact: true })
       .isEnabled()
   );
+  await page
+    .getByText("Measured size: 1.25 MB", { exact: true })
+    .first()
+    .waitFor();
   assert.equal(
     await page.getByText("Measured size: 1.25 MB", { exact: true }).count(),
     20
   );
-  assert.equal(await page.getByText("Received", { exact: true }).count(), 20);
-  assert(
-    (await page
+  assert.equal(await page.getByText("Uploaded", { exact: true }).count(), 20);
+  assert.equal(
+    await page
       .getByText("Recorded pass · eligibility not assessed", { exact: true })
-      .count()) > 0
+      .count(),
+    0
   );
-  assert.equal(await page.getByText("Blocked", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("Blocked", { exact: true }).count(), 0);
   assert.equal(await page.locator('input[type="file"]').count(), 0);
   assert.equal(
     await page
@@ -1378,7 +1385,7 @@ try {
     .getByRole("list", { name: "Stored file references", exact: true })
     .getByText("backend-file-24.txt", { exact: true })
     .waitFor();
-  assert.equal(await page.getByText("Received", { exact: true }).count(), 5);
+  assert.equal(await page.getByText("Uploaded", { exact: true }).count(), 5);
   await page
     .getByRole("button", { name: "Previous files page", exact: true })
     .click();
@@ -2140,6 +2147,87 @@ try {
   );
 
   await page.setViewportSize({ width: 1280, height: 900 });
+  const earlierId = cuid(8000);
+  drafts.set(earlierId, {
+    ...dto(
+      { title: "Earlier empty proposal", license: "CC-BY-4.0" },
+      earlierId
+    ),
+    legacyBaseFingerprint: "b".repeat(64),
+  });
+  legacyDrafts.push({
+    id: earlierId,
+    kind: "PROPOSAL",
+    title: "Earlier empty proposal",
+    datasetUniqueId: "D0000008000",
+    uploadChoice: null,
+    currentUploadId: null,
+    guidedEditorAvailable: true,
+    updatedAt: "2026-10-18T00:00:00.000Z",
+  });
+  const beforeEarlier = requests.length;
+  await page.goto(origin + "/dashboard/datasets");
+  const earlierLink = page
+    .getByRole("link", { name: "Earlier empty proposal", exact: true })
+    .first();
+  assert.equal(
+    await earlierLink.getAttribute("href"),
+    "/dashboard/datasets/drafts/" + earlierId
+  );
+  await earlierLink.click();
+  await page
+    .getByText("Continue your earlier draft here.", { exact: false })
+    .waitFor();
+  assert.equal(
+    await page
+      .locator("[data-preparation-status]")
+      .getAttribute("data-saved-generation"),
+    "0"
+  );
+  assert.equal(
+    requests.slice(beforeEarlier).filter((request) => request.method !== "GET")
+      .length,
+    0
+  );
+  assert.equal(
+    requests
+      .slice(beforeEarlier)
+      .some(
+        (request) =>
+          request.path.includes(earlierId + "/files") ||
+          request.path.includes(earlierId + "/workflow")
+      ),
+    false
+  );
+  await save(page);
+  assert.equal(
+    await page
+      .locator("[data-preparation-status]")
+      .getAttribute("data-saved-generation"),
+    "1"
+  );
+  const firstEarlierSave = requests
+    .slice(beforeEarlier)
+    .find((request) => request.method === "PATCH");
+  assert.equal(firstEarlierSave.body.legacyBaseFingerprint, "b".repeat(64));
+  assert.equal(firstEarlierSave.body.expectedGeneration, 0);
+  assert.equal(firstEarlierSave.body.changes.title, "Earlier empty proposal");
+  assert.equal(drafts.get(earlierId).metadata.license, "CC-BY-4.0");
+  assert.equal(
+    await page
+      .getByText("Continue your earlier draft here.", { exact: false })
+      .count(),
+    0
+  );
+  drafts.delete(earlierId);
+  legacyDrafts.splice(
+    legacyDrafts.findIndex((item) => item.id === earlierId),
+    1
+  );
+  console.log(
+    "PASS earlier empty draft uses the same editor and identity; reads do not initialize files or workflow; explicit Save carries the exact legacy base"
+  );
+
   const beforeList = requests.length;
   await page.goto(origin + "/dashboard/datasets");
   await page.getByRole("heading", { name: "My Drafts", exact: true }).waitFor();
@@ -2163,7 +2251,7 @@ try {
     firstRows.map((row) => ({
       title: row.title,
       href:
-        row.kind === "PREPARATION"
+        row.kind === "PREPARATION" || row.guidedEditorAvailable
           ? "/dashboard/datasets/drafts/" + row.id
           : "/dashboard/datasets/" + row.id,
     }))

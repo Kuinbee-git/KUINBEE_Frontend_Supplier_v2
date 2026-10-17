@@ -214,7 +214,7 @@ export function DatasetPreparationEditor({
     ? Boolean(metadata.title || Object.keys(metadata).length > 1)
     : !equal(metadata, baseline);
   const workflow = usePreparationWorkflow({
-    saved,
+    saved: saved?.legacyBaseFingerprint ? null : saved,
     metadataUnsettled: saving || retryPending || conflict,
     metadataDirty: dirty,
     filesUnsettled: filesWriting || filesUncertain,
@@ -364,7 +364,10 @@ export function DatasetPreparationEditor({
           );
           // Older saved preparations bind their existing identity through an
           // explicit Save, including a no-change title. Reads never create it.
-          if (!Object.keys(changes).length && workflow.unbound)
+          if (
+            !Object.keys(changes).length &&
+            (workflow.unbound || saved.legacyBaseFingerprint)
+          )
             changes.title = normalized.title;
           if (!Object.keys(changes).length) {
             setMetadata(currentBase?.metadata ?? saved.metadata);
@@ -376,6 +379,9 @@ export function DatasetPreparationEditor({
             body: {
               requestId: crypto.randomUUID(),
               expectedGeneration: saved.generation,
+              ...(saved.legacyBaseFingerprint
+                ? { legacyBaseFingerprint: saved.legacyBaseFingerprint }
+                : {}),
               ...(currentBase?.context.precondition
                 ? { editContext: currentBase.context.precondition }
                 : {}),
@@ -608,11 +614,21 @@ export function DatasetPreparationEditor({
         <div className="border-b border-border bg-muted/20 px-4 py-3 text-sm sm:px-6">
           <strong>Draft testing release</strong>
           <p className="mt-1 text-muted-foreground">
-            Save your draft step by step. File upload availability and check
-            results are shown in Files &amp; contents. Submitting for admin
-            review is a separate action. Nothing is published automatically.
+            Save your draft step by step and manage uploads in Files &amp;
+            contents. Submitting for admin review is a separate action. Nothing
+            is published automatically.
           </p>
         </div>
+        {saved?.legacyBaseFingerprint && (
+          <p
+            role="status"
+            className="border-b border-border px-4 py-3 text-sm sm:px-6"
+          >
+            Continue your earlier draft here. Save once to use the updated file
+            and review steps. Your Dataset number and existing details stay with
+            this proposal.
+          </p>
+        )}
         {error && (
           <div
             ref={errorRef}
@@ -977,7 +993,7 @@ export function DatasetPreparationEditor({
           >
             {!workflow.managed && (
               <PreparationFilesPanel
-                saved={saved}
+                saved={saved?.legacyBaseFingerprint ? null : saved}
                 active={activeStep === 1}
                 metadataDirty={dirty}
                 metadataBlocked={fieldsLocked || conflict || workflow.managed}

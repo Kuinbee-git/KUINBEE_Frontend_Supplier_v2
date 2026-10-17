@@ -31,7 +31,7 @@ import {
 type WorkspaceResponse = Awaited<ReturnType<typeof listDatasetDraftWorkspace>>;
 type DraftRow = WorkspaceResponse["items"][number];
 const resumeUrl = (row: DraftRow) =>
-  row.kind === "PREPARATION"
+  row.kind === "PREPARATION" || row.guidedEditorAvailable
     ? `/dashboard/datasets/drafts/${encodeURIComponent(row.id)}`
     : `/dashboard/datasets/${encodeURIComponent(row.id)}`;
 const uploadLabel = (row: DraftRow) =>

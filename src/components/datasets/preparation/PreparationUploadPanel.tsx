@@ -19,9 +19,13 @@ const formats: Record<ProfileId, string> = {
   UTF8_CSV_SYNTAX_V1: "CSV · UTF-8 text",
   UTF8_TSV_SYNTAX_V1: "TSV · UTF-8 text",
   UTF8_JSONL_SYNTAX_V1: "JSON Lines · UTF-8 text",
-  RIFF_INTEGER_PCM_WAVE_V1: "WAV · integer PCM audio",
-  PNG_STATIC_8BIT_V1: "PNG · static 8-bit image",
-  ZIP32_CONTAINER_V1: "ZIP · supported files packaged together",
+  RIFF_INTEGER_PCM_WAVE_V1: "WAV audio",
+  PNG_STATIC_8BIT_V1: "PNG image",
+  ZIP32_CONTAINER_V1: "ZIP archive",
+  JPEG_BASELINE_STRUCTURE_V1: "JPEG image",
+  MPEG_AUDIO_UPLOAD_V1: "MP3 audio",
+  ISO_BMFF_VIDEO_UPLOAD_V1: "MP4 video container",
+  UTF8_TEXT_UPLOAD_V1: "Text and sidecar files · UTF-8",
 };
 const stateLabels: Record<DatasetUploadAttemptStatusResponse["state"], string> =
   {
@@ -77,6 +81,9 @@ export function PreparationUploadPanel({
   const capability = model.config?.capabilities.find(
     (item) => item.profileId === format
   );
+  const packagedZip =
+    capability?.profileId === "ZIP32_CONTAINER_V1" &&
+    capability.archiveContents === "PACKAGED_FILE";
   const leafCapabilities =
     model.config?.capabilities.filter(
       (item) => item.profileId !== "ZIP32_CONTAINER_V1"
@@ -88,6 +95,7 @@ export function PreparationUploadPanel({
     format === "UTF8_CSV_SYNTAX_V1" ||
     format === "UTF8_TSV_SYNTAX_V1" ||
     (format === "ZIP32_CONTAINER_V1" &&
+      !packagedZip &&
       selectedZipCapabilities.some(
         (item) =>
           item.profileId === "UTF8_CSV_SYNTAX_V1" ||
@@ -96,6 +104,7 @@ export function PreparationUploadPanel({
   const needsRecordKind =
     format === "UTF8_JSONL_SYNTAX_V1" ||
     (format === "ZIP32_CONTAINER_V1" &&
+      !packagedZip &&
       selectedZipCapabilities.some(
         (item) => item.profileId === "UTF8_JSONL_SYNTAX_V1"
       ));
@@ -108,6 +117,12 @@ export function PreparationUploadPanel({
       (needsRecordKind && !recordKind)
     )
       return null;
+    if (
+      capability.profileId === "MPEG_AUDIO_UPLOAD_V1" ||
+      capability.profileId === "ISO_BMFF_VIDEO_UPLOAD_V1" ||
+      capability.profileId === "UTF8_TEXT_UPLOAD_V1"
+    )
+      return { profileId: capability.profileId };
     const leaf = (
       profileId: ProfileId
     ): DatasetInspectionLeafProfile | null => {
@@ -120,13 +135,16 @@ export function PreparationUploadPanel({
         return recordKind ? { profileId, recordKind } : null;
       if (
         profileId === "RIFF_INTEGER_PCM_WAVE_V1" ||
-        profileId === "PNG_STATIC_8BIT_V1"
+        profileId === "PNG_STATIC_8BIT_V1" ||
+        profileId === "JPEG_BASELINE_STRUCTURE_V1"
       )
         return { profileId };
       return null;
     };
     if (capability.profileId !== "ZIP32_CONTAINER_V1")
       return leaf(capability.profileId);
+    if (packagedZip)
+      return { profileId: "ZIP32_CONTAINER_V1", leafProfiles: [] };
     if (!selectedZipCapabilities.length) return null;
     const entryDefaults = selectedZipCapabilities.flatMap((item) =>
       item.extensions.map((extension) => ({
@@ -215,6 +233,59 @@ export function PreparationUploadPanel({
           className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           hidden={!showForm && !model.page?.items.some(model.receiving)}
         >
+          <div
+            key="local-file-picker"
+            className="col-span-full grid min-w-0 gap-2 text-sm font-medium"
+          >
+            <label htmlFor={`${id}-file`}>
+              {showForm
+                ? "File to upload or resume"
+                : "Original file to resume"}
+            </label>
+            <input
+              id={`${id}-file`}
+              type="file"
+              className={`${preparationControl} h-auto min-h-10 py-2`}
+              aria-describedby={`${id}-file-help`}
+              disabled={controlsBusy || !model.ready}
+              accept={model.config?.capabilities
+                .flatMap((item) => item.extensions)
+                .join(",")}
+              onChange={(event) => {
+                const picked = event.target.files?.[0] ?? null;
+                setFile(picked);
+                if (showForm && picked) {
+                  const suggested = model.config?.capabilities.filter((item) =>
+                    item.extensions.some((extension) =>
+                      picked.name.toLowerCase().endsWith(extension)
+                    )
+                  );
+                  const nextFormat =
+                    suggested?.length === 1 ? suggested[0].profileId : "";
+                  setFormat(nextFormat);
+                  if (file || nextFormat !== format) {
+                    setHeader("");
+                    setRecordKind("");
+                    setZipKinds([]);
+                  }
+                }
+              }}
+            />
+            <span
+              id={`${id}-file-help`}
+              className="text-xs font-normal text-muted-foreground"
+            >
+              One file at a time · up to 2 GB per file, 5 GB per Dataset. To
+              resume, reselect the original file; its received bytes are
+              verified before transfer continues.
+            </span>
+            {packagedZip && (
+              <span className="text-xs font-normal text-muted-foreground">
+                This ZIP is uploaded and delivered as one file. Describe the
+                collection and its contents in Dataset details.
+              </span>
+            )}
+          </div>
           {showForm && (
             <>
               <div className="grid gap-2 text-sm font-medium">
@@ -272,7 +343,7 @@ export function PreparationUploadPanel({
                   ))}
                 </select>
               </div>
-              {format === "ZIP32_CONTAINER_V1" && (
+              {format === "ZIP32_CONTAINER_V1" && !packagedZip && (
                 <fieldset
                   className="col-span-full min-w-0 space-y-2 border-t border-border pt-4"
                   disabled={!model.canAdmit}
@@ -365,33 +436,6 @@ export function PreparationUploadPanel({
               )}
             </>
           )}
-          <div
-            key="local-file-picker"
-            className="grid min-w-0 gap-2 text-sm font-medium sm:col-span-2"
-          >
-            <label htmlFor={`${id}-file`}>
-              {showForm
-                ? "File to upload or resume"
-                : "Original file to resume"}
-            </label>
-            <input
-              id={`${id}-file`}
-              type="file"
-              className={`${preparationControl} h-auto min-h-10 py-2`}
-              aria-describedby={`${id}-file-help`}
-              disabled={controlsBusy || !model.ready}
-              accept={capability?.extensions.join(",")}
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            />
-            <span
-              id={`${id}-file-help`}
-              className="text-xs font-normal text-muted-foreground"
-            >
-              One file at a time · up to 2 GB per file, 5 GB per Dataset. To
-              resume, reselect the original file; its received bytes are
-              verified before transfer continues.
-            </span>
-          </div>
           {showForm && (
             <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
               <DashboardButton
