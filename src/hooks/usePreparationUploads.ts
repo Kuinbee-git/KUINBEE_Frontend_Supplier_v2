@@ -421,7 +421,7 @@ export function usePreparationUploads(options: Options) {
       });
       if (alive.current)
         setNotice(
-          "All file bytes were received. Choose Finish upload to start backend checks."
+          "All file bytes were received. Choose Finish upload to complete the upload."
         );
     } catch (failure) {
       if (alive.current) {

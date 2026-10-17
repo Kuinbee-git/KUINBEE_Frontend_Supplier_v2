@@ -12,7 +12,6 @@ import type {
 import { DashboardButton, DashboardProgress } from "@/components/dashboard";
 import type { usePreparationUploads } from "@/hooks/usePreparationUploads";
 import { PreparationSection, preparationControl } from "./PreparationFields";
-import { PreparationInspectionReport } from "./PreparationInspectionReport";
 
 type Model = ReturnType<typeof usePreparationUploads>;
 type ProfileId = DatasetIntakeCapability["profileId"];
@@ -29,10 +28,10 @@ const stateLabels: Record<DatasetUploadAttemptStatusResponse["state"], string> =
     ADMITTED: "Preparing upload",
     RECEIVING: "Receiving file bytes",
     FINALIZING: "Finalizing file receipt",
-    RECEIVED: "File received · checks pending",
-    CHECKING: "Backend checks in progress",
-    ACCEPTED: "Backend checks accepted · ready for selection",
-    REJECTED: "Backend checks did not accept this file",
+    RECEIVED: "Finishing upload",
+    CHECKING: "Preparing file",
+    ACCEPTED: "Uploaded · ready to select",
+    REJECTED: "This file could not be added",
     CANCEL_REQUESTED: "Cleanup requested · storage still counts",
     RECONCILIATION_REQUIRED: "Backend reconciliation required",
     CLOSED: "Upload closed",
@@ -173,7 +172,7 @@ export function PreparationUploadPanel({
     <PreparationSection
       title="Upload files"
       className="lg:col-span-12"
-      help="Upload full files and display samples separately. Receiving a file, checking it and selecting it for your draft are separate steps."
+      help="Upload your full dataset files and samples, then add them to the draft."
     >
       {!showForm && (
         <p className="text-sm text-muted-foreground">
@@ -282,9 +281,8 @@ export function PreparationUploadPanel({
                     File types inside this ZIP
                   </legend>
                   <p className="text-sm text-muted-foreground">
-                    Choose the types you included. Kuinbee still checks each
-                    entry&apos;s bytes. Unselected or unsupported entries cannot
-                    be accepted.
+                    Choose the types you included. Describe each entry&apos;s
+                    bytes. Unselected or unsupported entries cannot be accepted.
                   </p>
                   <div className="flex flex-wrap gap-x-6 gap-y-3">
                     {leafCapabilities.map((item) => (
@@ -423,7 +421,7 @@ export function PreparationUploadPanel({
               >
                 {!validSize
                   ? `This format allows a nonempty file up to ${size(capability.maximumObjectBytes)}.`
-                  : "Choose a file with the extension for the selected format. Backend checks also inspect the actual content."}
+                  : "Choose a file matching the selected format."}
               </p>
             )}
         </div>
@@ -518,8 +516,8 @@ export function PreparationUploadPanel({
                           ? progress.receivedBytes
                           : status.retainedBytes
                       )}{" "}
-                      received of {size(status.expectedBytes)}. File checks and
-                      draft selection follow receipt.
+                      received of {size(status.expectedBytes)}. File
+                      availability and draft selection follow receipt.
                     </p>
                   </>
                 )}
@@ -605,15 +603,6 @@ export function PreparationUploadPanel({
                   </>
                 )}
               </div>
-              {model.page && status.state !== "CLOSED" && (
-                <div className="min-w-0 lg:col-span-2">
-                  <PreparationInspectionReport
-                    draftId={model.page.preparationId}
-                    subject={{ kind: "UPLOAD", status }}
-                    enabled={model.ready && !model.writing}
-                  />
-                </div>
-              )}
             </li>
           );
         })}

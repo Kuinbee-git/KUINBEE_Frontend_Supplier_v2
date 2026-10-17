@@ -55,19 +55,6 @@ const relationships: Record<Relationship["kind"], string> = {
   SYNCHRONIZED_WITH: "Synchronized with",
   DOCUMENTATION_FOR: "Documentation for",
 };
-const securityStates: Record<
-  FileMember["inspection"]["securityState"],
-  string
-> = {
-  QUARANTINED: "In quarantine",
-  PROCESSING: "Checks in progress",
-  ACCEPTED: "Accepted in the stored security record",
-  BLOCKED: "Blocked",
-  FAILED: "Checks failed",
-  CANCELLED: "Cancelled",
-  UNRECONCILED: "Awaiting reconciliation",
-  UNKNOWN: "Unknown",
-};
 const words = (value: string) => value.toLowerCase().replaceAll("_", " ");
 const componentLabel = (component: "FULL" | "SAMPLE") =>
   component === "FULL" ? "Full dataset" : "Sample";
@@ -184,45 +171,7 @@ function InventoryRows({ page }: { page: DatasetFrozenInventory }) {
                 </p>
               )}
             </div>
-            <dl className="min-w-0 space-y-2 text-sm">
-              <div>
-                <dt className="font-medium">
-                  Inspection reference at submission
-                </dt>
-                <dd className="break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
-                  {member.inspectionAtSubmissionId}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">Present recorded security state</dt>
-                <dd className="text-muted-foreground">
-                  {securityStates[member.inspection.securityState]}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium">Present recorded inspection</dt>
-                <dd className="text-muted-foreground">
-                  {member.inspection.recordedOutcome === "NONE"
-                    ? "No recorded result"
-                    : words(member.inspection.recordedOutcome)}{" "}
-                  ·{" "}
-                  {member.inspection.current
-                    ? "current evidence reference"
-                    : "not a current evidence reference"}
-                </dd>
-                {member.inspection.currentEvidenceId && (
-                  <dd className="break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
-                    {member.inspection.currentEvidenceId}
-                  </dd>
-                )}
-              </div>
-              <div>
-                <dt className="font-medium">Access eligibility</dt>
-                <dd className="text-xs text-muted-foreground">
-                  Not evaluated by this inventory.
-                </dd>
-              </div>
-            </dl>
+
             <div className="sm:col-span-2">
               <PreparationFrozenTables
                 datasetId={page.datasetId}
@@ -572,8 +521,8 @@ export function PreparationFrozenSubmission({
               ]}
             />
             <p className="text-xs text-muted-foreground">
-              Submission is not approval or publication. A recorded inspection
-              does not grant access.
+              Your proposal has been submitted for admin review. Approval and
+              publication remain separate actions.
             </p>
           </div>
         </PreparationSection>
@@ -645,7 +594,7 @@ export function PreparationFrozenSubmission({
         <PreparationSection
           title="Submitted files and relationships"
           className="lg:col-span-12"
-          help="Each page belongs to this exact frozen submission. File membership is frozen; present recorded security and inspection status can change. Archive entries are references inside a file, not separate download rights."
+          help="Each page belongs to this exact frozen submission. File membership is frozen for this submission. Archive entries are references inside a file, not separate download rights."
         >
           <div data-frozen-inventory="true" className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-end gap-3">

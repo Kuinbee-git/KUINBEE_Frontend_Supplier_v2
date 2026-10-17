@@ -23,7 +23,6 @@ import { PreparationGrid, PreparationSection } from "./PreparationFields";
 import { PreparationUploadPanel } from "./PreparationUploadPanel";
 import { PreparationOrganization } from "./PreparationOrganization";
 import { PreparationTables } from "./PreparationTables";
-import { PreparationInspectionReport } from "./PreparationInspectionReport";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 const purpose: Record<Member["role"], string> = {
@@ -47,42 +46,14 @@ function decimalSize(value: string) {
   const hundredths = (bytes * BigInt(100)) / divisor;
   return `${hundredths / BigInt(100)}.${(hundredths % BigInt(100)).toString().padStart(2, "0")} ${unit}`;
 }
-function checkLabel(member: Member) {
-  const inspection = member.inspection;
-  const stateLabel: Record<string, string> = {
-    BLOCKED: "Blocked",
-    PROCESSING: "Checking",
-    FAILED: "Checks failed",
-    CANCELLED: "Cancelled",
-    UNRECONCILED: "Awaiting reconciliation",
-  };
-  if (stateLabel[inspection.securityState])
-    return stateLabel[inspection.securityState];
-  if (!inspection.current || inspection.recordedOutcome === "NONE")
-    return "Not assessed";
-  if (inspection.recordedOutcome === "FAIL") return "Recorded check failed";
-  if (inspection.recordedOutcome === "PASS")
-    return "Recorded pass · eligibility not assessed";
-  return "Check result unavailable";
-}
 function FilesRows({
   members,
   onRemove,
   disabled,
-  basis,
-  canInspect,
 }: {
   members: Member[];
   onRemove: (member: Member) => void;
   disabled: boolean;
-  basis: Pick<
-    DatasetFilesInventoryPageResponse,
-    | "preparationId"
-    | "preparationGeneration"
-    | "contentId"
-    | "contentGeneration"
-  > | null;
-  canInspect: boolean;
 }) {
   if (!members.length)
     return (
@@ -129,34 +100,7 @@ function FilesRows({
               {member.component === "FULL" ? "full dataset" : "sample"}
             </DashboardButton>
           </div>
-          <dl className="space-y-1 text-xs">
-            <div>
-              <dt className="inline text-muted-foreground">Upload: </dt>
-              <dd className="inline">Received</dd>
-            </div>
-            <div>
-              <dt className="inline text-muted-foreground">Checks: </dt>
-              <dd className="inline">{checkLabel(member)}</dd>
-            </div>
-          </dl>
-          {basis && (
-            <div className="min-w-0 sm:col-span-2">
-              <PreparationInspectionReport
-                draftId={basis.preparationId}
-                subject={{
-                  kind: "MEMBER",
-                  basis: {
-                    preparationId: basis.preparationId,
-                    preparationGeneration: basis.preparationGeneration,
-                    contentId: basis.contentId,
-                    contentGeneration: basis.contentGeneration,
-                  },
-                  member,
-                }}
-                enabled={canInspect}
-              />
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">Uploaded</p>
         </li>
       ))}
     </ul>
@@ -558,8 +502,6 @@ export function PreparationFilesPanel({
           <section aria-label="Full material">
             {usableInventory ? (
               <FilesRows
-                basis={usableInventory}
-                canInspect={Boolean(active && current && !metadataUnsettled)}
                 onRemove={(member) => {
                   if (usableInventory)
                     void uploads.removeMember(member, usableInventory);
@@ -593,8 +535,6 @@ export function PreparationFilesPanel({
           <section aria-label="Sample material">
             {usableInventory ? (
               <FilesRows
-                basis={usableInventory}
-                canInspect={Boolean(active && current && !metadataUnsettled)}
                 onRemove={(member) => {
                   if (usableInventory)
                     void uploads.removeMember(member, usableInventory);
@@ -626,8 +566,6 @@ export function PreparationFilesPanel({
           help="Changing the upload choice did not delete these references or their stored bytes. They must be resolved before submission becomes available."
         >
           <FilesRows
-            basis={usableInventory}
-            canInspect={Boolean(active && current && !metadataUnsettled)}
             members={outside}
             onRemove={(member) => {
               if (usableInventory)

@@ -2460,24 +2460,19 @@ try {
     .getByRole("button", { name: "Refresh submission", exact: true })
     .click();
   await frozenInventory.getByText("selected-1.csv", { exact: true }).waitFor();
-  // A stored inspection-at-submission reference is distinct from current status.
-  assert.equal(frozen.members[0].inspection.recordedOutcome, "FAIL");
-  await frozenInventory.getByText("Blocked", { exact: true }).waitFor();
-  await frozenInventory
-    .getByText(/fail · current evidence reference/)
-    .waitFor();
+  // Operational scan state is admin-only, even when a fixture carries it.
   const firstFile = frozenInventory
     .getByRole("listitem")
     .filter({ hasText: "selected-1.csv" });
-  assert(
-    (await firstFile.innerText()).includes(
-      frozen.members[0].inspectionAtSubmissionId
-    )
+  const fileText = await firstFile.innerText();
+  assert.equal(fileText.includes("Blocked"), false);
+  assert.equal(
+    fileText.includes(frozen.members[0].inspectionAtSubmissionId),
+    false
   );
-  assert(
-    (await firstFile.innerText()).includes(
-      frozen.members[0].inspection.currentEvidenceId
-    )
+  assert.equal(
+    fileText.includes(frozen.members[0].inspection.currentEvidenceId),
+    false
   );
   const nextFiles = frozenInventory.getByRole("button", {
     name: /Next|Load more/,

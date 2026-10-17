@@ -1290,7 +1290,7 @@ try {
         await namedButton(page, "Upload file").click();
         await page
           .getByText(
-            "All file bytes were received. Choose Finish upload to start backend checks.",
+            "All file bytes were received. Choose Finish upload to complete the upload.",
             { exact: true }
           )
           .waitFor();
@@ -1306,7 +1306,7 @@ try {
         await row
           .getByRole("button", { name: "Finish upload", exact: true })
           .click();
-        await row.getByText(/Backend checks in progress/).waitFor();
+        await row.getByText(/Preparing file/).waitFor();
         accept(item);
         await namedButton(page, "Refresh upload status").click();
         const before = draft.members.length;
@@ -1491,7 +1491,7 @@ try {
   // Current-ID operations never replace a paginated inventory or release bytes.
   await namedButton(page, "Finish upload").click();
   await uploadRow(page, partial)
-    .getByText(/Backend checks in progress/)
+    .getByText(/Preparing file/)
     .waitFor();
   accept(partial);
   await namedButton(page, "Refresh upload status").click();
@@ -1698,13 +1698,13 @@ try {
   });
   await namedButton(page, "Finish upload").click();
   await uploadRow(page, zipItem)
-    .getByText(/Backend checks in progress/)
+    .getByText(/Preparing file/)
     .waitFor();
   flags.failChecks = true;
   accept(zipItem);
   flags.failChecks = false;
   await namedButton(page, "Refresh upload status").click();
-  await page.getByText(/checks did not accept/).waitFor();
+  await page.getByText(/This file could not be added/).waitFor();
   assert.equal(await namedButton(page, "Use in full dataset").count(), 0);
   console.log(
     "PASS compact ZIP type declarations and failed-check selection denial"
@@ -1740,7 +1740,7 @@ try {
       await namedButton(page, "Upload file").click();
       await page
         .getByText(
-          "All file bytes were received. Choose Finish upload to start backend checks.",
+          "All file bytes were received. Choose Finish upload to complete the upload.",
           { exact: true }
         )
         .waitFor();
@@ -1749,7 +1749,7 @@ try {
       await row
         .getByRole("button", { name: "Finish upload", exact: true })
         .click();
-      await row.getByText(/Backend checks in progress/).waitFor();
+      await row.getByText(/Preparing file/).waitFor();
       accept(item);
       await namedButton(page, "Refresh upload status").click();
       await row
