@@ -54,6 +54,7 @@ const expectedSources = [
   "inspectionProfile",
   "reader",
   "catalogue",
+  "category",
   "legacyCatalogue",
   "legacyCatalogueEndpoints",
   "tables",
