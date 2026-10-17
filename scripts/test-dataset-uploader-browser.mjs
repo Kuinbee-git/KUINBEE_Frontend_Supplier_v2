@@ -29,6 +29,8 @@ import {
   DatasetTableDescriptionsPageResponseSchema,
   DatasetTableDescriptionsMutationBodySchema,
   DatasetTableDescriptionsMutationResponseSchema,
+  DatasetTableReferencesPageQuerySchema,
+  DatasetTableReferencesPageResponseSchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 // Real rendered editor, native File/Blob/WebCrypto and HTTP requests against a
@@ -520,6 +522,43 @@ const server = createServer(async (req, res) => {
                   afterId: items.at(-1).id,
                 }
               : null,
+        })
+      );
+      return;
+    }
+    if (tail === "files/table-references" && req.method === "GET") {
+      const query = DatasetTableReferencesPageQuerySchema.parse(
+        Object.fromEntries(url.searchParams)
+      );
+      if (
+        query.contentId !== draft.contentId ||
+        query.contentGeneration !== draft.contentGeneration ||
+        query.expectedPreparationGeneration !== draft.generation
+      ) {
+        deny(res, "DRAFT_CHANGED", "Table reference context changed.");
+        return;
+      }
+      const member = draft.members.find((item) => item.id === query.memberId);
+      assert(member, "Reference reads retain exact fixture membership");
+      assert(!query.component || query.component === member.component);
+      assert(
+        !query.tableId ||
+          draft.tables.some(
+            (table) =>
+              table.id === query.tableId && table.memberId === member.id
+          )
+      );
+      // This uploader fixture declares no keys, joins or dictionaries. Their
+      // read is exact and schema-checked; unexpected writes still fail below.
+      ok(
+        res,
+        DatasetTableReferencesPageResponseSchema.parse({
+          contentId: draft.contentId,
+          contentGeneration: draft.contentGeneration,
+          preparationGeneration: draft.generation,
+          frozen: false,
+          items: [],
+          nextCursor: null,
         })
       );
       return;

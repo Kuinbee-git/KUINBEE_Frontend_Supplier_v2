@@ -41,6 +41,8 @@ import {
   DatasetTableDescriptionsPageResponseSchema,
   DatasetTableDescriptionsMutationBodySchema,
   DatasetTableDescriptionsMutationResponseSchema,
+  DatasetTableReferencesPageQuerySchema,
+  DatasetTableReferencesPageResponseSchema,
   getDatasetPreparationReadiness,
 } from "@kuinbee/dataset-preparation-contracts";
 
@@ -798,6 +800,37 @@ const server = createServer(async (req, res) => {
     }
     if (tail === "workflow" && req.method === "GET") {
       ok(res, DatasetWorkflowResponseSchema.parse({ state: state(draft) }));
+      return;
+    }
+    if (
+      tail === "files/table-references" &&
+      req.method === "GET" &&
+      draft.managed
+    ) {
+      const query = DatasetTableReferencesPageQuerySchema.parse(
+        queryObject(url)
+      );
+      const reference = editBase(draft, "METADATA").contentReference;
+      assert.equal(query.contentId, reference.contentId);
+      assert.equal(query.contentGeneration, reference.generation);
+      assert.equal(query.expectedPreparationGeneration, draft.generation);
+      const member = draft.members.find((item) => item.id === query.memberId);
+      assert(member, "Reference reads retain exact fixture membership");
+      assert(!query.component || query.component === member.component);
+      assert(!query.tableId || query.tableId === id(9001));
+      // This workflow fixture has no declared keys, joins or dictionaries.
+      // Return the exact empty page without accepting reference writes.
+      ok(
+        res,
+        DatasetTableReferencesPageResponseSchema.parse({
+          contentId: reference.contentId,
+          contentGeneration: reference.generation,
+          preparationGeneration: draft.generation,
+          frozen: reference.frozen,
+          items: [],
+          nextCursor: null,
+        })
+      );
       return;
     }
     if (tail === "files/tables" && draft.managed) {
