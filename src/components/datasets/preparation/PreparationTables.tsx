@@ -14,6 +14,7 @@ import { DashboardButton } from "@/components/dashboard";
 import { datasetTablesApi } from "@/lib/api/dataset-tables";
 import { useAuthStore } from "@/store/auth.store";
 import { useTablePagePlan } from "@/hooks/useTablePagePlan";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 import {
   beginTablePagePlan,
   clearTablePagePlan,
@@ -162,10 +163,7 @@ function useTablePage(
           setSnapshot({
             key: requestKey,
             data: null,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Tables could not be loaded.",
+            error: datasetActionError(error, "Tables could not be loaded."),
           });
       });
     return () => controller.abort();
@@ -444,11 +442,7 @@ function TableEditor({
     try {
       await sendCommand(command, replay);
     } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "Descriptions could not be saved."
-      );
+      setError(datasetActionError(failure, "Descriptions could not be saved."));
     } finally {
       setWriting(false);
     }

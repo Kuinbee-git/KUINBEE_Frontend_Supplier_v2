@@ -15,6 +15,7 @@ import { useReferencePlan } from "@/hooks/useReferencePlan";
 import { datasetReferencesApi } from "@/lib/api/dataset-references";
 import { datasetTablesApi } from "@/lib/api/dataset-tables";
 import { datasetFilesApi } from "@/lib/api/dataset-files";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 import {
   clearReferencePlan,
   storeReferencePlan,
@@ -120,9 +121,12 @@ const selectedIds = (definition: Definition) =>
 function Problem({ error }: { error: unknown }) {
   return error ? (
     <p role="alert" className="break-words text-sm text-destructive">
-      {error instanceof Error
-        ? error.message
-        : "This exact page could not be loaded. Your saved selections are preserved."}
+      {typeof error === "string"
+        ? error
+        : datasetActionError(
+            error,
+            "This exact page could not be loaded. Your saved selections are preserved."
+          )}
     </p>
   ) : null;
 }
@@ -630,9 +634,10 @@ function ReferenceEditor({
       await sendReferenceCommand(command, replay);
     } catch (failure) {
       setError(
-        failure instanceof Error
-          ? failure.message
-          : "The reference save is unconfirmed. Keep the original request."
+        datasetActionError(
+          failure,
+          "The reference save is unconfirmed. Keep the original request."
+        )
       );
     } finally {
       setWriting(false);

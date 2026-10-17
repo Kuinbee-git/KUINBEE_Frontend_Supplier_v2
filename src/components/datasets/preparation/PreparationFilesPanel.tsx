@@ -18,6 +18,7 @@ import { useComponentRequest } from "@/hooks/useComponentRequest";
 import { usePreparationUploads } from "@/hooks/usePreparationUploads";
 import { datasetFilesApi } from "@/lib/api/dataset-files";
 import { PreparationApiError } from "@/lib/api/dataset-preparations";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 import { PreparationGrid, PreparationSection } from "./PreparationFields";
 import { PreparationUploadPanel } from "./PreparationUploadPanel";
 import { PreparationOrganization } from "./PreparationOrganization";
@@ -298,9 +299,10 @@ export function PreparationFilesPanel({
           return false;
         setReadFailed(true);
         setError(
-          failure instanceof Error
-            ? failure.message
-            : "The saved file inventory could not be loaded."
+          datasetActionError(
+            failure,
+            "The saved file inventory could not be loaded."
+          )
         );
         return false;
       } finally {
@@ -394,11 +396,7 @@ export function PreparationFilesPanel({
       if (!ambiguous) pending.current = null;
       if (!ambiguous) setReadFailed(true);
       setUncertain(Boolean(ambiguous && pending.current));
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "Files could not be updated."
-      );
+      setError(datasetActionError(failure, "Files could not be updated."));
     } finally {
       writeBusy.current = false;
       setWriting(false);

@@ -11,6 +11,8 @@ export function datasetActionError(
   const hint: Record<string, string> = {
     CONTENT_CAPACITY_EXCEEDED:
       "This information or edit-history limit is separate from file storage. Keep this page open to preserve unsaved answers; contact support if the limit persists.",
+    CONTENT_RECONCILIATION_REQUIRED:
+      "Keep your unsaved table and reference answers. Contact support before retrying; removing uploaded files will not repair this metadata issue.",
     DATASET_CAPACITY_EXCEEDED:
       "The 5 GB Dataset allowance includes retained files and upload reservations. Cancel incomplete uploads or delete eligible unselected stored files, then wait for backend cleanup to release space.",
     SUPPLIER_CAPACITY_EXCEEDED:
