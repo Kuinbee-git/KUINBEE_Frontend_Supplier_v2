@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   type DatasetFilesContextBody,
   type DatasetFilesContextResponse,
@@ -9,9 +15,15 @@ import {
 } from "@kuinbee/dataset-preparation-contracts";
 import { DashboardButton } from "@/components/dashboard";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
+import { usePreparationUploads } from "@/hooks/usePreparationUploads";
 import { datasetFilesApi } from "@/lib/api/dataset-files";
 import { PreparationApiError } from "@/lib/api/dataset-preparations";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 import { PreparationGrid, PreparationSection } from "./PreparationFields";
+import { PreparationUploadPanel } from "./PreparationUploadPanel";
+import { PreparationOrganization } from "./PreparationOrganization";
+import { PreparationTables } from "./PreparationTables";
+import { PreparationInspectionReport } from "./PreparationInspectionReport";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 const purpose: Record<Member["role"], string> = {
@@ -53,7 +65,25 @@ function checkLabel(member: Member) {
     return "Recorded pass · eligibility not assessed";
   return "Check result unavailable";
 }
-function FilesRows({ members }: { members: Member[] }) {
+function FilesRows({
+  members,
+  onRemove,
+  disabled,
+  basis,
+  canInspect,
+}: {
+  members: Member[];
+  onRemove: (member: Member) => void;
+  disabled: boolean;
+  basis: Pick<
+    DatasetFilesInventoryPageResponse,
+    | "preparationId"
+    | "preparationGeneration"
+    | "contentId"
+    | "contentGeneration"
+  > | null;
+  canInspect: boolean;
+}) {
   if (!members.length)
     return (
       <p className="text-sm text-muted-foreground">
@@ -88,6 +118,16 @@ function FilesRows({ members }: { members: Member[] }) {
             >
               Measured size: {decimalSize(member.measuredSizeBytes)}
             </p>
+            <DashboardButton
+              type="button"
+              variant="outline"
+              className="mt-3"
+              disabled={disabled}
+              onClick={() => onRemove(member)}
+            >
+              Remove from{" "}
+              {member.component === "FULL" ? "full dataset" : "sample"}
+            </DashboardButton>
           </div>
           <dl className="space-y-1 text-xs">
             <div>
@@ -98,11 +138,25 @@ function FilesRows({ members }: { members: Member[] }) {
               <dt className="inline text-muted-foreground">Checks: </dt>
               <dd className="inline">{checkLabel(member)}</dd>
             </div>
-            <div>
-              <dt className="inline text-muted-foreground">Format: </dt>
-              <dd className="inline">Not assessed</dd>
-            </div>
           </dl>
+          {basis && (
+            <div className="min-w-0 sm:col-span-2">
+              <PreparationInspectionReport
+                draftId={basis.preparationId}
+                subject={{
+                  kind: "MEMBER",
+                  basis: {
+                    preparationId: basis.preparationId,
+                    preparationGeneration: basis.preparationGeneration,
+                    contentId: basis.contentId,
+                    contentGeneration: basis.contentGeneration,
+                  },
+                  member,
+                }}
+                enabled={canInspect}
+              />
+            </div>
+          )}
         </li>
       ))}
     </ul>
@@ -114,17 +168,23 @@ export function PreparationFilesPanel({
   active,
   metadataDirty,
   metadataBlocked,
+  metadataUnsettled = false,
   onUncertainChange,
   onWritingChange,
   onMetadataChanged,
+  onActivityChange,
+  onInputsDirtyChange,
 }: {
   saved: DatasetPreparationResponse | null;
   active: boolean;
   metadataDirty: boolean;
   metadataBlocked: boolean;
+  metadataUnsettled?: boolean;
   onUncertainChange: (value: boolean) => void;
   onWritingChange: (value: boolean) => void;
   onMetadataChanged: () => void;
+  onActivityChange: (value: boolean, pause?: () => void) => void;
+  onInputsDirtyChange: (value: boolean) => void;
 }) {
   const [context, setContext] = useState<DatasetFilesContextResponse | null>(
     null
@@ -134,6 +194,18 @@ export function PreparationFilesPanel({
   const [loading, setLoading] = useState(false);
   const [writing, setWriting] = useState(false);
   const [uncertain, setUncertain] = useState(false);
+  const [uploadUncertain, setUploadUncertain] = useState(false);
+  const [organizationDirty, setOrganizationDirty] = useState(false);
+  const [tablesDirty, setTablesDirty] = useState(false);
+  useEffect(
+    () => onInputsDirtyChange(organizationDirty || tablesDirty),
+    [organizationDirty, tablesDirty, onInputsDirtyChange]
+  );
+  useEffect(() => () => onInputsDirtyChange(false), [onInputsDirtyChange]);
+  useEffect(
+    () => onUncertainChange(uncertain || uploadUncertain),
+    [uncertain, uploadUncertain, onUncertainChange]
+  );
   const [error, setError] = useState("");
   const [readFailed, setReadFailed] = useState(true);
   const [history, setHistory] = useState<Array<string | undefined>>([
@@ -146,6 +218,12 @@ export function PreparationFilesPanel({
     null
   );
   const writeBusy = useRef(false);
+  useLayoutEffect(() => {
+    if (metadataUnsettled) {
+      epoch.current++;
+      reader.current?.abort();
+    }
+  }, [metadataUnsettled]);
   useEffect(
     () => () => {
       epoch.current++;
@@ -160,7 +238,8 @@ export function PreparationFilesPanel({
       index = 0,
       pinned?: { contentId: string; contentGeneration: number }
     ) => {
-      if (!saved || pending.current || writeBusy.current) return;
+      if (!saved || metadataUnsettled || pending.current || writeBusy.current)
+        return false;
       const generation = ++epoch.current;
       reader.current?.abort();
       const controller = new AbortController();
@@ -170,7 +249,7 @@ export function PreparationFilesPanel({
       setInventory(null);
       try {
         const next = await datasetFilesApi.context(saved.id, controller.signal);
-        if (generation !== epoch.current) return;
+        if (generation !== epoch.current) return false;
         setContext(next);
         if (next.preparationGeneration !== saved.generation) {
           setReadFailed(true);
@@ -178,7 +257,7 @@ export function PreparationFilesPanel({
           setError(
             "Saved details changed in another tab. Review the latest saved draft before changing its files."
           );
-          return;
+          return false;
         }
         if (
           pinned &&
@@ -189,7 +268,7 @@ export function PreparationFilesPanel({
           setError(
             "The file inventory changed. Refresh files to restart from its first page."
           );
-          return;
+          return false;
         }
         if (
           next.contentId &&
@@ -208,30 +287,34 @@ export function PreparationFilesPanel({
             },
             controller.signal
           );
-          if (generation !== epoch.current) return;
+          if (generation !== epoch.current) return false;
           setInventory(page);
         }
         setPageIndex(index);
         setReadFailed(false);
         if (index === 0) setHistory([undefined]);
+        return true;
       } catch (failure) {
-        if (generation !== epoch.current || controller.signal.aborted) return;
+        if (generation !== epoch.current || controller.signal.aborted)
+          return false;
         setReadFailed(true);
         setError(
-          failure instanceof Error
-            ? failure.message
-            : "The saved file inventory could not be loaded."
+          datasetActionError(
+            failure,
+            "The saved file inventory could not be loaded."
+          )
         );
+        return false;
       } finally {
         if (generation === epoch.current) setLoading(false);
       }
     },
-    [saved, onMetadataChanged]
+    [saved, onMetadataChanged, metadataUnsettled]
   );
   useComponentRequest(
     read,
-    [saved?.id, saved?.generation, active],
-    Boolean(saved && active)
+    [saved?.id, saved?.generation, active, metadataUnsettled],
+    Boolean(saved && active && !metadataUnsettled)
   );
 
   const current = Boolean(
@@ -254,6 +337,19 @@ export function PreparationFilesPanel({
     !context.synchronizationRequired
       ? inventory
       : null;
+  const onFilesChanged = useCallback(() => read(), [read]);
+  const uploads = usePreparationUploads({
+    saved,
+    context: current ? context : null,
+    active,
+    metadataDirty,
+    metadataUnsettled,
+    blocked: metadataBlocked || writing || uncertain || loading,
+    onWritingChange,
+    onUncertainChange: setUploadUncertain,
+    onActivityChange,
+    onFilesChanged,
+  });
 
   async function synchronize() {
     if (
@@ -288,7 +384,6 @@ export function PreparationFilesPanel({
       );
       pending.current = null;
       setUncertain(false);
-      onUncertainChange(false);
       // The original acknowledgement can predate another save. Read current
       // context rather than promoting the receipt to a latest inventory.
       writeBusy.current = false;
@@ -301,12 +396,7 @@ export function PreparationFilesPanel({
       if (!ambiguous) pending.current = null;
       if (!ambiguous) setReadFailed(true);
       setUncertain(Boolean(ambiguous && pending.current));
-      onUncertainChange(Boolean(ambiguous && pending.current));
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "Files could not be updated."
-      );
+      setError(datasetActionError(failure, "Files could not be updated."));
     } finally {
       writeBusy.current = false;
       setWriting(false);
@@ -319,6 +409,7 @@ export function PreparationFilesPanel({
     member.component === "FULL" ? !hasFull : !hasSample
   );
   const mutationDisabled =
+    uploads.reconcileRequired ||
     metadataBlocked ||
     metadataDirty ||
     loading ||
@@ -448,6 +539,16 @@ export function PreparationFilesPanel({
           not free stored bytes.
         </p>
       </section>
+      <PreparationUploadPanel
+        model={{
+          ...uploads,
+          canAdmit: uploads.canAdmit && !tablesDirty,
+          canChange: uploads.canChange && !tablesDirty,
+        }}
+        hasFull={hasFull}
+        hasSample={hasSample}
+        members={members}
+      />
       {hasFull && (
         <PreparationSection
           title="Full dataset"
@@ -457,6 +558,13 @@ export function PreparationFilesPanel({
           <section aria-label="Full material">
             {usableInventory ? (
               <FilesRows
+                basis={usableInventory}
+                canInspect={Boolean(active && current && !metadataUnsettled)}
+                onRemove={(member) => {
+                  if (usableInventory)
+                    void uploads.removeMember(member, usableInventory);
+                }}
+                disabled={!uploads.canChange || tablesDirty}
                 members={members.filter(
                   (member) => member.component === "FULL"
                 )}
@@ -469,9 +577,11 @@ export function PreparationFilesPanel({
               </p>
             )}
           </section>
-          <DashboardButton type="button" variant="outline" disabled>
-            Upload full files — unavailable
-          </DashboardButton>
+          {!uploads.config?.admission.enabled && (
+            <DashboardButton type="button" variant="outline" disabled>
+              Upload full files — unavailable
+            </DashboardButton>
+          )}
         </PreparationSection>
       )}
       {hasSample && (
@@ -483,6 +593,13 @@ export function PreparationFilesPanel({
           <section aria-label="Sample material">
             {usableInventory ? (
               <FilesRows
+                basis={usableInventory}
+                canInspect={Boolean(active && current && !metadataUnsettled)}
+                onRemove={(member) => {
+                  if (usableInventory)
+                    void uploads.removeMember(member, usableInventory);
+                }}
+                disabled={!uploads.canChange || tablesDirty}
                 members={members.filter(
                   (member) => member.component === "SAMPLE"
                 )}
@@ -495,9 +612,11 @@ export function PreparationFilesPanel({
               </p>
             )}
           </section>
-          <DashboardButton type="button" variant="outline" disabled>
-            Upload sample files — unavailable
-          </DashboardButton>
+          {!uploads.config?.admission.enabled && (
+            <DashboardButton type="button" variant="outline" disabled>
+              Upload sample files — unavailable
+            </DashboardButton>
+          )}
         </PreparationSection>
       )}
       {outside.length > 0 && (
@@ -506,7 +625,16 @@ export function PreparationFilesPanel({
           className="lg:col-span-12"
           help="Changing the upload choice did not delete these references or their stored bytes. They must be resolved before submission becomes available."
         >
-          <FilesRows members={outside} />
+          <FilesRows
+            basis={usableInventory}
+            canInspect={Boolean(active && current && !metadataUnsettled)}
+            members={outside}
+            onRemove={(member) => {
+              if (usableInventory)
+                void uploads.removeMember(member, usableInventory);
+            }}
+            disabled={!uploads.canChange || tablesDirty}
+          />
         </PreparationSection>
       )}
       {usableInventory && (
@@ -561,6 +689,57 @@ export function PreparationFilesPanel({
             </DashboardButton>
           </div>
         </div>
+      )}
+      {context?.contentId && context.contentGeneration !== null && (
+        <PreparationOrganization
+          basis={{
+            preparationId: context.preparationId,
+            preparationGeneration: context.preparationGeneration,
+            contentId: context.contentId,
+            contentGeneration: context.contentGeneration,
+          }}
+          active={Boolean(
+            active &&
+            current &&
+            context.editable &&
+            !context.synchronizationRequired
+          )}
+          canChange={uploads.canChange && !tablesDirty}
+          hasFull={hasFull}
+          hasSample={hasSample}
+          mutate={uploads.organize}
+          onDirtyChange={setOrganizationDirty}
+        />
+      )}
+      {context?.contentId && context.contentGeneration !== null && (
+        <PreparationTables
+          basis={{
+            preparationId: context.preparationId,
+            preparationGeneration: context.preparationGeneration,
+            contentId: context.contentId,
+            contentGeneration: context.contentGeneration,
+          }}
+          members={members}
+          active={Boolean(
+            active &&
+            current &&
+            context.editable &&
+            !context.synchronizationRequired &&
+            !metadataUnsettled
+          )}
+          canChange={uploads.canChange && !organizationDirty}
+          pending={
+            uploads.pending?.kind === "TABLES" ||
+            uploads.pending?.kind === "REFERENCES"
+          }
+          referencePending={uploads.pending?.kind === "REFERENCES"}
+          buildReferenceCommand={uploads.buildReferenceCommand}
+          sendReferenceCommand={uploads.sendReferenceCommand}
+          buildCommand={uploads.buildTableCommand}
+          sendCommand={uploads.sendTableCommand}
+          retry={uploads.retry}
+          onDirtyChange={setTablesDirty}
+        />
       )}
     </PreparationGrid>
   );

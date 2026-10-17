@@ -12,6 +12,8 @@ import {
   DatasetFilesContextResponseSchema,
   DatasetFilesInventoryPageQuerySchema,
   DatasetFilesInventoryPageResponseSchema,
+  DatasetFilesOrganizationQuerySchema,
+  DatasetFilesOrganizationPageResponseSchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 const require = createRequire(import.meta.url);
@@ -43,9 +45,12 @@ const entry = [
   "import {DatasetPreparationScreen} from './src/components/datasets/preparation/DatasetPreparationScreen';",
   "import {DATASET_PREPARATION_ENABLED} from './src/lib/dataset-preparation-environment';",
   "import {preparationApi} from './src/lib/api/dataset-preparations';",
+  "import {getPreparationProfileSummary} from './src/components/datasets/preparation/PreparationFields';",
   "import {DatasetPreparationMetadataSchema} from '@kuinbee/dataset-preparation-contracts';",
   "window.runtimeContract = {partial:DatasetPreparationMetadataSchema.safeParse({title:'Partial'}).success, forged:DatasetPreparationMetadataSchema.safeParse({title:'Bad',scanPassed:true}).success};",
+  "window.profileSummaryProbes=['constructor','UNKNOWN'].map(recordUnit=>getPreparationProfileSummary({title:'Literal record meaning',modalities:['TABULAR'],profiles:{tabular:{recordUnit}}})[0].fields.find(field=>field.label==='What does one record represent?').value);",
   "window.tryProductionWrite=async()=>{try{await preparationApi.create({requestId:crypto.randomUUID(),metadata:{title:'Blocked'}});}catch(e){return e.code;}};",
+  "import {useAuthStore} from './src/store/auth.store';useAuthStore.getState().login({id:'c000000000000000000999999',email:'fixture@example.test',name:'Fixture supplier',role:'supplier'});",
   "const root=createRoot(document.getElementById('root')); let mount=0;",
   "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
   "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",
@@ -350,7 +355,7 @@ const server = createServer(async (req, res) => {
     requests.push(recorded);
     const base = "/api/v2/supplier/dataset-drafts";
     const fileRoute = url.pathname.match(
-      /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files)$/
+      /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files\/organization|files)$/
     );
     if (fileRoute) {
       const [, draftId, action] = fileRoute;
@@ -449,6 +454,68 @@ const server = createServer(async (req, res) => {
           return;
         }
         json(res, 200, { success: true, data: result });
+        return;
+      }
+      if (action === "files/organization" && req.method === "GET") {
+        const q = DatasetFilesOrganizationQuerySchema.parse(
+          Object.fromEntries(url.searchParams)
+        );
+        const content = fileContexts.get(draftId);
+        if (
+          content?.id !== q.contentId ||
+          content?.generation !== q.contentGeneration ||
+          draft.generation !== q.expectedPreparationGeneration ||
+          content?.sourceGeneration !== draft.generation
+        ) {
+          json(res, 409, {
+            success: false,
+            error: {
+              code: "DRAFT_CHANGED",
+              message: "Organization context changed",
+            },
+          });
+          return;
+        }
+        assert(["GROUPS", "MEMBERS"].includes(q.section));
+        const all =
+          q.section === "MEMBERS"
+            ? (fileMembers.get(draftId) ?? [])
+                .filter(
+                  (m) =>
+                    (!q.component || m.component === q.component) &&
+                    (!q.memberId || m.id === q.memberId) &&
+                    (!q.afterId || m.id > q.afterId)
+                )
+                .sort((a, b) => a.id.localeCompare(b.id))
+                .map((m) => ({
+                  kind: "MEMBER",
+                  id: m.id,
+                  uploadObjectId: m.uploadObjectId,
+                  component: m.component,
+                  role: m.role,
+                  originalFileName: m.originalFileName,
+                  relativePath: m.relativePath,
+                  group: null,
+                }))
+            : [];
+        const items = all.slice(0, q.limit);
+        json(res, 200, {
+          success: true,
+          data: DatasetFilesOrganizationPageResponseSchema.parse({
+            preparationId: draftId,
+            preparationGeneration: draft.generation,
+            contentId: content.id,
+            contentGeneration: content.generation,
+            section: q.section,
+            component: q.component ?? null,
+            memberId: q.memberId ?? null,
+            inventoryId: null,
+            uploadObjectId: null,
+            items,
+            nextCursor:
+              all.length > q.limit ? { ...q, afterId: items.at(-1).id } : null,
+          }),
+        });
         return;
       }
       if (action === "files" && req.method === "GET") {
@@ -1009,6 +1076,10 @@ try {
     partial: true,
     forged: false,
   });
+  assert.deepEqual(await page.evaluate(() => window.profileSummaryProbes), [
+    "constructor",
+    "UNKNOWN",
+  ]);
   await page
     .getByLabel("Dataset title", { exact: true })
     .fill("Only a title is needed");
@@ -1156,7 +1227,7 @@ try {
       assert(
         await page
           .getByRole("button", {
-            name: "Submit for admin review — unavailable",
+            name: "Submit proposal for admin review",
             exact: true,
           })
           .isDisabled()
@@ -1294,13 +1365,19 @@ try {
       .isDisabled()
   );
   assert.equal(
-    await page.getByText("backend-file-24.txt", { exact: true }).count(),
+    await page
+      .getByRole("list", { name: "Stored file references", exact: true })
+      .getByText("backend-file-24.txt", { exact: true })
+      .count(),
     0
   );
   await page
     .getByRole("button", { name: "Next files page", exact: true })
     .click();
-  await page.getByText("backend-file-24.txt", { exact: true }).waitFor();
+  await page
+    .getByRole("list", { name: "Stored file references", exact: true })
+    .getByText("backend-file-24.txt", { exact: true })
+    .waitFor();
   assert.equal(await page.getByText("Received", { exact: true }).count(), 5);
   await page
     .getByRole("button", { name: "Previous files page", exact: true })
@@ -1684,6 +1761,185 @@ try {
   console.log(
     "PASS actual pageSize catalogue pagination beyond 100, selection retention through search and current-label readback"
   );
+
+  await step(page, "3. Dataset details");
+  const additional = page.getByLabel("Add an additional category", {
+    exact: true,
+  });
+  await additional
+    .locator("option", { hasText: /^Subject 1$/ })
+    .waitFor({ state: "attached" });
+  await additional.selectOption(categories[0].id);
+  for (let pageIndex = 0; pageIndex < 5; pageIndex++) {
+    await page
+      .getByRole("button", { name: "Load more categories", exact: true })
+      .click();
+    await page
+      .getByText(
+        String(Math.min((pageIndex + 2) * 20, 113)) +
+          " of 113 matching categories loaded.",
+        { exact: true }
+      )
+      .waitFor();
+  }
+  await additional.selectOption(categories[111].id);
+  for (const selectedId of [
+    categories[0].id,
+    categories[111].id,
+    categories[112].id,
+  ])
+    assert.equal(
+      await additional.locator('option[value="' + selectedId + '"]').count(),
+      0
+    );
+  const tags = page.getByLabel("Tags (one per line)", { exact: true });
+  await tags.fill("Marathi conversations");
+  await tags.press("End");
+  await tags.press("Enter");
+  await tags.pressSequentially("Sensor context");
+  assert.equal(
+    await tags.inputValue(),
+    "Marathi conversations\nSensor context"
+  );
+  await tags.fill("  Marathi conversations  \nSensor context\n\n");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.secondaryCategoryIds, [
+    categories[0].id,
+    categories[111].id,
+  ]);
+  assert.deepEqual(drafts.get(scopedId).metadata.tags, [
+    "Marathi conversations",
+    "Sensor context",
+  ]);
+  const tagWrites = requests.filter((request) =>
+    ["POST", "PATCH"].includes(request.method)
+  ).length;
+  await tags.fill("Repeated tag\nRepeated tag");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "Tags must be unique" })
+    .waitFor();
+  assert.equal(
+    requests.filter((request) => ["POST", "PATCH"].includes(request.method))
+      .length,
+    tagWrites
+  );
+  assert.equal(await tags.inputValue(), "Repeated tag\nRepeated tag");
+  await tags.fill("Marathi conversations\nSensor context");
+  await page.reload();
+  await sleepReady(page);
+  await step(page, "3. Dataset details");
+  await page
+    .getByRole("list", { name: "Additional categories", exact: true })
+    .getByText("Subject 112", { exact: true })
+    .waitFor();
+  await page
+    .getByRole("button", {
+      name: "Remove additional category " + categories[0].id,
+      exact: true,
+    })
+    .click();
+  await tags.fill("");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.secondaryCategoryIds, [
+    categories[111].id,
+  ]);
+  assert.deepEqual(drafts.get(scopedId).metadata.tags, []);
+  console.log(
+    "PASS additional categories beyond 100 retain named selections and exclude primary/duplicates; multiline tags round-trip and explicit empty lists clear"
+  );
+
+  await page
+    .getByLabel("Geographic coverage", { exact: true })
+    .selectOption("KNOWN");
+  await page
+    .getByLabel("Collection or capture period", { exact: true })
+    .selectOption("KNOWN");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.geographicCoverage, {
+    state: "KNOWN",
+  });
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionPeriod, {
+    state: "KNOWN",
+  });
+  await page
+    .getByLabel("Places or regions represented", { exact: true })
+    .fill("India, mainly Maharashtra");
+  const coverageWrites = requests.filter((request) =>
+    ["POST", "PATCH"].includes(request.method)
+  ).length;
+  await page.getByLabel("Collection start", { exact: true }).fill("2023-02-29");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "collectionPeriod.start.value" })
+    .waitFor();
+  assert.equal(
+    await page.getByLabel("Collection start", { exact: true }).inputValue(),
+    "2023-02-29"
+  );
+  await page.getByLabel("Collection start", { exact: true }).fill("2025");
+  await page.getByLabel("Collection end", { exact: true }).fill("2024-06");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "cannot end before it starts" })
+    .waitFor();
+  assert.equal(
+    requests.filter((request) => ["POST", "PATCH"].includes(request.method))
+      .length,
+    coverageWrites
+  );
+  assert.equal(
+    await page.getByLabel("Collection start", { exact: true }).inputValue(),
+    "2025"
+  );
+  await page.getByLabel("Collection start", { exact: true }).fill("2019");
+  await page.getByLabel("Collection end", { exact: true }).fill("2024-06");
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionPeriod, {
+    state: "KNOWN",
+    start: { precision: "YEAR", value: "2019" },
+    end: { precision: "MONTH", value: "2024-06" },
+  });
+  await step(page, "4. Review draft");
+  await page.getByText("India, mainly Maharashtra", { exact: true }).waitFor();
+  await page
+    .getByText("2019 (year) to 2024-06 (month)", { exact: true })
+    .waitFor();
+  await page.getByText("Subject 112", { exact: true }).waitFor();
+  await step(page, "3. Dataset details");
+  await page
+    .getByLabel("Geographic coverage", { exact: true })
+    .selectOption("UNKNOWN");
+  await page
+    .getByLabel("Collection or capture period", { exact: true })
+    .selectOption("NOT_APPLICABLE");
+  await save(page);
+  await page.reload();
+  await sleepReady(page);
+  await step(page, "3. Dataset details");
+  assert.equal(
+    await page.getByLabel("Geographic coverage", { exact: true }).inputValue(),
+    "UNKNOWN"
+  );
+  assert.equal(
+    await page
+      .getByLabel("Collection or capture period", { exact: true })
+      .inputValue(),
+    "NOT_APPLICABLE"
+  );
+  assert.deepEqual(drafts.get(scopedId).metadata.geographicCoverage, {
+    state: "UNKNOWN",
+  });
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionPeriod, {
+    state: "NOT_APPLICABLE",
+  });
+  console.log(
+    "PASS incomplete coverage claims save progressively, exact year/month precision reaches saved review and explicit unknown/not-applicable choices clear stale claims"
+  );
+  await step(page, "1. Basics");
 
   await page
     .getByLabel("Dataset title", { exact: true })
@@ -2659,15 +2915,17 @@ try {
   await page.getByRole("heading", { name: "Not found", exact: true }).waitFor();
   await productionPage.close();
   assert(
-    !requests.some((request) =>
-      /submit|upload|presign|publish|payment/.test(request.path)
+    !requests.some(
+      (request) =>
+        /submit|presign|publish|payment/.test(request.path) ||
+        (request.method !== "GET" && /upload/.test(request.path))
     )
   );
   assert.deepEqual(fixtureErrors, []);
   assert.deepEqual(errors, []);
   assert.deepEqual(external, []);
   console.log(
-    "PASS production UI/API guard, pinned browser runtime and zero intake/submission/payment effects"
+    "PASS production UI/API guard, pinned browser runtime and zero intake writes/submission/payment effects"
   );
 } finally {
   await browser?.close();

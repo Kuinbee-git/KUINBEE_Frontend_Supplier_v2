@@ -12,18 +12,28 @@ import { DashboardButton, DashboardInput } from "@/components/dashboard";
 import { preparationControl } from "./PreparationFields";
 
 export function PreparationCatalogPicker({
+  field,
   kind,
   value,
   onChange,
   disabled = false,
+  label: suppliedLabel,
+  help,
+  excludedValues = [],
 }: {
+  field?: string;
   kind: "categories" | "sources";
   value: string | null | undefined;
   onChange: (value: string | null) => void;
   disabled?: boolean;
+  label?: string;
+  help?: string;
+  excludedValues?: readonly string[];
 }) {
   const id = useId();
-  const label = kind === "categories" ? "Primary category" : "Data source";
+  const label =
+    suppliedLabel ??
+    (kind === "categories" ? "Primary category" : "Data source");
   const [items, setItems] = useState<PreparationCatalogOption[]>([]);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
@@ -119,12 +129,14 @@ export function PreparationCatalogPicker({
         {label}
       </label>
       <p id={`${id}-help`} className="text-xs text-muted-foreground">
-        {kind === "categories"
-          ? "Choose the subject of the collection. Data type is selected separately."
-          : "Select your owned source. Changing the search preserves your saved selection."}
+        {help ??
+          (kind === "categories"
+            ? "Choose the subject of the collection. Data type is selected separately."
+            : "Select your owned source. Changing the search preserves your saved selection.")}
       </p>
       <select
         id={id}
+        data-dataset-field={field}
         className={preparationControl}
         value={value ?? ""}
         disabled={disabled}
@@ -143,11 +155,13 @@ export function PreparationCatalogPicker({
                 : `Loading selected ${kind === "categories" ? "category" : "source"}…`)}
           </option>
         )}
-        {items.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
+        {items
+          .filter((item) => !excludedValues.includes(item.id))
+          .map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
       </select>
       <div className="flex flex-wrap gap-2">
         <DashboardInput

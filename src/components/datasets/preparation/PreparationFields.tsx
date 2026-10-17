@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard";
 import {
   DatasetDeclaredMetricSchema,
+  isDatasetPreparationProfileFieldApplicable,
   type DatasetPreparationMetadata,
   type DatasetPreparationProfiles,
   type DatasetDeclaredMeasurement,
@@ -18,25 +19,31 @@ import {
 export const preparationControl =
   "dashboard-field-control h-10 w-full rounded-lg border px-3 py-2 text-sm text-foreground transition-colors focus-visible:border-[var(--dashboard-focus-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50";
 export function PreparationField({
+  field,
   label,
   value,
   onChange,
   help,
   multiline = true,
   maxLength = 4000,
+  disabled = false,
 }: {
+  field?: string;
   label: string;
   value?: string | null;
   onChange: (value: string | null) => void;
   help?: string;
   multiline?: boolean;
   maxLength?: number;
+  disabled?: boolean;
 }) {
   const id = useId();
   const props = {
     id,
+    "data-dataset-field": field,
     value: value ?? "",
     maxLength,
+    disabled,
     "aria-describedby": help ? `${id}-help` : undefined,
     onChange: (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -55,17 +62,21 @@ export function PreparationField({
   );
 }
 export function PreparationSelect({
+  field,
   label,
   value,
   onChange,
   options,
   help,
+  disabled = false,
 }: {
+  field?: string;
   label: string;
   value?: string | null;
   onChange: (value: string | null) => void;
   options: ReadonlyArray<readonly [string, string]>;
   help?: string;
+  disabled?: boolean;
 }) {
   const id = useId();
   return (
@@ -73,7 +84,9 @@ export function PreparationSelect({
       {(controlProps) => (
         <select
           {...controlProps}
+          data-dataset-field={field}
           className={preparationControl}
+          disabled={disabled}
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value || null)}
         >
@@ -89,11 +102,13 @@ export function PreparationSelect({
   );
 }
 export function PreparationSection({
+  field,
   title,
   children,
   help,
   className,
 }: {
+  field?: string;
   title: string;
   children: ReactNode;
   help?: string;
@@ -107,7 +122,9 @@ export function PreparationSection({
       data-proposal-tile="true"
       className={`@container col-span-full min-w-0 rounded-xl border border-border p-4 sm:p-5 ${className ?? "lg:col-span-6"}`}
     >
-      <div className="space-y-4">{children}</div>
+      <div data-dataset-field={field} className="space-y-4">
+        {children}
+      </div>
     </DashboardSection>
   );
 }
@@ -177,6 +194,7 @@ export function PreparationQuantities({
     }));
   return (
     <PreparationSection
+      field={field}
       title={label}
       className={className}
       help="These are your declarations, not measured uploads or storage usage. Unknown has no numeric value. Each quantity applies only to the scope named above."
@@ -308,20 +326,181 @@ export function PreparationQuantities({
 }
 
 type ProfileKey = keyof DatasetPreparationProfiles;
+type SensorChannel = NonNullable<
+  NonNullable<DatasetPreparationProfiles["sensors"]>["channels"]
+>[number];
+
+function PreparationSensorChannels({
+  channels,
+  onUpdate,
+}: {
+  channels: SensorChannel[];
+  onUpdate: PreparationUpdate;
+}) {
+  const change = (update: (rows: SensorChannel[]) => SensorChannel[]) =>
+    onUpdate((previous) => ({
+      ...previous,
+      profiles: {
+        ...(previous.profiles ?? {}),
+        sensors: {
+          ...(previous.profiles?.sensors ?? {}),
+          channels: update(previous.profiles?.sensors?.channels ?? []),
+        },
+      },
+    }));
+  const edit = (index: number, values: Partial<SensorChannel>) =>
+    change((rows) =>
+      rows.map((row, position) =>
+        position === index ? { ...row, ...values } : row
+      )
+    );
+  return (
+    <details
+      data-dataset-field="profiles.sensors.channels"
+      className="space-y-4 border-t border-border pt-4"
+    >
+      <summary className="cursor-pointer text-sm font-medium">
+        Individual channel descriptions ({channels.length})
+      </summary>
+      <p className="text-xs text-muted-foreground">
+        Optional detail about channels in the represented collection. Name each
+        channel you add before saving; meaning and units can be completed later.
+        State Unknown or Not applicable where appropriate. For actual uploaded
+        tables, use the exact file and column definitions in Files &amp;
+        contents. These declarations do not prove that a channel is included in
+        either uploaded component.
+      </p>
+      {channels.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No individual channels described. You can still use the channel notes
+          below.
+        </p>
+      )}
+      {channels.map((channel, index) => (
+        <fieldset
+          key={index}
+          className="min-w-0 space-y-3 border-t border-border pt-4"
+        >
+          <legend className="px-1 text-sm font-medium">
+            Channel {index + 1}
+          </legend>
+          <div className="grid min-w-0 gap-3 @md:grid-cols-2">
+            <PreparationField
+              field={`profiles.sensors.channels.${index}.name`}
+              label={`Channel ${index + 1} name`}
+              multiline={false}
+              value={channel.name}
+              maxLength={200}
+              onChange={(name) => edit(index, { name: name ?? "" })}
+              help={
+                !channel.name.trim()
+                  ? "A channel name is needed before saving this added row."
+                  : undefined
+              }
+            />
+            <PreparationField
+              field={`profiles.sensors.channels.${index}.unit`}
+              label={`Channel ${index + 1} unit`}
+              multiline={false}
+              value={channel.unit}
+              maxLength={500}
+              onChange={(unit) => edit(index, { unit })}
+              help="For example, m/s². Unknown or Not applicable can be stated explicitly; no unit is inferred."
+            />
+          </div>
+          <PreparationField
+            field={`profiles.sensors.channels.${index}.meaning`}
+            label={`Channel ${index + 1} meaning`}
+            value={channel.meaning}
+            maxLength={4000}
+            onChange={(meaning) => edit(index, { meaning })}
+            help="Explain what this reading represents, including any uncertainty."
+          />
+          <DashboardButton
+            type="button"
+            size="compact"
+            variant="outline"
+            aria-label={`Remove channel description ${index + 1}`}
+            onClick={() =>
+              change((rows) => rows.filter((_, position) => position !== index))
+            }
+          >
+            Remove channel description
+          </DashboardButton>
+        </fieldset>
+      ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <DashboardButton
+          type="button"
+          size="compact"
+          variant="outline"
+          disabled={channels.length >= 100}
+          onClick={() =>
+            change((rows) =>
+              rows.length >= 100
+                ? rows
+                : [...rows, { name: "", meaning: null, unit: null }]
+            )
+          }
+        >
+          Add a channel description
+        </DashboardButton>
+        <span className="text-xs text-muted-foreground">
+          {channels.length} of 100 channel descriptions
+        </span>
+      </div>
+    </details>
+  );
+}
 type Definition = {
   key: string;
   label: string;
   help?: string;
-  kind?: "availability" | "languages" | "audio" | "sync";
-  condition?: (values: Record<string, unknown>) => boolean;
+  kind?:
+    | "availability"
+    | "languages"
+    | "channels"
+    | "audio"
+    | "sync"
+    | "textContent"
+    | "transcriptTiming"
+    | "videoReferences";
 };
 const availability = [
-  ["PRESENT", "Available / planned to be included"],
-  ["ABSENT", "Not available / not included"],
+  ["PRESENT", "Available in the represented collection"],
+  ["ABSENT", "Not available in the represented collection"],
   ["UNKNOWN", "Unknown"],
 ] as const;
-const included = (key: string) => (value: Record<string, unknown>) =>
-  value[key] === "PRESENT";
+const profileOptions = {
+  availability,
+  audio: [
+    ["SPEECH", "Speech"],
+    ["NON_SPEECH", "Other sounds"],
+    ["MIXED", "Speech and other sounds"],
+    ["UNKNOWN", "Unknown"],
+  ],
+  sync: [
+    ["NO_CLAIM", "No synchronization claimed"],
+    ["DESCRIBED", "Describe synchronization"],
+    ["UNKNOWN", "Unknown"],
+  ],
+  textContent: [
+    ["HUMAN_LANGUAGE", "Human language"],
+    ["NON_LANGUAGE", "Other content, such as codes or numbers"],
+    ["MIXED", "Human language and other content"],
+    ["UNKNOWN", "Unknown"],
+  ],
+  transcriptTiming: [
+    ["UNTIMED", "Untimed transcripts"],
+    ["TIMED", "Timed transcripts"],
+    ["UNKNOWN", "Timing not assessed"],
+  ],
+  videoReferences: [
+    ["WHOLE_ITEM", "Whole clips or items"],
+    ["TIME_OR_FRAME", "Times or frames within a video"],
+    ["UNKNOWN", "References not assessed"],
+  ],
+} as const;
 const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
   {
     tabular: {
@@ -360,7 +539,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
           label: "Spoken languages",
           kind: "languages",
           help: "Separate languages with commas; explicitly enter Unknown if unassessed.",
-          condition: (value) => value.content !== "NON_SPEECH",
         },
         {
           key: "recordingContext",
@@ -371,17 +549,23 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
           key: "transcriptAvailability",
           label: "Transcript availability",
           kind: "availability",
+          help: "Describe the collection, including unseen material. Actual Full/Sample inclusion is established separately by the selected files and their links.",
         },
         {
           key: "transcriptMeaning",
           label: "Transcript meaning and conventions",
-          condition: included("transcriptAvailability"),
+          help: "Required when available. Explain the conventions or state what is undocumented; technical checks do not verify transcription accuracy.",
+        },
+        {
+          key: "transcriptTiming",
+          label: "Are the available transcripts timed?",
+          kind: "transcriptTiming",
+          help: "Untimed transcripts need no invented timestamps. Timing not assessed makes no exact alignment claim.",
         },
         {
           key: "alignmentNotes",
           label: "Transcript timing and matching",
           help: "Explain only alignment that is actually claimed.",
-          condition: included("transcriptAvailability"),
         },
         {
           key: "annotationAvailability",
@@ -391,7 +575,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Audio label meanings",
-          condition: included("annotationAvailability"),
         },
         {
           key: "speakerCoverage",
@@ -413,12 +596,11 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Image annotation type and meaning",
-          condition: included("annotationAvailability"),
+          help: "Required when available. Explain labels, boxes, masks or other annotations; state which meanings are undocumented.",
         },
         {
           key: "classDefinitions",
           label: "Class or label-code definitions",
-          condition: included("annotationAvailability"),
         },
         {
           key: "coverage",
@@ -449,12 +631,16 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Video annotation meanings",
-          condition: included("annotationAvailability"),
+        },
+        {
+          key: "annotationReferences",
+          label: "What do the available video annotations refer to?",
+          kind: "videoReferences",
+          help: "A whole-clip label needs no frame or timestamp convention. Unassessed references make no precise alignment claim.",
         },
         {
           key: "timingConvention",
           label: "Annotation time or frame convention",
-          condition: included("annotationAvailability"),
         },
       ],
     },
@@ -464,6 +650,12 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "recordUnit",
           label: "What does one document or text record represent?",
+        },
+        {
+          key: "languageContent",
+          label: "Do the text records contain human language?",
+          kind: "textContent",
+          help: "Human-language text needs known languages or an explicit Unknown answer. Codes or numbers need no invented human language.",
         },
         {
           key: "languages",
@@ -479,18 +671,21 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "annotationMeaning",
           label: "Text annotation meanings",
-          condition: included("annotationAvailability"),
         },
         {
           key: "recordConvention",
           label: "Record, span or offset convention",
-          condition: included("annotationAvailability"),
         },
       ],
     },
     sensors: {
       title: "Sensor readings",
       fields: [
+        {
+          key: "channels",
+          label: "Individual channel descriptions",
+          kind: "channels",
+        },
         {
           key: "channelNotes",
           label: "Sensor channels and units",
@@ -515,7 +710,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "synchronizationNotes",
           label: "How are streams synchronized?",
-          condition: (value) => value.synchronization === "DESCRIBED",
         },
         {
           key: "calibrationAvailability",
@@ -525,7 +719,6 @@ const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
         {
           key: "calibrationMeaning",
           label: "Calibration meaning",
-          condition: included("calibrationAvailability"),
         },
         {
           key: "coordinateConventions",
@@ -589,28 +782,50 @@ export function getPreparationProfileSummary(
   if (metadata.contexts?.includes("HEALTHCARE")) active.push("healthcare");
   if (metadata.contexts?.includes("EGOCENTRIC")) active.push("egocentric");
   const display: Record<string, string> = {
-    PRESENT: "Available / planned to be included",
-    ABSENT: "Not available / not included",
+    PRESENT: "Available in the represented collection",
+    ABSENT: "Not available in the represented collection",
     UNKNOWN: "Unknown",
     SPEECH: "Speech",
     NON_SPEECH: "Other sounds",
     MIXED: "Speech and other sounds",
     NO_CLAIM: "No synchronization claimed",
     DESCRIBED: "Described by supplier",
+    HUMAN_LANGUAGE: "Human language",
+    NON_LANGUAGE: "Other content, such as codes or numbers",
+    UNTIMED: "Untimed transcripts",
+    TIMED: "Timed transcripts",
+    WHOLE_ITEM: "Whole clips or items",
+    TIME_OR_FRAME: "Times or frames within a video",
   };
   return active.map((name) => {
     const values = (metadata.profiles?.[name] ?? {}) as Record<string, unknown>;
     return {
       title: definitions[name].title,
       fields: definitions[name].fields
-        .filter((field) => !field.condition || field.condition(values))
+        .filter((field) =>
+          isDatasetPreparationProfileFieldApplicable(name, field.key, values)
+        )
         .map((field) => {
           const raw = values[field.key];
-          const value = Array.isArray(raw)
-            ? raw.filter(Boolean).join(", ")
-            : typeof raw === "string" && raw
-              ? (display[raw] ?? raw)
-              : "Not answered";
+          const value =
+            field.kind === "channels" && Array.isArray(raw)
+              ? raw.length
+                ? (raw as SensorChannel[])
+                    .map(
+                      (channel, index) =>
+                        `${index + 1}. ${channel.name.trim() || "Unnamed channel"} — ${channel.meaning?.trim() || "Meaning not specified"}; unit: ${channel.unit?.trim() || "Not specified"}`
+                    )
+                    .join("\n")
+                : "No individual channel descriptions recorded"
+              : Array.isArray(raw)
+                ? raw.filter(Boolean).join(", ")
+                : typeof raw === "string" && raw
+                  ? field.key === "languageContent" && raw === "MIXED"
+                    ? "Human language and other content"
+                    : field.kind && Object.hasOwn(display, raw)
+                      ? display[raw]
+                      : raw
+                  : "Not answered";
           return { label: field.label, value };
         }),
     };
@@ -662,16 +877,32 @@ export function PreparationProfileFields({
         return (
           <PreparationSection
             key={name}
+            field={`profiles.${name}`}
             title={group.title}
-            help="Describe the represented collection. Optional answers can remain incomplete in a saved draft; these are declarations, not inspected file facts."
+            help="Describe the represented collection. Required answers may stay incomplete while saving a draft. Before Submit, complete applicable questions or state Unknown where allowed. Available does not mean included in the selected Full or Sample files."
           >
             {group.fields
-              .filter((field) => !field.condition || field.condition(values))
+              .filter((field) =>
+                isDatasetPreparationProfileFieldApplicable(
+                  name,
+                  field.key,
+                  values
+                )
+              )
               .map((field) => {
+                if (field.kind === "channels")
+                  return (
+                    <PreparationSensorChannels
+                      key={field.key}
+                      channels={metadata.profiles?.sensors?.channels ?? []}
+                      onUpdate={onUpdate}
+                    />
+                  );
                 if (field.kind === "languages")
                   return (
                     <PreparationField
                       key={field.key}
+                      field={`profiles.${name}.${field.key}`}
                       label={field.label}
                       multiline={false}
                       value={
@@ -689,6 +920,7 @@ export function PreparationProfileFields({
                   return (
                     <PreparationSelect
                       key={field.key}
+                      field={`profiles.${name}.${field.key}`}
                       label={field.label}
                       value={
                         typeof values[field.key] === "string"
@@ -697,27 +929,13 @@ export function PreparationProfileFields({
                       }
                       onChange={(value) => write(field.key, value)}
                       help={field.help}
-                      options={
-                        field.kind === "availability"
-                          ? availability
-                          : field.kind === "audio"
-                            ? [
-                                ["SPEECH", "Speech"],
-                                ["NON_SPEECH", "Other sounds"],
-                                ["MIXED", "Speech and other sounds"],
-                                ["UNKNOWN", "Unknown"],
-                              ]
-                            : [
-                                ["NO_CLAIM", "No synchronization claimed"],
-                                ["DESCRIBED", "Describe synchronization"],
-                                ["UNKNOWN", "Unknown"],
-                              ]
-                      }
+                      options={profileOptions[field.kind]}
                     />
                   );
                 return (
                   <PreparationField
                     key={field.key}
+                    field={`profiles.${name}.${field.key}`}
                     label={field.label}
                     value={
                       typeof values[field.key] === "string"

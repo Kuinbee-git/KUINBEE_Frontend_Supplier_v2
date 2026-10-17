@@ -18,6 +18,8 @@ import {
   type DatasetPreparationPatchBody,
 } from "@kuinbee/dataset-preparation-contracts";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
+import { usePreparationWorkflow } from "@/hooks/usePreparationWorkflow";
+import type { DatasetEditBase } from "@/lib/api/dataset-workflow";
 import {
   preparationApi,
   PreparationApiError,
@@ -33,8 +35,18 @@ import {
 } from "@/components/datasets/workspace/DatasetWorkspace";
 import { DATASET_TYPES } from "@/constants/dataset.constants";
 import { PreparationCatalogPicker } from "./PreparationCatalogPicker";
+import { PreparationCoverageFields } from "./PreparationCoverageFields";
+import { PreparationDiscoveryFields } from "./PreparationDiscoveryFields";
 import { PreparationReview } from "./PreparationReview";
 import { PreparationFilesPanel } from "./PreparationFilesPanel";
+import { PreparationManagedTables } from "./PreparationManagedTables";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
+import {
+  datasetPreparationStepForField,
+  focusDatasetPreparationField,
+} from "@/lib/datasets/dataset-readiness-navigation";
+import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
+import { PreparationFrozenSubmission } from "./PreparationFrozenSubmission";
 import {
   PreparationField,
   PreparationGrid,
@@ -99,7 +111,13 @@ function metadataForSave(metadata: DatasetPreparationMetadata) {
           .filter(Boolean),
       };
   }
-  return DatasetPreparationMetadataSchema.parse({ ...metadata, profiles });
+  return DatasetPreparationMetadataSchema.parse({
+    ...metadata,
+    profiles,
+    ...(metadata.tags !== undefined
+      ? { tags: metadata.tags.map((value) => value.trim()).filter(Boolean) }
+      : {}),
+  });
 }
 type Pending =
   | { kind: "create"; body: DatasetPreparationCreateBody }
@@ -124,6 +142,8 @@ export function DatasetPreparationEditor({
   });
   const [saved, setSaved] = useState<DatasetPreparationResponse | null>(null);
   const [step, setStep] = useState(0);
+  const [issueFocus, setIssueFocus] = useState<{ field: string } | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(Boolean(draftId));
   const [saving, setSaving] = useState(false);
   const [retryPending, setRetryPending] = useState(false);
@@ -134,6 +154,46 @@ export function DatasetPreparationEditor({
   const [error, setError] = useState("");
   const [filesWriting, setFilesWriting] = useState(false);
   const [filesUncertain, setFilesUncertain] = useState(false);
+  const [fileInputsDirty, setFileInputsDirty] = useState(false);
+  const [uploadsActive, setUploadsActive] = useState(false);
+  const [editBase, setEditBase] = useState<DatasetEditBase | null>(null);
+  const editBaseRef = useRef<DatasetEditBase | null>(null);
+  const onWorkflowBase = useCallback(
+    (base: DatasetEditBase, current: DatasetPreparationResponse) => {
+      const previous = editBaseRef.current;
+      const previousMetadata =
+        previous?.context.preparationGeneration === current.generation
+          ? previous.metadata
+          : current.metadata;
+      editBaseRef.current = base;
+      setEditBase(base);
+      setMetadata((input) =>
+        DatasetPreparationMetadataSchema.parse(
+          reapplyLocal(previousMetadata, input, base.metadata)
+        )
+      );
+    },
+    []
+  );
+  const onWorkflowSaved = useCallback(
+    (current: DatasetPreparationResponse) => {
+      const before = editBaseRef.current?.metadata ?? saved?.metadata;
+      editBaseRef.current = null;
+      setEditBase(null);
+      setSaved(current);
+      setMetadata((input) =>
+        DatasetPreparationMetadataSchema.parse(
+          reapplyLocal(before ?? input, input, current.metadata)
+        )
+      );
+    },
+    [saved]
+  );
+  const pauseActiveUpload = useRef<(() => void) | null>(null);
+  const onUploadActivity = useCallback((value: boolean, pause?: () => void) => {
+    pauseActiveUpload.current = value && pause ? pause : null;
+    setUploadsActive(value);
+  }, []);
   const onFilesMetadataChanged = useCallback(() => {
     setConflict(true);
     setReplayBase(null);
@@ -146,9 +206,37 @@ export function DatasetPreparationEditor({
   const errorRef = useRef<HTMLDivElement>(null);
   const update: PreparationUpdate = (change) =>
     setMetadata((previous) => change(previous));
+  const baseline =
+    editBase && editBase.context.preparationGeneration === saved?.generation
+      ? editBase.metadata
+      : saved?.metadata;
   const dirty = !saved
     ? Boolean(metadata.title || Object.keys(metadata).length > 1)
-    : !equal(metadata, saved.metadata);
+    : !equal(metadata, baseline);
+  const workflow = usePreparationWorkflow({
+    saved,
+    metadataUnsettled: saving || retryPending || conflict,
+    metadataDirty: dirty,
+    filesUnsettled: filesWriting || filesUncertain,
+    uploadsActive,
+    onSaved: onWorkflowSaved,
+    onBase: onWorkflowBase,
+  });
+  const invalidateWorkflow = workflow.invalidate;
+  const onFilesWriting = useCallback(
+    (value: boolean) => {
+      if (value) invalidateWorkflow();
+      setFilesWriting(value);
+    },
+    [invalidateWorkflow]
+  );
+  const onFilesUncertain = useCallback(
+    (value: boolean) => {
+      if (value) invalidateWorkflow();
+      setFilesUncertain(value);
+    },
+    [invalidateWorkflow]
+  );
   const load = useCallback(async () => {
     if (!draftId) return;
     setLoading(true);
@@ -169,7 +257,18 @@ export function DatasetPreparationEditor({
   }, [draftId]);
   useComponentRequest(load, [draftId], Boolean(draftId));
   useEffect(() => {
-    if (!dirty && !retryPending && !filesUncertain && !filesWriting) return;
+    if (
+      !dirty &&
+      !retryPending &&
+      !filesUncertain &&
+      !filesWriting &&
+      !fileInputsDirty &&
+      !uploadsActive &&
+      !workflow.priceDirty &&
+      !workflow.pending &&
+      !workflow.writing
+    )
+      return;
     const guard = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
@@ -194,7 +293,13 @@ export function DatasetPreparationEditor({
         target.search === window.location.search
       )
         return;
-      if (!window.confirm("Leave without saving your current input?")) {
+      if (
+        !window.confirm(
+          uploadsActive
+            ? "Leave this page and pause the active file transfer? Save any unsaved answers before leaving. You can reselect the original file to resume later."
+            : "Leave without saving your current input?"
+        )
+      ) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -205,7 +310,17 @@ export function DatasetPreparationEditor({
       window.removeEventListener("beforeunload", guard);
       document.removeEventListener("click", guardLink, true);
     };
-  }, [dirty, retryPending, filesUncertain, filesWriting]);
+  }, [
+    dirty,
+    retryPending,
+    filesUncertain,
+    filesWriting,
+    fileInputsDirty,
+    uploadsActive,
+    workflow.priceDirty,
+    workflow.pending,
+    workflow.writing,
+  ]);
   useEffect(() => {
     if (error) errorRef.current?.focus();
   }, [error]);
@@ -218,6 +333,9 @@ export function DatasetPreparationEditor({
       conflict ||
       filesWriting ||
       filesUncertain ||
+      workflow.pending ||
+      workflow.writing ||
+      workflow.reconciliationRequired ||
       (draftId && saved?.id !== draftId)
     )
       return null;
@@ -228,9 +346,28 @@ export function DatasetPreparationEditor({
       if (!pending.current) {
         const normalized = metadataForSave(metadata);
         if (saved) {
-          const changes = changesBetween(saved.metadata, normalized);
+          if (workflow.readOnly) {
+            if (dirty)
+              throw new Error(
+                "This submitted proposal is read-only. Your local answers are retained."
+              );
+            return saved;
+          }
+          const currentBase =
+            editBaseRef.current?.context.preparationGeneration ===
+            saved.generation
+              ? editBaseRef.current
+              : null;
+          const changes = changesBetween(
+            currentBase?.metadata ?? saved.metadata,
+            normalized
+          );
+          // Older saved preparations bind their existing identity through an
+          // explicit Save, including a no-change title. Reads never create it.
+          if (!Object.keys(changes).length && workflow.unbound)
+            changes.title = normalized.title;
           if (!Object.keys(changes).length) {
-            setMetadata(saved.metadata);
+            setMetadata(currentBase?.metadata ?? saved.metadata);
             return saved;
           }
           pending.current = {
@@ -239,6 +376,9 @@ export function DatasetPreparationEditor({
             body: {
               requestId: crypto.randomUUID(),
               expectedGeneration: saved.generation,
+              ...(currentBase?.context.precondition
+                ? { editContext: currentBase.context.precondition }
+                : {}),
               changes,
             },
           };
@@ -249,6 +389,7 @@ export function DatasetPreparationEditor({
           };
       }
       const operation = pending.current;
+      workflow.invalidate();
       const wasRetry = retryPending;
       const result =
         operation.kind === "create"
@@ -258,6 +399,8 @@ export function DatasetPreparationEditor({
       setRetryPending(false);
       setSaved(result);
       setMetadata(result.metadata);
+      editBaseRef.current = null;
+      setEditBase(null);
       if (operation.kind === "create") onCreated?.(result.id);
       if (wasRetry) {
         try {
@@ -294,7 +437,7 @@ export function DatasetPreparationEditor({
           pending.current = null;
           setRetryPending(false);
         }
-        setError(failure.message);
+        setError(datasetActionError(failure));
       } else {
         pending.current = null;
         const details =
@@ -307,11 +450,17 @@ export function DatasetPreparationEditor({
                 message?: string;
               })
             : null;
-        if (details?.path?.[0] === "title") setStep(0);
+        const field = details?.path?.join(".");
+        if (field) {
+          setStep(datasetPreparationStepForField(field));
+          setIssueFocus({ field });
+        }
         setError(
           details
             ? `${details.path?.join(".")}: ${details.message}`
-            : "Some provided values need correction. Your input has been retained."
+            : failure instanceof Error
+              ? failure.message
+              : "Some provided values need correction. Your input has been retained."
         );
       }
       return null;
@@ -319,6 +468,13 @@ export function DatasetPreparationEditor({
       busy.current = false;
       setSaving(false);
     }
+  }
+  async function saveAll(): Promise<DatasetPreparationResponse | null> {
+    const result = await save();
+    if (!result) return null;
+    if (workflow.priceDirty && !(await workflow.savePricing(result)))
+      return null;
+    return result;
   }
   async function reviewLatest() {
     if (!saved) return;
@@ -342,7 +498,28 @@ export function DatasetPreparationEditor({
     saving ||
     retryPending ||
     unavailableExisting ||
-    filesWriting;
+    filesWriting ||
+    workflow.writing ||
+    workflow.reconciliationRequired ||
+    Boolean(workflow.pending);
+  const fieldsLocked = locked || workflow.readOnly;
+  const activeStep =
+    workflow.readOnly || workflow.pending || workflow.reconciliationRequired
+      ? 3
+      : step;
+  useEffect(() => {
+    if (
+      !issueFocus ||
+      activeStep !== datasetPreparationStepForField(issueFocus.field)
+    )
+      return;
+    const frame = requestAnimationFrame(() => {
+      if (editorRef.current)
+        focusDatasetPreparationField(editorRef.current, issueFocus.field);
+      setIssueFocus(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeStep, issueFocus]);
   const hasSample =
     metadata.uploadChoice === "SAMPLE_ONLY" ||
     metadata.uploadChoice === "FULL_AND_SAMPLE";
@@ -363,34 +540,37 @@ export function DatasetPreparationEditor({
       sample: { ...(previous.sample ?? {}), [key]: value },
     }));
   const moveToField = (field?: string) => {
-    setStep(
-      !field
-        ? 1
-        : [
-              "uploadChoice",
-              "modalities",
-              "contexts",
-              "primaryCategoryId",
-              "sourceId",
-              "license",
-            ].includes(field)
-          ? 0
-          : 2
-    );
+    if (locked || filesUncertain || workflow.readOnly) return;
+    setStep(datasetPreparationStepForField(field));
+    setIssueFocus({ field: field ?? "files" });
   };
 
   return (
     <DatasetWorkspace className="dataset-proposal-workspace max-w-[70rem]">
       <DatasetPageHeader
-        title={draftId || saved ? "Edit draft proposal" : "Create proposal"}
-        description="Save a draft and complete it step by step. Saving does not submit it for review."
+        title={
+          workflow.readOnly
+            ? "Submitted proposal"
+            : draftId || saved
+              ? "Edit draft proposal"
+              : "Create proposal"
+        }
+        description={
+          workflow.readOnly
+            ? "View the submitted contents and current review status. Pricing corrections follow their own review."
+            : "Save a draft and complete it step by step. Saving does not submit it for review."
+        }
         action={
           <DashboardButton asChild variant="outline" size="compact">
             <Link href="/dashboard/datasets">Draft proposals</Link>
           </DashboardButton>
         }
       />
-      <DashboardCard className="overflow-hidden" data-proposal-panel="true">
+      <DashboardCard
+        ref={editorRef}
+        className="overflow-hidden"
+        data-proposal-panel="true"
+      >
         <div
           role="status"
           aria-live="polite"
@@ -405,11 +585,15 @@ export function DatasetPreparationEditor({
               ? "Saving draft…"
               : retryPending
                 ? "Save not confirmed — retry required"
-                : dirty
-                  ? "Unsaved changes"
-                  : saved
-                    ? "Draft saved"
-                    : "Not saved yet"}
+                : workflow.pending
+                  ? "Proposal request not confirmed — retry required"
+                  : dirty || workflow.priceDirty
+                    ? "Unsaved changes"
+                    : saved
+                      ? workflow.readOnly
+                        ? "Submitted proposal · content read-only"
+                        : "Draft saved"
+                      : "Not saved yet"}
           {saved && !loading && (
             <span className="ml-2 text-muted-foreground">
               Last saved {new Date(saved.updatedAt).toLocaleString()}
@@ -417,16 +601,16 @@ export function DatasetPreparationEditor({
           )}
           {filesUncertain && (
             <span className="ml-2 text-muted-foreground">
-              File change not confirmed
+              Files need confirmation or refresh
             </span>
           )}
         </div>
         <div className="border-b border-border bg-muted/20 px-4 py-3 text-sm sm:px-6">
           <strong>Draft testing release</strong>
           <p className="mt-1 text-muted-foreground">
-            You can save information and set up files for all three upload
-            choices. File intake, required file checks and admin submission are
-            not available in this release. Nothing here is published.
+            Save your draft step by step. File upload availability and check
+            results are shown in Files &amp; contents. Submitting for admin
+            review is a separate action. Nothing is published automatically.
           </p>
         </div>
         {error && (
@@ -520,21 +704,77 @@ export function DatasetPreparationEditor({
         >
           {steps.map((label, index) => (
             <DashboardButton
-              variant={step === index ? "default" : "outline"}
+              variant={activeStep === index ? "default" : "outline"}
               type="button"
               key={label}
-              aria-current={step === index ? "step" : undefined}
+              aria-current={activeStep === index ? "step" : undefined}
               className="h-auto min-h-10 whitespace-normal px-3 py-2 text-left"
-              disabled={locked || filesUncertain}
+              disabled={
+                locked || filesUncertain || (workflow.readOnly && index !== 3)
+              }
               onClick={() => setStep(index)}
             >
               {index + 1}. {label}
             </DashboardButton>
           ))}
         </nav>
-        <fieldset disabled={locked} className="min-w-0 space-y-6 p-4 sm:p-6">
-          <legend className="sr-only">{steps[step]}</legend>
-          {step === 0 && (
+        {workflow.readOnly && (
+          <div
+            className="border-b border-border px-4 py-3 text-sm sm:px-6"
+            role="status"
+          >
+            This proposal is submitted. Its contents are read-only; open Review
+            draft to see the exact submitted facts and files.
+          </div>
+        )}
+        {editBase?.metadataSource === "FROZEN_BASE" && !workflow.readOnly && (
+          <div
+            className="border-b border-border px-4 py-3 text-sm sm:px-6"
+            role="status"
+          >
+            Corrections start from the exact{" "}
+            {editBase.context.precondition?.mode === "INITIALIZE" &&
+            editBase.context.precondition.context === "APPROVED_REEDIT"
+              ? "approved"
+              : "reviewed"}{" "}
+            proposal. Your first change creates the correction draft; viewing it
+            does not change saved files or access.
+          </div>
+        )}
+        {workflow.managed && saved && (
+          <div
+            className="min-w-0 px-4 py-4 sm:px-6"
+            hidden={activeStep !== 1 && !filesUncertain && !fileInputsDirty}
+          >
+            <PreparationManagedTables
+              key={saved.id}
+              saved={saved}
+              base={editBase}
+              active={activeStep === 1}
+              blocked={fieldsLocked || conflict}
+              metadataDirty={dirty}
+              onWritingChange={onFilesWriting}
+              onUncertainChange={onFilesUncertain}
+              onDirtyChange={setFileInputsDirty}
+              onAccepted={async () => {
+                const current = await preparationApi.get(saved.id);
+                onWorkflowSaved(current);
+                if (!(await workflow.refresh(current)))
+                  throw new Error(
+                    "The table change was saved, but the current edit context could not be loaded. Refresh the saved table context before continuing."
+                  );
+              }}
+            />
+          </div>
+        )}
+        <fieldset
+          disabled={fieldsLocked}
+          data-dataset-step={activeStep}
+          className="min-w-0 space-y-6 p-4 sm:p-6"
+          hidden={activeStep === 3}
+        >
+          <legend className="sr-only">{steps[activeStep]}</legend>
+          {activeStep === 0 && (
             <PreparationGrid>
               <PreparationSection
                 title="Basics"
@@ -542,13 +782,19 @@ export function DatasetPreparationEditor({
                 help="Start with a title. You can save now and complete the remaining information step by step."
               >
                 <PreparationField
+                  field="title"
                   label="Dataset title"
                   multiline={false}
                   maxLength={200}
                   value={metadata.title}
                   onChange={(value) => setCommon("title", value ?? "")}
+                  disabled={workflow.managed}
                 />
-                <fieldset className="space-y-2">
+                <fieldset
+                  data-dataset-field="uploadChoice"
+                  className="space-y-2"
+                  disabled={workflow.managed}
+                >
                   <legend className="mb-2 text-sm font-medium">
                     What are you uploading?
                   </legend>
@@ -578,7 +824,10 @@ export function DatasetPreparationEditor({
                   ))}
                 </fieldset>{" "}
                 <div className="border-t border-border pt-5">
-                  <fieldset className="space-y-2">
+                  <fieldset
+                    data-dataset-field="modalities"
+                    className="space-y-2"
+                  >
                     <legend className="mb-2 text-sm font-medium">
                       Main types of data
                     </legend>
@@ -631,7 +880,7 @@ export function DatasetPreparationEditor({
                   </fieldset>{" "}
                 </div>
                 <div className="border-t border-border pt-5">
-                  <fieldset className="space-y-2">
+                  <fieldset data-dataset-field="contexts" className="space-y-2">
                     <legend className="text-sm font-medium">
                       Relevant capture or domain context
                     </legend>
@@ -680,39 +929,71 @@ export function DatasetPreparationEditor({
               >
                 <div className="grid gap-5">
                   <PreparationCatalogPicker
+                    field="primaryCategoryId"
                     kind="categories"
                     value={metadata.primaryCategoryId}
-                    onChange={(value) => setCommon("primaryCategoryId", value)}
-                    disabled={locked}
+                    onChange={(value) =>
+                      update((previous) => ({
+                        ...previous,
+                        primaryCategoryId: value,
+                        ...(value &&
+                        previous.secondaryCategoryIds?.includes(value)
+                          ? {
+                              secondaryCategoryIds:
+                                previous.secondaryCategoryIds.filter(
+                                  (id) => id !== value
+                                ),
+                            }
+                          : {}),
+                      }))
+                    }
+                    disabled={fieldsLocked || workflow.managed}
                   />
                   <PreparationCatalogPicker
+                    field="sourceId"
                     kind="sources"
                     value={metadata.sourceId}
                     onChange={(value) => setCommon("sourceId", value)}
-                    disabled={locked}
+                    disabled={fieldsLocked || workflow.managed}
                   />
                 </div>
                 <PreparationField
+                  field="license"
                   label="Dataset license"
                   multiline={false}
                   maxLength={1000}
                   value={metadata.license}
                   onChange={(value) => setCommon("license", value)}
                   help="Enter the supplier's stated standard license or existing license text. Agreements and negotiation stay outside Kuinbee; no license is selected for you."
+                  disabled={workflow.managed}
                 />{" "}
               </PreparationSection>
             </PreparationGrid>
           )}
-          <div hidden={step !== 1} className="min-w-0 space-y-4">
-            <PreparationFilesPanel
-              saved={saved}
-              active={step === 1}
-              metadataDirty={dirty}
-              metadataBlocked={locked || conflict}
-              onUncertainChange={setFilesUncertain}
-              onWritingChange={setFilesWriting}
-              onMetadataChanged={onFilesMetadataChanged}
-            />
+          <div
+            data-dataset-field="files"
+            hidden={activeStep !== 1}
+            className="min-w-0 space-y-4"
+          >
+            {!workflow.managed && (
+              <PreparationFilesPanel
+                saved={saved}
+                active={activeStep === 1}
+                metadataDirty={dirty}
+                metadataBlocked={fieldsLocked || conflict || workflow.managed}
+                metadataUnsettled={
+                  saving ||
+                  retryPending ||
+                  workflow.writing ||
+                  Boolean(workflow.pending)
+                }
+                onUncertainChange={onFilesUncertain}
+                onWritingChange={onFilesWriting}
+                onMetadataChanged={onFilesMetadataChanged}
+                onActivityChange={onUploadActivity}
+                onInputsDirtyChange={setFileInputsDirty}
+              />
+            )}
             <PreparationGrid>
               {hasFull && (
                 <PreparationQuantities
@@ -732,20 +1013,25 @@ export function DatasetPreparationEditor({
               )}
             </PreparationGrid>
           </div>
-          {step === 2 && (
+          {activeStep === 2 && (
             <PreparationGrid>
               <PreparationSection
                 title="Dataset details"
                 className="lg:col-span-8"
               >
                 <PreparationField
+                  field="collectionBoundary"
                   label="What collection does this Dataset cover?"
                   value={metadata.collectionBoundary}
                   onChange={(value) => setCommon("collectionBoundary", value)}
+                  disabled={workflow.managed}
                   help="Full means complete for this honestly defined boundary, not everything you own."
                 />
                 {hasFull && (
-                  <fieldset className="space-y-2">
+                  <fieldset
+                    data-dataset-field="fullCompleteness"
+                    className="space-y-2"
+                  >
                     <legend className="mb-2 text-sm font-medium">
                       Full collection boundary
                     </legend>
@@ -754,6 +1040,7 @@ export function DatasetPreparationEditor({
                         type="checkbox"
                         className="mt-1 shrink-0 accent-[var(--dashboard-indicator)]"
                         checked={metadata.fullCompleteness === true}
+                        disabled={workflow.managed}
                         onChange={(event) =>
                           setCommon("fullCompleteness", event.target.checked)
                         }
@@ -770,17 +1057,20 @@ export function DatasetPreparationEditor({
                   </fieldset>
                 )}
                 <PreparationField
+                  field="overview"
                   label="Short summary"
                   value={metadata.overview}
                   onChange={(value) => setCommon("overview", value)}
                 />
                 <PreparationField
+                  field="description"
                   label="Detailed description"
                   value={metadata.description}
                   onChange={(value) => setCommon("description", value)}
                   help="Explain organization and interpretation, rather than repeating the summary."
                 />
                 <PreparationField
+                  field="dataQuality"
                   label="Quality checks and known quality"
                   value={metadata.dataQuality}
                   onChange={(value) => setCommon("dataQuality", value)}
@@ -798,17 +1088,20 @@ export function DatasetPreparationEditor({
               {hasSample && (
                 <PreparationSection title="How the sample represents the collection">
                   <PreparationField
+                    field="sample.selectionMethod"
                     label="How was the sample selected?"
                     value={sample.selectionMethod}
                     onChange={(value) => setSample("selectionMethod", value)}
                   />
                   <PreparationField
+                    field="sample.coverage"
                     label="What does the sample cover?"
                     value={sample.coverage}
                     onChange={(value) => setSample("coverage", value)}
                     help="Explain what is known or unknown about representativeness."
                   />
                   <PreparationSelect
+                    field="sample.omissions"
                     label="What is missing from the sample?"
                     value={sample.omissions}
                     onChange={(value) => setSample("omissions", value)}
@@ -820,12 +1113,14 @@ export function DatasetPreparationEditor({
                   />
                   {sample.omissions === "DESCRIBED" && (
                     <PreparationField
+                      field="sample.omissionNotes"
                       label="Sample omissions"
                       value={sample.omissionNotes}
                       onChange={(value) => setSample("omissionNotes", value)}
                     />
                   )}
                   <PreparationSelect
+                    field="sample.transformations"
                     label="How was the sample changed from its source?"
                     value={sample.transformations}
                     onChange={(value) => setSample("transformations", value)}
@@ -837,6 +1132,7 @@ export function DatasetPreparationEditor({
                   />
                   {sample.transformations === "DESCRIBED" && (
                     <PreparationField
+                      field="sample.transformationNotes"
                       label="Sample preparation or changes"
                       value={sample.transformationNotes}
                       onChange={(value) =>
@@ -845,6 +1141,7 @@ export function DatasetPreparationEditor({
                     />
                   )}
                   <PreparationField
+                    field="sample.relationshipNotes"
                     label="Relationship to full material"
                     value={sample.relationshipNotes}
                     onChange={(value) => setSample("relationshipNotes", value)}
@@ -858,23 +1155,36 @@ export function DatasetPreparationEditor({
                     title="Optional enrichment"
                     className={hasFull ? "lg:col-span-8" : "lg:col-span-12"}
                   >
+                    <PreparationDiscoveryFields
+                      metadata={metadata}
+                      onUpdate={update}
+                      disabled={fieldsLocked}
+                    />
+                    <PreparationCoverageFields
+                      metadata={metadata}
+                      onUpdate={update}
+                    />
                     <PreparationField
+                      field="limitations"
                       label="Known limitations"
                       value={metadata.limitations}
                       onChange={(value) => setCommon("limitations", value)}
                     />
                     <PreparationField
+                      field="collectionMethod"
                       label="Collection or preparation method"
                       value={metadata.collectionMethod}
                       onChange={(value) => setCommon("collectionMethod", value)}
                     />
                     <PreparationField
+                      field="possibleUses"
                       label="Possible uses"
                       value={metadata.possibleUses}
                       onChange={(value) => setCommon("possibleUses", value)}
                     />
                     {metadata.modalities?.includes("TABULAR") && (
                       <PreparationSelect
+                        field="superType"
                         label="Statistical study structure (if applicable)"
                         value={metadata.superType}
                         onChange={(value) =>
@@ -887,6 +1197,7 @@ export function DatasetPreparationEditor({
                           (type) => [type.value, type.label] as const
                         )}
                         help="Optional. Media suppliers do not need to invent a statistical type."
+                        disabled={workflow.managed}
                       />
                     )}
                   </PreparationSection>
@@ -901,79 +1212,48 @@ export function DatasetPreparationEditor({
               )}
             </PreparationGrid>
           )}
-          {step === 3 && (
-            <PreparationGrid>
-              {saved && <PreparationReview metadata={saved.metadata} />}
-              <PreparationSection
-                title="Preparation checklist"
-                className="lg:col-span-8"
-                help={
-                  dirty
-                    ? "This checklist describes the last acknowledged save. Save your changes to refresh it."
-                    : "This is preparation guidance, not final submission validation. File intake and review integration remain unavailable."
-                }
-              >
-                {!saved ? (
-                  <p>Save the draft to get the server preparation checklist.</p>
-                ) : (
-                  <>
-                    <p className="text-sm">
-                      Saved title: <strong>{saved.metadata.title}</strong>
-                    </p>
-                    <p className="text-sm">
-                      Saved upload choice:{" "}
-                      {DATASET_UPLOAD_CHOICES.find(
-                        (choice) => choice.value === saved.metadata.uploadChoice
-                      )?.label ?? "Not chosen"}
-                    </p>
-                    <ul className="space-y-3">
-                      {saved.readiness.issues.map((issue, i) => (
-                        <li
-                          key={`${issue.code}-${issue.field ?? i}`}
-                          className="rounded-lg border border-border p-3 text-sm"
-                        >
-                          <p>{issue.message}</p>
-                          {issue.field && (
-                            <DashboardButton
-                              type="button"
-                              variant="link"
-                              size="compact"
-                              className="mt-1 h-auto whitespace-normal p-0 text-left"
-                              onClick={() => moveToField(issue.field)}
-                            >
-                              Go to this section
-                            </DashboardButton>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </PreparationSection>
-              <PreparationSection
-                title="Review remains a separate action"
-                className="lg:col-span-4"
-              >
-                <p className="text-sm">
-                  Pricing, file intake and admin submission will be connected
-                  after their checks are qualified. Existing proposals retain
-                  their existing explicit Submit workflow.
-                </p>
-                <DashboardButton
-                  variant="outline"
-                  type="button"
-                  disabled
-                  className="h-auto min-h-10 whitespace-normal"
-                >
-                  Submit for admin review — unavailable
-                </DashboardButton>
-              </PreparationSection>
-            </PreparationGrid>
-          )}
         </fieldset>
+        <div
+          data-dataset-step="3"
+          hidden={activeStep !== 3}
+          className="min-w-0 space-y-4 p-4 sm:p-6"
+        >
+          {workflow.readOnly && workflow.snapshot?.submission ? (
+            <PreparationFrozenSubmission
+              submission={workflow.snapshot.submission}
+              active={activeStep === 3}
+              disabled={workflow.blocked}
+              onRefresh={() => void workflow.refresh()}
+            />
+          ) : !workflow.readOnly && saved ? (
+            <PreparationGrid>
+              <PreparationReview
+                correctionBase={editBase?.metadataSource === "FROZEN_BASE"}
+                metadata={
+                  editBase?.metadataSource === "FROZEN_BASE"
+                    ? editBase.metadata
+                    : saved.metadata
+                }
+              />
+            </PreparationGrid>
+          ) : null}
+          <PreparationWorkflowPanel
+            workflow={workflow}
+            saved={saved}
+            metadataDirty={dirty}
+            uploadsActive={uploadsActive}
+            filesUnapplied={fileInputsDirty}
+            onSave={workflow.readOnly ? () => workflow.savePricing() : saveAll}
+            onRetry={async () => {
+              setStep(3);
+              return workflow.retry();
+            }}
+            onIssue={moveToField}
+          />
+        </div>
         <DashboardFormActions
           className="bg-muted/20 px-4 sm:px-6"
-          status={`Step ${step + 1} of ${steps.length} · All saves are private. Saving never submits.`}
+          status={`Step ${activeStep + 1} of ${steps.length} · Saving never submits.`}
         >
           <DashboardButton
             type="button"
@@ -984,9 +1264,12 @@ export function DatasetPreparationEditor({
               conflict ||
               unavailableExisting ||
               filesWriting ||
-              filesUncertain
+              filesUncertain ||
+              workflow.writing ||
+              workflow.reconciliationRequired ||
+              Boolean(workflow.pending)
             }
-            onClick={() => void save()}
+            onClick={() => void saveAll()}
           >
             {saving ? "Saving…" : retryPending ? "Retry save" : "Save draft"}
           </DashboardButton>
@@ -995,21 +1278,46 @@ export function DatasetPreparationEditor({
             type="button"
             disabled={locked || conflict || filesUncertain}
             onClick={async () => {
-              if (await save()) setStep(Math.min(step + 1, 3));
+              if (await saveAll()) setStep(Math.min(step + 1, 3));
             }}
           >
-            Save and {step === 3 ? "stay on review" : "continue"}
+            Save and {activeStep === 3 ? "stay on review" : "continue"}
           </DashboardButton>
           <DashboardButton
             variant="outline"
             type="button"
             disabled={locked || conflict || filesUncertain}
             onClick={async () => {
-              if (await save()) onExit?.();
+              if (await saveAll()) {
+                if (
+                  fileInputsDirty &&
+                  !window.confirm(
+                    "Your draft answers are saved, but file organization input has not been applied. Leave and discard that input?"
+                  )
+                )
+                  return;
+                if (
+                  uploadsActive &&
+                  !window.confirm(
+                    "Your draft is saved. Leave this page and pause the active file transfer? You can reselect the original file to resume later."
+                  )
+                )
+                  return;
+                onExit?.();
+              }
             }}
           >
             Save and exit
           </DashboardButton>
+          {uploadsActive && (locked || conflict) && (
+            <DashboardButton
+              type="button"
+              variant="outline"
+              onClick={() => pauseActiveUpload.current?.()}
+            >
+              Pause active upload
+            </DashboardButton>
+          )}
         </DashboardFormActions>
       </DashboardCard>
     </DatasetWorkspace>
