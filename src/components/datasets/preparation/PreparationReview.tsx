@@ -121,8 +121,8 @@ export function PreparationReview({
         className="lg:col-span-8"
         help={
           correctionBase
-            ? "These answers come from the exact backend-selected frozen correction base. The first saved change creates the correction draft. Category/source names here are current lookup labels; the submitted record retains captured labels."
-            : "This is the last acknowledged save. Category/source names are current lookup labels. License and quantities are supplier statements; no file inspection or publication is implied."
+            ? "These are the answers from the proposal you are correcting. Your first saved change starts the correction draft. Category and source names reflect the current directory; the submitted record keeps the names from submission."
+            : "This is your last saved draft. Category and source names reflect the current directory. The license and quantities are your stated details. Saving does not submit or publish your proposal."
         }
       >
         <dl className="grid gap-4 sm:grid-cols-2">

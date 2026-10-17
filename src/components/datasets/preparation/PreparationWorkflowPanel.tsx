@@ -266,7 +266,7 @@ export function PreparationWorkflowPanel({
             workflow.readOnly ? "Submitted proposal" : "Ready for admin review?"
           }
           className="lg:col-span-7"
-          help="Kuinbee checks saved fields, selected files, current inspection evidence and storage limits on the backend. A successful upload or Save does not submit this proposal."
+          help="Kuinbee checks your saved answers, selected files and storage limits before submission. Uploading a file or saving a draft does not submit your proposal."
         >
           <div className="flex flex-wrap items-center gap-3">
             <DashboardButton
