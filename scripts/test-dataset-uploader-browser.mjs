@@ -155,6 +155,12 @@ function tableFixture(draft, component, count = 22) {
   draft.members.push(selected);
   const table = {
     kind: "TABLE",
+    applicability: {
+      purpose: "PRIMARY",
+      origin: "SUPPLIER_DECLARED",
+      basis: "SELECTED_FILE_PURPOSE",
+      definitionsRequired: true,
+    },
     id: newId(),
     memberId: selected.id,
     syntaxProfileId: "UTF8_CSV_SYNTAX_V1",
@@ -2192,6 +2198,61 @@ try {
   await namedButton(tableRegion, "Reset unsaved table answers").click();
   console.log(
     "PASS stale generations preserve local interpretation and block rebasing; markup-like observed headers remain text"
+  );
+
+  for (const purpose of [
+    "PRIMARY",
+    "SENSOR",
+    "TRANSCRIPT",
+    "ANNOTATION",
+    "CALIBRATION",
+    "DOCUMENTATION",
+    "COMPANION",
+  ]) {
+    const purposeDraft = seed("FULL_ONLY"),
+      entry = tableFixture(purposeDraft, "FULL", 1);
+    entry.table.applicability = {
+      purpose,
+      origin: "SUPPLIER_DECLARED",
+      ...(purpose === "COMPANION"
+        ? { companionPurposes: ["ANNOTATION", "TRANSCRIPT"] }
+        : {}),
+      basis:
+        purpose === "COMPANION"
+          ? "EXACT_ENTRY_RELATIONSHIP"
+          : "SELECTED_FILE_PURPOSE",
+      definitionsRequired: ["PRIMARY", "SENSOR"].includes(purpose),
+    };
+    await open(page, purposeDraft);
+    const definitions = page.getByRole("region", {
+      name: "Tables and columns",
+      exact: true,
+    });
+    await definitions
+      .getByLabel("File to describe", { exact: true })
+      .selectOption(entry.member.id);
+    await definitions
+      .getByLabel("Inspected table", { exact: true })
+      .selectOption(entry.table.id);
+    await definitions
+      .getByText(
+        ["PRIMARY", "SENSOR"].includes(purpose)
+          ? /Complete definitions for every inspected table/
+          : /Table definitions are optional/
+      )
+      .waitFor();
+    assert.equal(
+      requests.filter(
+        (request) =>
+          request.method === "PATCH" &&
+          request.path.endsWith(purposeDraft.id + "/files/tables")
+      ).length,
+      0,
+      "Purpose guidance never invents saved definitions"
+    );
+  }
+  console.log(
+    "PASS backend-declared primary/sensor and single/multiple companion-purpose guidance stays distinct without duplicate classification fields or automatic definitions"
   );
 
   const lostDraft = seed("SAMPLE_ONLY"),

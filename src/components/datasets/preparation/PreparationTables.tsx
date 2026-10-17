@@ -564,6 +564,9 @@ export function PreparationTables({
                       item.kind === "TABLE" && (
                         <option key={item.id} value={item.id}>
                           {tableLabel(item)} · {item.columnCount} columns
+                          {item.applicability.definitionsRequired
+                            ? " · definitions required"
+                            : " · companion"}
                         </option>
                       )
                   )}
@@ -596,6 +599,11 @@ export function PreparationTables({
               <p className="text-xs text-muted-foreground">
                 CSV/TSV values are stored as text. The declared type below
                 explains their meaning; it is not a backend inference.
+              </p>
+              <p className="text-sm">
+                {table.applicability.definitionsRequired
+                  ? "These are primary or sensor records. Complete definitions for every inspected table and column before submitting, including other pages."
+                  : "This is companion material according to your file purpose or exact entry relationship. Table definitions are optional; complete any definitions you choose to start before submitting."}
               </p>
             </div>
           )}

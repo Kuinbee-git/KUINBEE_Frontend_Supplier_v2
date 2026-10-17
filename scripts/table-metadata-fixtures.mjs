@@ -79,6 +79,12 @@ export function tableMetadataFixture(
 ) {
   const table = {
     kind: "TABLE",
+    applicability: {
+      purpose: "PRIMARY",
+      origin: "SUPPLIER_DECLARED",
+      basis: "SELECTED_FILE_PURPOSE",
+      definitionsRequired: true,
+    },
     id: id(8001),
     component: context.component,
     displayName: "Event measurements",

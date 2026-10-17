@@ -154,6 +154,12 @@ export function TableMetadataPanel({
                       records · {page.table.observed.columnCount} observed
                       columns
                     </p>
+                    <p>
+                      Supplier-declared purpose:{" "}
+                      {page.table.applicability.companionPurposes
+                        ?.map(words)
+                        .join(", ") ?? words(page.table.applicability.purpose)}
+                    </p>
                     <p>One record: {page.table.recordUnit || "Not recorded"}</p>
                     <p>Missing values: {answer(page.table.missingValues)}</p>
                   </div>

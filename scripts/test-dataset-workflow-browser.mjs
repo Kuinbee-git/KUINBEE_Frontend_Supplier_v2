@@ -812,6 +812,12 @@ const server = createServer(async (req, res) => {
         assert(draft.members.some((member) => member.id === query.memberId));
         const table = {
           kind: "TABLE",
+          applicability: {
+            purpose: "PRIMARY",
+            origin: "SUPPLIER_DECLARED",
+            basis: "SELECTED_FILE_PURPOSE",
+            definitionsRequired: true,
+          },
           id: id(9001),
           syntaxProfileId: "UTF8_CSV_SYNTAX_V1",
           headerConvention: "PRESENT",

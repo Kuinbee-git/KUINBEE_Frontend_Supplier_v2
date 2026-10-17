@@ -59,6 +59,12 @@ const query = {
 };
 const table = {
   kind: "TABLE",
+  applicability: {
+    purpose: "PRIMARY",
+    origin: "SUPPLIER_DECLARED",
+    basis: "SELECTED_FILE_PURPOSE",
+    definitionsRequired: true,
+  },
   id: ids.table,
   syntaxProfileId: "UTF8_CSV_SYNTAX_V1",
   headerConvention: "PRESENT",
