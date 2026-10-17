@@ -39,7 +39,11 @@ async function request<T>(
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...options.headers },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json;profile=kuinbee.dataset-guided-empty-v1",
+        ...options.headers,
+      },
     });
   } catch {
     throw new PreparationApiError(

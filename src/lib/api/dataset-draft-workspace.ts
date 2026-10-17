@@ -28,7 +28,9 @@ export async function listDatasetDraftWorkspace(page = 1, q?: string) {
       `${API_BASE_URL}/api/v2/supplier/dataset-drafts/workspace?${parameters}`,
       {
         credentials: "include",
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json;profile=kuinbee.dataset-guided-empty-v1",
+        },
       }
     );
   } catch {
