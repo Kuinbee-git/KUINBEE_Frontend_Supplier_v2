@@ -25,6 +25,7 @@ import {
 } from "@/lib/datasets/dataset-table-page-commands";
 import { PreparationTables } from "./PreparationTables";
 import { preparationControl } from "./PreparationFields";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 import {
   readReferencePlan,
   recordReferenceAcknowledgement,
@@ -165,7 +166,7 @@ export function PreparationManagedTables({
     } catch (problem) {
       setError(
         problem instanceof Error
-          ? problem.message
+          ? datasetActionError(problem)
           : "Saved table context could not be refreshed."
       );
     }
@@ -225,7 +226,7 @@ export function PreparationManagedTables({
         }
       setError(
         problem instanceof Error
-          ? problem.message
+          ? datasetActionError(problem)
           : "The saved request could not be confirmed."
       );
       return null;

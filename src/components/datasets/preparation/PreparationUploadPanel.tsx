@@ -12,6 +12,7 @@ import type {
 import { DashboardButton, DashboardProgress } from "@/components/dashboard";
 import type { usePreparationUploads } from "@/hooks/usePreparationUploads";
 import { PreparationSection, preparationControl } from "./PreparationFields";
+import { PreparationInspectionReport } from "./PreparationInspectionReport";
 
 type Model = ReturnType<typeof usePreparationUploads>;
 type ProfileId = DatasetIntakeCapability["profileId"];
@@ -604,6 +605,15 @@ export function PreparationUploadPanel({
                   </>
                 )}
               </div>
+              {model.page && status.state !== "CLOSED" && (
+                <div className="min-w-0 lg:col-span-2">
+                  <PreparationInspectionReport
+                    draftId={model.page.preparationId}
+                    subject={{ kind: "UPLOAD", status }}
+                    enabled={model.ready && !model.writing}
+                  />
+                </div>
+              )}
             </li>
           );
         })}

@@ -22,6 +22,7 @@ import { PreparationGrid, PreparationSection } from "./PreparationFields";
 import { PreparationUploadPanel } from "./PreparationUploadPanel";
 import { PreparationOrganization } from "./PreparationOrganization";
 import { PreparationTables } from "./PreparationTables";
+import { PreparationInspectionReport } from "./PreparationInspectionReport";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 const purpose: Record<Member["role"], string> = {
@@ -67,10 +68,20 @@ function FilesRows({
   members,
   onRemove,
   disabled,
+  basis,
+  canInspect,
 }: {
   members: Member[];
   onRemove: (member: Member) => void;
   disabled: boolean;
+  basis: Pick<
+    DatasetFilesInventoryPageResponse,
+    | "preparationId"
+    | "preparationGeneration"
+    | "contentId"
+    | "contentGeneration"
+  > | null;
+  canInspect: boolean;
 }) {
   if (!members.length)
     return (
@@ -126,11 +137,25 @@ function FilesRows({
               <dt className="inline text-muted-foreground">Checks: </dt>
               <dd className="inline">{checkLabel(member)}</dd>
             </div>
-            <div>
-              <dt className="inline text-muted-foreground">Format: </dt>
-              <dd className="inline">Not assessed</dd>
-            </div>
           </dl>
+          {basis && (
+            <div className="min-w-0 sm:col-span-2">
+              <PreparationInspectionReport
+                draftId={basis.preparationId}
+                subject={{
+                  kind: "MEMBER",
+                  basis: {
+                    preparationId: basis.preparationId,
+                    preparationGeneration: basis.preparationGeneration,
+                    contentId: basis.contentId,
+                    contentGeneration: basis.contentGeneration,
+                  },
+                  member,
+                }}
+                enabled={canInspect}
+              />
+            </div>
+          )}
         </li>
       ))}
     </ul>
@@ -213,7 +238,7 @@ export function PreparationFilesPanel({
       pinned?: { contentId: string; contentGeneration: number }
     ) => {
       if (!saved || metadataUnsettled || pending.current || writeBusy.current)
-        return;
+        return false;
       const generation = ++epoch.current;
       reader.current?.abort();
       const controller = new AbortController();
@@ -223,7 +248,7 @@ export function PreparationFilesPanel({
       setInventory(null);
       try {
         const next = await datasetFilesApi.context(saved.id, controller.signal);
-        if (generation !== epoch.current) return;
+        if (generation !== epoch.current) return false;
         setContext(next);
         if (next.preparationGeneration !== saved.generation) {
           setReadFailed(true);
@@ -231,7 +256,7 @@ export function PreparationFilesPanel({
           setError(
             "Saved details changed in another tab. Review the latest saved draft before changing its files."
           );
-          return;
+          return false;
         }
         if (
           pinned &&
@@ -242,7 +267,7 @@ export function PreparationFilesPanel({
           setError(
             "The file inventory changed. Refresh files to restart from its first page."
           );
-          return;
+          return false;
         }
         if (
           next.contentId &&
@@ -261,20 +286,23 @@ export function PreparationFilesPanel({
             },
             controller.signal
           );
-          if (generation !== epoch.current) return;
+          if (generation !== epoch.current) return false;
           setInventory(page);
         }
         setPageIndex(index);
         setReadFailed(false);
         if (index === 0) setHistory([undefined]);
+        return true;
       } catch (failure) {
-        if (generation !== epoch.current || controller.signal.aborted) return;
+        if (generation !== epoch.current || controller.signal.aborted)
+          return false;
         setReadFailed(true);
         setError(
           failure instanceof Error
             ? failure.message
             : "The saved file inventory could not be loaded."
         );
+        return false;
       } finally {
         if (generation === epoch.current) setLoading(false);
       }
@@ -383,6 +411,7 @@ export function PreparationFilesPanel({
     member.component === "FULL" ? !hasFull : !hasSample
   );
   const mutationDisabled =
+    uploads.reconcileRequired ||
     metadataBlocked ||
     metadataDirty ||
     loading ||
@@ -531,6 +560,8 @@ export function PreparationFilesPanel({
           <section aria-label="Full material">
             {usableInventory ? (
               <FilesRows
+                basis={usableInventory}
+                canInspect={Boolean(active && current && !metadataUnsettled)}
                 onRemove={(member) => {
                   if (usableInventory)
                     void uploads.removeMember(member, usableInventory);
@@ -564,6 +595,8 @@ export function PreparationFilesPanel({
           <section aria-label="Sample material">
             {usableInventory ? (
               <FilesRows
+                basis={usableInventory}
+                canInspect={Boolean(active && current && !metadataUnsettled)}
                 onRemove={(member) => {
                   if (usableInventory)
                     void uploads.removeMember(member, usableInventory);
@@ -595,6 +628,8 @@ export function PreparationFilesPanel({
           help="Changing the upload choice did not delete these references or their stored bytes. They must be resolved before submission becomes available."
         >
           <FilesRows
+            basis={usableInventory}
+            canInspect={Boolean(active && current && !metadataUnsettled)}
             members={outside}
             onRemove={(member) => {
               if (usableInventory)

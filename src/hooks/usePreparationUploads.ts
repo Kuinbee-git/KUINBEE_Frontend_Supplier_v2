@@ -50,6 +50,7 @@ import {
   recordReferenceRejection,
 } from "@/lib/datasets/dataset-reference-plan";
 import type { DatasetReferenceCommand } from "@/lib/datasets/dataset-upload-commands";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 type Status = DatasetUploadAttemptStatusResponse;
@@ -63,12 +64,10 @@ interface Options {
   onWritingChange: (value: boolean) => void;
   onUncertainChange: (value: boolean) => void;
   onActivityChange: (value: boolean, pause?: () => void) => void;
-  onFilesChanged: () => Promise<void>;
+  onFilesChanged: () => Promise<boolean>;
 }
 const message = (failure: unknown) =>
-  failure instanceof Error
-    ? failure.message
-    : "The file request could not be completed.";
+  datasetActionError(failure, "The file request could not be completed.");
 const receiving = (status: Status) =>
   status.state === "ADMITTED" || status.state === "RECEIVING";
 
@@ -87,6 +86,8 @@ export function usePreparationUploads(options: Options) {
   const [writing, setWriting] = useState(false);
   const [pending, setPending] = useState<DatasetUploadCommand | null>(null);
   const [ready, setReady] = useState(false);
+  const [reconcileRequired, setReconcileRequired] = useState(false);
+  const reconcileRef = useRef(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [activeAttempt, setActiveAttempt] = useState<string | null>(null);
@@ -115,13 +116,13 @@ export function usePreparationUploads(options: Options) {
     };
   }, []);
   useEffect(
-    () => onUncertainChange(Boolean(pending)),
-    [pending, onUncertainChange]
+    () => onUncertainChange(Boolean(pending) || reconcileRequired),
+    [pending, reconcileRequired, onUncertainChange]
   );
 
   const refresh = useCallback(async (afterId?: string, index = 0) => {
     const { saved } = latest.current;
-    if (!saved) return;
+    if (!saved) return false;
     const generation = ++epoch.current;
     reader.current?.abort();
     const controller = new AbortController();
@@ -134,6 +135,8 @@ export function usePreparationUploads(options: Options) {
         setPending(restored);
         initializedId.current = saved.id;
         setReady(true);
+        reconcileRef.current = false;
+        setReconcileRequired(false);
         if (restored)
           setNotice(
             "A file request still needs confirmation. Retry it before making another file change."
@@ -164,12 +167,12 @@ export function usePreparationUploads(options: Options) {
       generation !== epoch.current ||
       controller.signal.aborted
     )
-      return;
+      return false;
     if (
       latest.current.saved?.id !== saved.id ||
       latest.current.saved.generation !== saved.generation
     )
-      return;
+      return false;
     if (results[0].status === "fulfilled") {
       setConfig(results[0].value);
       if (results[0].value?.admission.enabled) setHasUploadForm(true);
@@ -192,6 +195,10 @@ export function usePreparationUploads(options: Options) {
     );
     if (failure?.status === "rejected") setError(message(failure.reason));
     setLoading(false);
+    return (
+      results.every((result) => result.status === "fulfilled") &&
+      !latest.current.metadataUnsettled
+    );
   }, []);
   useComponentRequest(
     () => refresh(),
@@ -250,6 +257,7 @@ export function usePreparationUploads(options: Options) {
     !loading &&
     !writing &&
     !pending &&
+    !reconcileRequired &&
     !activeAttempt &&
     options.saved &&
     options.context?.editable &&
@@ -285,7 +293,11 @@ export function usePreparationUploads(options: Options) {
   };
 
   async function perform(command: DatasetUploadCommand, replay = false) {
-    if (busy.current || (!replay && pendingRef.current)) return null;
+    if (
+      busy.current ||
+      (!replay && (pendingRef.current || reconcileRef.current))
+    )
+      return null;
     if (
       (command.kind === "TABLES" || command.kind === "REFERENCES") &&
       command.actorId &&
@@ -302,6 +314,10 @@ export function usePreparationUploads(options: Options) {
     setError("");
     setNotice("");
     let dispatched = false;
+    let acknowledged = false;
+    let acceptedResponse: Awaited<
+      ReturnType<typeof dispatchDatasetUploadCommand>
+    > | null = null;
     const actorId = useAuthStore.getState().user?.id;
     try {
       storeDatasetUploadCommand(command);
@@ -316,6 +332,10 @@ export function usePreparationUploads(options: Options) {
       clearDatasetUploadCommand(command);
       pendingRef.current = null;
       setPending(null);
+      acknowledged = true;
+      acceptedResponse = response;
+      reconcileRef.current = true;
+      setReconcileRequired(true);
       if (alive.current) {
         setNotice(
           command.kind === "REFERENCES"
@@ -330,11 +350,22 @@ export function usePreparationUploads(options: Options) {
                     ? "Cleanup requested. Storage stays charged until the backend confirms cleanup."
                     : "Upload reserved. File transfer is next."
         );
-        await refresh();
-        await latest.current.onFilesChanged();
+        const refreshed = await refresh();
+        const inventoryFresh = await latest.current.onFilesChanged();
+        if (!refreshed || !inventoryFresh)
+          throw new Error("Saved file context needs refresh");
+        reconcileRef.current = false;
+        setReconcileRequired(false);
       }
       return response;
     } catch (failure) {
+      if (acknowledged) {
+        if (alive.current)
+          setError(
+            "Your change was saved, but the current file list could not be refreshed. Use Refresh upload status before editing or submitting. The saved request will not be sent again."
+          );
+        return acceptedResponse;
+      }
       if (dispatched && !ambiguousDatasetUploadFailure(failure, command.kind)) {
         try {
           if (command.kind === "TABLES")
@@ -359,7 +390,13 @@ export function usePreparationUploads(options: Options) {
     }
   }
   async function resume(attemptId: string, file: File | null) {
-    if (!canAdmit || busy.current || transfer.current || pendingRef.current)
+    if (
+      !canAdmit ||
+      busy.current ||
+      transfer.current ||
+      pendingRef.current ||
+      reconcileRef.current
+    )
       return;
     if (!file) {
       setError("Select the original file above, then resume this upload.");
@@ -556,6 +593,7 @@ export function usePreparationUploads(options: Options) {
     writing,
     pending,
     ready,
+    reconcileRequired,
     error,
     notice,
     activeAttempt,
@@ -563,7 +601,25 @@ export function usePreparationUploads(options: Options) {
     canAdmit,
     canChange,
     pageIndex,
-    refresh: () => refresh(cursor.current, pageIndex),
+    refresh: async () => {
+      const refreshed = await refresh(
+        reconcileRequired ? undefined : cursor.current,
+        reconcileRequired ? 0 : pageIndex
+      );
+      if (!reconcileRequired) return refreshed;
+      try {
+        const inventoryFresh = await latest.current.onFilesChanged();
+        if (refreshed && inventoryFresh) {
+          reconcileRef.current = false;
+          setReconcileRequired(false);
+          setError("");
+          return true;
+        }
+      } catch {
+        /* Keep the acknowledged-save refresh barrier in place. */
+      }
+      return false;
+    },
     retry: () =>
       pendingRef.current
         ? perform(pendingRef.current, true)

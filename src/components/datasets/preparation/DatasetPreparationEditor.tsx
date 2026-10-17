@@ -40,6 +40,7 @@ import { PreparationDiscoveryFields } from "./PreparationDiscoveryFields";
 import { PreparationReview } from "./PreparationReview";
 import { PreparationFilesPanel } from "./PreparationFilesPanel";
 import { PreparationManagedTables } from "./PreparationManagedTables";
+import { datasetActionError } from "@/lib/datasets/dataset-action-error";
 import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
 import { PreparationFrozenSubmission } from "./PreparationFrozenSubmission";
 import {
@@ -430,7 +431,7 @@ export function DatasetPreparationEditor({
           pending.current = null;
           setRetryPending(false);
         }
-        setError(failure.message);
+        setError(datasetActionError(failure));
       } else {
         pending.current = null;
         const details =
@@ -584,7 +585,7 @@ export function DatasetPreparationEditor({
           )}
           {filesUncertain && (
             <span className="ml-2 text-muted-foreground">
-              File change not confirmed
+              Files need confirmation or refresh
             </span>
           )}
         </div>
