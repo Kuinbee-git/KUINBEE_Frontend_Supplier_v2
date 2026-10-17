@@ -621,6 +621,7 @@ export function PreparationOrganization({
   return (
     <section
       aria-label="Organize selected files"
+      data-dataset-field="files.organization"
       className="col-span-full min-w-0 space-y-5 border-t border-border pt-5"
     >
       <div className="space-y-2">

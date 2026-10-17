@@ -75,6 +75,7 @@ export function PreparationWorkflowPanel({
       )}
       <PreparationGrid>
         <PreparationSection
+          field="pricing"
           title="Access & pricing"
           className="lg:col-span-5"
           help="Pricing keeps its existing separate admin review. License agreements and negotiation remain outside Kuinbee."
@@ -310,6 +311,7 @@ export function PreparationWorkflowPanel({
                       variant="link"
                       size="compact"
                       className="mt-1 h-auto whitespace-normal p-0 text-left"
+                      disabled={blocked}
                       onClick={() => onIssue(issue.field)}
                     >
                       Go to this section

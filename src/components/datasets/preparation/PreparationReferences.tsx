@@ -649,7 +649,10 @@ function ReferenceEditor({
     return label ? columnLabel(label) : "Selected column";
   };
   return (
-    <div className="min-w-0 space-y-4 border-t border-border pt-4">
+    <div
+      data-dataset-field="files.references"
+      className="min-w-0 space-y-4 border-t border-border pt-4"
+    >
       <div>
         <h3 className="font-medium">Keys, relationships & data dictionary</h3>
         <p className="text-sm text-muted-foreground">

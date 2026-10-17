@@ -41,6 +41,10 @@ import { PreparationReview } from "./PreparationReview";
 import { PreparationFilesPanel } from "./PreparationFilesPanel";
 import { PreparationManagedTables } from "./PreparationManagedTables";
 import { datasetActionError } from "@/lib/datasets/dataset-action-error";
+import {
+  datasetPreparationStepForField,
+  focusDatasetPreparationField,
+} from "@/lib/datasets/dataset-readiness-navigation";
 import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
 import { PreparationFrozenSubmission } from "./PreparationFrozenSubmission";
 import {
@@ -138,6 +142,8 @@ export function DatasetPreparationEditor({
   });
   const [saved, setSaved] = useState<DatasetPreparationResponse | null>(null);
   const [step, setStep] = useState(0);
+  const [issueFocus, setIssueFocus] = useState<{ field: string } | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(Boolean(draftId));
   const [saving, setSaving] = useState(false);
   const [retryPending, setRetryPending] = useState(false);
@@ -444,7 +450,11 @@ export function DatasetPreparationEditor({
                 message?: string;
               })
             : null;
-        if (details?.path?.[0] === "title") setStep(0);
+        const field = details?.path?.join(".");
+        if (field) {
+          setStep(datasetPreparationStepForField(field));
+          setIssueFocus({ field });
+        }
         setError(
           details
             ? `${details.path?.join(".")}: ${details.message}`
@@ -497,6 +507,19 @@ export function DatasetPreparationEditor({
     workflow.readOnly || workflow.pending || workflow.reconciliationRequired
       ? 3
       : step;
+  useEffect(() => {
+    if (
+      !issueFocus ||
+      activeStep !== datasetPreparationStepForField(issueFocus.field)
+    )
+      return;
+    const frame = requestAnimationFrame(() => {
+      if (editorRef.current)
+        focusDatasetPreparationField(editorRef.current, issueFocus.field);
+      setIssueFocus(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeStep, issueFocus]);
   const hasSample =
     metadata.uploadChoice === "SAMPLE_ONLY" ||
     metadata.uploadChoice === "FULL_AND_SAMPLE";
@@ -517,20 +540,9 @@ export function DatasetPreparationEditor({
       sample: { ...(previous.sample ?? {}), [key]: value },
     }));
   const moveToField = (field?: string) => {
-    setStep(
-      !field || field === "files"
-        ? 1
-        : [
-              "uploadChoice",
-              "modalities",
-              "contexts",
-              "primaryCategoryId",
-              "sourceId",
-              "license",
-            ].includes(field)
-          ? 0
-          : 2
-    );
+    if (locked || filesUncertain || workflow.readOnly) return;
+    setStep(datasetPreparationStepForField(field));
+    setIssueFocus({ field: field ?? "files" });
   };
 
   return (
@@ -554,7 +566,11 @@ export function DatasetPreparationEditor({
           </DashboardButton>
         }
       />
-      <DashboardCard className="overflow-hidden" data-proposal-panel="true">
+      <DashboardCard
+        ref={editorRef}
+        className="overflow-hidden"
+        data-proposal-panel="true"
+      >
         <div
           role="status"
           aria-live="polite"
@@ -753,6 +769,7 @@ export function DatasetPreparationEditor({
         )}
         <fieldset
           disabled={fieldsLocked}
+          data-dataset-step={activeStep}
           className="min-w-0 space-y-6 p-4 sm:p-6"
           hidden={activeStep === 3}
         >
@@ -765,6 +782,7 @@ export function DatasetPreparationEditor({
                 help="Start with a title. You can save now and complete the remaining information step by step."
               >
                 <PreparationField
+                  field="title"
                   label="Dataset title"
                   multiline={false}
                   maxLength={200}
@@ -772,7 +790,11 @@ export function DatasetPreparationEditor({
                   onChange={(value) => setCommon("title", value ?? "")}
                   disabled={workflow.managed}
                 />
-                <fieldset className="space-y-2" disabled={workflow.managed}>
+                <fieldset
+                  data-dataset-field="uploadChoice"
+                  className="space-y-2"
+                  disabled={workflow.managed}
+                >
                   <legend className="mb-2 text-sm font-medium">
                     What are you uploading?
                   </legend>
@@ -802,7 +824,10 @@ export function DatasetPreparationEditor({
                   ))}
                 </fieldset>{" "}
                 <div className="border-t border-border pt-5">
-                  <fieldset className="space-y-2">
+                  <fieldset
+                    data-dataset-field="modalities"
+                    className="space-y-2"
+                  >
                     <legend className="mb-2 text-sm font-medium">
                       Main types of data
                     </legend>
@@ -855,7 +880,7 @@ export function DatasetPreparationEditor({
                   </fieldset>{" "}
                 </div>
                 <div className="border-t border-border pt-5">
-                  <fieldset className="space-y-2">
+                  <fieldset data-dataset-field="contexts" className="space-y-2">
                     <legend className="text-sm font-medium">
                       Relevant capture or domain context
                     </legend>
@@ -904,6 +929,7 @@ export function DatasetPreparationEditor({
               >
                 <div className="grid gap-5">
                   <PreparationCatalogPicker
+                    field="primaryCategoryId"
                     kind="categories"
                     value={metadata.primaryCategoryId}
                     onChange={(value) =>
@@ -924,6 +950,7 @@ export function DatasetPreparationEditor({
                     disabled={fieldsLocked || workflow.managed}
                   />
                   <PreparationCatalogPicker
+                    field="sourceId"
                     kind="sources"
                     value={metadata.sourceId}
                     onChange={(value) => setCommon("sourceId", value)}
@@ -931,6 +958,7 @@ export function DatasetPreparationEditor({
                   />
                 </div>
                 <PreparationField
+                  field="license"
                   label="Dataset license"
                   multiline={false}
                   maxLength={1000}
@@ -942,7 +970,11 @@ export function DatasetPreparationEditor({
               </PreparationSection>
             </PreparationGrid>
           )}
-          <div hidden={activeStep !== 1} className="min-w-0 space-y-4">
+          <div
+            data-dataset-field="files"
+            hidden={activeStep !== 1}
+            className="min-w-0 space-y-4"
+          >
             {!workflow.managed && (
               <PreparationFilesPanel
                 saved={saved}
@@ -988,6 +1020,7 @@ export function DatasetPreparationEditor({
                 className="lg:col-span-8"
               >
                 <PreparationField
+                  field="collectionBoundary"
                   label="What collection does this Dataset cover?"
                   value={metadata.collectionBoundary}
                   onChange={(value) => setCommon("collectionBoundary", value)}
@@ -995,7 +1028,10 @@ export function DatasetPreparationEditor({
                   help="Full means complete for this honestly defined boundary, not everything you own."
                 />
                 {hasFull && (
-                  <fieldset className="space-y-2">
+                  <fieldset
+                    data-dataset-field="fullCompleteness"
+                    className="space-y-2"
+                  >
                     <legend className="mb-2 text-sm font-medium">
                       Full collection boundary
                     </legend>
@@ -1021,17 +1057,20 @@ export function DatasetPreparationEditor({
                   </fieldset>
                 )}
                 <PreparationField
+                  field="overview"
                   label="Short summary"
                   value={metadata.overview}
                   onChange={(value) => setCommon("overview", value)}
                 />
                 <PreparationField
+                  field="description"
                   label="Detailed description"
                   value={metadata.description}
                   onChange={(value) => setCommon("description", value)}
                   help="Explain organization and interpretation, rather than repeating the summary."
                 />
                 <PreparationField
+                  field="dataQuality"
                   label="Quality checks and known quality"
                   value={metadata.dataQuality}
                   onChange={(value) => setCommon("dataQuality", value)}
@@ -1049,17 +1088,20 @@ export function DatasetPreparationEditor({
               {hasSample && (
                 <PreparationSection title="How the sample represents the collection">
                   <PreparationField
+                    field="sample.selectionMethod"
                     label="How was the sample selected?"
                     value={sample.selectionMethod}
                     onChange={(value) => setSample("selectionMethod", value)}
                   />
                   <PreparationField
+                    field="sample.coverage"
                     label="What does the sample cover?"
                     value={sample.coverage}
                     onChange={(value) => setSample("coverage", value)}
                     help="Explain what is known or unknown about representativeness."
                   />
                   <PreparationSelect
+                    field="sample.omissions"
                     label="What is missing from the sample?"
                     value={sample.omissions}
                     onChange={(value) => setSample("omissions", value)}
@@ -1071,12 +1113,14 @@ export function DatasetPreparationEditor({
                   />
                   {sample.omissions === "DESCRIBED" && (
                     <PreparationField
+                      field="sample.omissionNotes"
                       label="Sample omissions"
                       value={sample.omissionNotes}
                       onChange={(value) => setSample("omissionNotes", value)}
                     />
                   )}
                   <PreparationSelect
+                    field="sample.transformations"
                     label="How was the sample changed from its source?"
                     value={sample.transformations}
                     onChange={(value) => setSample("transformations", value)}
@@ -1088,6 +1132,7 @@ export function DatasetPreparationEditor({
                   />
                   {sample.transformations === "DESCRIBED" && (
                     <PreparationField
+                      field="sample.transformationNotes"
                       label="Sample preparation or changes"
                       value={sample.transformationNotes}
                       onChange={(value) =>
@@ -1096,6 +1141,7 @@ export function DatasetPreparationEditor({
                     />
                   )}
                   <PreparationField
+                    field="sample.relationshipNotes"
                     label="Relationship to full material"
                     value={sample.relationshipNotes}
                     onChange={(value) => setSample("relationshipNotes", value)}
@@ -1119,22 +1165,26 @@ export function DatasetPreparationEditor({
                       onUpdate={update}
                     />
                     <PreparationField
+                      field="limitations"
                       label="Known limitations"
                       value={metadata.limitations}
                       onChange={(value) => setCommon("limitations", value)}
                     />
                     <PreparationField
+                      field="collectionMethod"
                       label="Collection or preparation method"
                       value={metadata.collectionMethod}
                       onChange={(value) => setCommon("collectionMethod", value)}
                     />
                     <PreparationField
+                      field="possibleUses"
                       label="Possible uses"
                       value={metadata.possibleUses}
                       onChange={(value) => setCommon("possibleUses", value)}
                     />
                     {metadata.modalities?.includes("TABULAR") && (
                       <PreparationSelect
+                        field="superType"
                         label="Statistical study structure (if applicable)"
                         value={metadata.superType}
                         onChange={(value) =>
@@ -1163,7 +1213,11 @@ export function DatasetPreparationEditor({
             </PreparationGrid>
           )}
         </fieldset>
-        <div hidden={activeStep !== 3} className="min-w-0 space-y-4 p-4 sm:p-6">
+        <div
+          data-dataset-step="3"
+          hidden={activeStep !== 3}
+          className="min-w-0 space-y-4 p-4 sm:p-6"
+        >
           {workflow.readOnly && workflow.snapshot?.submission ? (
             <PreparationFrozenSubmission
               submission={workflow.snapshot.submission}

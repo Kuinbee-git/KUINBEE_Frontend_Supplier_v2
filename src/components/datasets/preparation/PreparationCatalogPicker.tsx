@@ -12,6 +12,7 @@ import { DashboardButton, DashboardInput } from "@/components/dashboard";
 import { preparationControl } from "./PreparationFields";
 
 export function PreparationCatalogPicker({
+  field,
   kind,
   value,
   onChange,
@@ -20,6 +21,7 @@ export function PreparationCatalogPicker({
   help,
   excludedValues = [],
 }: {
+  field?: string;
   kind: "categories" | "sources";
   value: string | null | undefined;
   onChange: (value: string | null) => void;
@@ -134,6 +136,7 @@ export function PreparationCatalogPicker({
       </p>
       <select
         id={id}
+        data-dataset-field={field}
         className={preparationControl}
         value={value ?? ""}
         disabled={disabled}

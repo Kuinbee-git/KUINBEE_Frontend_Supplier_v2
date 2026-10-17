@@ -63,6 +63,7 @@ export function PreparationCoverageFields({
         </p>
       </div>
       <PreparationSelect
+        field="geographicCoverage"
         label="Geographic coverage"
         value={geographic?.state}
         options={states}
@@ -82,6 +83,7 @@ export function PreparationCoverageFields({
       />
       {geographic?.state === "KNOWN" && (
         <PreparationField
+          field="geographicCoverage.description"
           label="Places or regions represented"
           maxLength={2000}
           value={geographic.description}
@@ -95,6 +97,7 @@ export function PreparationCoverageFields({
         />
       )}
       <PreparationSelect
+        field="collectionPeriod"
         label="Collection or capture period"
         value={period?.state}
         options={states}
@@ -116,6 +119,7 @@ export function PreparationCoverageFields({
         <>
           <div className="grid gap-4 @md:grid-cols-2">
             <PreparationField
+              field="collectionPeriod.start"
               label="Collection start"
               multiline={false}
               maxLength={10}
@@ -124,6 +128,7 @@ export function PreparationCoverageFields({
               help="Use YYYY, YYYY-MM or YYYY-MM-DD. Leave blank if the start was not provided."
             />
             <PreparationField
+              field="collectionPeriod.end"
               label="Collection end"
               multiline={false}
               maxLength={10}
@@ -133,6 +138,7 @@ export function PreparationCoverageFields({
             />
           </div>
           <PreparationField
+            field="collectionPeriod.notes"
             label="Collection period notes"
             maxLength={1000}
             value={period.notes}

@@ -100,6 +100,7 @@ export function PreparationDiscoveryFields({
       </p>
       {selected.length < 10 && (
         <PreparationCatalogPicker
+          field="secondaryCategoryIds"
           kind="categories"
           label="Add an additional category"
           value={null}
@@ -123,6 +124,7 @@ export function PreparationDiscoveryFields({
         />
       )}
       <PreparationField
+        field="tags"
         label="Tags (one per line)"
         value={metadata.tags?.join("\n")}
         maxLength={1619}

@@ -19,6 +19,7 @@ import {
 export const preparationControl =
   "dashboard-field-control h-10 w-full rounded-lg border px-3 py-2 text-sm text-foreground transition-colors focus-visible:border-[var(--dashboard-focus-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50";
 export function PreparationField({
+  field,
   label,
   value,
   onChange,
@@ -27,6 +28,7 @@ export function PreparationField({
   maxLength = 4000,
   disabled = false,
 }: {
+  field?: string;
   label: string;
   value?: string | null;
   onChange: (value: string | null) => void;
@@ -38,6 +40,7 @@ export function PreparationField({
   const id = useId();
   const props = {
     id,
+    "data-dataset-field": field,
     value: value ?? "",
     maxLength,
     disabled,
@@ -59,6 +62,7 @@ export function PreparationField({
   );
 }
 export function PreparationSelect({
+  field,
   label,
   value,
   onChange,
@@ -66,6 +70,7 @@ export function PreparationSelect({
   help,
   disabled = false,
 }: {
+  field?: string;
   label: string;
   value?: string | null;
   onChange: (value: string | null) => void;
@@ -79,6 +84,7 @@ export function PreparationSelect({
       {(controlProps) => (
         <select
           {...controlProps}
+          data-dataset-field={field}
           className={preparationControl}
           disabled={disabled}
           value={value ?? ""}
@@ -96,11 +102,13 @@ export function PreparationSelect({
   );
 }
 export function PreparationSection({
+  field,
   title,
   children,
   help,
   className,
 }: {
+  field?: string;
   title: string;
   children: ReactNode;
   help?: string;
@@ -114,7 +122,9 @@ export function PreparationSection({
       data-proposal-tile="true"
       className={`@container col-span-full min-w-0 rounded-xl border border-border p-4 sm:p-5 ${className ?? "lg:col-span-6"}`}
     >
-      <div className="space-y-4">{children}</div>
+      <div data-dataset-field={field} className="space-y-4">
+        {children}
+      </div>
     </DashboardSection>
   );
 }
@@ -184,6 +194,7 @@ export function PreparationQuantities({
     }));
   return (
     <PreparationSection
+      field={field}
       title={label}
       className={className}
       help="These are your declarations, not measured uploads or storage usage. Unknown has no numeric value. Each quantity applies only to the scope named above."
@@ -344,7 +355,10 @@ function PreparationSensorChannels({
       )
     );
   return (
-    <details className="space-y-4 border-t border-border pt-4">
+    <details
+      data-dataset-field="profiles.sensors.channels"
+      className="space-y-4 border-t border-border pt-4"
+    >
       <summary className="cursor-pointer text-sm font-medium">
         Individual channel descriptions ({channels.length})
       </summary>
@@ -372,6 +386,7 @@ function PreparationSensorChannels({
           </legend>
           <div className="grid min-w-0 gap-3 @md:grid-cols-2">
             <PreparationField
+              field={`profiles.sensors.channels.${index}.name`}
               label={`Channel ${index + 1} name`}
               multiline={false}
               value={channel.name}
@@ -384,6 +399,7 @@ function PreparationSensorChannels({
               }
             />
             <PreparationField
+              field={`profiles.sensors.channels.${index}.unit`}
               label={`Channel ${index + 1} unit`}
               multiline={false}
               value={channel.unit}
@@ -393,6 +409,7 @@ function PreparationSensorChannels({
             />
           </div>
           <PreparationField
+            field={`profiles.sensors.channels.${index}.meaning`}
             label={`Channel ${index + 1} meaning`}
             value={channel.meaning}
             maxLength={4000}
@@ -860,6 +877,7 @@ export function PreparationProfileFields({
         return (
           <PreparationSection
             key={name}
+            field={`profiles.${name}`}
             title={group.title}
             help="Describe the represented collection. Required answers may stay incomplete while saving a draft. Before Submit, complete applicable questions or state Unknown where allowed. Available does not mean included in the selected Full or Sample files."
           >
@@ -884,6 +902,7 @@ export function PreparationProfileFields({
                   return (
                     <PreparationField
                       key={field.key}
+                      field={`profiles.${name}.${field.key}`}
                       label={field.label}
                       multiline={false}
                       value={
@@ -901,6 +920,7 @@ export function PreparationProfileFields({
                   return (
                     <PreparationSelect
                       key={field.key}
+                      field={`profiles.${name}.${field.key}`}
                       label={field.label}
                       value={
                         typeof values[field.key] === "string"
@@ -915,6 +935,7 @@ export function PreparationProfileFields({
                 return (
                   <PreparationField
                     key={field.key}
+                    field={`profiles.${name}.${field.key}`}
                     label={field.label}
                     value={
                       typeof values[field.key] === "string"

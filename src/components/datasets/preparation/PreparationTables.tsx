@@ -522,6 +522,7 @@ function TableEditor({
   return (
     <section
       aria-label="Tables and columns"
+      data-dataset-field="files.tables"
       className="col-span-full min-w-0 space-y-4 border-t border-border pt-5"
     >
       <div className="space-y-1">
