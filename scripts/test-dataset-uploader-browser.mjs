@@ -57,6 +57,9 @@ const bundle = await build({
     import {QueryProvider} from './src/components/QueryProvider';
     import {DashboardShell} from './src/components/layout/DashboardShell';
     import {DatasetPreparationEditor} from './src/components/datasets/preparation/DatasetPreparationEditor';
+    import {useAuthStore} from './src/store/auth.store';
+    window.fixtureLogin=(id)=>useAuthStore.getState().login({id,email:'fixture@example.test',name:'Fixture supplier',role:'supplier'});
+    window.fixtureLogin('c000000000000000000999999');
     const root=createRoot(document.getElementById('root'));let mount=0;
     window.mount=(id)=>root.render(<React.StrictMode><QueryProvider><DashboardShell><DatasetPreparationEditor key={++mount} draftId={id} onExit={()=>window.fixtureExits=(window.fixtureExits??0)+1}/></DashboardShell></QueryProvider></React.StrictMode>);
     window.mount(window.location.pathname.split('/').at(-1));
@@ -2111,6 +2114,24 @@ try {
     await region
       .getByLabel("Unit of measurement", { exact: true })
       .fill("milliseconds");
+    await region
+      .getByLabel("Column to describe", { exact: true })
+      .selectOption(specimen.table.columns[1].id);
+    await region
+      .getByLabel("Column meaning", { exact: true })
+      .selectOption("KNOWN");
+    await region
+      .getByLabel("What does this column mean?", { exact: true })
+      .fill("One distinct meaning despite a duplicate header");
+    await region
+      .getByLabel("Column to describe", { exact: true })
+      .selectOption(specimen.table.columns[0].id);
+    assert.equal(
+      await region
+        .getByLabel("What does this column mean?", { exact: true })
+        .inputValue(),
+      "Elapsed time from recording start"
+    );
     assert(
       await region
         .getByRole("button", { name: "Next columns page", exact: true })
@@ -2119,7 +2140,7 @@ try {
     await namedButton(region, "Save table descriptions").click();
     await region
       .getByText(
-        "Unsaved table answers · save before changing the selected column or page.",
+        "Unsaved table answers · you can describe other columns on this page. Save before changing the file, table or page.",
         { exact: true }
       )
       .waitFor({ state: "hidden" });
@@ -2128,7 +2149,18 @@ try {
       "One sensor observation"
     );
     assert.equal(specimen.table.columns[0].description.unit, "milliseconds");
-    assert.equal(specimen.table.columns[1].description, null);
+    assert.equal(
+      specimen.table.columns[1].description.description,
+      "One distinct meaning despite a duplicate header"
+    );
+    assert.equal(specimen.table.columns[2].description, null);
+    const pageWrites = requests.filter(
+      (item) =>
+        item.method === "PATCH" &&
+        item.path.endsWith(draft.id + "/files/tables")
+    );
+    assert.equal(pageWrites.length, 1);
+    assert.equal(pageWrites[0].body.operations.length, 3);
     assert.equal(draft.contentGeneration, 1);
     console.log(
       `PASS table and column answers use exact ${choice}/${component} membership with partial saves`
@@ -2332,6 +2364,126 @@ try {
   );
   console.log(
     "PASS lost table ACK survives reload and a pre-receipt 403; exact UUID/body replay does not duplicate the edit"
+  );
+  const wideDraft = seed("FULL_ONLY"),
+    wide = tableFixture(wideDraft, "FULL", 22);
+  await open(page, wideDraft);
+  tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
+  await tableRegion
+    .getByLabel("File to describe", { exact: true })
+    .selectOption(wide.member.id);
+  await tableRegion
+    .getByLabel("Inspected table", { exact: true })
+    .selectOption(wide.table.id);
+  for (let index = 0; index < 7; index++) {
+    await tableRegion
+      .getByLabel("Column to describe", { exact: true })
+      .selectOption(wide.table.columns[index].id);
+    await tableRegion
+      .getByLabel("Column meaning", { exact: true })
+      .selectOption("KNOWN");
+    await tableRegion
+      .getByLabel("What does this column mean?", { exact: true })
+      .fill("界".repeat(2000));
+  }
+  assert(await namedButton(tableRegion, "Next columns page").isDisabled());
+  flags.lose = "TABLES";
+  await namedButton(tableRegion, "Save table descriptions").click();
+  await namedButton(tableRegion, "Confirm table change").waitFor();
+  assert.equal(wideDraft.contentGeneration, 1);
+  const confirmedPrefix = wide.table.columns.filter(
+    (column) => column.description
+  ).length;
+  assert(confirmedPrefix > 0 && confirmedPrefix < 7);
+  await open(page, wideDraft);
+  tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
+  await namedButton(tableRegion, "Confirm table change").waitFor();
+  const beforeAccountChange = requests.filter(
+    (item) =>
+      item.method === "PATCH" &&
+      item.path.endsWith(wideDraft.id + "/files/tables")
+  ).length;
+  await page.evaluate(() => window.fixtureLogin("c000000000000000000999998"));
+  assert.equal(
+    await tableRegion
+      .getByText("Review retained table answers", { exact: true })
+      .count(),
+    0
+  );
+  await namedButton(tableRegion, "Confirm table change").click();
+  await page
+    .getByText(
+      "Sign in with the supplier account that started this table save to confirm it.",
+      { exact: true }
+    )
+    .waitFor();
+  assert.equal(
+    requests.filter(
+      (item) =>
+        item.method === "PATCH" &&
+        item.path.endsWith(wideDraft.id + "/files/tables")
+    ).length,
+    beforeAccountChange
+  );
+  await page.evaluate(() => window.fixtureLogin("c000000000000000000999999"));
+  flags.lose = false;
+  await namedButton(tableRegion, "Confirm table change").click();
+  await namedButton(tableRegion, "Save remaining column answers").waitFor();
+  assert.equal(wideDraft.contentGeneration, 1);
+  assert.equal(
+    wide.table.columns.filter((column) => column.description).length,
+    confirmedPrefix
+  );
+  // Reload after a confirmed chunk, with no shared pending command. The rest
+  // must remain available without selecting a replacement member or page.
+  const beforeReload = requests.filter(
+    (item) =>
+      item.method === "PATCH" &&
+      item.path.endsWith(wideDraft.id + "/files/tables")
+  ).length;
+  await open(page, wideDraft);
+  tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
+  await namedButton(tableRegion, "Save remaining column answers").waitFor();
+  assert.equal(
+    requests.filter(
+      (item) =>
+        item.method === "PATCH" &&
+        item.path.endsWith(wideDraft.id + "/files/tables")
+    ).length,
+    beforeReload
+  );
+  await namedButton(tableRegion, "Save remaining column answers").click();
+  await namedButton(tableRegion, "Save remaining column answers").waitFor({
+    state: "hidden",
+  });
+  assert.equal(wideDraft.contentGeneration, 2);
+  assert(
+    wide.table.columns
+      .slice(0, 7)
+      .every((column) => column.description.description === "界".repeat(2000))
+  );
+  assert(
+    wide.table.columns.slice(7).every((column) => column.description === null)
+  );
+  const wideWrites = requests.filter(
+    (item) =>
+      item.method === "PATCH" &&
+      item.path.endsWith(wideDraft.id + "/files/tables")
+  );
+  assert.equal(new Set(wideWrites.map((item) => item.body.requestId)).size, 2);
+  for (const write of wideWrites)
+    assert(Buffer.byteLength(JSON.stringify(write.body)) < 32768);
+  console.log(
+    "PASS multiple known-column edits and long UTF-8 page saves preserve unsent answers through lost ACK, account switch and confirmed-chunk reload; unseen columns remain unchanged"
   );
   const tableOutput = process.argv[2];
   if (tableOutput) {

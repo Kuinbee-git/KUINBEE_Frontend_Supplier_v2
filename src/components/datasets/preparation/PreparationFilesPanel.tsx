@@ -696,8 +696,8 @@ export function PreparationFilesPanel({
           )}
           canChange={uploads.canChange && !organizationDirty}
           pending={uploads.pending?.kind === "TABLES"}
-          acknowledgement={uploads.tableAcknowledgement}
-          mutate={uploads.describeTables}
+          buildCommand={uploads.buildTableCommand}
+          sendCommand={uploads.sendTableCommand}
           retry={uploads.retry}
           onDirtyChange={setTablesDirty}
         />

@@ -50,6 +50,7 @@ const entry = [
   "window.runtimeContract = {partial:DatasetPreparationMetadataSchema.safeParse({title:'Partial'}).success, forged:DatasetPreparationMetadataSchema.safeParse({title:'Bad',scanPassed:true}).success};",
   "window.profileSummaryProbes=['constructor','UNKNOWN'].map(recordUnit=>getPreparationProfileSummary({title:'Literal record meaning',modalities:['TABULAR'],profiles:{tabular:{recordUnit}}})[0].fields.find(field=>field.label==='What does one record represent?').value);",
   "window.tryProductionWrite=async()=>{try{await preparationApi.create({requestId:crypto.randomUUID(),metadata:{title:'Blocked'}});}catch(e){return e.code;}};",
+  "import {useAuthStore} from './src/store/auth.store';useAuthStore.getState().login({id:'c000000000000000000999999',email:'fixture@example.test',name:'Fixture supplier',role:'supplier'});",
   "const root=createRoot(document.getElementById('root')); let mount=0;",
   "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
   "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",

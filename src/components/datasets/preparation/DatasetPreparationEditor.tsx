@@ -727,7 +727,7 @@ export function DatasetPreparationEditor({
         {workflow.managed && saved && (
           <div
             className="min-w-0 px-4 py-4 sm:px-6"
-            hidden={activeStep !== 1 && !filesUncertain}
+            hidden={activeStep !== 1 && !filesUncertain && !fileInputsDirty}
           >
             <PreparationManagedTables
               key={saved.id}

@@ -11,6 +11,7 @@ import {
   PreparationApiError,
   requestPreparationResource,
 } from "./dataset-preparations";
+import { validateTableDescriptionAcknowledgement } from "@/lib/datasets/dataset-table-page-commands";
 
 const base = (draftId: string) => {
   const parsed = DatasetPreparationIdParamsSchema.parse({ draftId });
@@ -54,7 +55,6 @@ export const datasetTablesApi = {
     supplied: DatasetTableDescriptionsMutationBody
   ) {
     const body = DatasetTableDescriptionsMutationBodySchema.parse(supplied);
-    const initial = body.editContext?.mode === "INITIALIZE";
     const ack = await requestPreparationResource(
       base(draftId),
       DatasetTableDescriptionsMutationResponseSchema,
@@ -65,30 +65,6 @@ export const datasetTablesApi = {
         signal: AbortSignal.timeout(30_000),
       }
     );
-    if (
-      ack.requestId !== body.requestId ||
-      ack.results.length !== body.operations.length ||
-      (initial
-        ? ack.contentId === body.expectedContentId ||
-          ack.generation !== 2 ||
-          ack.preparationGeneration !== body.expectedPreparationGeneration + 1
-        : ack.contentId !== body.expectedContentId ||
-          ack.generation !== body.expectedGeneration + 1 ||
-          ack.preparationGeneration !== body.expectedPreparationGeneration) ||
-      ack.results.some((result, index) => {
-        const operation = body.operations[index];
-        return (
-          result.operation !== operation.operation ||
-          result.tableId !== operation.tableId ||
-          result.columnId !==
-            (operation.operation === "SET_COLUMN"
-              ? operation.columnId
-              : null) ||
-          (!initial && result.memberId !== operation.memberId)
-        );
-      })
-    )
-      incompatible();
-    return ack;
+    return validateTableDescriptionAcknowledgement(body, ack);
   },
 };

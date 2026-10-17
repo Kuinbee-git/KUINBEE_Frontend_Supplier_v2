@@ -12,6 +12,15 @@ import {
 } from "@kuinbee/dataset-preparation-contracts";
 import { DashboardButton } from "@/components/dashboard";
 import { datasetTablesApi } from "@/lib/api/dataset-tables";
+import { useAuthStore } from "@/store/auth.store";
+import { useTablePagePlan } from "@/hooks/useTablePagePlan";
+import {
+  beginTablePagePlan,
+  clearTablePagePlan,
+  prepareTablePageCommand,
+  tablePageBasisMatches,
+  type TablePageCommand,
+} from "@/lib/datasets/dataset-table-page-commands";
 import {
   PreparationField,
   PreparationSelect,
@@ -219,18 +228,14 @@ function Pages({
 }
 type Edit = {
   basis: Basis;
-  key: string;
   memberId: string;
   tableId: string;
-  columnId: string | null;
   tableBefore: TableAnswers;
   table: TableAnswers;
-  columnBefore: ColumnAnswers;
-  column: ColumnAnswers;
+  columns: Record<string, { before: ColumnAnswers; answers: ColumnAnswers }>;
 };
 function operations(edit: Edit): Operation[] {
-  const tableChanges = changes(edit.tableBefore, edit.table),
-    columnChanges = changes(edit.columnBefore, edit.column);
+  const tableChanges = changes(edit.tableBefore, edit.table);
   return [
     ...(Object.keys(tableChanges).length
       ? [
@@ -242,44 +247,62 @@ function operations(edit: Edit): Operation[] {
           },
         ]
       : []),
-    ...(edit.columnId && Object.keys(columnChanges).length
-      ? [
-          {
-            operation: "SET_COLUMN" as const,
-            memberId: edit.memberId,
-            tableId: edit.tableId,
-            columnId: edit.columnId,
-            changes: columnChanges,
-          },
-        ]
-      : []),
+    ...Object.entries(edit.columns).flatMap(([columnId, column]) => {
+      const delta = changes(column.before, column.answers);
+      return Object.keys(delta).length
+        ? [
+            {
+              operation: "SET_COLUMN" as const,
+              memberId: edit.memberId,
+              tableId: edit.tableId,
+              columnId,
+              changes: delta,
+            },
+          ]
+        : [];
+    }),
   ];
 }
 const normalized = (value: Operation[]) =>
   DatasetTableDescriptionsMutationBodySchema.shape.operations.parse(value);
-export function PreparationTables({
-  basis,
-  members,
-  active,
-  canChange,
-  canInitializeFrozen = false,
-  pending,
-  acknowledgement,
-  mutate,
-  retry,
-  onDirtyChange,
-}: {
+type Props = {
   basis: Basis;
   members: Member[];
   active: boolean;
   canChange: boolean;
   canInitializeFrozen?: boolean;
   pending: boolean;
-  acknowledgement: DatasetTableDescriptionsMutationBody | null;
-  mutate: (basis: Basis, operations: Operation[]) => Promise<unknown>;
+  buildCommand: (
+    basis: Basis,
+    operations: Operation[],
+    requestId: string
+  ) => TablePageCommand;
+  sendCommand: (
+    command: TablePageCommand,
+    replay?: boolean
+  ) => Promise<unknown>;
   retry: () => Promise<unknown>;
   onDirtyChange: (dirty: boolean) => void;
-}) {
+};
+export function PreparationTables(props: Props) {
+  const actorId = useAuthStore((state) => state.user?.id);
+  return (
+    <TableEditor key={actorId ?? "signed-out"} {...props} actorId={actorId} />
+  );
+}
+function TableEditor({
+  basis,
+  members,
+  active,
+  canChange,
+  canInitializeFrozen = false,
+  pending,
+  buildCommand,
+  sendCommand,
+  retry,
+  onDirtyChange,
+  actorId,
+}: Props & { actorId?: string }) {
   const [member, setMember] = useState<Member | null>(null);
   const [selection, setSelection] = useState<{
     memberId: string;
@@ -288,32 +311,44 @@ export function PreparationTables({
   } | null>(null);
   const [columnSelection, setColumnSelection] = useState<string>("");
   const [storedEdit, setEdit] = useState<Edit | null>(null);
-  const [sent, setSent] = useState<{
-    key: string;
-    operations: Operation[];
-  } | null>(null);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
-  const acknowledged = Boolean(
-    storedEdit &&
-    sent?.key === storedEdit.key &&
-    acknowledgement &&
-    acknowledgement.expectedContentId === storedEdit.basis.contentId &&
-    acknowledgement.expectedGeneration === storedEdit.basis.contentGeneration &&
-    acknowledgement.expectedPreparationGeneration ===
-      storedEdit.basis.preparationGeneration &&
-    JSON.stringify(normalized(sent.operations)) ===
-      JSON.stringify(normalized(acknowledgement.operations))
+  const restored = useTablePagePlan(actorId, basis.preparationId);
+  const plan = restored.plan;
+  const edit = storedEdit;
+  const localDirty = Boolean(edit && operations(edit).length);
+  const retainedDirty = Boolean(
+    plan && (plan.command || plan.remaining.length)
   );
-  const edit = acknowledged ? null : storedEdit;
-  const dirty = Boolean(edit && operations(edit).length);
+  const dirty = localDirty || retainedDirty || Boolean(restored.error);
   const stale = Boolean(
-    dirty && edit && basisKey(edit.basis) !== basisKey(basis)
+    localDirty && edit && basisKey(edit.basis) !== basisKey(basis)
   );
+  const retainedStale = Boolean(
+    plan &&
+    !plan.command &&
+    plan.remaining.length &&
+    !tablePageBasisMatches(plan.expectedBasis, basis)
+  );
+  useEffect(() => {
+    if (plan && !plan.command && !plan.remaining.length && !pending)
+      void Promise.resolve()
+        .then(() => clearTablePagePlan(plan))
+        .catch((failure) => {
+          setError(
+            failure instanceof Error
+              ? failure.message
+              : "The saved table recovery record could not be cleared."
+          );
+        });
+  }, [plan, pending]);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+  // Keep the observed page paired with its unsaved answers if another writer
+  // advances the content. Only an explicit reset may switch that edit base.
+  const displayedBasis = edit?.basis ?? basis;
   const tables = useTablePage(
-    basis,
+    displayedBasis,
     member?.id ?? "",
     undefined,
     active && Boolean(member)
@@ -321,7 +356,7 @@ export function PreparationTables({
   const tableId =
     selection?.memberId === member?.id ? selection?.id : undefined;
   const columns = useTablePage(
-    basis,
+    displayedBasis,
     member?.id ?? "",
     tableId,
     active && Boolean(member && tableId)
@@ -337,26 +372,20 @@ export function PreparationTables({
     ) ??
     null;
   const tableAnswers = edit?.table ?? table?.description ?? emptyTable;
-  const columnAnswers = edit?.column ?? column?.description ?? emptyColumn;
-  const key = JSON.stringify([
-    basisKey(basis),
-    member?.id,
-    tableId,
-    column?.id,
-  ]);
+  const columnAnswers =
+    (column ? edit?.columns[column.id]?.answers : null) ??
+    column?.description ??
+    emptyColumn;
   const start = (): Edit | null =>
     edit ??
     (table && member
       ? {
           basis: { ...basis },
-          key,
           memberId: member.id,
           tableId: table.id,
-          columnId: column?.id ?? null,
           tableBefore: { ...(table.description ?? emptyTable) },
           table: { ...(table.description ?? emptyTable) },
-          columnBefore: { ...(column?.description ?? emptyColumn) },
-          column: { ...(column?.description ?? emptyColumn) },
+          columns: {},
         }
       : null);
   const updateTable = (name: keyof TableAnswers, value: string | null) => {
@@ -368,30 +397,40 @@ export function PreparationTables({
   };
   const updateColumn = (name: keyof ColumnAnswers, value: string | null) => {
     const current = start();
-    if (current) {
-      const next = { ...current, column: { ...current.column, [name]: value } };
+    if (current && column) {
+      const previous = current.columns[column.id] ?? {
+        before: { ...(column.description ?? emptyColumn) },
+        answers: { ...(column.description ?? emptyColumn) },
+      };
+      const next = {
+        ...current,
+        columns: {
+          ...current.columns,
+          [column.id]: {
+            ...previous,
+            answers: { ...previous.answers, [name]: value },
+          },
+        },
+      };
       setEdit(operations(next).length ? next : null);
     }
   };
   const locked =
     !canChange ||
+    !actorId ||
+    retainedDirty ||
+    Boolean(restored.error) ||
     writing ||
     pending ||
     stale ||
     (Boolean(columns.data?.frozen) && !canInitializeFrozen) ||
     !columns.data;
   const navigationLocked = dirty || writing || pending;
-  async function save() {
-    if (locked || !edit || !dirty) return;
-    const delta = operations(edit);
+  async function send(command: TablePageCommand, replay = false) {
     setWriting(true);
     setError("");
-    setSent({ key: edit.key, operations: delta });
     try {
-      if (await mutate(edit.basis, delta)) {
-        setEdit(null);
-        setSent(null);
-      }
+      await sendCommand(command, replay);
     } catch (failure) {
       setError(
         failure instanceof Error
@@ -401,6 +440,55 @@ export function PreparationTables({
     } finally {
       setWriting(false);
     }
+  }
+  async function saveOperations(delta: Operation[]) {
+    if (!actorId || !member || !table || !columns.data) return;
+    try {
+      const next = beginTablePagePlan(
+        actorId,
+        basis,
+        normalized(delta),
+        (operations, requestId) => buildCommand(basis, operations, requestId),
+        {
+          component: member.component,
+          fileName: (
+            member.relativePath ??
+            member.originalFileName ??
+            "Unnamed file"
+          ).slice(0, 300),
+          tableName: tableLabel(table).slice(0, 300),
+          columns: columns.data.items.flatMap((item) =>
+            item.kind === "COLUMN" &&
+            delta.some(
+              (op) => op.operation === "SET_COLUMN" && op.columnId === item.id
+            )
+              ? [
+                  {
+                    id: item.id,
+                    position: item.position,
+                    name:
+                      item.observedName === null
+                        ? null
+                        : item.observedName.slice(0, 120),
+                  },
+                ]
+              : []
+          ),
+        }
+      );
+      setEdit(null);
+      await send(next.command!);
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Your table answers could not be retained safely."
+      );
+    }
+  }
+  async function save() {
+    if (locked || !edit || !localDirty) return;
+    await saveOperations(operations(edit));
   }
   async function markUnknown() {
     if (locked || dirty || !columns.data || !table || !member) return;
@@ -423,19 +511,7 @@ export function PreparationTables({
         : [];
     });
     if (!delta.length) return;
-    setWriting(true);
-    setError("");
-    try {
-      await mutate(basis, delta);
-    } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : "Answers could not be saved."
-      );
-    } finally {
-      setWriting(false);
-    }
+    await saveOperations(delta);
   }
   return (
     <section
@@ -450,7 +526,19 @@ export function PreparationTables({
           declarations. This does not inspect unseen full data.
         </p>
       </div>
-      {pending && (
+      {!actorId && (
+        <p role="status" className="text-sm">
+          Sign in to save table definitions.
+        </p>
+      )}
+      {plan && plan.remaining.length > 0 && (
+        <p className="break-words text-sm font-medium [overflow-wrap:anywhere]">
+          Answers entered for{" "}
+          {plan.subject.component === "SAMPLE" ? "Sample" : "Full dataset"} ·{" "}
+          {plan.subject.fileName} · {plan.subject.tableName}
+        </p>
+      )}
+      {(pending || plan?.command) && (
         <div role="status" className="space-y-2 text-sm">
           <p>
             A table change is not confirmed. Retry the same saved request before
@@ -459,11 +547,117 @@ export function PreparationTables({
           <DashboardButton
             type="button"
             disabled={writing}
-            onClick={() => void retry()}
+            onClick={() =>
+              void (plan?.command ? send(plan.command, true) : retry())
+            }
           >
             Confirm table change
           </DashboardButton>
         </div>
+      )}
+      {plan && plan.remaining.length > 0 && !plan.command && !pending && (
+        <div role="status" className="space-y-2 text-sm">
+          <p>
+            {plan.remaining.length} table or column changes are retained in this
+            browser tab. Continue saving to finish this page.
+          </p>
+          {retainedStale && (
+            <p role="alert">
+              The saved Dataset changed. Your remaining answers are retained;
+              review the current table before starting a new page save.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <DashboardButton
+              type="button"
+              disabled={!active || !canChange || writing || retainedStale}
+              onClick={() => {
+                try {
+                  const next = prepareTablePageCommand(
+                    plan,
+                    basis,
+                    (operations, requestId) =>
+                      buildCommand(basis, operations, requestId)
+                  );
+                  void send(next.command!);
+                } catch (failure) {
+                  setError(
+                    failure instanceof Error
+                      ? failure.message
+                      : "Your retained answers could not be saved."
+                  );
+                }
+              }}
+            >
+              Save remaining column answers
+            </DashboardButton>
+            <DashboardButton
+              type="button"
+              variant="outline"
+              disabled={writing}
+              onClick={() => {
+                try {
+                  clearTablePagePlan(plan);
+                  setEdit(null);
+                  setError("");
+                } catch (failure) {
+                  setError(
+                    failure instanceof Error
+                      ? failure.message
+                      : "Your retained answers could not be reset."
+                  );
+                }
+              }}
+            >
+              Discard remaining unsaved answers
+            </DashboardButton>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Discarding these answers keeps changes the backend has already
+            confirmed.
+          </p>
+        </div>
+      )}
+      {plan && plan.remaining.length > 0 && (
+        <details className="min-w-0 text-sm">
+          <summary>Review retained table answers</summary>
+          <ol className="list-decimal space-y-3 break-words pl-5 [overflow-wrap:anywhere]">
+            {plan.remaining.map((operation, index) => (
+              <li key={index}>
+                <p className="font-medium">
+                  {operation.operation === "SET_TABLE"
+                    ? "Table answers"
+                    : (() => {
+                        const observed = plan.subject.columns.find(
+                          (column) => column.id === operation.columnId
+                        )!;
+                        return `Column ${observed.position}: ${observed.name === null ? "No header" : observed.name || "Blank header"}`;
+                      })()}
+                </p>
+                <dl>
+                  {Object.entries(operation.changes).map(([name, value]) => (
+                    <div key={name}>
+                      <dt className="text-muted-foreground">
+                        {{
+                          displayName: "Table name",
+                          recordUnit: "Record meaning",
+                          missingConventionState: "Missing-value conventions",
+                          missingConventionDetails: "Missing-value details",
+                          meaningState: "Meaning",
+                          description: "Column meaning",
+                          semanticType: "Declared type",
+                          unitState: "Units",
+                          unit: "Unit of measurement",
+                        }[name] ?? name}
+                      </dt>
+                      <dd>{value ?? "Cleared"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ol>
+        </details>
       )}
       {stale && (
         <p role="alert" className="text-sm text-destructive">
@@ -471,9 +665,9 @@ export function PreparationTables({
           these answers and review the current table before editing again.
         </p>
       )}
-      {(error || tables.error || columns.error) && (
+      {(error || restored.error || tables.error || columns.error) && (
         <p role="alert" className="break-words text-sm text-destructive">
-          {error || columns.error || tables.error}
+          {error || restored.error || columns.error || tables.error}
         </p>
       )}
       <label className="block space-y-2 text-sm">
@@ -490,7 +684,6 @@ export function PreparationTables({
             setSelection(null);
             setColumnSelection("");
             setEdit(null);
-            setSent(null);
             setError("");
           }}
         >
@@ -549,7 +742,6 @@ export function PreparationTables({
                     );
                     setColumnSelection("");
                     setEdit(null);
-                    setSent(null);
                   }}
                 >
                   <option value="">Choose a table</option>
@@ -658,11 +850,11 @@ export function PreparationTables({
                   aria-label="Column to describe"
                   className={preparationControl}
                   value={column.id}
-                  disabled={navigationLocked || !active}
+                  disabled={
+                    writing || pending || retainedDirty || stale || !active
+                  }
                   onChange={(event) => {
                     setColumnSelection(event.target.value);
-                    setEdit(null);
-                    setSent(null);
                   }}
                 >
                   {columns.data?.items.map(
@@ -752,7 +944,7 @@ export function PreparationTables({
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
             <DashboardButton
               type="button"
-              disabled={locked || !dirty}
+              disabled={locked || !localDirty}
               onClick={() => void save()}
             >
               Save table descriptions
@@ -760,19 +952,18 @@ export function PreparationTables({
             <DashboardButton
               type="button"
               variant="outline"
-              disabled={!dirty || writing || pending}
+              disabled={!localDirty || writing || pending || retainedDirty}
               onClick={() => {
                 setEdit(null);
-                setSent(null);
                 setError("");
               }}
             >
               Reset unsaved table answers
             </DashboardButton>
-            {dirty && (
+            {localDirty && (
               <span role="status" className="text-sm text-muted-foreground">
-                Unsaved table answers · save before changing the selected column
-                or page.
+                Unsaved table answers · you can describe other columns on this
+                page. Save before changing the file, table or page.
               </span>
             )}
           </div>

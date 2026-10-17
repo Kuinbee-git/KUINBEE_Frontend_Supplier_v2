@@ -11,7 +11,6 @@ import type {
   DatasetFilesContextResponse,
   DatasetFilesInventoryPageResponse,
   DatasetFilesMutationBody,
-  DatasetTableDescriptionsMutationBody,
   DatasetInspectionProfile,
   DatasetIntakeConfigResponse,
   DatasetMaterialComponent,
@@ -35,6 +34,16 @@ import {
   receiveDatasetFile,
   type DatasetFileReceiptProgress,
 } from "@/lib/datasets/receive-dataset-file";
+import { useAuthStore } from "@/store/auth.store";
+import {
+  readTablePagePlan,
+  recordTablePageAcknowledgement,
+  recordTablePageRejection,
+  tablePageBasisMatches,
+  type TablePageBasis,
+  type TablePageCommand,
+  type TablePageOperation,
+} from "@/lib/datasets/dataset-table-page-commands";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 type Status = DatasetUploadAttemptStatusResponse;
@@ -74,8 +83,6 @@ export function usePreparationUploads(options: Options) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [tableAcknowledgement, setTableAcknowledgement] =
-    useState<DatasetTableDescriptionsMutationBody | null>(null);
   const [activeAttempt, setActiveAttempt] = useState<string | null>(null);
   const [progress, setProgress] = useState<{
     attemptId: string;
@@ -273,22 +280,34 @@ export function usePreparationUploads(options: Options) {
 
   async function perform(command: DatasetUploadCommand, replay = false) {
     if (busy.current || (!replay && pendingRef.current)) return null;
+    if (
+      command.kind === "TABLES" &&
+      command.actorId &&
+      command.actorId !== useAuthStore.getState().user?.id
+    ) {
+      setError(
+        "Sign in with the supplier account that started this table save to confirm it."
+      );
+      return null;
+    }
     busy.current = true;
     setWriting(true);
     latest.current.onWritingChange(true);
     setError("");
     setNotice("");
     let dispatched = false;
+    const actorId = useAuthStore.getState().user?.id;
     try {
       storeDatasetUploadCommand(command);
       pendingRef.current = command;
       setPending(command);
       dispatched = true;
       const response = await dispatchDatasetUploadCommand(command);
+      if (command.kind === "TABLES")
+        recordTablePageAcknowledgement(actorId, command, response);
       clearDatasetUploadCommand(command);
       pendingRef.current = null;
       setPending(null);
-      if (command.kind === "TABLES") setTableAcknowledgement(command.body);
       if (alive.current) {
         setNotice(
           command.kind === "TABLES"
@@ -308,6 +327,8 @@ export function usePreparationUploads(options: Options) {
     } catch (failure) {
       if (dispatched && !ambiguousDatasetUploadFailure(failure, command.kind)) {
         try {
+          if (command.kind === "TABLES")
+            recordTablePageRejection(actorId, command);
           clearDatasetUploadCommand(command);
           pendingRef.current = null;
           setPending(null);
@@ -525,7 +546,6 @@ export function usePreparationUploads(options: Options) {
     ready,
     error,
     notice,
-    tableAcknowledgement,
     activeAttempt,
     progress,
     canAdmit,
@@ -543,33 +563,46 @@ export function usePreparationUploads(options: Options) {
     select,
     removeMember,
     organize,
-    describeTables: (
-      basis: Pick<
-        DatasetFilesInventoryPageResponse,
-        | "preparationId"
-        | "preparationGeneration"
-        | "contentId"
-        | "contentGeneration"
-      >,
-      operations: DatasetTableDescriptionsMutationBody["operations"]
-    ) => {
+    buildTableCommand: (
+      basis: TablePageBasis,
+      operations: TablePageOperation[],
+      requestId: string
+    ): TablePageCommand => ({
+      kind: "TABLES",
+      actorId: useAuthStore.getState().user?.id,
+      draftId: basis.preparationId,
+      body: {
+        requestId,
+        expectedContentId: basis.contentId,
+        expectedGeneration: basis.contentGeneration,
+        expectedPreparationGeneration: basis.preparationGeneration,
+        operations,
+      },
+    }),
+    sendTableCommand: (command: TablePageCommand, replay = false) => {
+      const actorId = useAuthStore.getState().user?.id;
+      const plan = actorId ? readTablePagePlan(actorId, command.draftId) : null;
       if (
-        !canChange ||
-        busy.current ||
-        basis.preparationId !== options.saved?.id
+        !plan?.command ||
+        JSON.stringify(plan.command) !== JSON.stringify(command) ||
+        command.draftId !== latest.current.saved?.id
+      )
+        throw new Error(
+          "The retained table page changed. Refresh before continuing."
+        );
+      if (
+        !replay &&
+        (!canChange ||
+          !latest.current.context?.contentId ||
+          !tablePageBasisMatches(plan.expectedBasis, {
+            preparationId: latest.current.saved.id,
+            preparationGeneration: latest.current.saved.generation,
+            contentId: latest.current.context.contentId,
+            contentGeneration: latest.current.context.contentGeneration!,
+          }))
       )
         return Promise.resolve(null);
-      return perform({
-        kind: "TABLES",
-        draftId: basis.preparationId,
-        body: {
-          requestId: crypto.randomUUID(),
-          expectedContentId: basis.contentId,
-          expectedGeneration: basis.contentGeneration,
-          expectedPreparationGeneration: basis.preparationGeneration,
-          operations,
-        },
-      });
+      return perform(command, replay);
     },
     pause: () => transfer.current?.abort(),
     nextPage,

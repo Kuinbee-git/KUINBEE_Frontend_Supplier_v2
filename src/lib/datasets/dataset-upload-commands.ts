@@ -47,6 +47,7 @@ export const DatasetUploadCommandSchema = z.discriminatedUnion("kind", [
   z
     .object({
       kind: z.literal("TABLES"),
+      actorId: id.optional(),
       draftId: id,
       body: DatasetTableDescriptionsMutationBodySchema,
     })

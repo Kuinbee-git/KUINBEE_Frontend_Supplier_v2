@@ -553,7 +553,7 @@ const css =
   (await readFile("src/app/dashboard/dashboard.css", "utf8"));
 const bundle = await build({
   stdin: {
-    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryProvider}from'./src/components/QueryProvider';import{DashboardShell}from'./src/components/layout/DashboardShell';import{DatasetPreparationEditor}from'./src/components/datasets/preparation/DatasetPreparationEditor';const nativeFetch=window.fetch.bind(window);window.workflowFetchInvocations=[];window.fetch=(url,options={})=>{window.workflowFetchInvocations.push({path:new URL(url,location.href).pathname,method:options.method??'GET',body:options.body??null});return nativeFetch(url,options)};const root=createRoot(document.getElementById('root'));let mount=0;window.mount=(id)=>root.render(<React.StrictMode><QueryProvider><DashboardShell><DatasetPreparationEditor key={++mount} draftId={id} onExit={()=>window.fixtureExits=(window.fixtureExits??0)+1}/></DashboardShell></QueryProvider></React.StrictMode>);window.mount(window.location.pathname.split('/').at(-1));`,
+    contents: `import React from 'react';import{createRoot}from'react-dom/client';import{QueryProvider}from'./src/components/QueryProvider';import{DashboardShell}from'./src/components/layout/DashboardShell';import{DatasetPreparationEditor}from'./src/components/datasets/preparation/DatasetPreparationEditor';import{useAuthStore}from'./src/store/auth.store';useAuthStore.getState().login({id:'c000000000000000000999999',email:'fixture@example.test',name:'Fixture supplier',role:'supplier'});const nativeFetch=window.fetch.bind(window);window.workflowFetchInvocations=[];window.fetch=(url,options={})=>{window.workflowFetchInvocations.push({path:new URL(url,location.href).pathname,method:options.method??'GET',body:options.body??null});return nativeFetch(url,options)};const root=createRoot(document.getElementById('root'));let mount=0;window.mount=(id)=>root.render(<React.StrictMode><QueryProvider><DashboardShell><DatasetPreparationEditor key={++mount} draftId={id} onExit={()=>window.fixtureExits=(window.fixtureExits??0)+1}/></DashboardShell></QueryProvider></React.StrictMode>);window.mount(window.location.pathname.split('/').at(-1));`,
     loader: "jsx",
     resolveDir: process.cwd(),
   },
@@ -823,7 +823,7 @@ const server = createServer(async (req, res) => {
           headerConvention: "PRESENT",
           logicalEntryId: null,
           locator: null,
-          columnCount: 1,
+          columnCount: draft.tableColumnCount ?? 1,
           recordCount: "3",
           dataRecordCount: "2",
           description: {
@@ -860,7 +860,19 @@ const server = createServer(async (req, res) => {
               .component,
             tableId: query.tableId ?? null,
             table: query.tableId ? table : null,
-            items: query.tableId ? [column] : [table],
+            items: query.tableId
+              ? Array.from(
+                  { length: draft.tableColumnCount ?? 1 },
+                  (_, index) => ({
+                    ...column,
+                    id: id(9002 + index),
+                    position: index + 1,
+                    description:
+                      draft.columnDescriptions?.[id(9002 + index)] ??
+                      column.description,
+                  })
+                )
+              : [table],
             nextCursor: null,
           })
         );
@@ -901,6 +913,18 @@ const server = createServer(async (req, res) => {
           assert.equal(op.tableId, id(9001));
           if (op.operation === "SET_TABLE")
             draft.tableName = op.changes.displayName ?? draft.tableName;
+          else {
+            draft.columnDescriptions ??= {};
+            draft.columnDescriptions[op.columnId] = {
+              meaningState: "UNKNOWN",
+              description: null,
+              semanticType: "UNKNOWN",
+              unitState: "NOT_APPLICABLE",
+              unit: null,
+              ...draft.columnDescriptions[op.columnId],
+              ...op.changes,
+            };
+          }
           return {
             index,
             operation: op.operation,
@@ -1970,6 +1994,120 @@ try {
   }
   console.log(
     "PASS all three managed choices edit exact frozen tables, initialize generation two once, and recover a lost ACK after reload without material changes"
+  );
+  const wideCorrection = seed("FULL_AND_SAMPLE");
+  wideCorrection.managed = true;
+  wideCorrection.baseMetadata = clone(wideCorrection.metadata);
+  wideCorrection.frozen = freeze(wideCorrection);
+  wideCorrection.reviewedContentId = wideCorrection.frozen.id;
+  wideCorrection.verificationStatus = "CHANGES_REQUESTED";
+  wideCorrection.workflowRevision = 1;
+  wideCorrection.correction = true;
+  wideCorrection.initialized = false;
+  wideCorrection.tableColumnCount = 7;
+  const originalSampleMember = wideCorrection.members.find(
+    (m) => m.component === "SAMPLE"
+  ).id;
+  await open(page, wideCorrection);
+  await button(page, "2. Files & contents").click();
+  await page
+    .getByLabel("Table definitions material", { exact: true })
+    .selectOption("SAMPLE");
+  await page
+    .getByLabel("File to describe", { exact: true })
+    .selectOption(originalSampleMember);
+  await page
+    .getByLabel("Inspected table", { exact: true })
+    .selectOption(id(9001));
+  for (let index = 0; index < 7; index++) {
+    await page
+      .getByLabel("Column to describe", { exact: true })
+      .selectOption(id(9002 + index));
+    await page
+      .getByLabel("Column meaning", { exact: true })
+      .selectOption("KNOWN");
+    await page
+      .getByLabel("What does this column mean?", { exact: true })
+      .fill("界".repeat(2000));
+  }
+  flags.lose = "TABLES";
+  await button(page, "Save table descriptions").click();
+  await enabled(button(page, "Confirm table change"));
+  assert.equal(wideCorrection.contentGeneration, 2);
+  await page.reload();
+  flags.lose = null;
+  await enabled(button(page, "Confirm table change"));
+  await button(page, "Confirm table change").click();
+  await button(page, "Save remaining column answers").waitFor();
+  const remainingCount =
+    7 - Object.keys(wideCorrection.columnDescriptions).length;
+  assert(remainingCount > 0 && remainingCount < 7);
+  const beforeReadOnly = commandWrites(wideCorrection, "/files/tables").length;
+  // The business process changes independently. Neither the old edit base nor
+  // permission may be reconstructed from the retained browser answers.
+  wideCorrection.correction = false;
+  wideCorrection.workflowRevision++;
+  await page.reload();
+  await button(page, "Save remaining column answers").waitFor();
+  assert(await button(page, "Save remaining column answers").isDisabled());
+  assert.equal(
+    await page
+      .getByLabel("Table definitions material", { exact: true })
+      .inputValue(),
+    "SAMPLE"
+  );
+  await page.getByText(/^Answers entered for Sample ·/).waitFor();
+  await page
+    .getByText("Review retained table answers", { exact: true })
+    .click();
+  assert.equal(
+    await page.getByText("界".repeat(2000), { exact: true }).count(),
+    remainingCount
+  );
+  assert.equal(
+    commandWrites(wideCorrection, "/files/tables").length,
+    beforeReadOnly
+  );
+  await captureTableMetadataViews(
+    page,
+    tableScreenshots,
+    "retained-table-page",
+    page.getByText("Review retained table answers", { exact: true })
+  );
+  wideCorrection.correction = true;
+  await page.reload();
+  await enabled(button(page, "2. Files & contents"));
+  await button(page, "2. Files & contents").click();
+  await enabled(button(page, "Save remaining column answers"));
+  await button(page, "Save remaining column answers").click();
+  await button(page, "Save remaining column answers").waitFor({
+    state: "hidden",
+  });
+  assert.equal(wideCorrection.contentGeneration, 3);
+  assert.equal(Object.keys(wideCorrection.columnDescriptions).length, 7);
+  assert(
+    Object.values(wideCorrection.columnDescriptions).every(
+      (value) => value.description === "界".repeat(2000)
+    )
+  );
+  const correctionWrites = commandWrites(wideCorrection, "/files/tables");
+  const finalCorrection = correctionWrites.at(-1).body;
+  assert.equal(
+    new Set(correctionWrites.map((request) => request.body.requestId)).size,
+    2
+  );
+  assert.equal(finalCorrection.editContext.mode, "EXISTING_DRAFT");
+  assert.equal(finalCorrection.expectedContentId, wideCorrection.contentId);
+  assert.equal(finalCorrection.expectedGeneration, 2);
+  const copiedSample = wideCorrection.members.find(
+    (m) => m.component === "SAMPLE"
+  ).id;
+  assert.notEqual(copiedSample, originalSampleMember);
+  assert(
+    finalCorrection.operations.every((op) => op.memberId === copiedSample)
+  );
+  console.log(
+    "PASS long page saves survive first-copy member remapping and lost ACK; remaining answers stay visible but cannot write without the current edit permission, then continue only on the exact permitted draft"
   );
 
   for (const resolveChoice of [

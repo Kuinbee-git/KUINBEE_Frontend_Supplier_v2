@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import type {
   DatasetFilesInventoryPageResponse,
   DatasetPreparationResponse,
-  DatasetTableDescriptionsMutationBody,
 } from "@kuinbee/dataset-preparation-contracts";
 import { DashboardButton } from "@/components/dashboard";
 import type { DatasetEditBase } from "@/lib/api/dataset-workflow";
@@ -18,6 +17,12 @@ import {
   type DatasetUploadCommand,
 } from "@/lib/datasets/dataset-upload-commands";
 import { useAuthStore } from "@/store/auth.store";
+import { useTablePagePlan } from "@/hooks/useTablePagePlan";
+import {
+  readTablePagePlan,
+  recordTablePageAcknowledgement,
+  recordTablePageRejection,
+} from "@/lib/datasets/dataset-table-page-commands";
 import { PreparationTables } from "./PreparationTables";
 import { preparationControl } from "./PreparationFields";
 
@@ -47,6 +52,7 @@ export function PreparationManagedTables({
   onAccepted: () => Promise<void>;
 }) {
   const actorId = useAuthStore((state) => state.user?.id);
+  const retained = useTablePagePlan(actorId, saved.id);
   const [restored] = useState(() => {
     try {
       return { command: readDatasetUploadCommand(saved.id), ready: true };
@@ -68,8 +74,6 @@ export function PreparationManagedTables({
       : "This browser could not recover its saved file request. Table changes are paused."
   );
   const [notice, setNotice] = useState("");
-  const [acknowledgement, setAcknowledgement] =
-    useState<DatasetTableDescriptionsMutationBody | null>(null);
   const [chosenArea, setArea] = useState<"FULL" | "SAMPLE">("FULL");
   const allowed: ("FULL" | "SAMPLE")[] =
     base?.metadata.uploadChoice === "SAMPLE_ONLY"
@@ -77,7 +81,11 @@ export function PreparationManagedTables({
       : base?.metadata.uploadChoice === "FULL_ONLY"
         ? ["FULL"]
         : ["FULL", "SAMPLE"];
-  const area = allowed.includes(chosenArea) ? chosenArea : allowed[0];
+  const area = retained.plan?.remaining.length
+    ? retained.plan.subject.component
+    : allowed.includes(chosenArea)
+      ? chosenArea
+      : allowed[0];
   const reference = base?.contentReference;
   const basis: Basis | null = reference
     ? {
@@ -86,7 +94,7 @@ export function PreparationManagedTables({
         contentId: reference.contentId,
         contentGeneration: reference.generation,
       }
-    : null;
+    : (retained.plan?.expectedBasis ?? null);
   const key = JSON.stringify([
     actorId,
     basis,
@@ -129,8 +137,11 @@ export function PreparationManagedTables({
       ),
   });
   useEffect(
-    () => onUncertainChange(Boolean(pending) || reconcile),
-    [pending, reconcile, onUncertainChange]
+    () =>
+      onUncertainChange(
+        Boolean(pending) || reconcile || Boolean(retained.error)
+      ),
+    [pending, reconcile, retained.error, onUncertainChange]
   );
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   useEffect(
@@ -156,21 +167,33 @@ export function PreparationManagedTables({
   }
   async function perform(command: DatasetUploadCommand, replay = false) {
     if (busy.current || (!replay && pendingRef.current)) return null;
+    if (
+      command.kind === "TABLES" &&
+      command.actorId &&
+      command.actorId !== useAuthStore.getState().user?.id
+    ) {
+      setError(
+        "Sign in with the supplier account that started this table save to confirm it."
+      );
+      return null;
+    }
     busy.current = true;
     setWriting(true);
     onWritingChange(true);
     setError("");
     let sent = false;
+    const writingActorId = useAuthStore.getState().user?.id;
     try {
       storeDatasetUploadCommand(command);
       pendingRef.current = command;
       setPending(command);
       sent = true;
       const response = await dispatchDatasetUploadCommand(command);
+      if (command.kind === "TABLES")
+        recordTablePageAcknowledgement(writingActorId, command, response);
       clearDatasetUploadCommand(command);
       pendingRef.current = null;
       setPending(null);
-      if (command.kind === "TABLES") setAcknowledgement(command.body);
       setNotice(
         command.kind === "TABLES"
           ? "Table descriptions saved. The Dataset files are unchanged."
@@ -181,6 +204,8 @@ export function PreparationManagedTables({
     } catch (problem) {
       if (sent && !ambiguousDatasetUploadFailure(problem, command.kind))
         try {
+          if (command.kind === "TABLES")
+            recordTablePageRejection(writingActorId, command);
           clearDatasetUploadCommand(command);
           pendingRef.current = null;
           setPending(null);
@@ -224,6 +249,11 @@ export function PreparationManagedTables({
       {error && (
         <p role="alert" className="break-words text-sm text-destructive">
           {error}
+        </p>
+      )}
+      {!basis && retained.error && (
+        <p role="alert" className="text-sm text-destructive">
+          {retained.error}
         </p>
       )}
       {notice && (
@@ -285,34 +315,48 @@ export function PreparationManagedTables({
           }
           canChange={canChange}
           pending={pending?.kind === "TABLES"}
-          acknowledgement={acknowledgement}
-          onDirtyChange={setDirty}
-          retry={() =>
-            pendingRef.current
-              ? perform(pendingRef.current, true)
-              : Promise.resolve(null)
-          }
-          mutate={(rendered, operations) => {
+          buildCommand={(rendered, operations, requestId) => {
             if (
-              !canChange ||
               !base?.context.precondition ||
-              !basis ||
               JSON.stringify(rendered) !== JSON.stringify(basis)
             )
-              return Promise.resolve(null);
-            return perform({
+              throw new Error(
+                "Refresh the exact saved table context before continuing."
+              );
+            return {
               kind: "TABLES",
+              actorId: useAuthStore.getState().user?.id,
               draftId: saved.id,
               body: {
-                requestId: crypto.randomUUID(),
+                requestId,
                 expectedContentId: rendered.contentId,
                 expectedGeneration: rendered.contentGeneration,
                 expectedPreparationGeneration: rendered.preparationGeneration,
                 editContext: base.context.precondition,
                 operations,
               },
-            });
+            };
           }}
+          sendCommand={(command, replay = false) => {
+            const ownerId = useAuthStore.getState().user?.id;
+            const plan = ownerId ? readTablePagePlan(ownerId, saved.id) : null;
+            if (
+              !plan?.command ||
+              JSON.stringify(plan.command) !== JSON.stringify(command) ||
+              command.draftId !== saved.id
+            )
+              throw new Error(
+                "The retained table page changed. Refresh before continuing."
+              );
+            if (!replay && !canChange) return Promise.resolve(null);
+            return perform(command, replay);
+          }}
+          onDirtyChange={setDirty}
+          retry={() =>
+            pendingRef.current
+              ? perform(pendingRef.current, true)
+              : Promise.resolve(null)
+          }
         />
       )}
       <div className="flex flex-wrap gap-2">
