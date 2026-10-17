@@ -4,9 +4,11 @@ import {
   DatasetUploadActionBodySchema,
   DatasetUploadCancelBodySchema,
   DatasetFilesMutationBodySchema,
+  DatasetTableDescriptionsMutationBodySchema,
 } from "@kuinbee/dataset-preparation-contracts";
 import { datasetIntakeApi } from "@/lib/api/dataset-intake";
 import { datasetFilesApi } from "@/lib/api/dataset-files";
+import { datasetTablesApi } from "@/lib/api/dataset-tables";
 import { PreparationApiError } from "@/lib/api/dataset-preparations";
 
 const id = z.string().cuid();
@@ -44,6 +46,13 @@ export const DatasetUploadCommandSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("TABLES"),
+      draftId: id,
+      body: DatasetTableDescriptionsMutationBodySchema,
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("MEMBERS"),
       draftId: id,
       body: DatasetFilesMutationBodySchema,
@@ -53,7 +62,7 @@ export const DatasetUploadCommandSchema = z.discriminatedUnion("kind", [
 export type DatasetUploadCommand = z.infer<typeof DatasetUploadCommandSchema>;
 const key = (draftId: string) =>
   `kuinbee:dataset-file-request:v1:${id.parse(draftId)}`;
-const maximumBytes = 16_384;
+const maximumBytes = 32_768;
 
 // One bounded command per owned draft and browser tab. Store no local file
 // bytes, credentials, storage locations or inspection evidence. Persist before
@@ -94,13 +103,35 @@ export function clearDatasetUploadCommand(command: DatasetUploadCommand) {
   if (sessionStorage.getItem(key(command.draftId)) !== null)
     throw new Error("File request could not be cleared");
 }
-export const ambiguousDatasetUploadFailure = (failure: unknown) =>
-  !(failure instanceof PreparationApiError) ||
-  ["NETWORK_ERROR", "INCOMPATIBLE_RESPONSE"].includes(failure.code) ||
-  (failure.status ?? 0) >= 500;
+const definiteTableConflicts = new Set([
+  "DRAFT_CHANGED",
+  "INVALID_STATE",
+  "IDEMPOTENCY_CONFLICT",
+  "CONTENT_CAPACITY_EXCEEDED",
+  "INVALID_EDIT_CONTEXT",
+  "MANAGED_IDENTITY_READ_ONLY",
+  "MANAGED_MATERIAL_CHANGE_DEFERRED",
+]);
+// Auth/scope/rate-limit failures can occur before immutable receipt lookup.
+// They cannot disprove a prior lost write; retain the exact file command too.
+export const ambiguousDatasetUploadFailure = (
+  failure: unknown,
+  kind?: DatasetUploadCommand["kind"]
+) =>
+  (failure instanceof PreparationApiError &&
+    [401, 403, 404, 429].includes(failure.status ?? 0)) ||
+  (kind === "TABLES"
+    ? !(failure instanceof PreparationApiError) ||
+      failure.status !== 409 ||
+      !definiteTableConflicts.has(failure.code)
+    : !(failure instanceof PreparationApiError) ||
+      ["NETWORK_ERROR", "INCOMPATIBLE_RESPONSE"].includes(failure.code) ||
+      (failure.status ?? 0) >= 500);
 
 export function dispatchDatasetUploadCommand(command: DatasetUploadCommand) {
   switch (command.kind) {
+    case "TABLES":
+      return datasetTablesApi.mutate(command.draftId, command.body);
     case "ADMIT":
       return datasetIntakeApi.admit(command.draftId, command.body);
     case "FINALIZE":

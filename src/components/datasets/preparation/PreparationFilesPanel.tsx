@@ -21,6 +21,7 @@ import { PreparationApiError } from "@/lib/api/dataset-preparations";
 import { PreparationGrid, PreparationSection } from "./PreparationFields";
 import { PreparationUploadPanel } from "./PreparationUploadPanel";
 import { PreparationOrganization } from "./PreparationOrganization";
+import { PreparationTables } from "./PreparationTables";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 const purpose: Record<Member["role"], string> = {
@@ -168,6 +169,13 @@ export function PreparationFilesPanel({
   const [writing, setWriting] = useState(false);
   const [uncertain, setUncertain] = useState(false);
   const [uploadUncertain, setUploadUncertain] = useState(false);
+  const [organizationDirty, setOrganizationDirty] = useState(false);
+  const [tablesDirty, setTablesDirty] = useState(false);
+  useEffect(
+    () => onInputsDirtyChange(organizationDirty || tablesDirty),
+    [organizationDirty, tablesDirty, onInputsDirtyChange]
+  );
+  useEffect(() => () => onInputsDirtyChange(false), [onInputsDirtyChange]);
   useEffect(
     () => onUncertainChange(uncertain || uploadUncertain),
     [uncertain, uploadUncertain, onUncertainChange]
@@ -505,7 +513,11 @@ export function PreparationFilesPanel({
         </p>
       </section>
       <PreparationUploadPanel
-        model={uploads}
+        model={{
+          ...uploads,
+          canAdmit: uploads.canAdmit && !tablesDirty,
+          canChange: uploads.canChange && !tablesDirty,
+        }}
         hasFull={hasFull}
         hasSample={hasSample}
         members={members}
@@ -523,7 +535,7 @@ export function PreparationFilesPanel({
                   if (usableInventory)
                     void uploads.removeMember(member, usableInventory);
                 }}
-                disabled={!uploads.canChange}
+                disabled={!uploads.canChange || tablesDirty}
                 members={members.filter(
                   (member) => member.component === "FULL"
                 )}
@@ -556,7 +568,7 @@ export function PreparationFilesPanel({
                   if (usableInventory)
                     void uploads.removeMember(member, usableInventory);
                 }}
-                disabled={!uploads.canChange}
+                disabled={!uploads.canChange || tablesDirty}
                 members={members.filter(
                   (member) => member.component === "SAMPLE"
                 )}
@@ -588,7 +600,7 @@ export function PreparationFilesPanel({
               if (usableInventory)
                 void uploads.removeMember(member, usableInventory);
             }}
-            disabled={!uploads.canChange}
+            disabled={!uploads.canChange || tablesDirty}
           />
         </PreparationSection>
       )}
@@ -659,11 +671,35 @@ export function PreparationFilesPanel({
             context.editable &&
             !context.synchronizationRequired
           )}
-          canChange={uploads.canChange}
+          canChange={uploads.canChange && !tablesDirty}
           hasFull={hasFull}
           hasSample={hasSample}
           mutate={uploads.organize}
-          onDirtyChange={onInputsDirtyChange}
+          onDirtyChange={setOrganizationDirty}
+        />
+      )}
+      {context?.contentId && context.contentGeneration !== null && (
+        <PreparationTables
+          basis={{
+            preparationId: context.preparationId,
+            preparationGeneration: context.preparationGeneration,
+            contentId: context.contentId,
+            contentGeneration: context.contentGeneration,
+          }}
+          members={members}
+          active={Boolean(
+            active &&
+            current &&
+            context.editable &&
+            !context.synchronizationRequired &&
+            !metadataUnsettled
+          )}
+          canChange={uploads.canChange && !organizationDirty}
+          pending={uploads.pending?.kind === "TABLES"}
+          acknowledgement={uploads.tableAcknowledgement}
+          mutate={uploads.describeTables}
+          retry={uploads.retry}
+          onDirtyChange={setTablesDirty}
         />
       )}
     </PreparationGrid>

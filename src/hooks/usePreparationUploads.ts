@@ -11,6 +11,7 @@ import type {
   DatasetFilesContextResponse,
   DatasetFilesInventoryPageResponse,
   DatasetFilesMutationBody,
+  DatasetTableDescriptionsMutationBody,
   DatasetInspectionProfile,
   DatasetIntakeConfigResponse,
   DatasetMaterialComponent,
@@ -73,6 +74,8 @@ export function usePreparationUploads(options: Options) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [tableAcknowledgement, setTableAcknowledgement] =
+    useState<DatasetTableDescriptionsMutationBody | null>(null);
   const [activeAttempt, setActiveAttempt] = useState<string | null>(null);
   const [progress, setProgress] = useState<{
     attemptId: string;
@@ -285,22 +288,25 @@ export function usePreparationUploads(options: Options) {
       clearDatasetUploadCommand(command);
       pendingRef.current = null;
       setPending(null);
+      if (command.kind === "TABLES") setTableAcknowledgement(command.body);
       if (alive.current) {
         setNotice(
-          command.kind === "MEMBERS"
-            ? "File selection and organization saved. Stored bytes are unchanged."
-            : command.kind === "FINALIZE"
-              ? "Receipt finalization requested. Check the file's current status below before selecting it."
-              : command.kind === "CANCEL" || command.kind === "REMOVE"
-                ? "Cleanup requested. Storage stays charged until the backend confirms cleanup."
-                : "Upload reserved. File transfer is next."
+          command.kind === "TABLES"
+            ? "Table and column descriptions saved. Observed structure and stored bytes are unchanged."
+            : command.kind === "MEMBERS"
+              ? "File selection and organization saved. Stored bytes are unchanged."
+              : command.kind === "FINALIZE"
+                ? "Receipt finalization requested. Check the file's current status below before selecting it."
+                : command.kind === "CANCEL" || command.kind === "REMOVE"
+                  ? "Cleanup requested. Storage stays charged until the backend confirms cleanup."
+                  : "Upload reserved. File transfer is next."
         );
         await refresh();
         await latest.current.onFilesChanged();
       }
       return response;
     } catch (failure) {
-      if (dispatched && !ambiguousDatasetUploadFailure(failure)) {
+      if (dispatched && !ambiguousDatasetUploadFailure(failure, command.kind)) {
         try {
           clearDatasetUploadCommand(command);
           pendingRef.current = null;
@@ -519,6 +525,7 @@ export function usePreparationUploads(options: Options) {
     ready,
     error,
     notice,
+    tableAcknowledgement,
     activeAttempt,
     progress,
     canAdmit,
@@ -536,6 +543,34 @@ export function usePreparationUploads(options: Options) {
     select,
     removeMember,
     organize,
+    describeTables: (
+      basis: Pick<
+        DatasetFilesInventoryPageResponse,
+        | "preparationId"
+        | "preparationGeneration"
+        | "contentId"
+        | "contentGeneration"
+      >,
+      operations: DatasetTableDescriptionsMutationBody["operations"]
+    ) => {
+      if (
+        !canChange ||
+        busy.current ||
+        basis.preparationId !== options.saved?.id
+      )
+        return Promise.resolve(null);
+      return perform({
+        kind: "TABLES",
+        draftId: basis.preparationId,
+        body: {
+          requestId: crypto.randomUUID(),
+          expectedContentId: basis.contentId,
+          expectedGeneration: basis.contentGeneration,
+          expectedPreparationGeneration: basis.preparationGeneration,
+          operations,
+        },
+      });
+    },
     pause: () => transfer.current?.abort(),
     nextPage,
     previousPage: () => {

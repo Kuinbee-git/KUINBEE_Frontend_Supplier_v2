@@ -56,6 +56,7 @@ const expectedSources = [
   "catalogue",
   "legacyCatalogue",
   "legacyCatalogueEndpoints",
+  "tables",
   "edit",
   "cataloguePrimitives",
 ].map((name) => `packages/api-contracts/src/datasets/${name}.schema.ts`);
@@ -192,5 +193,5 @@ assert.equal(
   false
 );
 console.log(
-  "PASS pinned Dataset tarball, sixteen committed canonical sources, installed runtime/types, manifests, lockfile, file ceiling and exact resume receipts"
+  `PASS pinned Dataset tarball, ${manifest.sources.length} committed canonical sources, installed runtime/types, manifests, lockfile, file ceiling and exact resume receipts`
 );

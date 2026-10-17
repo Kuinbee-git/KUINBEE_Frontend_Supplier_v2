@@ -461,6 +461,14 @@ export function PreparationOrganization({
     valid: true,
   });
   const hasIntent = Boolean(sourceId || targetId || groupId || newGroup);
+  // The saved upload choice arrives asynchronously. Correct only an unused
+  // default; never move a supplier's unapplied organization to another area.
+  if (
+    !hasIntent &&
+    (hasFull || hasSample) &&
+    (area === "FULL" ? !hasFull : !hasSample)
+  )
+    setArea(hasFull ? "FULL" : "SAMPLE");
   const changed = hasIntent && editingKey !== keyOf(basis);
   const enabled = active && !changed;
   const groups = useOrganizationPage(

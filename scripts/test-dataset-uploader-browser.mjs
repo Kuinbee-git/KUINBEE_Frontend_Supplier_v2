@@ -25,6 +25,10 @@ import {
   DatasetUploadPartsPageResponseSchema,
   DatasetUploadPartQuerySchema,
   DatasetUploadsPageResponseSchema,
+  DatasetTableDescriptionsPageQuerySchema,
+  DatasetTableDescriptionsPageResponseSchema,
+  DatasetTableDescriptionsMutationBodySchema,
+  DatasetTableDescriptionsMutationResponseSchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 // Real rendered editor, native File/Blob/WebCrypto and HTTP requests against a
@@ -129,6 +133,7 @@ function seed(choice) {
     groups: [],
     links: [],
     inventories: [],
+    tables: [],
     protectedObjects: new Set(),
     metadata: {
       title: "Dataset uploader exercise",
@@ -138,6 +143,49 @@ function seed(choice) {
   };
   drafts.set(draft.id, draft);
   return draft;
+}
+function tableFixture(draft, component, count = 22) {
+  const selected = member(draft, {
+    uploadObjectId: newId(),
+    component,
+    role: "PRIMARY",
+    originalName: component.toLowerCase() + "-readings.csv",
+    expectedBytes: "120",
+  });
+  draft.members.push(selected);
+  const table = {
+    kind: "TABLE",
+    id: newId(),
+    memberId: selected.id,
+    syntaxProfileId: "UTF8_CSV_SYNTAX_V1",
+    headerConvention: "PRESENT",
+    logicalEntryId: null,
+    locator: null,
+    columnCount: count,
+    recordCount: "4",
+    dataRecordCount: "3",
+    description: null,
+    columns: [],
+  };
+  table.columns = Array.from({ length: count }, (_, i) => ({
+    kind: "COLUMN",
+    id: newId(),
+    tableId: table.id,
+    position: i + 1,
+    observedName:
+      i === 20
+        ? '<img src=x onerror="window.tableInjected=true">' +
+          " long column".repeat(25)
+        : i === 1
+          ? ""
+          : i === 2
+            ? "amount"
+            : "amount",
+    storageRepresentation: "UTF8_TEXT",
+    description: null,
+  }));
+  draft.tables.push(table);
+  return { member: selected, table };
 }
 function dto(draft) {
   return DatasetPreparationResponseSchema.parse({
@@ -334,6 +382,16 @@ const server = createServer(async (req, res) => {
     }
     const draft = drafts.get(match[1]),
       tail = match[2] ?? "";
+    if (flags.fileDeny && tail === "uploads" && req.method === "POST") {
+      json(res, 403, {
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Synthetic upload authority unavailable",
+        },
+      });
+      return;
+    }
     // This upload-only fixture does not qualify the separate review workflow.
     // Owned read probes may be unavailable; workflow writes still fail below.
     if (
@@ -455,6 +513,139 @@ const server = createServer(async (req, res) => {
               : null,
         })
       );
+      return;
+    }
+    if (tail === "files/tables") {
+      if (req.method === "GET") {
+        const q = DatasetTableDescriptionsPageQuerySchema.parse(
+          Object.fromEntries(url.searchParams)
+        );
+        if (
+          q.contentId !== draft.contentId ||
+          q.contentGeneration !== draft.contentGeneration ||
+          q.expectedPreparationGeneration !== draft.generation
+        ) {
+          deny(res, "DRAFT_CHANGED", "Table context changed.");
+          return;
+        }
+        const selected = draft.members.find((item) => item.id === q.memberId);
+        assert(selected);
+        const available = draft.tables.filter(
+          (item) => item.memberId === selected.id
+        );
+        const view = (item) => {
+          return Object.fromEntries(
+            Object.entries(item).filter(
+              ([key]) => key !== "memberId" && key !== "columns"
+            )
+          );
+        };
+        const table = q.tableId
+          ? available.find((item) => item.id === q.tableId)
+          : null;
+        if (q.tableId) assert(table);
+        const candidates = table ? table.columns : available.map(view);
+        const offset = q.afterId
+          ? candidates.findIndex((item) => item.id === q.afterId) + 1
+          : 0;
+        if (q.afterId) assert(offset > 0);
+        const items = candidates.slice(offset, offset + q.limit);
+        ok(
+          res,
+          DatasetTableDescriptionsPageResponseSchema.parse({
+            contentId: draft.contentId,
+            contentGeneration: draft.contentGeneration,
+            preparationGeneration: draft.generation,
+            frozen: false,
+            memberId: selected.id,
+            component: selected.component,
+            tableId: q.tableId ?? null,
+            table: table ? view(table) : null,
+            items,
+            nextCursor:
+              offset + q.limit < candidates.length
+                ? { ...q, afterId: items.at(-1).id }
+                : null,
+          })
+        );
+        return;
+      }
+      assert.equal(req.method, "PATCH");
+      const command = DatasetTableDescriptionsMutationBodySchema.parse(body);
+      if (flags.tableDeny) {
+        json(res, 403, {
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Synthetic table authority unavailable",
+          },
+        });
+        return;
+      }
+      const key = draft.id + ":" + command.requestId,
+        prior = receipts.get(key);
+      if (prior) {
+        assert.deepEqual(body, prior.body);
+        if (flags.lose === "TABLES") res.destroy();
+        else ok(res, prior.value);
+        return;
+      }
+      if (
+        command.expectedContentId !== draft.contentId ||
+        command.expectedGeneration !== draft.contentGeneration ||
+        command.expectedPreparationGeneration !== draft.generation
+      ) {
+        deny(res, "DRAFT_CHANGED", "Table descriptions changed.");
+        return;
+      }
+      for (const operation of command.operations) {
+        const table = draft.tables.find(
+          (item) =>
+            item.id === operation.tableId &&
+            item.memberId === operation.memberId
+        );
+        assert(table);
+        if (operation.operation === "SET_TABLE")
+          table.description = {
+            displayName: null,
+            recordUnit: null,
+            missingConventionState: null,
+            missingConventionDetails: null,
+            ...table.description,
+            ...operation.changes,
+          };
+        else {
+          const column = table.columns.find(
+            (item) => item.id === operation.columnId
+          );
+          assert(column);
+          column.description = {
+            meaningState: null,
+            description: null,
+            semanticType: null,
+            unitState: null,
+            unit: null,
+            ...column.description,
+            ...operation.changes,
+          };
+        }
+      }
+      draft.contentGeneration++;
+      const value = DatasetTableDescriptionsMutationResponseSchema.parse({
+        requestId: command.requestId,
+        contentId: draft.contentId,
+        generation: draft.contentGeneration,
+        preparationGeneration: draft.generation,
+        results: command.operations.map((operation, index) => ({
+          index,
+          operation: operation.operation,
+          memberId: operation.memberId,
+          tableId: operation.tableId,
+          columnId:
+            operation.operation === "SET_COLUMN" ? operation.columnId : null,
+        })),
+      });
+      saveReceipt(res, key, body, value, "TABLES");
       return;
     }
     if (tail === "files/organization" && req.method === "GET") {
@@ -1119,6 +1310,13 @@ try {
   page.once("dialog", (dialog) => dialog.accept());
   await page.reload();
   await filesStep(page);
+  flags.fileDeny = true;
+  await namedButton(page, "Retry upload request").click();
+  await page
+    .getByText("Synthetic upload authority unavailable", { exact: true })
+    .waitFor();
+  assert(await namedButton(page, "Retry upload request").isVisible());
+  flags.fileDeny = false;
   await namedButton(page, "Retry upload request").click();
   await namedButton(page, "Retry upload request").waitFor({ state: "hidden" });
   await page.waitForFunction(
@@ -1152,7 +1350,7 @@ try {
   await namedButton(page, "Resume upload").click();
   await namedButton(page, "Finish upload").waitFor();
   console.log(
-    "PASS lost admission ACK and reload retry the exact UUID, body and reservation"
+    "PASS lost admission ACK survives reload and a pre-receipt 403 with the exact UUID, body and reservation"
   );
 
   // Ordinary Save during an active upload does not unmount/lock the uploader.
@@ -1626,6 +1824,13 @@ try {
   );
   // Metadata Save is independent. Reconcile its acknowledged file context
   // explicitly before testing another, external content generation change.
+  await page
+    .getByRole("status")
+    .filter({
+      hasText:
+        /^(Saved details changed\. Update files to use your saved choices\.|Files use your saved upload choice\.)$/,
+    })
+    .waitFor();
   if (await namedButton(page, "Update files").count()) {
     await namedButton(page, "Update files").click();
     await namedButton(page, "Update files").waitFor({ state: "hidden" });
@@ -1848,6 +2053,301 @@ try {
     "PASS long and markup-like group labels remain literal text without injected content"
   );
 
+  for (const [choice, component] of [
+    ["SAMPLE_ONLY", "SAMPLE"],
+    ["FULL_ONLY", "FULL"],
+    ["FULL_AND_SAMPLE", "FULL"],
+    ["FULL_AND_SAMPLE", "SAMPLE"],
+  ]) {
+    const draft = seed(choice),
+      specimen = tableFixture(draft, component);
+    await open(page, draft);
+    const allowedAreas =
+      choice === "SAMPLE_ONLY"
+        ? ["SAMPLE"]
+        : choice === "FULL_ONLY"
+          ? ["FULL"]
+          : ["FULL", "SAMPLE"];
+    assert(
+      allowedAreas.includes(
+        await page.getByLabel("Organize area", { exact: true }).inputValue()
+      ),
+      "Asynchronously loaded choices must initialize a valid unused organization area"
+    );
+    const region = page.getByRole("region", {
+      name: "Tables and columns",
+      exact: true,
+    });
+    await region
+      .getByLabel("File to describe", { exact: true })
+      .selectOption(specimen.member.id);
+    await region
+      .getByLabel("Inspected table", { exact: true })
+      .selectOption(specimen.table.id);
+    await region
+      .getByLabel("What does one record represent?", { exact: true })
+      .fill("One sensor observation");
+    await region
+      .getByLabel("Missing-value conventions", { exact: true })
+      .selectOption("UNKNOWN");
+    await region
+      .getByLabel("Column meaning", { exact: true })
+      .selectOption("KNOWN");
+    await region
+      .getByLabel("What does this column mean?", { exact: true })
+      .fill("Elapsed time from recording start");
+    await region
+      .getByLabel("Declared column type", { exact: true })
+      .selectOption("DECIMAL");
+    await region
+      .getByLabel("Column units", { exact: true })
+      .selectOption("KNOWN");
+    await region
+      .getByLabel("Unit of measurement", { exact: true })
+      .fill("milliseconds");
+    assert(
+      await region
+        .getByRole("button", { name: "Next columns page", exact: true })
+        .isDisabled()
+    );
+    await namedButton(region, "Save table descriptions").click();
+    await region
+      .getByText(
+        "Unsaved table answers · save before changing the selected column or page.",
+        { exact: true }
+      )
+      .waitFor({ state: "hidden" });
+    assert.equal(
+      specimen.table.description.recordUnit,
+      "One sensor observation"
+    );
+    assert.equal(specimen.table.columns[0].description.unit, "milliseconds");
+    assert.equal(specimen.table.columns[1].description, null);
+    assert.equal(draft.contentGeneration, 1);
+    console.log(
+      `PASS table and column answers use exact ${choice}/${component} membership with partial saves`
+    );
+  }
+  const tableDraft = seed("FULL_ONLY"),
+    specimen = tableFixture(tableDraft, "FULL");
+  await open(page, tableDraft);
+  let tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
+  await tableRegion
+    .getByLabel("File to describe", { exact: true })
+    .selectOption(specimen.member.id);
+  await tableRegion
+    .getByLabel("Inspected table", { exact: true })
+    .selectOption(specimen.table.id);
+  await namedButton(tableRegion, "Next columns page").click();
+  await tableRegion.getByText(/Observed column 21:/).waitFor();
+  await namedButton(tableRegion, "Use unknown on this page").click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector(
+        '[aria-label="Tables and columns"] select[aria-label="Column to describe"] option'
+      )
+      ?.textContent.includes("Column 1:")
+  );
+  assert(
+    specimen.table.columns
+      .slice(0, 20)
+      .every((item) => item.description === null)
+  );
+  assert(
+    specimen.table.columns
+      .slice(20)
+      .every((item) => item.description.meaningState === "UNKNOWN")
+  );
+  console.log(
+    "PASS explicit unknown shortcut touches only unanswered fields on the current columns page"
+  );
+  await namedButton(tableRegion, "Next columns page").click();
+  await tableRegion.getByText(/Observed column 21:/).waitFor();
+  assert.equal(await tableRegion.locator("img").count(), 0);
+  assert.equal(await page.evaluate(() => window.tableInjected ?? false), false);
+  await tableRegion
+    .getByLabel("Column meaning", { exact: true })
+    .selectOption("KNOWN");
+  await tableRegion
+    .getByLabel("What does this column mean?", { exact: true })
+    .fill("Unsaved column interpretation");
+  assert(await namedButton(tableRegion, "Previous columns page").isDisabled());
+  tableDraft.contentGeneration++;
+  await namedButton(page, "Refresh files").click();
+  await tableRegion
+    .getByText(/Saved files changed. Your unsaved table answers are retained/)
+    .waitFor();
+  assert.equal(
+    await tableRegion
+      .getByLabel("What does this column mean?", { exact: true })
+      .inputValue(),
+    "Unsaved column interpretation"
+  );
+  assert(
+    await namedButton(tableRegion, "Save table descriptions").isDisabled()
+  );
+  await namedButton(tableRegion, "Reset unsaved table answers").click();
+  console.log(
+    "PASS stale generations preserve local interpretation and block rebasing; markup-like observed headers remain text"
+  );
+
+  const lostDraft = seed("SAMPLE_ONLY"),
+    lostTable = tableFixture(lostDraft, "SAMPLE", 3);
+  await open(page, lostDraft);
+  tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
+  await tableRegion
+    .getByLabel("File to describe", { exact: true })
+    .selectOption(lostTable.member.id);
+  await tableRegion
+    .getByLabel("Inspected table", { exact: true })
+    .selectOption(lostTable.table.id);
+  await tableRegion
+    .getByLabel("What does one record represent?", { exact: true })
+    .fill("One exact lost-response record");
+  flags.lose = "TABLES";
+  await namedButton(tableRegion, "Save table descriptions").click();
+  await namedButton(tableRegion, "Confirm table change").waitFor();
+  assert.equal(lostDraft.contentGeneration, 1);
+  await open(page, lostDraft);
+  tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
+  flags.lose = false;
+  flags.tableDeny = true;
+  await namedButton(tableRegion, "Confirm table change").click();
+  await page
+    .getByText("Synthetic table authority unavailable", { exact: true })
+    .waitFor();
+  assert(await namedButton(tableRegion, "Confirm table change").isVisible());
+  flags.tableDeny = false;
+  await namedButton(tableRegion, "Confirm table change").click();
+  await namedButton(tableRegion, "Confirm table change").waitFor({
+    state: "hidden",
+  });
+  assert.equal(lostDraft.contentGeneration, 1);
+  const tableWrites = requests.filter(
+    (item) =>
+      item.path.endsWith(lostDraft.id + "/files/tables") &&
+      item.method === "PATCH"
+  );
+  // Chromium may repeat a request whose HTTP response was destroyed. The
+  // durable invariant is one mutation and one exact UUID/body across all sends.
+  assert(tableWrites.length >= 3);
+  for (const write of tableWrites)
+    assert.deepEqual(write.body, tableWrites[0].body);
+  assert.equal(
+    new Set(tableWrites.map((write) => write.body.requestId)).size,
+    1
+  );
+  assert.equal(
+    [...receipts.values()].filter(
+      (receipt) =>
+        receipt.kind === "TABLES" &&
+        receipt.value.requestId === tableWrites[0].body.requestId
+    ).length,
+    1
+  );
+  await tableRegion
+    .getByLabel("File to describe", { exact: true })
+    .selectOption(lostTable.member.id);
+  await tableRegion
+    .getByLabel("Inspected table", { exact: true })
+    .selectOption(lostTable.table.id);
+  await tableRegion
+    .getByLabel("What does one record represent?", { exact: true })
+    .waitFor();
+  assert.equal(
+    await tableRegion
+      .getByLabel("What does one record represent?", { exact: true })
+      .inputValue(),
+    "One exact lost-response record"
+  );
+  console.log(
+    "PASS lost table ACK survives reload and a pre-receipt 403; exact UUID/body replay does not duplicate the edit"
+  );
+  const tableOutput = process.argv[2];
+  if (tableOutput) {
+    await mkdir(resolve(tableOutput), { recursive: true });
+    await open(page, tableDraft);
+    tableRegion = page.getByRole("region", {
+      name: "Tables and columns",
+      exact: true,
+    });
+    await tableRegion
+      .getByLabel("File to describe", { exact: true })
+      .selectOption(specimen.member.id);
+    await tableRegion
+      .getByLabel("Inspected table", { exact: true })
+      .selectOption(specimen.table.id);
+    await namedButton(tableRegion, "Next columns page").click();
+    await tableRegion.getByText(/Observed column 21:/).waitFor();
+    for (const width of [1366, 390])
+      for (const dark of [false, true]) {
+        await page.setViewportSize({ width, height: 1000 });
+        const toggle = page.getByRole("button", {
+          name: dark ? "Use dark theme" : "Use light theme",
+          exact: true,
+        });
+        if (await toggle.count()) await toggle.click();
+        await page.waitForFunction(
+          (dark) =>
+            document.documentElement.classList.contains("dark") === dark &&
+            document.documentElement.dataset.dashboardThemeTransition !==
+              "true",
+          dark
+        );
+        await tableRegion.scrollIntoViewIfNeeded();
+        assert.equal(
+          await tableRegion.evaluate(
+            (element) => element.scrollWidth <= element.clientWidth
+          ),
+          true,
+          "The table section must contain its controls and long observed labels"
+        );
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth
+          ),
+          true
+        );
+        // The workspace scrolls inside main. A tall element screenshot clips
+        // off-screen descendants; capture actual scrolled viewports instead.
+        for (const [part, anchor] of [
+          [
+            "top",
+            tableRegion.getByRole("heading", {
+              name: "Tables & columns",
+              exact: true,
+            }),
+          ],
+          [
+            "columns",
+            tableRegion.getByLabel("Column meaning", { exact: true }),
+          ],
+          ["actions", namedButton(tableRegion, "Refresh tables")],
+        ]) {
+          await anchor.scrollIntoViewIfNeeded();
+          await page.screenshot({
+            path: resolve(
+              tableOutput,
+              `tables-${width}-${dark ? "dark" : "light"}-${part}.png`
+            ),
+            animations: "disabled",
+          });
+        }
+      }
+    console.log(
+      "PASS table description controls and long observed headers fit light/dark desktop/mobile within the existing design"
+    );
+  }
+  await open(page, organizationDraft);
   const output = process.argv[2];
   if (output) await mkdir(resolve(output), { recursive: true });
   for (const width of [1366, 390])
