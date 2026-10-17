@@ -44,6 +44,12 @@ import {
   type TablePageCommand,
   type TablePageOperation,
 } from "@/lib/datasets/dataset-table-page-commands";
+import {
+  readReferencePlan,
+  recordReferenceAcknowledgement,
+  recordReferenceRejection,
+} from "@/lib/datasets/dataset-reference-plan";
+import type { DatasetReferenceCommand } from "@/lib/datasets/dataset-upload-commands";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 type Status = DatasetUploadAttemptStatusResponse;
@@ -281,7 +287,7 @@ export function usePreparationUploads(options: Options) {
   async function perform(command: DatasetUploadCommand, replay = false) {
     if (busy.current || (!replay && pendingRef.current)) return null;
     if (
-      command.kind === "TABLES" &&
+      (command.kind === "TABLES" || command.kind === "REFERENCES") &&
       command.actorId &&
       command.actorId !== useAuthStore.getState().user?.id
     ) {
@@ -305,20 +311,24 @@ export function usePreparationUploads(options: Options) {
       const response = await dispatchDatasetUploadCommand(command);
       if (command.kind === "TABLES")
         recordTablePageAcknowledgement(actorId, command, response);
+      if (command.kind === "REFERENCES")
+        recordReferenceAcknowledgement(actorId, command, response);
       clearDatasetUploadCommand(command);
       pendingRef.current = null;
       setPending(null);
       if (alive.current) {
         setNotice(
-          command.kind === "TABLES"
-            ? "Table and column descriptions saved. Observed structure and stored bytes are unchanged."
-            : command.kind === "MEMBERS"
-              ? "File selection and organization saved. Stored bytes are unchanged."
-              : command.kind === "FINALIZE"
-                ? "Receipt finalization requested. Check the file's current status below before selecting it."
-                : command.kind === "CANCEL" || command.kind === "REMOVE"
-                  ? "Cleanup requested. Storage stays charged until the backend confirms cleanup."
-                  : "Upload reserved. File transfer is next."
+          command.kind === "REFERENCES"
+            ? "Keys, relationships and dictionary information saved."
+            : command.kind === "TABLES"
+              ? "Table and column descriptions saved. Observed structure and stored bytes are unchanged."
+              : command.kind === "MEMBERS"
+                ? "File selection and organization saved. Stored bytes are unchanged."
+                : command.kind === "FINALIZE"
+                  ? "Receipt finalization requested. Check the file's current status below before selecting it."
+                  : command.kind === "CANCEL" || command.kind === "REMOVE"
+                    ? "Cleanup requested. Storage stays charged until the backend confirms cleanup."
+                    : "Upload reserved. File transfer is next."
         );
         await refresh();
         await latest.current.onFilesChanged();
@@ -329,6 +339,8 @@ export function usePreparationUploads(options: Options) {
         try {
           if (command.kind === "TABLES")
             recordTablePageRejection(actorId, command);
+          if (command.kind === "REFERENCES")
+            recordReferenceRejection(actorId, command);
           clearDatasetUploadCommand(command);
           pendingRef.current = null;
           setPending(null);
@@ -563,6 +575,54 @@ export function usePreparationUploads(options: Options) {
     select,
     removeMember,
     organize,
+    buildReferenceCommand: (
+      basis: TablePageBasis,
+      operations: DatasetReferenceCommand["body"]["operations"],
+      requestId: string
+    ): DatasetReferenceCommand => {
+      const actorId = useAuthStore.getState().user?.id;
+      if (!actorId) throw new Error("Sign in before saving references.");
+      return {
+        kind: "REFERENCES",
+        actorId,
+        draftId: basis.preparationId,
+        body: {
+          requestId,
+          expectedContentId: basis.contentId,
+          expectedGeneration: basis.contentGeneration,
+          expectedPreparationGeneration: basis.preparationGeneration,
+          operations,
+        },
+      };
+    },
+    sendReferenceCommand: (
+      command: DatasetReferenceCommand,
+      replay = false
+    ) => {
+      const actorId = useAuthStore.getState().user?.id;
+      const plan = actorId ? readReferencePlan(actorId, command.draftId) : null;
+      if (
+        !plan?.command ||
+        JSON.stringify(plan.command) !== JSON.stringify(command) ||
+        command.draftId !== latest.current.saved?.id
+      )
+        throw new Error(
+          "The retained reference changed. Keep its original answers and refresh."
+        );
+      if (
+        !replay &&
+        (!canChange ||
+          !latest.current.context?.contentId ||
+          !tablePageBasisMatches(plan.basis, {
+            preparationId: latest.current.saved.id,
+            preparationGeneration: latest.current.saved.generation,
+            contentId: latest.current.context.contentId,
+            contentGeneration: latest.current.context.contentGeneration!,
+          }))
+      )
+        return Promise.resolve(null);
+      return perform(command, replay);
+    },
     buildTableCommand: (
       basis: TablePageBasis,
       operations: TablePageOperation[],

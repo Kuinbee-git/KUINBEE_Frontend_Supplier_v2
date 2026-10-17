@@ -26,6 +26,10 @@ import {
   PreparationSelect,
   preparationControl,
 } from "./PreparationFields";
+import {
+  PreparationReferences,
+  type ReferenceEditorCommands,
+} from "./PreparationReferences";
 
 type Basis = Pick<
   DatasetFilesInventoryPageResponse,
@@ -265,13 +269,14 @@ function operations(edit: Edit): Operation[] {
 }
 const normalized = (value: Operation[]) =>
   DatasetTableDescriptionsMutationBodySchema.shape.operations.parse(value);
-type Props = {
+type Props = ReferenceEditorCommands & {
   basis: Basis;
   members: Member[];
   active: boolean;
   canChange: boolean;
   canInitializeFrozen?: boolean;
   pending: boolean;
+  referencePending?: boolean;
   buildCommand: (
     basis: Basis,
     operations: Operation[],
@@ -297,6 +302,10 @@ function TableEditor({
   canChange,
   canInitializeFrozen = false,
   pending,
+  referencePending = false,
+  buildReferenceCommand,
+  sendReferenceCommand,
+  loadReferenceMembers,
   buildCommand,
   sendCommand,
   retry,
@@ -313,6 +322,7 @@ function TableEditor({
   const [storedEdit, setEdit] = useState<Edit | null>(null);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
+  const [referencesDirty, setReferencesDirty] = useState(false);
   const restored = useTablePagePlan(actorId, basis.preparationId);
   const plan = restored.plan;
   const edit = storedEdit;
@@ -320,7 +330,8 @@ function TableEditor({
   const retainedDirty = Boolean(
     plan && (plan.command || plan.remaining.length)
   );
-  const dirty = localDirty || retainedDirty || Boolean(restored.error);
+  const dirty =
+    localDirty || retainedDirty || Boolean(restored.error) || referencesDirty;
   const stale = Boolean(
     localDirty && edit && basisKey(edit.basis) !== basisKey(basis)
   );
@@ -417,6 +428,7 @@ function TableEditor({
   };
   const locked =
     !canChange ||
+    referencesDirty ||
     !actorId ||
     retainedDirty ||
     Boolean(restored.error) ||
@@ -538,7 +550,7 @@ function TableEditor({
           {plan.subject.fileName} · {plan.subject.tableName}
         </p>
       )}
-      {(pending || plan?.command) && (
+      {((pending && !referencePending) || plan?.command) && (
         <div role="status" className="space-y-2 text-sm">
           <p>
             A table change is not confirmed. Retry the same saved request before
@@ -851,7 +863,12 @@ function TableEditor({
                   className={preparationControl}
                   value={column.id}
                   disabled={
-                    writing || pending || retainedDirty || stale || !active
+                    writing ||
+                    pending ||
+                    retainedDirty ||
+                    referencesDirty ||
+                    stale ||
+                    !active
                   }
                   onChange={(event) => {
                     setColumnSelection(event.target.value);
@@ -952,7 +969,13 @@ function TableEditor({
             <DashboardButton
               type="button"
               variant="outline"
-              disabled={!localDirty || writing || pending || retainedDirty}
+              disabled={
+                !localDirty ||
+                writing ||
+                pending ||
+                retainedDirty ||
+                referencesDirty
+              }
               onClick={() => {
                 setEdit(null);
                 setError("");
@@ -969,6 +992,38 @@ function TableEditor({
           </div>
         </>
       )}
+      <PreparationReferences
+        basis={basis}
+        subject={
+          member && table && !stale
+            ? {
+                memberId: member.id,
+                tableId: table.id,
+                component: member.component,
+                fileName: (
+                  member.relativePath ??
+                  member.originalFileName ??
+                  "Unnamed file"
+                ).slice(0, 300),
+                tableName: tableLabel(table).slice(0, 300),
+              }
+            : null
+        }
+        active={active}
+        canChange={
+          canChange &&
+          !localDirty &&
+          !retainedDirty &&
+          !restored.error &&
+          !writing
+        }
+        canInitializeFrozen={canInitializeFrozen}
+        pending={pending}
+        buildReferenceCommand={buildReferenceCommand}
+        sendReferenceCommand={sendReferenceCommand}
+        loadReferenceMembers={loadReferenceMembers}
+        onDirtyChange={setReferencesDirty}
+      />
       {member && !dirty && !pending && (
         <DashboardButton
           type="button"

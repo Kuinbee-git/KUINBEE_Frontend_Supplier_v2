@@ -229,7 +229,11 @@ export function storeTablePagePlan(supplied: TablePagePlan): TablePagePlan {
     count = 1;
   for (let index = 0; index < sessionStorage.length; index++) {
     const name = sessionStorage.key(index);
-    if (name?.startsWith(prefix) && name !== ownKey) {
+    if (
+      (name?.startsWith(prefix) ||
+        name?.startsWith("kuinbee:dataset-reference:v1:")) &&
+      name !== ownKey
+    ) {
       bytes += size(sessionStorage.getItem(name) ?? "");
       count++;
     }

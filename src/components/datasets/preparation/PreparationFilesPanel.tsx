@@ -695,7 +695,13 @@ export function PreparationFilesPanel({
             !metadataUnsettled
           )}
           canChange={uploads.canChange && !organizationDirty}
-          pending={uploads.pending?.kind === "TABLES"}
+          pending={
+            uploads.pending?.kind === "TABLES" ||
+            uploads.pending?.kind === "REFERENCES"
+          }
+          referencePending={uploads.pending?.kind === "REFERENCES"}
+          buildReferenceCommand={uploads.buildReferenceCommand}
+          sendReferenceCommand={uploads.sendReferenceCommand}
           buildCommand={uploads.buildTableCommand}
           sendCommand={uploads.sendTableCommand}
           retry={uploads.retry}

@@ -25,6 +25,11 @@ import {
 } from "@/lib/datasets/dataset-table-page-commands";
 import { PreparationTables } from "./PreparationTables";
 import { preparationControl } from "./PreparationFields";
+import {
+  readReferencePlan,
+  recordReferenceAcknowledgement,
+  recordReferenceRejection,
+} from "@/lib/datasets/dataset-reference-plan";
 
 type Basis = Pick<
   DatasetFilesInventoryPageResponse,
@@ -168,7 +173,7 @@ export function PreparationManagedTables({
   async function perform(command: DatasetUploadCommand, replay = false) {
     if (busy.current || (!replay && pendingRef.current)) return null;
     if (
-      command.kind === "TABLES" &&
+      (command.kind === "TABLES" || command.kind === "REFERENCES") &&
       command.actorId &&
       command.actorId !== useAuthStore.getState().user?.id
     ) {
@@ -191,13 +196,17 @@ export function PreparationManagedTables({
       const response = await dispatchDatasetUploadCommand(command);
       if (command.kind === "TABLES")
         recordTablePageAcknowledgement(writingActorId, command, response);
+      if (command.kind === "REFERENCES")
+        recordReferenceAcknowledgement(writingActorId, command, response);
       clearDatasetUploadCommand(command);
       pendingRef.current = null;
       setPending(null);
       setNotice(
-        command.kind === "TABLES"
-          ? "Table descriptions saved. The Dataset files are unchanged."
-          : "The previous file request is confirmed. This update permits metadata edits only."
+        command.kind === "REFERENCES"
+          ? "Reference saved. The Dataset files are unchanged."
+          : command.kind === "TABLES"
+            ? "Table descriptions saved. The Dataset files are unchanged."
+            : "The previous file request is confirmed. This update permits metadata edits only."
       );
       await refreshSaved();
       return response;
@@ -206,6 +215,8 @@ export function PreparationManagedTables({
         try {
           if (command.kind === "TABLES")
             recordTablePageRejection(writingActorId, command);
+          if (command.kind === "REFERENCES")
+            recordReferenceRejection(writingActorId, command);
           clearDatasetUploadCommand(command);
           pendingRef.current = null;
           setPending(null);
@@ -314,7 +325,64 @@ export function PreparationManagedTables({
             base?.context.precondition?.mode === "INITIALIZE"
           }
           canChange={canChange}
-          pending={pending?.kind === "TABLES"}
+          pending={pending?.kind === "TABLES" || pending?.kind === "REFERENCES"}
+          referencePending={pending?.kind === "REFERENCES"}
+          buildReferenceCommand={(rendered, operations, requestId) => {
+            const actorId = useAuthStore.getState().user?.id;
+            if (
+              !actorId ||
+              !base?.context.precondition ||
+              JSON.stringify(rendered) !== JSON.stringify(basis)
+            )
+              throw new Error(
+                "Refresh the exact saved reference context before continuing."
+              );
+            return {
+              kind: "REFERENCES",
+              actorId,
+              draftId: saved.id,
+              body: {
+                requestId,
+                expectedContentId: rendered.contentId,
+                expectedGeneration: rendered.contentGeneration,
+                expectedPreparationGeneration: rendered.preparationGeneration,
+                editContext: base.context.precondition,
+                operations,
+              },
+            };
+          }}
+          sendReferenceCommand={(command, replay = false) => {
+            const ownerId = useAuthStore.getState().user?.id;
+            const plan = ownerId ? readReferencePlan(ownerId, saved.id) : null;
+            if (
+              !plan?.command ||
+              JSON.stringify(plan.command) !== JSON.stringify(command) ||
+              command.draftId !== saved.id
+            )
+              throw new Error(
+                "The retained reference changed. Keep its original answers and refresh."
+              );
+            if (!replay && !canChange) return Promise.resolve(null);
+            return perform(command, replay);
+          }}
+          loadReferenceMembers={(rendered, component, afterId, signal) => {
+            if (!base || JSON.stringify(rendered) !== JSON.stringify(basis))
+              throw new Error("Refresh the saved reference context.");
+            return datasetTableMetadataApi.editMembers(
+              saved.id,
+              {
+                scope: "EDIT_BASE",
+                editOperation: "METADATA",
+                component,
+                contentId: rendered.contentId,
+                contentGeneration: rendered.contentGeneration,
+                expectedWorkflowRevision: base.context.workflowRevision,
+                afterId,
+                limit: 20,
+              },
+              signal
+            );
+          }}
           buildCommand={(rendered, operations, requestId) => {
             if (
               !base?.context.precondition ||

@@ -58,6 +58,7 @@ const expectedSources = [
   "legacyCatalogueEndpoints",
   "tables",
   "tableMetadata",
+  "tableReferences",
   "edit",
   "cataloguePrimitives",
 ].map((name) => `packages/api-contracts/src/datasets/${name}.schema.ts`);

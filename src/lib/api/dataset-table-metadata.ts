@@ -4,6 +4,9 @@ import {
   DatasetPrivateTableMetadataResponseSchema,
   DatasetFileAccessPageQuerySchema,
   DatasetFileAccessPageResponseSchema,
+  DatasetPrivateTableReferenceViewsQuerySchema,
+  DatasetPrivateTableReferenceViewsResponseSchema,
+  type DatasetPrivateTableReferenceViewsQuery,
   type DatasetPrivateTableMetadataQuery,
   type DatasetFileAccessPageQuery,
 } from "@kuinbee/dataset-preparation-contracts";
@@ -51,6 +54,35 @@ function matches(
     incompatible();
 }
 export const datasetTableMetadataApi = {
+  async references(
+    draftId: string,
+    supplied: DatasetPrivateTableReferenceViewsQuery,
+    signal?: AbortSignal
+  ) {
+    const query = DatasetPrivateTableReferenceViewsQuerySchema.parse(supplied);
+    if (query.scope === "GRANTED")
+      throw new PreparationApiError(
+        "Use the owned supplier content context.",
+        "INVALID_FILE_SCOPE",
+        400
+      );
+    const result = await requestPreparationResource(
+      `${base(draftId)}/table-references?${params(query)}`,
+      DatasetPrivateTableReferenceViewsResponseSchema,
+      { signal, cache: "no-store" }
+    );
+    matches(result.context, draftId, query);
+    if (
+      result.memberId !== (query.memberId ?? null) ||
+      result.page.tableId !== (query.tableId ?? null) ||
+      result.page.items.length > query.limit ||
+      (result.page.nextCursor &&
+        result.page.nextCursor.limit !== query.limit) ||
+      result.page.items.some((row) => row.id === query.afterId)
+    )
+      incompatible();
+    return result;
+  },
   async page(
     draftId: string,
     supplied: DatasetPrivateTableMetadataQuery,

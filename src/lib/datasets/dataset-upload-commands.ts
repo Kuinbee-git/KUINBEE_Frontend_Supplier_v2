@@ -5,14 +5,28 @@ import {
   DatasetUploadCancelBodySchema,
   DatasetFilesMutationBodySchema,
   DatasetTableDescriptionsMutationBodySchema,
+  DatasetTableReferencesMutationBodySchema,
 } from "@kuinbee/dataset-preparation-contracts";
 import { datasetIntakeApi } from "@/lib/api/dataset-intake";
 import { datasetFilesApi } from "@/lib/api/dataset-files";
 import { datasetTablesApi } from "@/lib/api/dataset-tables";
+import { datasetReferencesApi } from "@/lib/api/dataset-references";
 import { PreparationApiError } from "@/lib/api/dataset-preparations";
 
 const id = z.string().cuid();
+export const DatasetReferenceCommandSchema = z
+  .object({
+    kind: z.literal("REFERENCES"),
+    actorId: id,
+    draftId: id,
+    body: DatasetTableReferencesMutationBodySchema,
+  })
+  .strict();
+export type DatasetReferenceCommand = z.infer<
+  typeof DatasetReferenceCommandSchema
+>;
 export const DatasetUploadCommandSchema = z.discriminatedUnion("kind", [
+  DatasetReferenceCommandSchema,
   z
     .object({
       kind: z.literal("ADMIT"),
@@ -105,6 +119,9 @@ export function clearDatasetUploadCommand(command: DatasetUploadCommand) {
     throw new Error("File request could not be cleared");
 }
 const definiteTableConflicts = new Set([
+  "INVALID_TABLE_REFERENCE",
+  "DUPLICATE_REFERENCE",
+  "REFERENCE_CONFLICT",
   "DRAFT_CHANGED",
   "INVALID_STATE",
   "IDEMPOTENCY_CONFLICT",
@@ -121,16 +138,23 @@ export const ambiguousDatasetUploadFailure = (
 ) =>
   (failure instanceof PreparationApiError &&
     [401, 403, 404, 429].includes(failure.status ?? 0)) ||
-  (kind === "TABLES"
-    ? !(failure instanceof PreparationApiError) ||
-      failure.status !== 409 ||
-      !definiteTableConflicts.has(failure.code)
-    : !(failure instanceof PreparationApiError) ||
-      ["NETWORK_ERROR", "INCOMPATIBLE_RESPONSE"].includes(failure.code) ||
-      (failure.status ?? 0) >= 500);
+  (kind === "REFERENCES" &&
+  failure instanceof PreparationApiError &&
+  failure.status === 413 &&
+  failure.code === "REQUEST_TOO_LARGE"
+    ? false
+    : kind === "TABLES" || kind === "REFERENCES"
+      ? !(failure instanceof PreparationApiError) ||
+        failure.status !== 409 ||
+        !definiteTableConflicts.has(failure.code)
+      : !(failure instanceof PreparationApiError) ||
+        ["NETWORK_ERROR", "INCOMPATIBLE_RESPONSE"].includes(failure.code) ||
+        (failure.status ?? 0) >= 500);
 
 export function dispatchDatasetUploadCommand(command: DatasetUploadCommand) {
   switch (command.kind) {
+    case "REFERENCES":
+      return datasetReferencesApi.mutate(command.draftId, command.body);
     case "TABLES":
       return datasetTablesApi.mutate(command.draftId, command.body);
     case "ADMIT":
