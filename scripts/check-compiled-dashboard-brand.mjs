@@ -32,7 +32,7 @@ export async function checkCompiledDashboardBrand({ browser, origin, apiOrigin }
         if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
         assert.equal(request.method(), "GET", "Logo checks must not mutate fixture or real data");
         const data = url.pathname.endsWith("/status")
-          ? { supplier: { id: "brand-fixture", status: "ACTIVE" }, onboarding: { nextStep: "DONE" } }
+          ? { supplier: { id: "c000000000000000000000123", email: "brand@example.test", userType: "SUPPLIER", status: "ACTIVE", emailVerified: true, phone: null }, onboarding: { nextStep: "DONE" } }
           : { items: [], page: 1, limit: 20, total: 0, summary: { total: 0, withCurrentUpload: 0, withoutCurrentUpload: 0 } };
         return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify({ success: true, data }) });
       }

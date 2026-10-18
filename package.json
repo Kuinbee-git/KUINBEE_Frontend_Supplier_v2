@@ -17,7 +17,7 @@
     "prebuild": "npm run check:environment && node scripts/check-github-release.mjs",
     "test:release": "node scripts/check-release.mjs",
     "test:errors": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-error-details.mjs scripts/test-api-errors.mjs",
-    "test:components": "node scripts/test-components-browser.mjs && node scripts/test-state-lifecycle-browser.mjs && node scripts/test-dataset-preparations-browser.mjs && npm run test:uploads && npm run test:workflow",
+    "test:components": "node scripts/test-supplier-session-browser.mjs && node scripts/test-components-browser.mjs && node scripts/test-state-lifecycle-browser.mjs && node scripts/test-dataset-preparations-browser.mjs && npm run test:uploads && npm run test:workflow",
     "test:contracts": "npm run test:release-gate && npm run test:environment && npm run test:errors && node scripts/check-dataset-preparation-contracts.mjs",
     "test:preparations": "node scripts/test-dataset-preparations-browser.mjs",
     "test:uploads": "node --test scripts/test-dataset-upload-transfer.mjs scripts/test-dataset-tables.mjs scripts/test-dataset-table-page.mjs && node scripts/test-dataset-uploader-browser.mjs",

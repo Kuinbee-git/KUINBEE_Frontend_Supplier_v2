@@ -6,6 +6,7 @@ import { useComponentRequest } from "@/hooks/useComponentRequest";
 
 import { useState, useCallback } from "react";
 import { getOnboardingStatus } from "@/lib/api/supplier";
+import { useAuthStore } from "@/store/auth.store";
 import type { OnboardingStatusResponse, OnboardingNextStep } from "@/types";
 
 interface UseOnboardingStatusReturn {
@@ -20,11 +21,11 @@ interface UseOnboardingStatusReturn {
 /**
  * Hook to fetch and manage onboarding status
  * Provides easy access to current onboarding state
- * 
+ *
  * @example
  * ```tsx
  * const { data, loading, isComplete, nextStep, refetch } = useOnboardingStatus();
- * 
+ *
  * if (loading) return <Loading />;
  * if (!isComplete) return <Redirect to={ONBOARDING_STEP_ROUTES[nextStep]} />;
  * ```
@@ -39,6 +40,20 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
       setLoading(true);
       setError(null);
       const response = await getOnboardingStatus();
+      // Cookie-authenticated sessions also reach the dashboard after a reload
+      // or provider login. Bind pending file/table commands to the identity
+      // returned by the backend, never an absent or stale persisted account.
+      const supplier = response.supplier;
+      if (supplier.userType !== "SUPPLIER" || !supplier.id) {
+        throw new Error("The supplier session could not be verified.");
+      }
+      const previous = useAuthStore.getState().user;
+      useAuthStore.getState().login({
+        id: supplier.id,
+        email: supplier.email,
+        name: previous?.id === supplier.id ? previous.name : "Supplier",
+        role: "supplier",
+      });
       setData(response);
     } catch (err) {
       setError(err as Error);
@@ -51,10 +66,10 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
 
   // Compute derived values
   const isComplete = data?.onboarding?.nextStep === "DONE";
-  
+
   // Determine next step - fallback if backend returns null
   let nextStep = data?.onboarding?.nextStep || null;
-  
+
   // If nextStep is null but we have onboarding data, determine it from steps
   if (!nextStep && data?.onboarding) {
     const steps = data.onboarding.steps;
@@ -68,7 +83,10 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
         nextStep = "SELECT_TYPE";
       } else if (!steps.emailOtpVerified) {
         nextStep = "VERIFY_EMAIL_OTP";
-      } else if (supplierType === "INDIVIDUAL" && steps.individualPan.status !== "VERIFIED") {
+      } else if (
+        supplierType === "INDIVIDUAL" &&
+        steps.individualPan.status !== "VERIFIED"
+      ) {
         nextStep = "VERIFY_PAN";
       } else if (!steps.profileCompleted) {
         nextStep = "COMPLETE_PROFILE";
@@ -77,7 +95,6 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
       }
     }
   }
-
 
   return {
     data,
