@@ -84,8 +84,8 @@ const shots = process.argv
 if (shots) await mkdir(shots, { recursive: true });
 try {
   browser = await chromium.launch({ headless: true });
-  page = await browser.newPage({ reducedMotion: "reduce" });
-  await page.addInitScript(() => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  await context.addInitScript(() => {
     localStorage.clear();
     const theme =
       new URL(location.href).searchParams.get("theme") === "dark"
@@ -96,8 +96,7 @@ try {
       JSON.stringify({ state: { theme, isDark: theme === "dark" }, version: 0 })
     );
   });
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.route("**/*", async (route) => {
+  await context.route("**/*", async (route) => {
     const req = route.request(),
       url = new URL(req.url());
     assert.equal(url.origin, origin, "Detailed UI fixtures stay local");
@@ -108,7 +107,7 @@ try {
       "Opening, expanding, editing and cancelling do not submit"
     );
     requests.push(url.pathname);
-    const f = await page.evaluate(() => window.fixture);
+    const f = await req.frame().evaluate(() => window.fixture);
     let data;
     if (url.pathname.includes("/custom-collection-services/")) data = f.service;
     else if (url.pathname.endsWith("/pricing")) data = { pricing: f.pricing };
@@ -160,9 +159,14 @@ try {
   let cases = 0;
   for (const theme of ["light", "dark"])
     for (const width of [1440, 1024, 768, 390]) {
-      await page.setViewportSize({ width, height: 1000 });
       for (const view of views) {
         activeCase = `${view}/${theme}/${width}`;
+        // Cases are independent fixtures. Tear down portals, in-flight requests
+        // and accessibility state before loading a different component tree.
+        await page?.close();
+        page = await context.newPage();
+        page.on("pageerror", (e) => errors.push(e.message));
+        await page.setViewportSize({ width, height: 1000 });
         await page.goto(`${origin}/?view=${view}&theme=${theme}`, {
           waitUntil: "domcontentloaded",
         });
@@ -207,7 +211,8 @@ try {
             .click();
           await page.getByRole("dialog").waitFor();
           await page.keyboard.press("Escape");
-          await page.getByRole("dialog").waitFor({ state: "hidden" });
+          await page.getByRole("dialog").waitFor({ state: "detached" });
+          await page.getByRole("heading", { level: 1 }).waitFor();
         }
         if (
           [
@@ -282,7 +287,8 @@ try {
               `${action}/${theme}/${width} fits the dialog`
             );
             await page.keyboard.press("Escape");
-            await dialog.waitFor({ state: "hidden" });
+            await dialog.waitFor({ state: "detached" });
+            await page.getByRole("heading", { level: 1 }).waitFor();
           }
           if (view === "verified") {
             await page
@@ -290,7 +296,8 @@ try {
               .click();
             await page.getByRole("dialog").waitFor();
             await page.keyboard.press("Escape");
-            await page.getByRole("dialog").waitFor({ state: "hidden" });
+            await page.getByRole("dialog").waitFor({ state: "detached" });
+            await page.getByRole("heading", { level: 1 }).waitFor();
           }
         }
         if (view === "service-review") {
@@ -345,6 +352,34 @@ try {
   );
 } catch (error) {
   console.error("Detailed UI case failed:", activeCase);
+  if (page)
+    console.error(
+      "Detailed UI diagnostics:",
+      await page
+        .evaluate(() => ({
+          url: location.href,
+          headings: Array.from(document.querySelectorAll("h1")).map((h) => {
+            const ancestors = [];
+            for (let e = h; e; e = e.parentElement) {
+              const s = getComputedStyle(e),
+                r = e.getBoundingClientRect();
+              ancestors.push({
+                tag: e.tagName,
+                class: e.className,
+                display: s.display,
+                visibility: s.visibility,
+                width: r.width,
+                height: r.height,
+                hidden: e.getAttribute("aria-hidden"),
+                inert: e.inert,
+              });
+            }
+            return { text: h.textContent, ancestors };
+          }),
+          dialogs: document.querySelectorAll("[role=dialog]").length,
+        }))
+        .catch(() => "Page is unavailable")
+    );
   if (shots && page) {
     await page.screenshot({
       path: resolve(shots, "failure.png"),
