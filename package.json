@@ -21,7 +21,7 @@
     "test:contracts": "npm run test:release-gate && npm run test:environment && npm run test:errors && node scripts/check-dataset-preparation-contracts.mjs",
     "test:preparations": "node scripts/test-dataset-preparations-browser.mjs",
     "test:uploads": "node --test scripts/test-dataset-upload-transfer.mjs scripts/test-dataset-tables.mjs scripts/test-dataset-table-page.mjs && node scripts/test-dataset-uploader-browser.mjs",
-    "test:workflow": "node scripts/test-dataset-workflow.mjs && node scripts/test-dataset-workflow-browser.mjs",
+    "test:workflow": "node scripts/test-dataset-workflow.mjs && node scripts/test-dataset-workflow-browser.mjs && node scripts/test-dataset-management-browser.mjs",
     "audit:runtime": "npm audit --omit=dev --audit-level=high",
     "test:release-gate": "node --test scripts/check-github-release.test.mjs"
   },
