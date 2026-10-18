@@ -104,8 +104,14 @@ const response = () =>
     state,
     publication,
     visibility,
-    reviewedAssessment: (({ note, ...r }) => r)(rating),
-    publishedAssessment: publication ? (({ note, ...r }) => r)(rating) : null,
+    reviewedAssessment: Object.fromEntries(
+      Object.entries(rating).filter(([key]) => key !== "note")
+    ),
+    publishedAssessment: publication
+      ? Object.fromEntries(
+          Object.entries(rating).filter(([key]) => key !== "note")
+        )
+      : null,
   });
 const server = createServer(async (req, res) => {
   try {
@@ -382,5 +388,6 @@ try {
   throw failure;
 } finally {
   await browser?.close();
+  server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 }
