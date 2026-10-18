@@ -61,12 +61,12 @@ export const DashboardPageHeader = React.forwardRef<
     <header
       ref={ref}
       className={cn(
-        "flex min-w-0 flex-col gap-5 sm:flex-row sm:items-start sm:justify-between",
+        "flex min-w-0 flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between",
         className
       )}
       {...props}
     >
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 sm:basis-[20rem]">
         {breadcrumbs ? (
           <nav
             aria-label="Breadcrumb"
@@ -94,7 +94,7 @@ export const DashboardPageHeader = React.forwardRef<
       </div>
 
       {actions ? (
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:pt-0.5">
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:max-w-full sm:justify-end sm:pt-0.5">
           {actions}
         </div>
       ) : null}

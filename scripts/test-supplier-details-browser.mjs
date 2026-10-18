@@ -188,6 +188,27 @@ try {
               exact: true,
             })
             .waitFor();
+          if (view === "service-edit" && width === 1024) {
+            const stress = await page.addStyleTag({
+              content:
+                ".dashboard-button { font-size:18px !important; padding-inline:28px !important; }",
+            });
+            const titleWidth = await page
+              .getByRole("heading", { level: 1 })
+              .evaluate((e) => e.getBoundingClientRect().width);
+            assert.ok(
+              titleWidth >= 240,
+              "Actions wrap instead of collapsing the title under larger text and spacing"
+            );
+            assert.equal(
+              await page.evaluate(
+                () => document.documentElement.scrollWidth > innerWidth + 1
+              ),
+              false,
+              "Larger header actions stay within the page"
+            );
+            await stress.evaluate((e) => e.remove());
+          }
           if (view === "service-edit") {
             await page
               .getByRole("button", { name: "Edit draft", exact: true })
@@ -355,30 +376,32 @@ try {
   if (page)
     console.error(
       "Detailed UI diagnostics:",
-      await page
-        .evaluate(() => ({
-          url: location.href,
-          headings: Array.from(document.querySelectorAll("h1")).map((h) => {
-            const ancestors = [];
-            for (let e = h; e; e = e.parentElement) {
-              const s = getComputedStyle(e),
-                r = e.getBoundingClientRect();
-              ancestors.push({
-                tag: e.tagName,
-                class: e.className,
-                display: s.display,
-                visibility: s.visibility,
-                width: r.width,
-                height: r.height,
-                hidden: e.getAttribute("aria-hidden"),
-                inert: e.inert,
-              });
-            }
-            return { text: h.textContent, ancestors };
-          }),
-          dialogs: document.querySelectorAll("[role=dialog]").length,
-        }))
-        .catch(() => "Page is unavailable")
+      JSON.stringify(
+        await page
+          .evaluate(() => ({
+            url: location.href,
+            headings: Array.from(document.querySelectorAll("h1")).map((h) => {
+              const ancestors = [];
+              for (let e = h; e; e = e.parentElement) {
+                const s = getComputedStyle(e),
+                  r = e.getBoundingClientRect();
+                ancestors.push({
+                  tag: e.tagName,
+                  class: e.className,
+                  display: s.display,
+                  visibility: s.visibility,
+                  width: r.width,
+                  height: r.height,
+                  hidden: e.getAttribute("aria-hidden"),
+                  inert: e.inert,
+                });
+              }
+              return { text: h.textContent, ancestors };
+            }),
+            dialogs: document.querySelectorAll("[role=dialog]").length,
+          }))
+          .catch(() => "Page is unavailable")
+      )
     );
   if (shots && page) {
     await page.screenshot({
