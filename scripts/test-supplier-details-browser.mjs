@@ -570,6 +570,15 @@ try {
             .getByRole("heading", { name: "Review your changes", exact: true })
             .waitFor();
         }
+        if (view.startsWith("service-")) {
+          for (const button of await page
+            .locator(".dashboard-form-actions button")
+            .all())
+            assert.ok(
+              (await button.boundingBox()).height >= 40,
+              "Stacked service form actions retain their 40px height"
+            );
+        }
         assert.equal(await page.getByRole("heading", { level: 1 }).count(), 1);
         assert.equal(
           await page

@@ -883,7 +883,7 @@ export function CustomCollectionForm({
           <Button
             type="button"
             variant="outline"
-            className="flex-1 sm:flex-none"
+            className="min-h-10 w-full shrink-0 sm:w-auto"
             onClick={() => setStep((current) => current - 1)}
             disabled={busy}
           >
@@ -894,7 +894,7 @@ export function CustomCollectionForm({
           <Button
             key="next-step"
             type="button"
-            className="flex-1 sm:flex-none"
+            className="min-h-10 w-full shrink-0 sm:w-auto"
             onClick={moveNext}
             disabled={busy || categoriesLoading || Boolean(categoriesError)}
           >
@@ -904,7 +904,7 @@ export function CustomCollectionForm({
           <Button
             key="save-draft"
             type="submit"
-            className="flex-1 sm:flex-none"
+            className="min-h-10 w-full shrink-0 sm:w-auto"
             disabled={busy}
           >
             {busy && <Loader2 className="animate-spin" />}
