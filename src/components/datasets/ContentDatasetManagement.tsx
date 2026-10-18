@@ -6,9 +6,15 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react";
 import Link from "next/link";
-import { DashboardButton, DashboardLoadingState } from "@/components/dashboard";
+import {
+  DashboardButton,
+  DashboardLoadingState,
+  DashboardCard,
+  DashboardSection,
+} from "@/components/dashboard";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 import { useAuthStore } from "@/store/auth.store";
 import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
@@ -26,7 +32,6 @@ import {
 import {
   DatasetWorkspace,
   DatasetPageHeader,
-  DatasetSection,
   DatasetErrorBanner,
 } from "./workspace";
 import { PublishStatusBadge } from "./shared";
@@ -44,6 +49,27 @@ function subscribeManagementCommand(notify: () => void) {
     window.removeEventListener("storage", notify);
     window.removeEventListener(managementCommandEvent, notify);
   };
+}
+
+function ManagementSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <DashboardSection
+      surface="plain"
+      title={title}
+      description={description}
+      className="px-4 py-5 sm:px-6"
+    >
+      {children}
+    </DashboardSection>
+  );
 }
 
 export function ContentDatasetManagement({
@@ -277,167 +303,173 @@ export function ContentDatasetManagement({
           {notice}
         </p>
       )}
-      {pending && (
-        <DatasetSection
-          title="Confirm the previous action"
-          description="The previous response was uncertain. Confirm its original request before making another change."
-        >
-          <DashboardButton
-            disabled={writing || !confirmed}
-            onClick={() => void send(pending)}
+      <DashboardCard
+        data-proposal-panel="true"
+        className="divide-y divide-border overflow-hidden"
+      >
+        {pending && (
+          <ManagementSection
+            title="Confirm the previous action"
+            description="The previous response was uncertain. Confirm its original request before making another change."
           >
-            Confirm previous action
-          </DashboardButton>
-        </DatasetSection>
-      )}
-      {publication && state && (
-        <DatasetSection
-          title="Publication"
-          description={
-            state.datasetStatus === "PUBLISHED"
-              ? "This approved content is published. Full files remain available only through the existing access process."
-              : "Publishing is a separate supplier action after approval and the existing publication requirements."
-          }
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            {publication.canPublish && (
-              <DashboardButton disabled={disabled} onClick={publish}>
-                Publish dataset
-              </DashboardButton>
+            <DashboardButton
+              disabled={writing || !confirmed}
+              onClick={() => void send(pending)}
+            >
+              Confirm previous action
+            </DashboardButton>
+          </ManagementSection>
+        )}
+        {publication && state && (
+          <ManagementSection
+            title="Publication"
+            description={
+              state.datasetStatus === "PUBLISHED"
+                ? "This approved content is published. Full files remain available only through the existing access process."
+                : "Publishing is a separate supplier action after approval and the existing publication requirements."
+            }
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              {publication.canPublish && (
+                <DashboardButton disabled={disabled} onClick={publish}>
+                  Publish dataset
+                </DashboardButton>
+              )}
+              {state.datasetStatus === "PUBLISHED" && (
+                <DashboardButton
+                  variant="outline"
+                  disabled={disabled}
+                  onClick={() => setConfirmation("DELIST")}
+                >
+                  Delist dataset
+                </DashboardButton>
+              )}
+              {state.datasetStatus !== "ARCHIVED" && (
+                <DashboardButton
+                  variant="outline"
+                  disabled={disabled}
+                  onClick={() => setConfirmation("ARCHIVE")}
+                >
+                  Archive dataset
+                </DashboardButton>
+              )}
+              {state.datasetStatus !== "ARCHIVED" && (
+                <Link
+                  href={`/dashboard/datasets/drafts/${datasetId}`}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Review proposal and permitted edits
+                </Link>
+              )}
+            </div>
+            {confirmation && (
+              <div className="mt-4 space-y-3 border-t border-border pt-4">
+                <p className="text-sm">
+                  {confirmation === "DELIST"
+                    ? "Delist this dataset and start the existing correction process? It will leave the public catalogue."
+                    : "Archive this dataset? It will leave the public catalogue and stop accepting new purchases."}
+                </p>
+                <div className="flex gap-3">
+                  <DashboardButton
+                    disabled={disabled}
+                    onClick={() =>
+                      actorId &&
+                      void send({
+                        kind: confirmation,
+                        actorId,
+                        datasetId,
+                        body: lifecycle(),
+                      })
+                    }
+                  >
+                    Confirm {confirmation.toLowerCase()}
+                  </DashboardButton>
+                  <DashboardButton
+                    variant="outline"
+                    disabled={writing}
+                    onClick={() => setConfirmation(null)}
+                  >
+                    Cancel
+                  </DashboardButton>
+                </div>
+              </div>
             )}
             {state.datasetStatus === "PUBLISHED" && (
-              <DashboardButton
-                variant="outline"
-                disabled={disabled}
-                onClick={() => setConfirmation("DELIST")}
-              >
-                Delist dataset
-              </DashboardButton>
-            )}
-            {state.datasetStatus !== "ARCHIVED" && (
-              <DashboardButton
-                variant="outline"
-                disabled={disabled}
-                onClick={() => setConfirmation("ARCHIVE")}
-              >
-                Archive dataset
-              </DashboardButton>
-            )}
-            {state.datasetStatus !== "ARCHIVED" && (
-              <Link
-                href={`/dashboard/datasets/drafts/${datasetId}`}
-                className="text-sm font-medium text-primary hover:underline"
-              >
-                Review proposal and permitted edits
-              </Link>
-            )}
-          </div>
-          {confirmation && (
-            <div className="mt-4 space-y-3 border-t border-border pt-4">
-              <p className="text-sm">
-                {confirmation === "DELIST"
-                  ? "Delist this dataset and start the existing correction process? It will leave the public catalogue."
-                  : "Archive this dataset? It will leave the public catalogue and stop accepting new purchases."}
-              </p>
-              <div className="flex gap-3">
+              <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-border pt-4">
+                <label className="grid gap-2 text-sm font-medium">
+                  Visibility
+                  <select
+                    aria-label="Visibility"
+                    className="dashboard-control rounded-lg border border-border bg-background px-3 py-2"
+                    value={visibility}
+                    disabled={disabled}
+                    onChange={(event) =>
+                      setVisibility(event.target.value as typeof visibility)
+                    }
+                  >
+                    <option value="PUBLIC">Public</option>
+                    <option value="PRIVATE">Private</option>
+                    <option value="UNLISTED">Unlisted</option>
+                  </select>
+                </label>
                 <DashboardButton
-                  disabled={disabled}
+                  variant="outline"
+                  disabled={disabled || visibility === publication.visibility}
                   onClick={() =>
                     actorId &&
                     void send({
-                      kind: confirmation,
+                      kind: "VISIBILITY",
                       actorId,
                       datasetId,
-                      body: lifecycle(),
+                      body: { ...lifecycle(), visibility },
                     })
                   }
                 >
-                  Confirm {confirmation.toLowerCase()}
-                </DashboardButton>
-                <DashboardButton
-                  variant="outline"
-                  disabled={writing}
-                  onClick={() => setConfirmation(null)}
-                >
-                  Cancel
+                  Save visibility
                 </DashboardButton>
               </div>
-            </div>
-          )}
-          {state.datasetStatus === "PUBLISHED" && (
-            <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-border pt-4">
-              <label className="grid gap-2 text-sm font-medium">
-                Visibility
-                <select
-                  aria-label="Visibility"
-                  className="dashboard-control rounded-lg border border-border bg-background px-3 py-2"
-                  value={visibility}
-                  disabled={disabled}
-                  onChange={(event) =>
-                    setVisibility(event.target.value as typeof visibility)
-                  }
-                >
-                  <option value="PUBLIC">Public</option>
-                  <option value="PRIVATE">Private</option>
-                  <option value="UNLISTED">Unlisted</option>
-                </select>
-              </label>
-              <DashboardButton
-                variant="outline"
-                disabled={disabled || visibility === publication.visibility}
-                onClick={() =>
-                  actorId &&
-                  void send({
-                    kind: "VISIBILITY",
-                    actorId,
-                    datasetId,
-                    body: { ...lifecycle(), visibility },
-                  })
-                }
-              >
-                Save visibility
-              </DashboardButton>
-            </div>
-          )}
-          {!publication.canPublish &&
-            ["VERIFIED", "DELISTED"].includes(state.datasetStatus) &&
-            publication.issues.length > 0 && (
-              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                {publication.issues.map((issue) => (
-                  <li key={issue.code}>{issue.message}</li>
-                ))}
-              </ul>
             )}
-          {publication.publication && (
-            <p className="mt-4 text-sm text-muted-foreground">
-              Published{" "}
-              {new Date(publication.publication.publishedAt).toLocaleString()}.{" "}
-              {publication.publication.pricingAtPublication.isPaid
-                ? `${publication.publication.pricingAtPublication.currency} ${publication.publication.pricingAtPublication.price}`
-                : "Free access"}{" "}
-              at publication.
-            </p>
-          )}
-        </DatasetSection>
-      )}
-      {submission && (
-        <DatasetSection
-          title="Latest submitted proposal"
-          description={
-            state?.publishedContentId &&
-            state.publishedContentId !== submission.submittedContent.id
-              ? "This submission differs from the currently published content. Publishing changes requires the existing review and approval process."
-              : "The saved submission and selected file references are frozen for review."
-          }
-        >
-          <PreparationFrozenSubmission
-            submission={submission}
-            active
-            onRefresh={() => void load()}
-            disabled={writing || loading}
-          />
-        </DatasetSection>
-      )}
+            {!publication.canPublish &&
+              ["VERIFIED", "DELISTED"].includes(state.datasetStatus) &&
+              publication.issues.length > 0 && (
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  {publication.issues.map((issue) => (
+                    <li key={issue.code}>{issue.message}</li>
+                  ))}
+                </ul>
+              )}
+            {publication.publication && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Published{" "}
+                {new Date(publication.publication.publishedAt).toLocaleString()}
+                .{" "}
+                {publication.publication.pricingAtPublication.isPaid
+                  ? `${publication.publication.pricingAtPublication.currency} ${publication.publication.pricingAtPublication.price}`
+                  : "Free access"}{" "}
+                at publication.
+              </p>
+            )}
+          </ManagementSection>
+        )}
+        {submission && (
+          <ManagementSection
+            title="Latest submitted proposal"
+            description={
+              state?.publishedContentId &&
+              state.publishedContentId !== submission.submittedContent.id
+                ? "This submission differs from the currently published content. Publishing changes requires the existing review and approval process."
+                : "The saved submission and selected file references are frozen for review."
+            }
+          >
+            <PreparationFrozenSubmission
+              submission={submission}
+              active
+              onRefresh={() => void load()}
+              disabled={writing || loading}
+            />
+          </ManagementSection>
+        )}
+      </DashboardCard>
     </DatasetWorkspace>
   );
 }
