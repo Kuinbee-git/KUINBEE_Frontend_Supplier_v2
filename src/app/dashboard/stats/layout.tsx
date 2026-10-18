@@ -6,6 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DashboardLoadingState,
   DashboardPage,
+  DashboardRegion,
+  DashboardWorkspace,
   DashboardPageHeader,
 } from "@/components/dashboard";
 import { StatsTabNav } from "@/components/dashboard/stats/StatsTabNav";
@@ -44,8 +46,12 @@ function StatsLayoutInner({ children }: { children: ReactNode }) {
           <TimeRangeSelector value={range} onChange={handleRangeChange} />
         }
       />
-      <StatsTabNav />
-      {children}
+      <DashboardWorkspace>
+        <DashboardRegion>
+          <StatsTabNav />
+        </DashboardRegion>
+        <DashboardRegion>{children}</DashboardRegion>
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }

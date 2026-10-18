@@ -16,6 +16,7 @@ import {
   DashboardDataTable,
   DashboardEmptyState,
   DashboardMetricCard,
+  DashboardMetricGroup,
   DashboardMobileRecordCard,
   DashboardSection,
   DashboardSkeleton,
@@ -154,7 +155,7 @@ export function BuyerInsightsPanel({
 
   return (
     <div className="space-y-6">
-      <section aria-label="Buyer summary" className="grid gap-4 sm:grid-cols-2">
+      <DashboardMetricGroup aria-label="Buyer summary">
         <DashboardMetricCard
           label="Total buyers"
           value={insights.totalBuyers.toLocaleString()}
@@ -167,7 +168,7 @@ export function BuyerInsightsPanel({
           supportingText="Visitors who viewed datasets without purchasing"
           icon={UserX}
         />
-      </section>
+      </DashboardMetricGroup>
 
       <DashboardSection
         title="Top buyers by spend"

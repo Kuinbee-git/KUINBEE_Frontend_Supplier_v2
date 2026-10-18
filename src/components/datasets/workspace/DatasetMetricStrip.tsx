@@ -2,7 +2,10 @@
 
 import type { LucideIcon } from "lucide-react";
 
-import { DashboardMetricCard } from "@/components/dashboard";
+import {
+  DashboardMetricCard,
+  DashboardMetricGroup,
+} from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 
 export type DatasetMetricTone =
@@ -34,27 +37,18 @@ export function DatasetMetricStrip<TValue extends string>({
   onSelect?: (value: TValue) => void;
   loading?: boolean;
 }) {
-  const columnClass =
-    metrics.length === 3
-      ? "lg:grid-cols-3"
-      : metrics.length === 4
-        ? "lg:grid-cols-4"
-        : "lg:grid-cols-5";
-  const oddMobileCount = metrics.length % 2 === 1;
-
   return (
-    <div className={cn("grid grid-cols-2 gap-3", columnClass)}>
-      {metrics.map((metric, index) => {
+    <DashboardMetricGroup
+      columns={metrics.length <= 3 ? 3 : metrics.length === 4 ? 4 : 5}
+    >
+      {metrics.map((metric) => {
         const interactive = Boolean(onSelect && metric.filterValue);
         const active =
           metric.filterValue !== undefined &&
           activeValue === metric.filterValue;
         const cardClassName = cn(
-          oddMobileCount &&
-            index === metrics.length - 1 &&
-            "col-span-2 lg:col-span-1",
           interactive &&
-            "cursor-pointer text-left transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transform-none",
+            "cursor-pointer text-left transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transform-none",
           active &&
             "border-[var(--dashboard-focus-ring)] ring-1 ring-[var(--dashboard-focus-ring)]"
         );
@@ -90,6 +84,6 @@ export function DatasetMetricStrip<TValue extends string>({
           />
         );
       })}
-    </div>
+    </DashboardMetricGroup>
   );
 }

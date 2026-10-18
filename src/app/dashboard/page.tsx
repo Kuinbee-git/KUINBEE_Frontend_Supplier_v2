@@ -25,7 +25,9 @@ import {
   DashboardInlineAlert,
   DashboardLoadingState,
   DashboardMetricCard,
+  DashboardMetricGroup,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardStatusBadge,
   type DashboardTone,
@@ -34,12 +36,25 @@ import { useOnboardingStatus } from "@/hooks";
 import { getSupplierProfile } from "@/lib/api";
 import { listMyProposals } from "@/lib/api/dataset-proposals";
 import { listMyDatasets } from "@/lib/api/datasets";
+import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
+import {
+  listDatasetProposalInventory,
+  datasetProposalHref,
+} from "@/lib/api/dataset-proposal-inventory";
 import type {
   ListProposalsResponse,
   VerificationStatus,
 } from "@/types/dataset-proposal.types";
 
-type ProposalItem = ListProposalsResponse["items"][number];
+type ProposalItem = Pick<
+  ListProposalsResponse["items"][number],
+  | "id"
+  | "title"
+  | "datasetUniqueId"
+  | "status"
+  | "verificationStatus"
+  | "updatedAt"
+> & { href?: string };
 
 interface OverviewSnapshot {
   datasetCount: number;
@@ -74,6 +89,19 @@ function formatStatus(value: string) {
 }
 
 function getProposalStatus(proposal: ProposalItem) {
+  if (["PUBLISHED", "DELISTED", "ARCHIVED"].includes(proposal.status)) {
+    return {
+      label: formatStatus(proposal.status),
+      tone:
+        proposal.status === "PUBLISHED"
+          ? "success"
+          : proposal.status === "DELISTED"
+            ? "warning"
+            : "neutral",
+    } as const;
+  }
+  if (proposal.verificationStatus === "PENDING")
+    return { label: "Draft", tone: "neutral" } as const;
   const value = proposal.verificationStatus ?? proposal.status;
   const tone = proposal.verificationStatus
     ? verificationTone[proposal.verificationStatus]
@@ -114,7 +142,19 @@ export default function SupplierDashboardOverviewPage() {
 
     try {
       const [proposalsData, datasetsData, profileData] = await Promise.all([
-        listMyProposals({ pageSize: 4, page: 1 }),
+        DATASET_PREPARATION_ENABLED
+          ? listDatasetProposalInventory({
+              scope: "ALL",
+              pageSize: 4,
+              page: 1,
+            }).then((result) => ({
+              ...result,
+              items: result.items.map((item) => ({
+                ...item,
+                href: datasetProposalHref(item),
+              })),
+            }))
+          : listMyProposals({ pageSize: 4, page: 1 }),
         listMyDatasets({ pageSize: 1, page: 1 }),
         getSupplierProfile(),
       ]);
@@ -142,12 +182,6 @@ export default function SupplierDashboardOverviewPage() {
 
   useComponentRequest(() => loadOverview(), []);
 
-  React.useEffect(() => {
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, [loadOverview]);
-
   return (
     <DashboardPage width="wide">
       <DashboardPageHeader
@@ -162,207 +196,214 @@ export default function SupplierDashboardOverviewPage() {
           </DashboardButton>
         }
       />
+      <DashboardWorkspace>
+        {overview.isOfflineContractDone === false && !error ? (
+          <DashboardInlineAlert
+            tone="warning"
+            title="Offline contract pending"
+            message="Some supplier actions remain restricted until an administrator confirms your offline contract."
+            action={
+              <DashboardButton asChild variant="outline" size="compact">
+                <Link href="/dashboard/support">Contact support</Link>
+              </DashboardButton>
+            }
+          />
+        ) : null}
 
-      {overview.isOfflineContractDone === false && !error ? (
-        <DashboardInlineAlert
-          tone="warning"
-          title="Offline contract pending"
-          message="Some supplier actions remain restricted until an administrator confirms your offline contract."
-          action={
-            <DashboardButton asChild variant="outline" size="compact">
-              <Link href="/dashboard/support">Contact support</Link>
-            </DashboardButton>
-          }
-        />
-      ) : null}
+        {error ? (
+          <DashboardErrorState
+            title="Dashboard data is unavailable"
+            message={error}
+            retryLabel="Reload overview"
+            onRetry={() => void loadOverview()}
+            headingLevel="h2"
+          />
+        ) : (
+          <>
+            <section aria-labelledby="overview-metrics-title">
+              <h2 id="overview-metrics-title" className="sr-only">
+                Supplier summary
+              </h2>
+              <DashboardMetricGroup columns={3}>
+                <DashboardMetricCard
+                  label="Total proposals"
+                  value={overview.proposalCount.toLocaleString()}
+                  supportingText="Drafts, reviews and completed decisions"
+                  icon={FileText}
+                  loading={loading}
+                  loadingLabel="Loading proposal count"
+                />
+                <DashboardMetricCard
+                  label="Marketplace datasets"
+                  value={overview.datasetCount.toLocaleString()}
+                  supportingText="Datasets in your supplier catalogue"
+                  icon={Database}
+                  loading={loading}
+                  loadingLabel="Loading dataset count"
+                />
+                <DashboardMetricCard
+                  label="Onboarding"
+                  value={isComplete ? "Complete" : "Pending"}
+                  supportingText="Supplier account readiness"
+                  status={isComplete ? "Ready" : "Action required"}
+                  statusTone={isComplete ? "success" : "warning"}
+                  icon={CheckCircle2}
+                  loading={loading || onboardingLoading}
+                  loadingLabel="Loading onboarding status"
+                />
+              </DashboardMetricGroup>
+            </section>
 
-      {error ? (
-        <DashboardErrorState
-          title="Dashboard data is unavailable"
-          message={error}
-          retryLabel="Reload overview"
-          onRetry={() => void loadOverview()}
-          headingLevel="h2"
-        />
-      ) : (
-        <>
-          <section aria-labelledby="overview-metrics-title">
-            <h2 id="overview-metrics-title" className="sr-only">
-              Supplier summary
-            </h2>
-            <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-              <DashboardMetricCard
-                label="Total proposals"
-                value={overview.proposalCount.toLocaleString()}
-                supportingText="Draft and submitted proposals"
-                icon={FileText}
-                loading={loading}
-                loadingLabel="Loading proposal count"
-              />
-              <DashboardMetricCard
-                label="Marketplace datasets"
-                value={overview.datasetCount.toLocaleString()}
-                supportingText="Datasets in your supplier catalogue"
-                icon={Database}
-                loading={loading}
-                loadingLabel="Loading dataset count"
-              />
-              <DashboardMetricCard
-                label="Onboarding"
-                value={isComplete ? "Complete" : "Pending"}
-                supportingText="Supplier account readiness"
-                status={isComplete ? "Ready" : "Action required"}
-                statusTone={isComplete ? "success" : "warning"}
-                icon={CheckCircle2}
-                loading={loading || onboardingLoading}
-                loadingLabel="Loading onboarding status"
-              />
-            </div>
-          </section>
+            <div className="dashboard-overview-grid grid min-w-0 xl:grid-cols-[minmax(0,1fr)_20rem]">
+              <section
+                aria-labelledby="recent-proposal-activity-title"
+                className="min-w-0"
+              >
+                <DashboardCard className="overflow-hidden">
+                  <DashboardCardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <DashboardCardTitle
+                        id="recent-proposal-activity-title"
+                        headingLevel="h2"
+                        className="text-lg leading-7"
+                      >
+                        Recent proposal activity
+                      </DashboardCardTitle>
+                      <DashboardCardDescription className="mt-1">
+                        Your four most recently updated proposals.
+                      </DashboardCardDescription>
+                    </div>
+                    <div className="shrink-0">
+                      <DashboardButton asChild variant="outline" size="compact">
+                        <Link href="/dashboard/datasets">
+                          Manage proposals
+                          <ArrowRight aria-hidden="true" />
+                        </Link>
+                      </DashboardButton>
+                    </div>
+                  </DashboardCardHeader>
+                  <DashboardCardContent className="p-0 md:p-0">
+                    {loading ? (
+                      <DashboardLoadingState
+                        label="Loading recent proposals"
+                        variant="skeleton"
+                        rows={4}
+                        surface="plain"
+                      />
+                    ) : overview.proposals.length === 0 ? (
+                      <DashboardEmptyState
+                        title="No proposals yet"
+                        description="Create your first dataset proposal to begin supplying the marketplace."
+                        action={
+                          <DashboardButton asChild>
+                            <Link href="/dashboard/datasets/create">
+                              <Plus aria-hidden="true" />
+                              Create proposal
+                            </Link>
+                          </DashboardButton>
+                        }
+                        headingLevel="h3"
+                        surface="plain"
+                      />
+                    ) : (
+                      <ul className="divide-y divide-border">
+                        {overview.proposals.map((proposal) => {
+                          const status = getProposalStatus(proposal);
 
-          <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
-            <section
-              aria-labelledby="recent-proposal-activity-title"
-              className="min-w-0"
-            >
-              <DashboardCard className="overflow-hidden">
-                <DashboardCardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
+                          return (
+                            <li key={proposal.id}>
+                              <Link
+                                href={
+                                  proposal.href ??
+                                  `/dashboard/datasets/${proposal.id}`
+                                }
+                                className="dashboard-interactive-row group flex min-w-0 flex-col gap-3 px-4 py-4 outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dashboard-focus-ring)] sm:flex-row sm:items-center sm:justify-between md:px-6 motion-reduce:transition-none"
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium text-foreground">
+                                    {proposal.title}
+                                  </p>
+                                  <p className="mt-1 truncate text-xs leading-[1.125rem] text-muted-foreground">
+                                    {proposal.datasetUniqueId}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 sm:justify-end">
+                                  <DashboardStatusBadge tone={status.tone}>
+                                    {status.label}
+                                  </DashboardStatusBadge>
+                                  <span className="text-xs text-muted-foreground sm:w-24 sm:text-right">
+                                    {formatUpdatedDate(proposal.updatedAt)}
+                                  </span>
+                                  <ArrowRight
+                                    className="size-4 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transition-none"
+                                    aria-hidden="true"
+                                  />
+                                </div>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </DashboardCardContent>
+                </DashboardCard>
+              </section>
+
+              <aside
+                aria-labelledby="quick-actions-title"
+                className="min-w-0 border-t border-border xl:border-l xl:border-t-0"
+              >
+                <DashboardCard>
+                  <DashboardCardHeader>
                     <DashboardCardTitle
-                      id="recent-proposal-activity-title"
+                      id="quick-actions-title"
                       headingLevel="h2"
                       className="text-lg leading-7"
                     >
-                      Recent proposal activity
+                      Quick actions
                     </DashboardCardTitle>
-                    <DashboardCardDescription className="mt-1">
-                      Your four most recently updated proposals.
+                    <DashboardCardDescription>
+                      Common supplier tasks.
                     </DashboardCardDescription>
-                  </div>
-                  <div className="shrink-0">
-                    <DashboardButton asChild variant="outline" size="compact">
-                      <Link href="/dashboard/datasets">
-                        Manage proposals
-                        <ArrowRight aria-hidden="true" />
+                  </DashboardCardHeader>
+                  <DashboardCardContent className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                    <DashboardButton
+                      asChild
+                      variant="secondary"
+                      className="w-full justify-start"
+                    >
+                      <Link href="/dashboard/datasets/create">
+                        <Plus aria-hidden="true" />
+                        Create proposal
                       </Link>
                     </DashboardButton>
-                  </div>
-                </DashboardCardHeader>
-                <DashboardCardContent className="p-0 md:p-0">
-                  {loading ? (
-                    <DashboardLoadingState
-                      label="Loading recent proposals"
-                      variant="skeleton"
-                      rows={4}
-                      surface="plain"
-                    />
-                  ) : overview.proposals.length === 0 ? (
-                    <DashboardEmptyState
-                      title="No proposals yet"
-                      description="Create your first dataset proposal to begin supplying the marketplace."
-                      action={
-                        <DashboardButton asChild>
-                          <Link href="/dashboard/datasets/create">
-                            <Plus aria-hidden="true" />
-                            Create proposal
-                          </Link>
-                        </DashboardButton>
-                      }
-                      headingLevel="h3"
-                      surface="plain"
-                    />
-                  ) : (
-                    <ul className="divide-y divide-border">
-                      {overview.proposals.map((proposal) => {
-                        const status = getProposalStatus(proposal);
-
-                        return (
-                          <li key={proposal.id}>
-                            <Link
-                              href={`/dashboard/datasets/${proposal.id}`}
-                              className="dashboard-interactive-row group flex min-w-0 flex-col gap-3 px-4 py-4 outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dashboard-focus-ring)] sm:flex-row sm:items-center sm:justify-between md:px-6 motion-reduce:transition-none"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-foreground">
-                                  {proposal.title}
-                                </p>
-                                <p className="mt-1 truncate text-xs leading-[1.125rem] text-muted-foreground">
-                                  {proposal.datasetUniqueId}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 sm:justify-end">
-                                <DashboardStatusBadge tone={status.tone}>
-                                  {status.label}
-                                </DashboardStatusBadge>
-                                <span className="text-xs text-muted-foreground sm:w-24 sm:text-right">
-                                  {formatUpdatedDate(proposal.updatedAt)}
-                                </span>
-                                <ArrowRight
-                                  className="size-4 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transition-none"
-                                  aria-hidden="true"
-                                />
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </DashboardCardContent>
-              </DashboardCard>
-            </section>
-
-            <aside aria-labelledby="quick-actions-title" className="min-w-0">
-              <DashboardCard>
-                <DashboardCardHeader>
-                  <DashboardCardTitle
-                    id="quick-actions-title"
-                    headingLevel="h2"
-                    className="text-lg leading-7"
-                  >
-                    Quick actions
-                  </DashboardCardTitle>
-                  <DashboardCardDescription>
-                    Common supplier tasks.
-                  </DashboardCardDescription>
-                </DashboardCardHeader>
-                <DashboardCardContent className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                  <DashboardButton
-                    asChild
-                    variant="secondary"
-                    className="w-full justify-start"
-                  >
-                    <Link href="/dashboard/datasets/create">
-                      <Plus aria-hidden="true" />
-                      Create proposal
-                    </Link>
-                  </DashboardButton>
-                  <DashboardButton
-                    asChild
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <Link href="/dashboard/my-datasets">
-                      <Database aria-hidden="true" />
-                      View datasets
-                    </Link>
-                  </DashboardButton>
-                  <DashboardButton
-                    asChild
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <Link href="/dashboard/data-requirements/submit">
-                      <ClipboardPenLine aria-hidden="true" />
-                      Submit requirement
-                    </Link>
-                  </DashboardButton>
-                </DashboardCardContent>
-              </DashboardCard>
-            </aside>
-          </div>
-        </>
-      )}
+                    <DashboardButton
+                      asChild
+                      variant="outline"
+                      className="w-full justify-start"
+                    >
+                      <Link href="/dashboard/my-datasets">
+                        <Database aria-hidden="true" />
+                        View datasets
+                      </Link>
+                    </DashboardButton>
+                    <DashboardButton
+                      asChild
+                      variant="outline"
+                      className="w-full justify-start"
+                    >
+                      <Link href="/dashboard/data-requirements/submit">
+                        <ClipboardPenLine aria-hidden="true" />
+                        Submit requirement
+                      </Link>
+                    </DashboardButton>
+                  </DashboardCardContent>
+                </DashboardCard>
+              </aside>
+            </div>
+          </>
+        )}
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }

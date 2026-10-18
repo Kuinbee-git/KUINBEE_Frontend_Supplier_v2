@@ -17,6 +17,7 @@ import {
   DashboardErrorState,
   DashboardLoadingState,
   DashboardMetricCard,
+  DashboardMetricGroup,
   DashboardSection,
 } from "@/components/dashboard";
 import { DatasetPerformanceTable } from "@/components/dashboard/stats/DatasetPerformanceTable";
@@ -112,10 +113,7 @@ function DatasetsContent() {
 
   return (
     <div className="space-y-6">
-      <section
-        aria-label="Dataset analytics summary"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-      >
+      <DashboardMetricGroup aria-label="Dataset analytics summary">
         {metrics.map((metric) => (
           <DashboardMetricCard
             key={metric.label}
@@ -123,7 +121,7 @@ function DatasetsContent() {
             loading={loading && datasets.length === 0}
           />
         ))}
-      </section>
+      </DashboardMetricGroup>
 
       <DashboardSection
         title="Dataset performance"

@@ -5,7 +5,6 @@ import { Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 import { DashboardButton } from "../ui/dashboard-button";
-import { DashboardCard } from "../ui/dashboard-card";
 import { DashboardInput } from "../ui/dashboard-form";
 
 export interface DashboardToolbarProps extends Omit<
@@ -20,17 +19,20 @@ export const DashboardToolbar = React.forwardRef<
   HTMLDivElement,
   DashboardToolbarProps
 >(({ ariaLabel, children, className, landmark = "search", ...props }, ref) => (
-  <DashboardCard
+  <div
     ref={ref}
     role={landmark}
     aria-label={ariaLabel}
-    className={cn("p-3 sm:p-4", className)}
+    className={cn(
+      "dashboard-toolbar min-w-0 border-b border-border p-4 md:px-6",
+      className
+    )}
     {...props}
   >
     <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
       {children}
     </div>
-  </DashboardCard>
+  </div>
 ));
 
 DashboardToolbar.displayName = "DashboardToolbar";

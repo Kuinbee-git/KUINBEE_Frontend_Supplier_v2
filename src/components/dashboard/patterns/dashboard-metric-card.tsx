@@ -51,7 +51,10 @@ export const DashboardMetricCard = React.forwardRef<
   ) => (
     <DashboardCard
       ref={ref}
-      className={cn("h-full min-h-36 p-4 md:p-6", className)}
+      className={cn(
+        "dashboard-metric-card h-full min-h-36 p-4 md:p-6",
+        className
+      )}
       {...props}
     >
       {loading ? (
@@ -112,7 +115,7 @@ export const DashboardMetricCard = React.forwardRef<
           {supportingText || status ? (
             <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 pt-4">
               {supportingText ? (
-                <p className="min-w-0 flex-1 text-xs leading-[1.125rem] text-muted-foreground">
+                <p className="min-w-0 flex-[1_1_8rem] text-xs leading-[1.125rem] text-muted-foreground">
                   {supportingText}
                 </p>
               ) : null}

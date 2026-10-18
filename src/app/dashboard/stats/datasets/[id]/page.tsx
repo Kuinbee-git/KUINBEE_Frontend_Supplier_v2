@@ -14,6 +14,7 @@ import {
   DashboardLoadingState,
   DashboardMobileRecordCard,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardSection,
   type DashboardTableColumn,
@@ -54,11 +55,13 @@ function AnalyticsSkeleton() {
         title="Dataset analytics"
         description="Loading marketplace performance for this dataset."
       />
-      <DashboardLoadingState
-        label="Loading dataset analytics"
-        variant="skeleton"
-        rows={6}
-      />
+      <DashboardWorkspace>
+        <DashboardLoadingState
+          label="Loading dataset analytics"
+          variant="skeleton"
+          rows={6}
+        />
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }
@@ -151,11 +154,15 @@ function DatasetDetailContent() {
           title="Dataset analytics"
           description="Review marketplace performance for this dataset."
         />
-        <DashboardErrorState
-          title="Dataset analytics could not be loaded"
-          message={error ?? "This dataset is unavailable or has been removed."}
-          onRetry={() => void fetchData()}
-        />
+        <DashboardWorkspace>
+          <DashboardErrorState
+            title="Dataset analytics could not be loaded"
+            message={
+              error ?? "This dataset is unavailable or has been removed."
+            }
+            onRetry={() => void fetchData()}
+          />
+        </DashboardWorkspace>
       </DashboardPage>
     );
   }
@@ -179,70 +186,71 @@ function DatasetDetailContent() {
           </div>
         }
       />
+      <DashboardWorkspace>
+        <div className="grid items-start gap-4 xl:grid-cols-2">
+          <DashboardSection
+            title="Revenue over time"
+            description="Recognized dataset revenue within the selected period."
+          >
+            <RevenueTrendChart data={detail.revenueTrend} />
+          </DashboardSection>
 
-      <div className="grid items-start gap-4 xl:grid-cols-2">
-        <DashboardSection
-          title="Revenue over time"
-          description="Recognized dataset revenue within the selected period."
-        >
-          <RevenueTrendChart data={detail.revenueTrend} />
-        </DashboardSection>
+          <DashboardSection
+            title="Views and sales"
+            description="Compare marketplace attention with completed purchases."
+          >
+            <DatasetViewsSalesChart data={detail.timeSeries} />
+          </DashboardSection>
 
-        <DashboardSection
-          title="Views and sales"
-          description="Compare marketplace attention with completed purchases."
-        >
-          <DatasetViewsSalesChart data={detail.timeSeries} />
-        </DashboardSection>
+          <DashboardSection
+            title="Conversion funnel"
+            description="See how views progress into paid orders."
+          >
+            <DatasetConversionFunnel dataset={detail.dataset} />
+          </DashboardSection>
 
-        <DashboardSection
-          title="Conversion funnel"
-          description="See how views progress into paid orders."
-        >
-          <DatasetConversionFunnel dataset={detail.dataset} />
-        </DashboardSection>
-
-        <DashboardSection
-          title="Recent buyers"
-          description="Latest purchases attributed to this dataset."
-        >
-          {detail.recentBuyers.length ? (
-            <DashboardDataTable
-              caption="Recent dataset buyers"
-              columns={buyerColumns}
-              items={detail.recentBuyers}
-              getRowId={(buyer) => buyer.purchaseId}
-              renderMobileItem={(buyer) => (
-                <DashboardMobileRecordCard>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-sm font-semibold text-foreground">
-                        {buyer.name || "Buyer"}
-                      </h3>
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {buyer.companyName || "No company provided"}
+          <DashboardSection
+            title="Recent buyers"
+            description="Latest purchases attributed to this dataset."
+          >
+            {detail.recentBuyers.length ? (
+              <DashboardDataTable
+                caption="Recent dataset buyers"
+                columns={buyerColumns}
+                items={detail.recentBuyers}
+                getRowId={(buyer) => buyer.purchaseId}
+                renderMobileItem={(buyer) => (
+                  <DashboardMobileRecordCard>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {buyer.name || "Buyer"}
+                        </h3>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {buyer.companyName || "No company provided"}
+                        </p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                        {formatCurrencyValue(buyer.amount, buyer.currency)}
                       </p>
                     </div>
-                    <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                      {formatCurrencyValue(buyer.amount, buyer.currency)}
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {formatPurchaseDate(buyer.purchaseDate)}
                     </p>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {formatPurchaseDate(buyer.purchaseDate)}
-                  </p>
-                </DashboardMobileRecordCard>
-              )}
-            />
-          ) : (
-            <DashboardEmptyState
-              surface="plain"
-              icon={Users}
-              title="No buyers in this period"
-              description="Try a longer time range to view earlier purchases."
-            />
-          )}
-        </DashboardSection>
-      </div>
+                  </DashboardMobileRecordCard>
+                )}
+              />
+            ) : (
+              <DashboardEmptyState
+                surface="plain"
+                icon={Users}
+                title="No buyers in this period"
+                description="Try a longer time range to view earlier purchases."
+              />
+            )}
+          </DashboardSection>
+        </div>
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }

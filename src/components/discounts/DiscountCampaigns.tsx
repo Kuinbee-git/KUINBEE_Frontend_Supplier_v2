@@ -25,8 +25,10 @@ import {
   DashboardErrorState,
   DashboardLoadingState,
   DashboardMetricCard,
+  DashboardMetricGroup,
   DashboardMobileRecordCard,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardPagination,
   DashboardSearchField,
@@ -341,126 +343,130 @@ export function DiscountCampaigns() {
           </div>
         }
       />
+      <DashboardWorkspace>
+        {error ? (
+          <DashboardErrorState
+            title="Dataset promotions could not be loaded"
+            message={error}
+            onRetry={() => void loadDatasets()}
+          />
+        ) : loading ? (
+          <DashboardLoadingState
+            label="Loading dataset promotions"
+            variant="skeleton"
+            rows={6}
+          />
+        ) : (
+          <>
+            <DashboardMetricGroup aria-label="Dataset promotion summary">
+              {metrics.map((metric) => (
+                <DashboardMetricCard key={metric.label} {...metric} />
+              ))}
+            </DashboardMetricGroup>
 
-      {error ? (
-        <DashboardErrorState
-          title="Dataset promotions could not be loaded"
-          message={error}
-          onRetry={() => void loadDatasets()}
-        />
-      ) : loading ? (
-        <DashboardLoadingState
-          label="Loading dataset promotions"
-          variant="skeleton"
-          rows={6}
-        />
-      ) : (
-        <>
-          <section
-            aria-label="Dataset promotion summary"
-            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
-          >
-            {metrics.map((metric) => (
-              <DashboardMetricCard key={metric.label} {...metric} />
-            ))}
-          </section>
+            <DashboardToolbar ariaLabel="Search eligible datasets">
+              <DashboardSearchField
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+                label="Search eligible datasets"
+                placeholder="Search by dataset title or ID"
+              />
+            </DashboardToolbar>
 
-          <DashboardToolbar ariaLabel="Search eligible datasets">
-            <DashboardSearchField
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              label="Search eligible datasets"
-              placeholder="Search by dataset title or ID"
-            />
-          </DashboardToolbar>
-
-          {rows.length ? (
-            <section
-              aria-label="Eligible promotion datasets"
-              className="space-y-4"
-            >
-              <DashboardDataTable
-                caption="Eligible dataset promotions"
-                items={paginatedRows}
-                columns={columns}
-                getRowId={(item) => item.id}
-                renderMobileItem={(item) => (
-                  <DashboardMobileRecordCard>
-                    <div className="flex items-start gap-3">
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Database className="size-4" aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-semibold text-foreground">
-                          {item.title}
-                        </h3>
-                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                          {item.datasetUniqueId}
+            {rows.length ? (
+              <section
+                aria-label="Eligible promotion datasets"
+                className="space-y-4"
+              >
+                <DashboardDataTable
+                  caption="Eligible dataset promotions"
+                  items={paginatedRows}
+                  columns={columns}
+                  getRowId={(item) => item.id}
+                  renderMobileItem={(item) => (
+                    <DashboardMobileRecordCard>
+                      <div className="flex items-start gap-3">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <Database className="size-4" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-sm font-semibold text-foreground">
+                            {item.title}
+                          </h3>
+                          <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                            {item.datasetUniqueId}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                          {formatMoney(item.baseAmount, item.currency)}
                         </p>
                       </div>
-                      <p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-                        {formatMoney(item.baseAmount, item.currency)}
-                      </p>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <DashboardStatusBadge
-                        tone={item.isSample ? "info" : "neutral"}
-                      >
-                        {item.isSample ? "Sample listing" : "Paid dataset"}
-                      </DashboardStatusBadge>
-                      {item.activeProposal ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
                         <DashboardStatusBadge
-                          tone={
-                            STATUS_TONES[item.activeProposal.status] ??
-                            "neutral"
-                          }
+                          tone={item.isSample ? "info" : "neutral"}
                         >
-                          {statusLabel(item.activeProposal.status)}
+                          {item.isSample ? "Sample listing" : "Paid dataset"}
                         </DashboardStatusBadge>
-                      ) : null}
-                    </div>
-                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-                      <span className="truncate text-xs text-muted-foreground">
-                        {item.surfaceLabel}
-                      </span>
-                      <DashboardButton asChild variant="outline" size="compact">
-                        <Link href={`/dashboard/discount-campaigns/${item.id}`}>
-                          Open
-                        </Link>
-                      </DashboardButton>
-                    </div>
-                  </DashboardMobileRecordCard>
-                )}
+                        {item.activeProposal ? (
+                          <DashboardStatusBadge
+                            tone={
+                              STATUS_TONES[item.activeProposal.status] ??
+                              "neutral"
+                            }
+                          >
+                            {statusLabel(item.activeProposal.status)}
+                          </DashboardStatusBadge>
+                        ) : null}
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+                        <span className="truncate text-xs text-muted-foreground">
+                          {item.surfaceLabel}
+                        </span>
+                        <DashboardButton
+                          asChild
+                          variant="outline"
+                          size="compact"
+                        >
+                          <Link
+                            href={`/dashboard/discount-campaigns/${item.id}`}
+                          >
+                            Open
+                          </Link>
+                        </DashboardButton>
+                      </div>
+                    </DashboardMobileRecordCard>
+                  )}
+                />
+                <DashboardPagination
+                  page={safeCurrentPage}
+                  pageSize={DATASET_TABLE_PAGE_SIZE}
+                  totalItems={rows.length}
+                  itemLabel="datasets"
+                  onPageChange={setCurrentPage}
+                />
+              </section>
+            ) : (
+              <DashboardEmptyState
+                filtered={Boolean(searchQuery.trim())}
+                icon={BadgePercent}
+                title={
+                  searchQuery.trim()
+                    ? "No datasets match this search"
+                    : "No eligible datasets"
+                }
+                description={
+                  searchQuery.trim()
+                    ? "Try a different title or dataset ID."
+                    : "Published public datasets with active paid pricing or sample commercial pricing will appear here."
+                }
+                onClear={
+                  searchQuery.trim() ? () => setSearchQuery("") : undefined
+                }
               />
-              <DashboardPagination
-                page={safeCurrentPage}
-                pageSize={DATASET_TABLE_PAGE_SIZE}
-                totalItems={rows.length}
-                itemLabel="datasets"
-                onPageChange={setCurrentPage}
-              />
-            </section>
-          ) : (
-            <DashboardEmptyState
-              filtered={Boolean(searchQuery.trim())}
-              icon={BadgePercent}
-              title={
-                searchQuery.trim()
-                  ? "No datasets match this search"
-                  : "No eligible datasets"
-              }
-              description={
-                searchQuery.trim()
-                  ? "Try a different title or dataset ID."
-                  : "Published public datasets with active paid pricing or sample commercial pricing will appear here."
-              }
-              onClear={
-                searchQuery.trim() ? () => setSearchQuery("") : undefined
-              }
-            />
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }

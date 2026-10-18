@@ -217,12 +217,12 @@ export function CustomCollectionForm({
   return (
     <form
       onSubmit={submitOrAdvance}
-      className="custom-collection-form space-y-6"
+      className="custom-collection-form dashboard-panel-stack"
       noValidate
     >
       <nav
         aria-label="Service form progress"
-        className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-2 border-b border-border p-4 sm:grid-cols-2 md:p-6 xl:grid-cols-4"
       >
         {STEPS.map((item, index) => {
           const active = index === step;
@@ -235,7 +235,7 @@ export function CustomCollectionForm({
               className={cn(
                 "rounded-xl border p-3 text-left transition-colors",
                 active
-                  ? "border-[var(--dashboard-focus-ring)] bg-primary/5 shadow-sm"
+                  ? "border-[var(--dashboard-focus-ring)] bg-primary/5"
                   : "dashboard-glass-control border-border hover:border-[var(--dashboard-control-border-strong)] hover:bg-muted/55"
               )}
               aria-current={active ? "step" : undefined}
@@ -781,7 +781,7 @@ export function CustomCollectionForm({
 
       <DashboardFormActions
         sticky
-        className="rounded-xl border border-border px-4"
+        className="rounded-none border-x-0 border-b-0 px-4 md:px-6"
         status={
           isDirty
             ? "You have unsaved changes."

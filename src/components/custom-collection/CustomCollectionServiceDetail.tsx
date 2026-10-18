@@ -37,6 +37,7 @@ import {
   DashboardInlineAlert,
   DashboardLoadingState,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardStatusBadge,
   DashboardTextarea as Textarea,
@@ -341,16 +342,18 @@ export function CustomCollectionServiceDetail({
           title="Custom collection service"
           description="Review and manage this supplier service."
         />
-        <DashboardErrorState
-          title="Service unavailable"
-          message={error || "The requested service could not be found."}
-          onRetry={() => void load()}
-        />
-        <Button asChild variant="outline" className="self-center">
-          <Link href="/dashboard/custom-collection-services">
-            Back to services
-          </Link>
-        </Button>
+        <DashboardWorkspace>
+          <DashboardErrorState
+            title="Service unavailable"
+            message={error || "The requested service could not be found."}
+            onRetry={() => void load()}
+          />
+          <Button asChild variant="outline" className="self-center">
+            <Link href="/dashboard/custom-collection-services">
+              Back to services
+            </Link>
+          </Button>
+        </DashboardWorkspace>
       </DashboardPage>
     );
   }
@@ -465,310 +468,316 @@ export function CustomCollectionServiceDetail({
           </div>
         </div>
       </header>
-
-      {error && (
-        <DashboardInlineAlert
-          tone="danger"
-          icon={AlertTriangle}
-          title="Some information could not be refreshed"
-          message={error}
-        />
-      )}
-
-      {!service.archivedAt &&
-        service.publishedRevision &&
-        !service.isPublished && (
+      <DashboardWorkspace>
+        {error && (
           <DashboardInlineAlert
-            tone="info"
-            icon={Globe2}
-            title="Approved and ready to publish"
+            tone="danger"
+            icon={AlertTriangle}
+            title="Some information could not be refreshed"
+            message={error}
+          />
+        )}
+
+        {!service.archivedAt &&
+          service.publishedRevision &&
+          !service.isPublished && (
+            <DashboardInlineAlert
+              tone="info"
+              icon={Globe2}
+              title="Approved and ready to publish"
+            >
+              This service is private and cannot be discovered or receive new
+              buyer requests. Publish it when you are ready to make the approved
+              revision public.
+            </DashboardInlineAlert>
+          )}
+
+        {service.workingRevision && service.publishedRevision && (
+          <div className="dashboard-glass-card inline-flex w-full rounded-xl border border-border p-1 sm:w-auto">
+            <RevisionTab
+              active={revisionView === "working"}
+              onClick={() => {
+                setRevisionView("working");
+                setEditing(false);
+              }}
+            >
+              Working revision v{service.workingRevision.version}
+            </RevisionTab>
+            <RevisionTab
+              active={revisionView === "published"}
+              onClick={() => {
+                setRevisionView("published");
+                setEditing(false);
+              }}
+            >
+              Live revision v{service.publishedRevision.version}
+            </RevisionTab>
+          </div>
+        )}
+
+        {service.archivedAt && (
+          <DashboardInlineAlert
+            tone="neutral"
+            icon={Archive}
+            title="This service is archived"
           >
-            This service is private and cannot be discovered or receive new
-            buyer requests. Publish it when you are ready to make the approved
-            revision public.
+            It is no longer visible to buyers and cannot accept new requests or
+            revisions. Archived on {formatDate(service.archivedAt)}.
           </DashboardInlineAlert>
         )}
 
-      {service.workingRevision && service.publishedRevision && (
-        <div className="dashboard-glass-card inline-flex w-full rounded-xl border border-border p-1 sm:w-auto">
-          <RevisionTab
-            active={revisionView === "working"}
-            onClick={() => {
-              setRevisionView("working");
-              setEditing(false);
-            }}
-          >
-            Working revision v{service.workingRevision.version}
-          </RevisionTab>
-          <RevisionTab
-            active={revisionView === "published"}
-            onClick={() => {
-              setRevisionView("published");
-              setEditing(false);
-            }}
-          >
-            Live revision v{service.publishedRevision.version}
-          </RevisionTab>
-        </div>
-      )}
-
-      {service.archivedAt && (
-        <DashboardInlineAlert
-          tone="neutral"
-          icon={Archive}
-          title="This service is archived"
-        >
-          It is no longer visible to buyers and cannot accept new requests or
-          revisions. Archived on {formatDate(service.archivedAt)}.
-        </DashboardInlineAlert>
-      )}
-
-      {revision.status === "CHANGES_REQUESTED" && feedback && (
-        <DashboardInlineAlert
-          tone="warning"
-          icon={AlertTriangle}
-          title="Reviewer changes requested"
-          message={<span className="whitespace-pre-wrap">{feedback}</span>}
-        />
-      )}
-
-      {revision.status === "REJECTED" && (
-        <DashboardInlineAlert
-          tone="danger"
-          icon={XCircle}
-          title="This revision was rejected"
-        >
-          <div className="space-y-2">
-            {feedback && <p className="whitespace-pre-wrap">{feedback}</p>}
-            {service.publishedRevision ? (
-              <p>
-                Your approved revision remains live. You can start a new draft
-                when ready.
-              </p>
-            ) : (
-              <p>
-                The rejected revision stays in the history. Start a new draft
-                revision if you want to address the decision and submit again.
-              </p>
-            )}
-          </div>
-        </DashboardInlineAlert>
-      )}
-
-      {editing && draftEditable ? (
-        <div id="service-edit-form" className="scroll-mt-6 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold">
-                Edit revision v{revision.version}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Saving keeps the revision private. Submission is a separate
-                action.
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              onClick={() => setEditing(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-          </div>
-          <CustomCollectionForm
-            initialValues={formInitialValues}
-            submitLabel="Save draft"
-            busy={saving}
-            categoryOptions={formCategoryOptions}
-            loadCategories
-            onSubmit={save}
+        {revision.status === "CHANGES_REQUESTED" && feedback && (
+          <DashboardInlineAlert
+            tone="warning"
+            icon={AlertTriangle}
+            title="Reviewer changes requested"
+            message={<span className="whitespace-pre-wrap">{feedback}</span>}
           />
-        </div>
-      ) : (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-          <div className="space-y-6">
-            <CoverCard
-              revision={revision}
-              editable={editable}
-              uploading={uploading}
-              fileInputRef={fileInputRef}
-              onUpload={uploadCover}
-            />
-            <ServicePreview revision={revision} />
-          </div>
+        )}
 
-          <aside className="space-y-6">
-            {editable && (
-              <SubmissionReadiness
-                hasCover={Boolean(revision.coverImage)}
-                offlineContractDone={offlineContractDone}
-                onUpload={() => fileInputRef.current?.click()}
+        {revision.status === "REJECTED" && (
+          <DashboardInlineAlert
+            tone="danger"
+            icon={XCircle}
+            title="This revision was rejected"
+          >
+            <div className="space-y-2">
+              {feedback && <p className="whitespace-pre-wrap">{feedback}</p>}
+              {service.publishedRevision ? (
+                <p>
+                  Your approved revision remains live. You can start a new draft
+                  when ready.
+                </p>
+              ) : (
+                <p>
+                  The rejected revision stays in the history. Start a new draft
+                  revision if you want to address the decision and submit again.
+                </p>
+              )}
+            </div>
+          </DashboardInlineAlert>
+        )}
+
+        {editing && draftEditable ? (
+          <div
+            id="service-edit-form"
+            className="dashboard-panel-stack min-w-0 scroll-mt-6"
+          >
+            <div className="flex items-center justify-between gap-3 px-4 py-5 md:px-6">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Edit revision v{revision.version}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Saving keeps the revision private. Submission is a separate
+                  action.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => setEditing(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+            </div>
+            <CustomCollectionForm
+              initialValues={formInitialValues}
+              submitLabel="Save draft"
+              busy={saving}
+              categoryOptions={formCategoryOptions}
+              loadCategories
+              onSubmit={save}
+            />
+          </div>
+        ) : (
+          <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_20rem]">
+            <div className="dashboard-panel-stack min-w-0">
+              <CoverCard
+                revision={revision}
+                editable={editable}
+                uploading={uploading}
+                fileInputRef={fileInputRef}
+                onUpload={uploadCover}
               />
-            )}
-            {service.publishedRevision && (
-              <VisibilitySummary service={service} />
-            )}
-            <RevisionSummary revision={revision} />
-            <ReviewTimeline
-              history={history}
-              selectedRevisionId={revision.id}
-            />
-          </aside>
-        </div>
-      )}
+              <ServicePreview revision={revision} />
+            </div>
 
-      <Dialog
-        open={action === "submit"}
-        onOpenChange={(open) => !open && setAction(null)}
-      >
-        <DialogContent
-          title={
-            revision.status === "CHANGES_REQUESTED"
-              ? "Resubmit this revision?"
-              : "Submit this service for review?"
-          }
-          description={`Revision v${revision.version} will become read-only while the Kuinbee team reviews it. Your existing approved revision, if any, keeps its current public or private visibility.`}
-          footer={
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setAction(null)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button onClick={submit} disabled={!submitReady || saving}>
-                {saving && <Loader2 className="animate-spin" />}
-                Confirm submission
-              </Button>
-            </>
-          }
-        >
-          <div className="space-y-2 rounded-lg border border-border bg-muted/35 p-3 text-sm">
-            <ChecklistItem complete={Boolean(revision.coverImage)}>
-              Cover image added
-            </ChecklistItem>
-            <ChecklistItem complete={offlineContractDone === true}>
-              Offline supplier contract completed
-            </ChecklistItem>
+            <aside className="dashboard-panel-stack min-w-0 border-t border-border xl:border-l xl:border-t-0">
+              {editable && (
+                <SubmissionReadiness
+                  hasCover={Boolean(revision.coverImage)}
+                  offlineContractDone={offlineContractDone}
+                  onUpload={() => fileInputRef.current?.click()}
+                />
+              )}
+              {service.publishedRevision && (
+                <VisibilitySummary service={service} />
+              )}
+              <RevisionSummary revision={revision} />
+              <ReviewTimeline
+                history={history}
+                selectedRevisionId={revision.id}
+              />
+            </aside>
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      <Dialog
-        open={action === "publish" || action === "unpublish"}
-        onOpenChange={(open) => !open && setAction(null)}
-      >
-        <DialogContent
-          title={
-            action === "publish"
-              ? "Publish this service?"
-              : "Unpublish this service?"
-          }
-          description={
-            action === "publish"
-              ? "The approved revision will become discoverable in the marketplace and buyers will be able to submit new requests."
-              : "The service will be hidden from marketplace discovery and its public page will stop accepting new requests. You can publish it again later."
-          }
-          footer={
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setAction(null)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant={action === "unpublish" ? "outline" : "default"}
-                onClick={() => void changeVisibility(action === "publish")}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="animate-spin" />
-                ) : action === "publish" ? (
-                  <Globe2 />
-                ) : (
-                  <EyeOff />
-                )}
-                {action === "publish" ? "Publish service" : "Unpublish service"}
-              </Button>
-            </>
-          }
-        />
-      </Dialog>
-
-      <Dialog
-        open={action === "archive"}
-        onOpenChange={(open) => !open && setAction(null)}
-      >
-        <DialogContent
-          title="Archive this service?"
-          description="The service will disappear from the marketplace and stop accepting new buyer requests. This action is intentionally not offered as a temporary visibility switch."
-          footer={
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setAction(null)}
-                disabled={saving}
-              >
-                Keep service
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={archive}
-                disabled={archiveReason.trim().length < 3 || saving}
-              >
-                {saving && <Loader2 className="animate-spin" />}
-                Archive service
-              </Button>
-            </>
-          }
+        <Dialog
+          open={action === "submit"}
+          onOpenChange={(open) => !open && setAction(null)}
         >
-          <div className="space-y-2">
-            <label htmlFor="archiveReason" className="text-sm font-medium">
-              Reason for archiving <span className="text-destructive">*</span>
-            </label>
-            <Textarea
-              id="archiveReason"
-              rows={4}
-              maxLength={1000}
-              value={archiveReason}
-              onChange={(event) => setArchiveReason(event.target.value)}
-              placeholder="Explain why this service is no longer offered."
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+          <DialogContent
+            title={
+              revision.status === "CHANGES_REQUESTED"
+                ? "Resubmit this revision?"
+                : "Submit this service for review?"
+            }
+            description={`Revision v${revision.version} will become read-only while the Kuinbee team reviews it. Your existing approved revision, if any, keeps its current public or private visibility.`}
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAction(null)}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={submit} disabled={!submitReady || saving}>
+                  {saving && <Loader2 className="animate-spin" />}
+                  Confirm submission
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-2 rounded-lg border border-border bg-muted/35 p-3 text-sm">
+              <ChecklistItem complete={Boolean(revision.coverImage)}>
+                Cover image added
+              </ChecklistItem>
+              <ChecklistItem complete={offlineContractDone === true}>
+                Offline supplier contract completed
+              </ChecklistItem>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-      <Dialog
-        open={action === "revision"}
-        onOpenChange={(open) => !open && setAction(null)}
-      >
-        <DialogContent
-          title="Start a new draft revision?"
-          description={`We will copy the latest service details into a new editable revision.${
-            service.publishedRevision
-              ? " The current approved version keeps its existing visibility until the new revision is approved."
-              : " The rejected revision remains unchanged in the review history."
-          }`}
-          footer={
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setAction(null)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button onClick={createRevision} disabled={saving}>
-                {saving && <Loader2 className="animate-spin" />}
-                Create draft revision
-              </Button>
-            </>
-          }
-        />
-      </Dialog>
+        <Dialog
+          open={action === "publish" || action === "unpublish"}
+          onOpenChange={(open) => !open && setAction(null)}
+        >
+          <DialogContent
+            title={
+              action === "publish"
+                ? "Publish this service?"
+                : "Unpublish this service?"
+            }
+            description={
+              action === "publish"
+                ? "The approved revision will become discoverable in the marketplace and buyers will be able to submit new requests."
+                : "The service will be hidden from marketplace discovery and its public page will stop accepting new requests. You can publish it again later."
+            }
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAction(null)}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant={action === "unpublish" ? "outline" : "default"}
+                  onClick={() => void changeVisibility(action === "publish")}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <Loader2 className="animate-spin" />
+                  ) : action === "publish" ? (
+                    <Globe2 />
+                  ) : (
+                    <EyeOff />
+                  )}
+                  {action === "publish"
+                    ? "Publish service"
+                    : "Unpublish service"}
+                </Button>
+              </>
+            }
+          />
+        </Dialog>
+
+        <Dialog
+          open={action === "archive"}
+          onOpenChange={(open) => !open && setAction(null)}
+        >
+          <DialogContent
+            title="Archive this service?"
+            description="The service will disappear from the marketplace and stop accepting new buyer requests. This action is intentionally not offered as a temporary visibility switch."
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAction(null)}
+                  disabled={saving}
+                >
+                  Keep service
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={archive}
+                  disabled={archiveReason.trim().length < 3 || saving}
+                >
+                  {saving && <Loader2 className="animate-spin" />}
+                  Archive service
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-2">
+              <label htmlFor="archiveReason" className="text-sm font-medium">
+                Reason for archiving <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                id="archiveReason"
+                rows={4}
+                maxLength={1000}
+                value={archiveReason}
+                onChange={(event) => setArchiveReason(event.target.value)}
+                placeholder="Explain why this service is no longer offered."
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={action === "revision"}
+          onOpenChange={(open) => !open && setAction(null)}
+        >
+          <DialogContent
+            title="Start a new draft revision?"
+            description={`We will copy the latest service details into a new editable revision.${
+              service.publishedRevision
+                ? " The current approved version keeps its existing visibility until the new revision is approved."
+                : " The rejected revision remains unchanged in the review history."
+            }`}
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setAction(null)}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={createRevision} disabled={saving}>
+                  {saving && <Loader2 className="animate-spin" />}
+                  Create draft revision
+                </Button>
+              </>
+            }
+          />
+        </Dialog>
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }
@@ -808,31 +817,27 @@ function CoverCard({
             </p>
           </div>
         )}
-        {editable && (
-          <div className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/65 to-transparent p-4 pt-12">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <UploadCloud />
-              )}
-              {revision.coverImage ? "Replace cover" : "Upload cover"}
-            </Button>
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          hidden
-          onChange={(event) => onUpload(event.target.files?.[0])}
-        />
       </div>
+      {editable && (
+        <div className="flex justify-end px-4 py-4 md:px-6">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 className="animate-spin" /> : <UploadCloud />}
+            {revision.coverImage ? "Replace cover" : "Upload cover"}
+          </Button>
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        hidden
+        onChange={(event) => onUpload(event.target.files?.[0])}
+      />
     </Card>
   );
 }
@@ -1137,7 +1142,7 @@ function RevisionTab({
       className={cn(
         "flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors sm:flex-none sm:text-sm",
         active
-          ? "dashboard-glass-control border-border text-foreground shadow-sm"
+          ? "dashboard-glass-control border-border text-foreground"
           : "text-muted-foreground"
       )}
     >
@@ -1220,11 +1225,13 @@ function DetailSkeleton() {
         title="Custom collection service"
         description="Loading the service workspace and its latest revision."
       />
-      <DashboardLoadingState
-        label="Loading custom collection service"
-        variant="skeleton"
-        rows={8}
-      />
+      <DashboardWorkspace>
+        <DashboardLoadingState
+          label="Loading custom collection service"
+          variant="skeleton"
+          rows={8}
+        />
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }

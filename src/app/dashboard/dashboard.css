@@ -981,23 +981,31 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   --placeholder-color: var(--dashboard-text-muted);
 }
 
-.supplier-dashboard [data-proposal-panel="true"] .preparation-choice[data-selected="true"] {
+.supplier-dashboard
+  [data-proposal-panel="true"]
+  .preparation-choice[data-selected="true"] {
   border-color: var(--dashboard-control-border);
   background: var(--dashboard-control-background-hover);
 }
 
 /* Header actions belong to the same proposal workspace, so they stay flat
    alongside the attached board actions. Global shell controls keep their style. */
-.supplier-dashboard .dataset-proposal-workspace .dashboard-button:not(:focus-visible) {
+.supplier-dashboard
+  .dataset-proposal-workspace
+  .dashboard-button:not(:focus-visible) {
   box-shadow: none;
 }
 
-.supplier-dashboard .dataset-proposal-workspace .dashboard-button:not(:disabled):not(:focus-visible):hover {
+.supplier-dashboard
+  .dataset-proposal-workspace
+  .dashboard-button:not(:disabled):not(:focus-visible):hover {
   transform: none;
   box-shadow: none;
 }
 
-.supplier-dashboard .dataset-proposal-workspace .dashboard-button:focus-visible {
+.supplier-dashboard
+  .dataset-proposal-workspace
+  .dashboard-button:focus-visible {
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow);
   outline: 2px solid var(--dashboard-focus-ring);
   outline-offset: 2px;
@@ -1016,4 +1024,115 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   :is(option, optgroup) {
   background-color: var(--dashboard-surface);
   color: var(--dashboard-text);
+}
+
+/* The supplier panel uses the same grounded workspace as Dataset preparation.
+   Keep the existing glass, palette and canvas; only remove decorative elevation. */
+.supplier-dashboard [data-dashboard-content="true"] {
+  --placeholder-color: var(--dashboard-text-muted);
+}
+.supplier-dashboard [data-dashboard-content="true"] .dashboard-glass-card,
+.supplier-dashboard
+  [data-dashboard-content="true"]
+  .dashboard-button:not(:focus-visible) {
+  box-shadow: none;
+}
+.supplier-dashboard
+  [data-dashboard-content="true"]
+  .dashboard-button:not(:focus-visible):hover,
+.supplier-dashboard
+  [data-dashboard-content="true"]
+  .dashboard-glass-card:hover {
+  transform: none;
+}
+.supplier-dashboard .dashboard-workspace .dashboard-glass-card {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.supplier-dashboard .dashboard-workspace .dashboard-glass-card::before,
+.supplier-dashboard .dashboard-metric-group .dashboard-glass-card::before {
+  display: none;
+}
+.supplier-dashboard .dashboard-panel-stack > .dashboard-glass-card,
+.supplier-dashboard .dashboard-panel-stack > section > .dashboard-glass-card {
+  border: 0;
+  border-radius: 0;
+}
+.supplier-dashboard .dashboard-panel-stack > :not(:first-child) {
+  border-top: 1px solid var(--dashboard-glass-border);
+}
+.supplier-dashboard .dashboard-metric-group .dashboard-metric-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.supplier-dashboard .dashboard-workspace .dashboard-metric-group {
+  border: 0;
+  border-radius: 0;
+}
+.supplier-dashboard
+  .dashboard-workspace
+  > .dashboard-metric-group:not(:last-child) {
+  border-bottom: 1px solid var(--dashboard-glass-border);
+}
+.supplier-dashboard [data-metric-cell="true"] {
+  border-top: 1px solid var(--dashboard-glass-border);
+  border-inline-end: 1px solid var(--dashboard-glass-border);
+}
+.supplier-dashboard [data-metric-cell="true"]:nth-child(-n + 2) {
+  border-top: 0;
+}
+.supplier-dashboard [data-metric-cell="true"]:nth-child(2n),
+.supplier-dashboard [data-metric-cell="true"]:last-child {
+  border-inline-end: 0;
+}
+.supplier-dashboard .dashboard-metric-card[aria-pressed="true"] {
+  background: var(--dashboard-control-background);
+  outline: 1px solid var(--dashboard-focus-ring);
+  outline-offset: -1px;
+}
+.supplier-dashboard
+  [data-dashboard-content="true"]
+  :is(
+    a,
+    button,
+    [role="button"],
+    input,
+    select,
+    textarea,
+    [tabindex]
+  ):focus-visible {
+  outline: 2px solid var(--dashboard-focus-ring);
+  outline-offset: 2px;
+}
+@media (min-width: 1024px) {
+  .supplier-dashboard [data-metric-cell="true"]:nth-child(n) {
+    border-top: 1px solid var(--dashboard-glass-border);
+    border-inline-end: 1px solid var(--dashboard-glass-border);
+  }
+  .supplier-dashboard [data-metric-columns="2"] > :nth-child(-n + 2),
+  .supplier-dashboard [data-metric-columns="3"] > :nth-child(-n + 3),
+  .supplier-dashboard [data-metric-columns="4"] > :nth-child(-n + 4),
+  .supplier-dashboard [data-metric-columns="5"] > :nth-child(-n + 5) {
+    border-top: 0;
+  }
+  .supplier-dashboard [data-metric-columns="2"] > :nth-child(2n),
+  .supplier-dashboard [data-metric-columns="3"] > :nth-child(3n),
+  .supplier-dashboard [data-metric-columns="4"] > :nth-child(4n),
+  .supplier-dashboard [data-metric-columns="5"] > :nth-child(5n),
+  .supplier-dashboard [data-metric-cell="true"]:last-child {
+    border-inline-end: 0;
+  }
+}
+.supplier-dashboard .dashboard-overview-grid .dashboard-glass-card {
+  border: 0;
+  border-radius: 0;
+}
+/* Summary filters touch the shared frame: keep their keyboard outline inside it. */
+.supplier-dashboard .dashboard-metric-card[role="button"]:focus-visible {
+  outline-offset: -3px;
 }

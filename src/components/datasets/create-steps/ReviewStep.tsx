@@ -148,7 +148,7 @@ export function ReviewStep({
           return (
             <section
               key={item.step}
-              className="rounded-xl border border-border/80 bg-background/55 p-4 shadow-sm"
+              className="rounded-xl border border-border/80 bg-background/55 p-4"
             >
               <div className="flex items-start gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">

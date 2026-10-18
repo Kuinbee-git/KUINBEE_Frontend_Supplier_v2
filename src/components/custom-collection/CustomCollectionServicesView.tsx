@@ -14,6 +14,7 @@ import {
   DashboardErrorState,
   DashboardLoadingState,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardPagination,
   DashboardSearchField,
@@ -121,126 +122,134 @@ export function CustomCollectionServicesView() {
           </DashboardButton>
         }
       />
-
-      <form onSubmit={search}>
-        <DashboardToolbar ariaLabel="Filter custom collection services">
-          <DashboardSearchField
-            value={searchInput}
-            onValueChange={setSearchInput}
-            onClear={() => setSearchInput("")}
-            maxLength={120}
-            placeholder="Search by service title or description"
-            label="Search services"
-          />
-          <DashboardToolbarFilters ariaLabel="Service filters">
-            <DashboardSelect
-              value={status}
-              onValueChange={(value) => {
-                setStatus(value as CustomCollectionRevisionStatus | "ALL");
-                setPage(1);
-              }}
-            >
-              <DashboardSelectTrigger aria-label="Filter by review status">
-                <DashboardSelectValue />
-              </DashboardSelectTrigger>
-              <DashboardSelectContent>
-                <DashboardSelectItem value="ALL">
-                  All review statuses
-                </DashboardSelectItem>
-                {Object.entries(STATUS_CONFIG)
-                  .filter(([value]) => value !== "SUPERSEDED")
-                  .map(([value, config]) => (
-                    <DashboardSelectItem key={value} value={value}>
-                      {config.label}
-                    </DashboardSelectItem>
-                  ))}
-              </DashboardSelectContent>
-            </DashboardSelect>
-            <DashboardSelect
-              value={availability}
-              onValueChange={(value) => {
-                setAvailability(value as CustomCollectionAvailability | "ALL");
-                setPage(1);
-              }}
-            >
-              <DashboardSelectTrigger aria-label="Filter by availability">
-                <DashboardSelectValue />
-              </DashboardSelectTrigger>
-              <DashboardSelectContent>
-                <DashboardSelectItem value="ALL">
-                  All services
-                </DashboardSelectItem>
-                <DashboardSelectItem value="ACTIVE">Active</DashboardSelectItem>
-                <DashboardSelectItem value="ARCHIVED">
-                  Archived
-                </DashboardSelectItem>
-              </DashboardSelectContent>
-            </DashboardSelect>
-          </DashboardToolbarFilters>
-          <DashboardToolbarActions>
-            {filtered ? (
-              <DashboardButton
-                type="button"
-                variant="ghost"
-                onClick={clearFilters}
+      <DashboardWorkspace>
+        <form onSubmit={search}>
+          <DashboardToolbar ariaLabel="Filter custom collection services">
+            <DashboardSearchField
+              value={searchInput}
+              onValueChange={setSearchInput}
+              onClear={() => setSearchInput("")}
+              maxLength={120}
+              placeholder="Search by service title or description"
+              label="Search services"
+            />
+            <DashboardToolbarFilters ariaLabel="Service filters">
+              <DashboardSelect
+                value={status}
+                onValueChange={(value) => {
+                  setStatus(value as CustomCollectionRevisionStatus | "ALL");
+                  setPage(1);
+                }}
               >
-                Clear
-              </DashboardButton>
-            ) : null}
-            <DashboardButton type="submit">Search</DashboardButton>
-          </DashboardToolbarActions>
-        </DashboardToolbar>
-      </form>
+                <DashboardSelectTrigger aria-label="Filter by review status">
+                  <DashboardSelectValue />
+                </DashboardSelectTrigger>
+                <DashboardSelectContent>
+                  <DashboardSelectItem value="ALL">
+                    All review statuses
+                  </DashboardSelectItem>
+                  {Object.entries(STATUS_CONFIG)
+                    .filter(([value]) => value !== "SUPERSEDED")
+                    .map(([value, config]) => (
+                      <DashboardSelectItem key={value} value={value}>
+                        {config.label}
+                      </DashboardSelectItem>
+                    ))}
+                </DashboardSelectContent>
+              </DashboardSelect>
+              <DashboardSelect
+                value={availability}
+                onValueChange={(value) => {
+                  setAvailability(
+                    value as CustomCollectionAvailability | "ALL"
+                  );
+                  setPage(1);
+                }}
+              >
+                <DashboardSelectTrigger aria-label="Filter by availability">
+                  <DashboardSelectValue />
+                </DashboardSelectTrigger>
+                <DashboardSelectContent>
+                  <DashboardSelectItem value="ALL">
+                    All services
+                  </DashboardSelectItem>
+                  <DashboardSelectItem value="ACTIVE">
+                    Active
+                  </DashboardSelectItem>
+                  <DashboardSelectItem value="ARCHIVED">
+                    Archived
+                  </DashboardSelectItem>
+                </DashboardSelectContent>
+              </DashboardSelect>
+            </DashboardToolbarFilters>
+            <DashboardToolbarActions>
+              {filtered ? (
+                <DashboardButton
+                  type="button"
+                  variant="ghost"
+                  onClick={clearFilters}
+                >
+                  Clear
+                </DashboardButton>
+              ) : null}
+              <DashboardButton type="submit">Search</DashboardButton>
+            </DashboardToolbarActions>
+          </DashboardToolbar>
+        </form>
 
-      {error ? (
-        <DashboardErrorState
-          title="Services could not be loaded"
-          message={error}
-          onRetry={() => void load()}
-        />
-      ) : loading ? (
-        <DashboardLoadingState
-          label="Loading custom collection services"
-          variant="skeleton"
-          rows={6}
-        />
-      ) : items.length === 0 && filtered ? (
-        <DashboardEmptyState
-          filtered
-          icon={Search}
-          title="No services match these filters"
-          description="Try changing the search or filters to see more services."
-          onClear={clearFilters}
-        />
-      ) : items.length === 0 ? (
-        <DashboardEmptyState
-          icon={ImageIcon}
-          title="No services yet"
-          description="Create a private draft to describe your custom data collection capabilities and submit it for review."
-          action={
-            <DashboardButton asChild>
-              <Link href="/dashboard/custom-collection-services/create">
-                <Plus aria-hidden="true" /> Create your first service
-              </Link>
-            </DashboardButton>
-          }
-        />
-      ) : (
-        <section aria-label="Custom collection services" className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {items.map((service) => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
-          </div>
-          <DashboardPagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            totalItems={total}
-            itemLabel="services"
-            onPageChange={setPage}
+        {error ? (
+          <DashboardErrorState
+            title="Services could not be loaded"
+            message={error}
+            onRetry={() => void load()}
           />
-        </section>
-      )}
+        ) : loading ? (
+          <DashboardLoadingState
+            label="Loading custom collection services"
+            variant="skeleton"
+            rows={6}
+          />
+        ) : items.length === 0 && filtered ? (
+          <DashboardEmptyState
+            filtered
+            icon={Search}
+            title="No services match these filters"
+            description="Try changing the search or filters to see more services."
+            onClear={clearFilters}
+          />
+        ) : items.length === 0 ? (
+          <DashboardEmptyState
+            icon={ImageIcon}
+            title="No services yet"
+            description="Create a private draft to describe your custom data collection capabilities and submit it for review."
+            action={
+              <DashboardButton asChild>
+                <Link href="/dashboard/custom-collection-services/create">
+                  <Plus aria-hidden="true" /> Create your first service
+                </Link>
+              </DashboardButton>
+            }
+          />
+        ) : (
+          <section
+            aria-label="Custom collection services"
+            className="space-y-5 px-4 py-5 md:px-6"
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((service) => (
+                <ServiceCard key={service.id} service={service} />
+              ))}
+            </div>
+            <DashboardPagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              totalItems={total}
+              itemLabel="services"
+              onPageChange={setPage}
+            />
+          </section>
+        )}
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }
@@ -257,14 +266,14 @@ function ServiceCard({ service }: { service: CustomCollectionService }) {
       href={`/dashboard/custom-collection-services/${service.id}`}
       className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]"
     >
-      <DashboardCard className="flex h-full flex-col overflow-hidden transition-[transform,border-color,box-shadow] duration-150 group-hover:-translate-y-0.5 group-hover:border-[var(--dashboard-focus-ring)] group-hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
+      <DashboardCard className="flex h-full flex-col overflow-hidden transition-colors duration-150 group-hover:border-[var(--dashboard-focus-ring)] motion-reduce:transition-none">
         <div className="relative aspect-[16/8] overflow-hidden border-b border-border bg-muted/45">
           {revision.coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={revision.coverImage.url}
               alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
+              className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground">

@@ -10,7 +10,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import { DashboardMetricCard } from "@/components/dashboard";
+import {
+  DashboardMetricCard,
+  DashboardMetricGroup,
+} from "@/components/dashboard";
 import { formatCurrencyValue } from "@/lib/utils/currency.utils";
 import type { StatsOverview } from "@/types/supplier-stats.types";
 
@@ -92,10 +95,7 @@ export function StatsOverviewCards({
   ] as const;
 
   return (
-    <section
-      aria-label="Analytics summary"
-      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-    >
+    <DashboardMetricGroup aria-label="Analytics summary">
       {metrics.map((metric) => (
         <DashboardMetricCard
           key={metric.label}
@@ -109,6 +109,6 @@ export function StatsOverviewCards({
           loadingLabel={`Loading ${metric.label.toLowerCase()}`}
         />
       ))}
-    </section>
+    </DashboardMetricGroup>
   );
 }

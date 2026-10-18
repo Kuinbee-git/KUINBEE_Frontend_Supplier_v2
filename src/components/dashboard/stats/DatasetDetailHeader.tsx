@@ -5,6 +5,7 @@ import { Coins, Eye, Percent, ShoppingCart, Star } from "lucide-react";
 
 import {
   DashboardMetricCard,
+  DashboardMetricGroup,
   DashboardPageHeader,
   DashboardStatusBadge,
   type DashboardTone,
@@ -92,14 +93,11 @@ export function DatasetDetailHeader({
         actions={action}
       />
 
-      <section
-        aria-label="Dataset analytics summary"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-      >
+      <DashboardMetricGroup aria-label="Dataset analytics summary">
         {metrics.map((metric) => (
           <DashboardMetricCard key={metric.label} {...metric} />
         ))}
-      </section>
+      </DashboardMetricGroup>
     </div>
   );
 }

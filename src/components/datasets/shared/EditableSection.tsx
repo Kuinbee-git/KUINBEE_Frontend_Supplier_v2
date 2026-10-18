@@ -58,7 +58,7 @@ export function EditableSection({
   displayContent,
 }: EditableSectionProps) {
   return (
-    <DashboardCard className="overflow-hidden transition-shadow duration-200 hover:shadow-sm">
+    <DashboardCard className="overflow-hidden transition-colors duration-200">
       {/* Header */}
       <div
         className={`flex w-full items-center justify-between gap-3 px-4 py-2 sm:px-5 ${

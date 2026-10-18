@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils/cn";
+import { DashboardWorkspace } from "./dashboard-workspace";
 import {
   DashboardCard,
   DashboardCardContent,
@@ -26,6 +27,7 @@ export const DashboardPage = React.forwardRef<
   <div
     ref={ref}
     data-dashboard-page-width={width}
+    data-dashboard-content="true"
     className={cn(
       "mx-auto flex min-h-full w-full flex-col gap-[var(--dashboard-section-gap)] px-[var(--dashboard-page-padding-inline)] py-[var(--dashboard-page-padding-block)]",
       pageWidthClasses[width],
@@ -121,28 +123,38 @@ function DashboardSplitLayout({
   ...props
 }: DashboardSplitLayoutProps) {
   return (
-    <div
-      className={cn(
-        "grid min-w-0 gap-[var(--dashboard-grid-gap)]",
-        aside && "xl:grid-cols-[minmax(0,1fr)_20rem]",
-        className
-      )}
-      {...props}
-    >
-      <div className={cn("min-w-0 space-y-6", mainClassName)}>{children}</div>
-      {aside ? (
-        <aside
-          aria-label={asideAriaLabel}
-          className={cn(
-            "min-w-0 space-y-6",
-            stickyAside && "xl:sticky xl:top-6 xl:self-start",
-            asideClassName
-          )}
-        >
-          {aside}
-        </aside>
-      ) : null}
-    </div>
+    <DashboardWorkspace>
+      <div
+        className={cn(
+          "grid min-w-0",
+          aside && "xl:grid-cols-[minmax(0,1fr)_20rem]",
+          className
+        )}
+        {...props}
+      >
+        <div className={cn("dashboard-panel-stack min-w-0", mainClassName)}>
+          {children}
+        </div>
+        {aside ? (
+          <aside
+            aria-label={asideAriaLabel}
+            className={cn(
+              "min-w-0 border-t border-border xl:border-l xl:border-t-0",
+              asideClassName
+            )}
+          >
+            <div
+              className={cn(
+                "dashboard-panel-stack",
+                stickyAside && "xl:sticky xl:top-0"
+              )}
+            >
+              {aside}
+            </div>
+          </aside>
+        ) : null}
+      </div>
+    </DashboardWorkspace>
   );
 }
 

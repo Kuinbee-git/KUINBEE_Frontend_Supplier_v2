@@ -2,11 +2,20 @@ import {
   DatasetSupplierProposalsQuerySchema,
   DatasetSupplierProposalsResponseSchema,
   type DatasetSupplierProposalsQuery,
+  type DatasetProposalListItem,
 } from "@kuinbee/dataset-preparation-contracts";
 import {
   PreparationApiError,
   requestPreparationResource,
 } from "./dataset-preparations";
+
+export function datasetProposalHref(item: DatasetProposalListItem) {
+  if (item.material.representation === "LEGACY")
+    return `/dashboard/datasets/${item.id}`;
+  return item.status === "VERIFIED" || item.material.publishedContentId
+    ? `/dashboard/my-datasets/${item.id}`
+    : `/dashboard/datasets/drafts/${item.id}`;
+}
 
 export async function listDatasetProposalInventory(
   input: Partial<DatasetSupplierProposalsQuery>

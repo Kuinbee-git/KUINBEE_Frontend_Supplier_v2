@@ -2,13 +2,7 @@
 
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 
-import {
-  FormEvent,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { FormEvent, ReactNode, useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -30,6 +24,7 @@ import {
   DashboardInput as Input,
   DashboardLoadingState,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardPagination,
   DashboardStatusBadge,
@@ -322,11 +317,13 @@ export function DiscountCampaignDetail({
           title="Dataset promotion"
           description="Loading promotion eligibility, pricing, and campaign history."
         />
-        <DashboardLoadingState
-          label="Loading dataset promotion"
-          variant="skeleton"
-          rows={7}
-        />
+        <DashboardWorkspace>
+          <DashboardLoadingState
+            label="Loading dataset promotion"
+            variant="skeleton"
+            rows={7}
+          />
+        </DashboardWorkspace>
       </DashboardPage>
     );
   }
@@ -345,11 +342,13 @@ export function DiscountCampaignDetail({
           title="Dataset promotion"
           description="Create and manage a promotion for this dataset."
         />
-        <DashboardErrorState
-          title="Dataset promotion could not be loaded"
-          message={loadError}
-          onRetry={() => void loadDetail()}
-        />
+        <DashboardWorkspace>
+          <DashboardErrorState
+            title="Dataset promotion could not be loaded"
+            message={loadError}
+            onRetry={() => void loadDetail()}
+          />
+        </DashboardWorkspace>
       </DashboardPage>
     );
   }
@@ -369,11 +368,13 @@ export function DiscountCampaignDetail({
           title="Dataset promotion"
           description="Create and manage a promotion for this dataset."
         />
-        <DashboardEmptyState
-          icon={BadgePercent}
-          title="Dataset not eligible"
-          description="Only published public datasets with active paid pricing or sample commercial pricing can run promotions."
-        />
+        <DashboardWorkspace>
+          <DashboardEmptyState
+            icon={BadgePercent}
+            title="Dataset not eligible"
+            description="Only published public datasets with active paid pricing or sample commercial pricing can run promotions."
+          />
+        </DashboardWorkspace>
       </DashboardPage>
     );
   }
@@ -402,358 +403,363 @@ export function DiscountCampaignDetail({
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.05fr)] gap-6">
-        <div className="space-y-6">
-          <Card className="p-6">
-            <div className="flex items-start gap-3">
-              <Database className="mt-1 size-5 text-muted-foreground" />
-              <div className="min-w-0">
-                <h2 className="text-xl font-semibold text-foreground">
-                  {dataset.title}
-                </h2>
-                <p className="mt-1 font-mono text-xs text-muted-foreground">
-                  {dataset.datasetUniqueId}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-              <SummaryTile label="Dataset Status" value={dataset.status} />
-              <SummaryTile label="Visibility" value={dataset.visibility} />
-              <SummaryTile label="Price Surface" value={dataset.surfaceLabel} />
-              <SummaryTile
-                label="Base Price"
-                value={formatMoney(dataset.baseAmount, dataset.currency)}
-              />
-            </div>
-
-            {dataset.isSample && (
-              <DashboardInlineAlert tone="info" className="mt-5">
-                This is a sample listing. The discount applies to the full
-                dataset commercial price, while sample access remains free.
-              </DashboardInlineAlert>
-            )}
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <CalendarClock className="size-5 text-muted-foreground" />
-              <h2 className="text-xl font-semibold text-foreground">
-                Campaign Status
-              </h2>
-            </div>
-
-            {activeProposal ? (
-              <div>
-                <DashboardStatusBadge
-                  status={activeProposal.status}
-                  tone={STATUS_TONES[activeProposal.status] ?? "neutral"}
-                >
-                  {statusLabel(activeProposal.status)}
-                </DashboardStatusBadge>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SummaryTile
-                    label="Discount"
-                    value={`${activeProposal.discountType === "PERCENTAGE" ? `${activeProposal.discountValue}%` : formatMoney(activeProposal.discountValue, activeProposal.currencySnapshot)}`}
-                  />
-                  <SummaryTile
-                    label="Final Price"
-                    value={formatMoney(
-                      activeProposal.finalPriceSnapshot,
-                      activeProposal.currencySnapshot
-                    )}
-                  />
-                  <SummaryTile
-                    label="Starts"
-                    value={formatDateTime(activeProposal.startsAt)}
-                  />
-                  <SummaryTile
-                    label="Ends"
-                    value={formatDateTime(activeProposal.endsAt)}
-                  />
+      <DashboardWorkspace>
+        <div className="grid min-w-0 xl:grid-cols-2">
+          <div className="dashboard-panel-stack min-w-0">
+            <Card className="p-6">
+              <div className="flex items-start gap-3">
+                <Database className="mt-1 size-5 text-muted-foreground" />
+                <div className="min-w-0">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    {dataset.title}
+                  </h2>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    {dataset.datasetUniqueId}
+                  </p>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No active or pending campaign exists for this dataset.
-              </p>
-            )}
-          </Card>
-        </div>
 
-        <div className="space-y-6">
-          <Card className="p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <BadgePercent className="size-5 text-muted-foreground" />
-              <h2 className="text-xl font-semibold text-foreground">
-                Proposal Details
-              </h2>
-            </div>
+              <div className="mt-6 grid grid-cols-2 gap-x-4">
+                <SummaryTile label="Dataset Status" value={dataset.status} />
+                <SummaryTile label="Visibility" value={dataset.visibility} />
+                <SummaryTile
+                  label="Price Surface"
+                  value={dataset.surfaceLabel}
+                />
+                <SummaryTile
+                  label="Base Price"
+                  value={formatMoney(dataset.baseAmount, dataset.currency)}
+                />
+              </div>
 
-            {formDisabled && (
-              <DashboardInlineAlert tone="warning" className="mb-5">
-                A campaign is already pending or active. Cancel it before
-                submitting another proposal.
-              </DashboardInlineAlert>
-            )}
+              {dataset.isSample && (
+                <DashboardInlineAlert tone="info" className="mt-5">
+                  This is a sample listing. The discount applies to the full
+                  dataset commercial price, while sample access remains free.
+                </DashboardInlineAlert>
+              )}
+            </Card>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Discount type">
-                  <div className="dashboard-glass-control grid grid-cols-2 gap-1 rounded-lg border border-[var(--dashboard-control-border)] p-1">
-                    {[
-                      ["PERCENTAGE", "Percentage"],
-                      ["FIXED_AMOUNT", "Fixed amount"],
-                    ].map(([value, label]) => {
-                      const active = form.discountType === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          disabled={formDisabled}
-                          onClick={() =>
-                            setForm((current) => ({
-                              ...current,
-                              discountType: value as DiscountType,
-                            }))
-                          }
-                          className={cn(
-                            "h-9 rounded-md border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                            active
-                              ? "border-[var(--dashboard-control-border-strong)] bg-muted text-foreground shadow-sm"
-                              : "border-transparent text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarClock className="size-5 text-muted-foreground" />
+                <h2 className="text-xl font-semibold text-foreground">
+                  Campaign Status
+                </h2>
+              </div>
+
+              {activeProposal ? (
+                <div>
+                  <DashboardStatusBadge
+                    status={activeProposal.status}
+                    tone={STATUS_TONES[activeProposal.status] ?? "neutral"}
+                  >
+                    {statusLabel(activeProposal.status)}
+                  </DashboardStatusBadge>
+                  <div className="mt-4 grid grid-cols-2 gap-x-4">
+                    <SummaryTile
+                      label="Discount"
+                      value={`${activeProposal.discountType === "PERCENTAGE" ? `${activeProposal.discountValue}%` : formatMoney(activeProposal.discountValue, activeProposal.currencySnapshot)}`}
+                    />
+                    <SummaryTile
+                      label="Final Price"
+                      value={formatMoney(
+                        activeProposal.finalPriceSnapshot,
+                        activeProposal.currencySnapshot
+                      )}
+                    />
+                    <SummaryTile
+                      label="Starts"
+                      value={formatDateTime(activeProposal.startsAt)}
+                    />
+                    <SummaryTile
+                      label="Ends"
+                      value={formatDateTime(activeProposal.endsAt)}
+                    />
                   </div>
-                </FormField>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No active or pending campaign exists for this dataset.
+                </p>
+              )}
+            </Card>
+          </div>
 
-                <FormField
-                  label={
-                    form.discountType === "PERCENTAGE"
-                      ? "Discount Percentage"
-                      : "Discount Amount"
-                  }
-                >
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.discountValue}
+          <div className="dashboard-panel-stack min-w-0 border-t border-border xl:border-l xl:border-t-0">
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <BadgePercent className="size-5 text-muted-foreground" />
+                <h2 className="text-xl font-semibold text-foreground">
+                  Proposal Details
+                </h2>
+              </div>
+
+              {formDisabled && (
+                <DashboardInlineAlert tone="warning" className="mb-5">
+                  A campaign is already pending or active. Cancel it before
+                  submitting another proposal.
+                </DashboardInlineAlert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Discount type">
+                    <div className="dashboard-glass-control grid grid-cols-2 gap-1 rounded-lg border border-[var(--dashboard-control-border)] p-1">
+                      {[
+                        ["PERCENTAGE", "Percentage"],
+                        ["FIXED_AMOUNT", "Fixed amount"],
+                      ].map(([value, label]) => {
+                        const active = form.discountType === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            disabled={formDisabled}
+                            onClick={() =>
+                              setForm((current) => ({
+                                ...current,
+                                discountType: value as DiscountType,
+                              }))
+                            }
+                            className={cn(
+                              "h-9 rounded-md border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                              active
+                                ? "border-[var(--dashboard-control-border-strong)] bg-muted text-foreground"
+                                : "border-transparent text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                            )}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </FormField>
+
+                  <FormField
+                    label={
+                      form.discountType === "PERCENTAGE"
+                        ? "Discount Percentage"
+                        : "Discount Amount"
+                    }
+                  >
+                    <Input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={form.discountValue}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          discountValue: event.target.value,
+                        }))
+                      }
+                      disabled={formDisabled}
+                      placeholder={
+                        form.discountType === "PERCENTAGE" ? "20" : "5000"
+                      }
+                    />
+                  </FormField>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField label="Starts at">
+                    <DiscountDateTimePicker
+                      value={form.startsAt}
+                      onChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          startsAt: value,
+                        }))
+                      }
+                      disabled={formDisabled}
+                    />
+                  </FormField>
+
+                  <FormField label="Ends at">
+                    <DiscountDateTimePicker
+                      value={form.endsAt}
+                      onChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          endsAt: value,
+                        }))
+                      }
+                      disabled={formDisabled}
+                    />
+                  </FormField>
+                </div>
+
+                <FormField label="Supplier notes">
+                  <Textarea
+                    value={form.supplierNotes}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
-                        discountValue: event.target.value,
+                        supplierNotes: event.target.value,
                       }))
                     }
                     disabled={formDisabled}
-                    placeholder={
-                      form.discountType === "PERCENTAGE" ? "20" : "5000"
-                    }
-                  />
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Starts at">
-                  <DiscountDateTimePicker
-                    value={form.startsAt}
-                    onChange={(value) =>
-                      setForm((current) => ({
-                        ...current,
-                        startsAt: value,
-                      }))
-                    }
-                    disabled={formDisabled}
+                    placeholder="Add campaign context for admin review"
                   />
                 </FormField>
 
-                <FormField label="Ends at">
-                  <DiscountDateTimePicker
-                    value={form.endsAt}
-                    onChange={(value) =>
-                      setForm((current) => ({
-                        ...current,
-                        endsAt: value,
-                      }))
-                    }
-                    disabled={formDisabled}
-                  />
-                </FormField>
-              </div>
-
-              <FormField label="Supplier notes">
-                <Textarea
-                  value={form.supplierNotes}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      supplierNotes: event.target.value,
-                    }))
-                  }
-                  disabled={formDisabled}
-                  placeholder="Add campaign context for admin review"
-                />
-              </FormField>
-
-              <div className="rounded-lg border border-border bg-muted/35 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Price Preview
-                </p>
-                <div className="mt-3 flex flex-wrap items-baseline gap-3">
-                  <span className="text-sm text-muted-foreground line-through">
-                    {formatMoney(dataset.baseAmount, dataset.currency)}
-                  </span>
-                  <span className="text-2xl font-semibold text-foreground">
-                    {preview
-                      ? formatMoney(preview.final, dataset.currency)
-                      : "Enter discount"}
-                  </span>
-                </div>
-                {preview && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Customer saves{" "}
-                    {formatMoney(preview.amountOff, dataset.currency)}
+                <div className="rounded-lg border border-border bg-muted/35 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Price Preview
                   </p>
-                )}
+                  <div className="mt-3 flex flex-wrap items-baseline gap-3">
+                    <span className="text-sm text-muted-foreground line-through">
+                      {formatMoney(dataset.baseAmount, dataset.currency)}
+                    </span>
+                    <span className="text-2xl font-semibold text-foreground">
+                      {preview
+                        ? formatMoney(preview.final, dataset.currency)
+                        : "Enter discount"}
+                    </span>
+                  </div>
+                  {preview && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Customer saves{" "}
+                      {formatMoney(preview.amountOff, dataset.currency)}
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={submitting || formDisabled}
+                  className="w-full"
+                  size="large"
+                >
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Submit for Admin Review
+                </Button>
+              </form>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-5">
+                <History className="size-5 text-muted-foreground" />
+                <h2 className="text-xl font-semibold text-foreground">
+                  Campaign History
+                </h2>
               </div>
 
-              <Button
-                type="submit"
-                disabled={submitting || formDisabled}
-                className="w-full"
-                size="large"
-              >
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                Submit for Admin Review
-              </Button>
-            </form>
-          </Card>
+              {historyTotal === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No discount proposals have been created for this dataset yet.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {historyRows.map((proposal) => (
+                    <div
+                      key={proposal.id}
+                      className="rounded-lg border border-border bg-muted/20 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <DashboardStatusBadge
+                            status={proposal.status}
+                            tone={STATUS_TONES[proposal.status] ?? "neutral"}
+                          >
+                            {statusLabel(proposal.status)}
+                          </DashboardStatusBadge>
+                          <p className="mt-3 text-sm font-semibold text-foreground">
+                            {proposal.discountType === "PERCENTAGE"
+                              ? `${proposal.discountValue}% off`
+                              : `${formatMoney(proposal.discountValue, proposal.currencySnapshot)} off`}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {formatMoney(
+                              proposal.basePriceSnapshot,
+                              proposal.currencySnapshot
+                            )}{" "}
+                            to{" "}
+                            {formatMoney(
+                              proposal.finalPriceSnapshot,
+                              proposal.currencySnapshot
+                            )}
+                          </p>
+                        </div>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <History className="size-5 text-muted-foreground" />
-              <h2 className="text-xl font-semibold text-foreground">
-                Campaign History
-              </h2>
-            </div>
-
-            {historyTotal === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No discount proposals have been created for this dataset yet.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {historyRows.map((proposal) => (
-                  <div
-                    key={proposal.id}
-                    className="rounded-lg border border-border bg-muted/20 p-4"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <DashboardStatusBadge
-                          status={proposal.status}
-                          tone={STATUS_TONES[proposal.status] ?? "neutral"}
-                        >
-                          {statusLabel(proposal.status)}
-                        </DashboardStatusBadge>
-                        <p className="mt-3 text-sm font-semibold text-foreground">
-                          {proposal.discountType === "PERCENTAGE"
-                            ? `${proposal.discountValue}% off`
-                            : `${formatMoney(proposal.discountValue, proposal.currencySnapshot)} off`}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {formatMoney(
-                            proposal.basePriceSnapshot,
-                            proposal.currencySnapshot
-                          )}{" "}
-                          to{" "}
-                          {formatMoney(
-                            proposal.finalPriceSnapshot,
-                            proposal.currencySnapshot
-                          )}
-                        </p>
+                        {cancellableStatuses.includes(proposal.status) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="compact"
+                            onClick={() => handleCancel(proposal)}
+                            disabled={cancellingId === proposal.id}
+                          >
+                            {cancellingId === proposal.id && (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            )}
+                            Cancel
+                          </Button>
+                        )}
                       </div>
 
-                      {cancellableStatuses.includes(proposal.status) && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="compact"
-                          onClick={() => handleCancel(proposal)}
-                          disabled={cancellingId === proposal.id}
-                        >
-                          {cancellingId === proposal.id && (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          )}
-                          Cancel
-                        </Button>
+                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <DetailLine
+                          label="Starts"
+                          value={formatDateTime(proposal.startsAt)}
+                        />
+                        <DetailLine
+                          label="Ends"
+                          value={formatDateTime(proposal.endsAt)}
+                        />
+                        <DetailLine
+                          label="Submitted"
+                          value={
+                            proposal.submittedAt
+                              ? formatDateTime(proposal.submittedAt)
+                              : "-"
+                          }
+                        />
+                        <DetailLine
+                          label="Reviewed"
+                          value={
+                            proposal.reviewedAt
+                              ? formatDateTime(proposal.reviewedAt)
+                              : "-"
+                          }
+                        />
+                      </div>
+
+                      {proposal.supplierNotes && (
+                        <NoteBlock
+                          label="Supplier Notes"
+                          value={proposal.supplierNotes}
+                        />
+                      )}
+                      {proposal.adminNotes && (
+                        <NoteBlock
+                          label="Admin Notes"
+                          value={proposal.adminNotes}
+                        />
+                      )}
+                      {proposal.rejectionReason && (
+                        <NoteBlock
+                          label="Rejection Reason"
+                          value={proposal.rejectionReason}
+                        />
                       )}
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                      <DetailLine
-                        label="Starts"
-                        value={formatDateTime(proposal.startsAt)}
-                      />
-                      <DetailLine
-                        label="Ends"
-                        value={formatDateTime(proposal.endsAt)}
-                      />
-                      <DetailLine
-                        label="Submitted"
-                        value={
-                          proposal.submittedAt
-                            ? formatDateTime(proposal.submittedAt)
-                            : "-"
-                        }
-                      />
-                      <DetailLine
-                        label="Reviewed"
-                        value={
-                          proposal.reviewedAt
-                            ? formatDateTime(proposal.reviewedAt)
-                            : "-"
-                        }
-                      />
-                    </div>
-
-                    {proposal.supplierNotes && (
-                      <NoteBlock
-                        label="Supplier Notes"
-                        value={proposal.supplierNotes}
-                      />
-                    )}
-                    {proposal.adminNotes && (
-                      <NoteBlock
-                        label="Admin Notes"
-                        value={proposal.adminNotes}
-                      />
-                    )}
-                    {proposal.rejectionReason && (
-                      <NoteBlock
-                        label="Rejection Reason"
-                        value={proposal.rejectionReason}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <DashboardPagination
-              page={proposalPage}
-              pageSize={HISTORY_PAGE_SIZE}
-              totalItems={historyTotal}
-              itemLabel="proposals"
-              onPageChange={setProposalPage}
-            />
-          </Card>
+              <DashboardPagination
+                page={proposalPage}
+                pageSize={HISTORY_PAGE_SIZE}
+                totalItems={historyTotal}
+                itemLabel="proposals"
+                onPageChange={setProposalPage}
+              />
+            </Card>
+          </div>
         </div>
-      </div>
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }
@@ -777,12 +783,14 @@ function FormField({
 
 function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/35 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <dl className="min-w-0 border-b border-border py-3">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
-      </p>
-      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
-    </div>
+      </dt>
+      <dd className="mt-2 break-words text-sm font-semibold text-foreground">
+        {value}
+      </dd>
+    </dl>
   );
 }
 

@@ -43,7 +43,7 @@ excluded screens: `src/components/ui/**`, `src/components/shared/**`,
 
 Run `npm run check:dashboard-scope` at every gate. It fails if a protected file
 changes, authenticated selectors appear in excluded surfaces, or the recorded
-23-route inventory drifts without an intentional contract update.
+26-route inventory drifts without an intentional contract update.
 
 ## Visual direction
 
@@ -136,6 +136,13 @@ The type scale remains Geist and is fixed as follows:
 
 ## Standard page patterns
 
+The complete supplier panel follows the Dataset workspace composition: one glass
+frame with connected regions, shared summary dividers and attached toolbars.
+Use bento partitions for distinct tasks, without boxes around every heading or
+control. Remove decorative elevation and hover lifting inside page content;
+preserve existing palette/grid/blur tokens, functional focus and selected states.
+Split forms/details use a connected aside, and action rows reach the frame edges.
+
 1. **Overview:** page header, summary metrics, priority content, recent activity.
 2. **List:** page header, action, toolbar, results, pagination, and mobile cards.
 3. **Detail:** breadcrumb/back action, title and status, main content, side actions.
@@ -173,13 +180,14 @@ a genuine zero or successful empty result.
 
 ## Authenticated route inventory
 
-The refresh covers 23 routes:
+The refresh covers 26 routes:
 
 - Overview: `/dashboard`
 - Analytics: `/dashboard/stats`, `/dashboard/stats/buyers`,
   `/dashboard/stats/datasets`, `/dashboard/stats/datasets/[id]`
 - Draft datasets: `/dashboard/datasets`, `/dashboard/datasets/create`,
-  `/dashboard/datasets/[id]`
+  `/dashboard/datasets/[id]`, `/dashboard/datasets/drafts/[draftId]`,
+  `/dashboard/datasets/prepare`, `/dashboard/datasets/prepare/[draftId]`
 - Supplier datasets: `/dashboard/my-datasets`, `/dashboard/my-datasets/[id]`,
   `/dashboard/my-datasets/[id]/edit`
 - Proposals: `/dashboard/proposals`
@@ -349,7 +357,7 @@ routes.
 The Supplier settings family now covers Profile, Account, and Support with the
 shared dashboard page, settings, form, card, status, progress, pagination,
 feedback, and confirmation patterns. This completes the component migration for
-all 23 authenticated routes; final visual and regression QA remains a separate
+all 23 authenticated routes in the original migration; final visual and regression QA remains a separate
 acceptance pass.
 
 Profile retains the existing supplier-profile, onboarding-status, and logo

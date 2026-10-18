@@ -19,20 +19,20 @@ Authentication and onboarding must not import this barrel. Run
 
 ## Foundation inventory
 
-| Area              | Components                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------- |
-| Page structure    | `DashboardPage`, `DashboardPageHeader`, `DashboardSection`                                  |
-| Summary metrics   | `DashboardMetricCard` with loading, supporting copy, and semantic status                    |
-| Detail and forms  | `DashboardDetailLayout`, `DashboardFormLayout`, `DashboardFormActions`                      |
-| Surfaces          | `DashboardCard` and its header, title, description, content, footer                         |
-| Actions           | `DashboardButton` with primary, secondary, outline, ghost, destructive, and link variants   |
-| Fields            | `DashboardField`, `DashboardChoiceGroupField`, input, textarea, checkbox, radio, and switch |
-| Form feedback     | `DashboardFormErrorSummary`, helper text, connected field errors                            |
-| Choice controls   | Dashboard-scoped Radix select primitives                                                    |
-| Overlays          | Dashboard-scoped select, menu, dialog, sheet, and tooltip primitives                        |
-| Lists             | `DashboardToolbar`, `DashboardDataTable`, mobile record card, pagination                    |
-| Progress          | `DashboardProgress` with determinate and indeterminate states                               |
-| Status and states | Status badge, inline alert, loading, skeleton, empty, error, success                        |
+| Area              | Components                                                                                          |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| Page structure    | `DashboardPage`, `DashboardPageHeader`, `DashboardWorkspace`, `DashboardRegion`, `DashboardSection` |
+| Summary metrics   | `DashboardMetricGroup`, `DashboardMetricCard` with loading, supporting copy, and semantic status    |
+| Detail and forms  | `DashboardDetailLayout`, `DashboardFormLayout`, `DashboardFormActions`                              |
+| Surfaces          | `DashboardCard` and its header, title, description, content, footer                                 |
+| Actions           | `DashboardButton` with primary, secondary, outline, ghost, destructive, and link variants           |
+| Fields            | `DashboardField`, `DashboardChoiceGroupField`, input, textarea, checkbox, radio, and switch         |
+| Form feedback     | `DashboardFormErrorSummary`, helper text, connected field errors                                    |
+| Choice controls   | Dashboard-scoped Radix select primitives                                                            |
+| Overlays          | Dashboard-scoped select, menu, dialog, sheet, and tooltip primitives                                |
+| Lists             | `DashboardToolbar`, `DashboardDataTable`, mobile record card, pagination                            |
+| Progress          | `DashboardProgress` with determinate and indeterminate states                                       |
+| Status and states | Status badge, inline alert, loading, skeleton, empty, error, success                                |
 
 Use one primary button for the dominant action in a page or self-contained
 state. Secondary and outline variants preserve the glass hierarchy for nearby
@@ -51,23 +51,41 @@ belongs on the Kuinbee glass canvas.
     actions={<DashboardButton>Create dataset</DashboardButton>}
   />
 
-  <DashboardSection title="Datasets" description="All datasets in this view.">
-    {/* Toolbar, state, table, and pagination */}
-  </DashboardSection>
+  <DashboardWorkspace>
+    <DashboardToolbar ariaLabel="Search datasets">
+      {/* Search and filters */}
+    </DashboardToolbar>
+    <DashboardRegion>{/* State, table, and pagination */}</DashboardRegion>
+  </DashboardWorkspace>
 </DashboardPage>
 ```
 
 Widths are `wide` (`1400px`), `standard` (`1120px`), and `narrow` (`760px`).
 The page component applies the approved responsive gutters and vertical rhythm.
 
+Use one `DashboardWorkspace` for related page content. Its outer glass surface
+contains connected regions separated by edges. `DashboardRegion` adds the common
+content inset when the child does not already own padding. Avoid nesting another
+workspace or drawing a card around a toolbar, heading, or individual statistic.
+`DashboardToolbar` is an attached row, not a separate glass card.
+
+`DashboardDetailLayout` and `DashboardFormLayout` already provide the workspace.
+Their main sections form a continuous stack; the aside shares the frame and uses
+a divider. A sticky aside stays within its column, and sticky form actions reach
+the frame edges rather than forming a floating rounded panel.
+
+Dashboard content keeps the existing palette, glass surface, background grid and
+blur tokens. Decorative card/button elevation and hover lifting are suppressed;
+keyboard focus, active filters and semantic status indicators remain visible.
+
 ## Summary metrics
 
-Use `DashboardMetricCard` for overview and analytics summary grids. The value
+Use `DashboardMetricGroup` with `DashboardMetricCard` for summary grids. The value
 and surface remain neutral; semantic colour is limited to the optional status
 badge. `status` can contain a trend or a short state label.
 
 ```tsx
-<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+<DashboardMetricGroup aria-label="Dataset summary">
   <DashboardMetricCard
     label="Published datasets"
     value={publishedCount}
@@ -78,12 +96,17 @@ badge. `status` can contain a trend or a short state label.
     loading={loading}
     loadingLabel="Loading published dataset count"
   />
-</div>
+</DashboardMetricGroup>
 ```
 
 Provide a specific `loadingLabel` when the visible label alone does not fully
 describe the pending metric. Icons are optional and must reinforce the metric,
 not decorate the card.
+
+Metric groups use two mobile columns and up to four desktop columns by default.
+An incomplete final row fills the remaining width. Use `columns` only where a
+specific summary calls for it. Interactive metrics retain their button semantics,
+pressed state and keyboard handling; their focus outline stays inside the frame.
 
 ## Accessible fields
 

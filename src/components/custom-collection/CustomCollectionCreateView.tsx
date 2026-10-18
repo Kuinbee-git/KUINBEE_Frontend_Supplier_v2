@@ -10,6 +10,7 @@ import {
   DashboardButton,
   DashboardInlineAlert,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
 } from "@/components/dashboard";
 import { customCollectionApi } from "@/lib/api/custom-collection";
@@ -62,26 +63,27 @@ export function CustomCollectionCreateView() {
           </span>
         }
       />
+      <DashboardWorkspace>
+        <DashboardInlineAlert tone="info" title="This creates a private draft">
+          <div>
+            <p>
+              A JPEG, PNG, or WebP cover image under 5 MB is required before
+              submission. Your service becomes public only after Kuinbee
+              approves it.
+            </p>
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium">
+              <ImagePlus className="size-3.5" aria-hidden="true" /> Cover setup
+              comes next
+            </p>
+          </div>
+        </DashboardInlineAlert>
 
-      <DashboardInlineAlert tone="info" title="This creates a private draft">
-        <div>
-          <p>
-            A JPEG, PNG, or WebP cover image under 5 MB is required before
-            submission. Your service becomes public only after Kuinbee approves
-            it.
-          </p>
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium">
-            <ImagePlus className="size-3.5" aria-hidden="true" /> Cover setup
-            comes next
-          </p>
-        </div>
-      </DashboardInlineAlert>
-
-      <CustomCollectionForm
-        submitLabel="Create draft"
-        busy={saving}
-        onSubmit={create}
-      />
+        <CustomCollectionForm
+          submitLabel="Create draft"
+          busy={saving}
+          onSubmit={create}
+        />
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }

@@ -25,8 +25,10 @@ import {
   DashboardInlineAlert,
   DashboardLoadingState,
   DashboardMetricCard,
+  DashboardMetricGroup,
   DashboardMobileRecordCard,
   DashboardPage,
+  DashboardWorkspace,
   DashboardPageHeader,
   DashboardPagination,
   DashboardProgress,
@@ -472,260 +474,261 @@ export default function SupplierReviewsPage() {
           </DashboardButton>
         }
       />
+      <DashboardWorkspace>
+        {selectedDataset ? (
+          loadingReviews ? (
+            <DashboardLoadingState
+              label={`Loading reviews for ${selectedDataset.title}`}
+              variant="skeleton"
+              rows={5}
+            />
+          ) : reviewError ? (
+            <DashboardErrorState
+              title="Reviews could not be loaded"
+              message={reviewError}
+              onRetry={() => void loadReviews(selectedDataset.id)}
+            />
+          ) : reviews.length === 0 ? (
+            <DashboardEmptyState
+              icon={Star}
+              title="No reviews yet"
+              description="Buyer reviews will appear here after they are submitted for this dataset."
+            />
+          ) : (
+            <>
+              <DashboardCard>
+                <DashboardCardHeader>
+                  <DashboardCardTitle>Rating distribution</DashboardCardTitle>
+                  <DashboardCardDescription>
+                    A breakdown of all ratings submitted for this dataset.
+                  </DashboardCardDescription>
+                </DashboardCardHeader>
+                <DashboardCardContent className="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/35 px-5 py-6 text-center">
+                    <p className="text-4xl font-semibold tracking-tight text-foreground tabular-nums">
+                      {Number(selectedDataset.rating ?? 0).toFixed(1)}
+                    </p>
+                    <StarRating
+                      rating={Number(selectedDataset.rating ?? 0)}
+                      size="large"
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {reviews.length} review{reviews.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div className="grid gap-3">
+                    {distribution.map(({ star, count }) => (
+                      <div
+                        key={star}
+                        className="grid grid-cols-[minmax(0,1fr)_2rem] items-end gap-3"
+                      >
+                        <DashboardProgress
+                          label={`${star} ${star === 1 ? "star" : "stars"}`}
+                          value={count}
+                          max={reviews.length}
+                          showValue={false}
+                        />
+                        <span className="pb-0.5 text-right text-sm text-muted-foreground tabular-nums">
+                          {count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </DashboardCardContent>
+              </DashboardCard>
 
-      {selectedDataset ? (
-        loadingReviews ? (
-          <DashboardLoadingState
-            label={`Loading reviews for ${selectedDataset.title}`}
-            variant="skeleton"
-            rows={5}
-          />
-        ) : reviewError ? (
+              <section aria-label="Buyer reviews" className="space-y-4">
+                <DashboardDataTable
+                  caption={`Buyer reviews for ${selectedDataset.title}`}
+                  items={visibleReviews}
+                  columns={reviewColumns}
+                  getRowId={(review) => review.id}
+                  renderMobileItem={(review) => (
+                    <DashboardMobileRecordCard>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <StarRating rating={review.rating} />
+                          <span className="text-sm font-semibold tabular-nums text-foreground">
+                            {review.rating}/5
+                          </span>
+                        </div>
+                        <time
+                          className="text-xs text-muted-foreground"
+                          dateTime={review.createdAt}
+                        >
+                          {formatDate(review.createdAt)}
+                        </time>
+                      </div>
+                      <p
+                        className={cn(
+                          "mt-4 whitespace-pre-wrap border-t border-border pt-4 text-sm leading-6",
+                          review.comment
+                            ? "text-foreground"
+                            : "italic text-muted-foreground"
+                        )}
+                      >
+                        {review.comment ?? "Rating only — no written review"}
+                      </p>
+                    </DashboardMobileRecordCard>
+                  )}
+                />
+                <DashboardPagination
+                  page={safeReviewPage}
+                  pageSize={TABLE_PAGE_SIZE}
+                  totalItems={reviews.length}
+                  itemLabel="reviews"
+                  onPageChange={setReviewPage}
+                />
+              </section>
+            </>
+          )
+        ) : loadError ? (
           <DashboardErrorState
             title="Reviews could not be loaded"
-            message={reviewError}
-            onRetry={() => void loadReviews(selectedDataset.id)}
+            message={loadError}
+            onRetry={() => void loadDatasets("initial")}
           />
-        ) : reviews.length === 0 ? (
+        ) : loading ? (
+          <DashboardLoadingState
+            label="Loading dataset reviews"
+            variant="skeleton"
+            rows={6}
+          />
+        ) : datasets.length === 0 ? (
           <DashboardEmptyState
-            icon={Star}
-            title="No reviews yet"
-            description="Buyer reviews will appear here after they are submitted for this dataset."
+            icon={BarChart3}
+            title="No datasets available"
+            description="Publish a dataset to begin collecting ratings and buyer reviews."
           />
         ) : (
           <>
-            <DashboardCard>
-              <DashboardCardHeader>
-                <DashboardCardTitle>Rating distribution</DashboardCardTitle>
-                <DashboardCardDescription>
-                  A breakdown of all ratings submitted for this dataset.
-                </DashboardCardDescription>
-              </DashboardCardHeader>
-              <DashboardCardContent className="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
-                <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/35 px-5 py-6 text-center">
-                  <p className="text-4xl font-semibold tracking-tight text-foreground tabular-nums">
-                    {Number(selectedDataset.rating ?? 0).toFixed(1)}
-                  </p>
-                  <StarRating
-                    rating={Number(selectedDataset.rating ?? 0)}
-                    size="large"
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {reviews.length} review{reviews.length === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <div className="grid gap-3">
-                  {distribution.map(({ star, count }) => (
-                    <div
-                      key={star}
-                      className="grid grid-cols-[minmax(0,1fr)_2rem] items-end gap-3"
-                    >
-                      <DashboardProgress
-                        label={`${star} ${star === 1 ? "star" : "stars"}`}
-                        value={count}
-                        max={reviews.length}
-                        showValue={false}
-                      />
-                      <span className="pb-0.5 text-right text-sm text-muted-foreground tabular-nums">
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </DashboardCardContent>
-            </DashboardCard>
-
-            <section aria-label="Buyer reviews" className="space-y-4">
-              <DashboardDataTable
-                caption={`Buyer reviews for ${selectedDataset.title}`}
-                items={visibleReviews}
-                columns={reviewColumns}
-                getRowId={(review) => review.id}
-                renderMobileItem={(review) => (
-                  <DashboardMobileRecordCard>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <StarRating rating={review.rating} />
-                        <span className="text-sm font-semibold tabular-nums text-foreground">
-                          {review.rating}/5
-                        </span>
-                      </div>
-                      <time
-                        className="text-xs text-muted-foreground"
-                        dateTime={review.createdAt}
-                      >
-                        {formatDate(review.createdAt)}
-                      </time>
-                    </div>
-                    <p
-                      className={cn(
-                        "mt-4 whitespace-pre-wrap border-t border-border pt-4 text-sm leading-6",
-                        review.comment
-                          ? "text-foreground"
-                          : "italic text-muted-foreground"
-                      )}
-                    >
-                      {review.comment ?? "Rating only — no written review"}
-                    </p>
-                  </DashboardMobileRecordCard>
-                )}
+            {refreshError ? (
+              <DashboardInlineAlert
+                tone="danger"
+                title="Reviews could not be refreshed"
+                message={refreshError}
+                action={
+                  <DashboardButton
+                    variant="outline"
+                    size="compact"
+                    onClick={() => void loadDatasets("refresh")}
+                    disabled={refreshing}
+                  >
+                    Try again
+                  </DashboardButton>
+                }
               />
-              <DashboardPagination
-                page={safeReviewPage}
-                pageSize={TABLE_PAGE_SIZE}
-                totalItems={reviews.length}
-                itemLabel="reviews"
-                onPageChange={setReviewPage}
+            ) : null}
+
+            <DashboardMetricGroup aria-label="Review summary">
+              <DashboardMetricCard
+                label="Total reviews"
+                value={totalReviews}
+                supportingText="Buyer reviews across your datasets"
               />
-            </section>
-          </>
-        )
-      ) : loadError ? (
-        <DashboardErrorState
-          title="Reviews could not be loaded"
-          message={loadError}
-          onRetry={() => void loadDatasets("initial")}
-        />
-      ) : loading ? (
-        <DashboardLoadingState
-          label="Loading dataset reviews"
-          variant="skeleton"
-          rows={6}
-        />
-      ) : datasets.length === 0 ? (
-        <DashboardEmptyState
-          icon={BarChart3}
-          title="No datasets available"
-          description="Publish a dataset to begin collecting ratings and buyer reviews."
-        />
-      ) : (
-        <>
-          {refreshError ? (
-            <DashboardInlineAlert
-              tone="danger"
-              title="Reviews could not be refreshed"
-              message={refreshError}
-              action={
-                <DashboardButton
-                  variant="outline"
-                  size="compact"
-                  onClick={() => void loadDatasets("refresh")}
-                  disabled={refreshing}
-                >
-                  Try again
-                </DashboardButton>
-              }
-            />
-          ) : null}
+              <DashboardMetricCard
+                label="Average rating"
+                value={overallAverage > 0 ? overallAverage.toFixed(1) : "—"}
+                supportingText="Average of rated dataset scores"
+                status={overallAverage > 0 ? "Out of 5" : "Not rated"}
+                statusTone={
+                  overallAverage > 0
+                    ? getRatingTone(overallAverage, totalReviews)
+                    : "neutral"
+                }
+              />
+              <DashboardMetricCard
+                label="Datasets reviewed"
+                value={datasetsWithReviews}
+                supportingText={`Of ${datasets.length} total datasets`}
+              />
+            </DashboardMetricGroup>
 
-          <section
-            aria-label="Review summary"
-            className="grid gap-4 sm:grid-cols-3"
-          >
-            <DashboardMetricCard
-              label="Total reviews"
-              value={totalReviews}
-              supportingText="Buyer reviews across your datasets"
-            />
-            <DashboardMetricCard
-              label="Average rating"
-              value={overallAverage > 0 ? overallAverage.toFixed(1) : "—"}
-              supportingText="Average of rated dataset scores"
-              status={overallAverage > 0 ? "Out of 5" : "Not rated"}
-              statusTone={
-                overallAverage > 0
-                  ? getRatingTone(overallAverage, totalReviews)
-                  : "neutral"
-              }
-            />
-            <DashboardMetricCard
-              label="Datasets reviewed"
-              value={datasetsWithReviews}
-              supportingText={`Of ${datasets.length} total datasets`}
-            />
-          </section>
+            <DashboardToolbar ariaLabel="Search dataset reviews">
+              <DashboardSearchField
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+                label="Search dataset reviews"
+                placeholder="Search by dataset title or ID"
+              />
+            </DashboardToolbar>
 
-          <DashboardToolbar ariaLabel="Search dataset reviews">
-            <DashboardSearchField
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              label="Search dataset reviews"
-              placeholder="Search by dataset title or ID"
-            />
-          </DashboardToolbar>
-
-          {filteredDatasets.length === 0 ? (
-            <DashboardEmptyState
-              filtered
-              icon={MessageSquareText}
-              title="No datasets match this search"
-              description="Try a different dataset title or reference."
-              onClear={() => setSearchQuery("")}
-            />
-          ) : (
-            <section aria-label="Dataset review overview" className="space-y-4">
-              <DashboardDataTable
-                caption="Dataset review overview"
-                items={visibleDatasets}
-                columns={datasetColumns}
-                getRowId={(dataset) => dataset.id}
-                renderMobileItem={(dataset) => {
-                  const rating = Number(dataset.rating ?? 0);
-                  const count = dataset.reviewCount ?? 0;
-                  return (
-                    <DashboardMobileRecordCard>
-                      <h3 className="truncate text-sm font-semibold text-foreground">
-                        {dataset.title}
-                      </h3>
-                      <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                        {dataset.datasetUniqueId}
-                      </p>
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {rating > 0 ? (
-                          <>
-                            <StarRating rating={rating} />
-                            <span className="text-sm font-semibold tabular-nums text-foreground">
-                              {rating.toFixed(1)}
+            {filteredDatasets.length === 0 ? (
+              <DashboardEmptyState
+                filtered
+                icon={MessageSquareText}
+                title="No datasets match this search"
+                description="Try a different dataset title or reference."
+                onClear={() => setSearchQuery("")}
+              />
+            ) : (
+              <section
+                aria-label="Dataset review overview"
+                className="space-y-4"
+              >
+                <DashboardDataTable
+                  caption="Dataset review overview"
+                  items={visibleDatasets}
+                  columns={datasetColumns}
+                  getRowId={(dataset) => dataset.id}
+                  renderMobileItem={(dataset) => {
+                    const rating = Number(dataset.rating ?? 0);
+                    const count = dataset.reviewCount ?? 0;
+                    return (
+                      <DashboardMobileRecordCard>
+                        <h3 className="truncate text-sm font-semibold text-foreground">
+                          {dataset.title}
+                        </h3>
+                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                          {dataset.datasetUniqueId}
+                        </p>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          {rating > 0 ? (
+                            <>
+                              <StarRating rating={rating} />
+                              <span className="text-sm font-semibold tabular-nums text-foreground">
+                                {rating.toFixed(1)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Not rated
                             </span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            Not rated
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            · {count} review{count === 1 ? "" : "s"}
                           </span>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          · {count} review{count === 1 ? "" : "s"}
-                        </span>
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                        <DashboardStatusBadge
-                          tone={getRatingTone(rating, count)}
-                        >
-                          {getRatingLabel(rating, count)}
-                        </DashboardStatusBadge>
-                        <DashboardButton
-                          variant="outline"
-                          size="compact"
-                          onClick={() => openDataset(dataset)}
-                        >
-                          View reviews <ChevronRight aria-hidden="true" />
-                        </DashboardButton>
-                      </div>
-                    </DashboardMobileRecordCard>
-                  );
-                }}
-              />
-              <DashboardPagination
-                page={safeDatasetPage}
-                pageSize={TABLE_PAGE_SIZE}
-                totalItems={filteredDatasets.length}
-                itemLabel="datasets"
-                onPageChange={setDatasetPage}
-              />
-            </section>
-          )}
-        </>
-      )}
+                        </div>
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                          <DashboardStatusBadge
+                            tone={getRatingTone(rating, count)}
+                          >
+                            {getRatingLabel(rating, count)}
+                          </DashboardStatusBadge>
+                          <DashboardButton
+                            variant="outline"
+                            size="compact"
+                            onClick={() => openDataset(dataset)}
+                          >
+                            View reviews <ChevronRight aria-hidden="true" />
+                          </DashboardButton>
+                        </div>
+                      </DashboardMobileRecordCard>
+                    );
+                  }}
+                />
+                <DashboardPagination
+                  page={safeDatasetPage}
+                  pageSize={TABLE_PAGE_SIZE}
+                  totalItems={filteredDatasets.length}
+                  itemLabel="datasets"
+                  onPageChange={setDatasetPage}
+                />
+              </section>
+            )}
+          </>
+        )}
+      </DashboardWorkspace>
     </DashboardPage>
   );
 }
