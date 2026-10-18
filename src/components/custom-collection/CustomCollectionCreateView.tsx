@@ -3,14 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ImagePlus, Sparkles } from "lucide-react";
+import { ArrowLeft, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   DashboardButton,
-  DashboardInlineAlert,
+  DashboardFormLayout,
   DashboardPage,
-  DashboardWorkspace,
+  DashboardRegion,
   DashboardPageHeader,
 } from "@/components/dashboard";
 import { customCollectionApi } from "@/lib/api/custom-collection";
@@ -41,7 +41,7 @@ export function CustomCollectionCreateView() {
   };
 
   return (
-    <DashboardPage width="standard">
+    <DashboardPage width="wide">
       <DashboardPageHeader
         breadcrumbs={
           <DashboardButton
@@ -57,33 +57,64 @@ export function CustomCollectionCreateView() {
         }
         title="Create a custom collection service"
         description="Describe a capability your team can deliver consistently. You can add the cover image and review the marketplace presentation after creating the draft."
-        meta={
-          <span className="inline-flex items-center gap-2">
-            <Sparkles className="size-4" aria-hidden="true" /> Private draft
-          </span>
-        }
       />
-      <DashboardWorkspace>
-        <DashboardInlineAlert tone="info" title="This creates a private draft">
-          <div>
-            <p>
-              A JPEG, PNG, or WebP cover image under 5 MB is required before
-              submission. Your service becomes public only after Kuinbee
-              approves it.
-            </p>
-            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium">
-              <ImagePlus className="size-3.5" aria-hidden="true" /> Cover setup
-              comes next
-            </p>
-          </div>
-        </DashboardInlineAlert>
-
+      <DashboardFormLayout
+        asideAriaLabel="Service draft guidance"
+        aside={
+          <DashboardRegion className="space-y-5">
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold">
+                From draft to marketplace
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Complete the four steps, then create your private draft. Moving
+                between steps does not save it.
+              </p>
+            </div>
+            <ol className="space-y-4 text-sm leading-6">
+              <li>
+                <strong className="block font-medium">
+                  1. Create your draft
+                </strong>
+                <span className="text-muted-foreground">
+                  Review your service details before saving.
+                </span>
+              </li>
+              <li>
+                <strong className="block font-medium">
+                  2. Add a cover and submit
+                </strong>
+                <span className="text-muted-foreground">
+                  Submission for Kuinbee review is a separate action.
+                </span>
+              </li>
+              <li>
+                <strong className="block font-medium">
+                  3. Publish after approval
+                </strong>
+                <span className="text-muted-foreground">
+                  Your service can become public after Kuinbee approves it.
+                </span>
+              </li>
+            </ol>
+            <div className="space-y-2 border-t border-border pt-5">
+              <h3 className="flex items-center gap-2 text-sm font-medium">
+                <ImagePlus aria-hidden="true" className="size-4" /> Cover image
+              </h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Add a JPEG, PNG or WebP image up to 5 MB after creating the
+                draft. It is required before submission.
+              </p>
+            </div>
+          </DashboardRegion>
+        }
+      >
         <CustomCollectionForm
           submitLabel="Create draft"
           busy={saving}
           onSubmit={create}
         />
-      </DashboardWorkspace>
+      </DashboardFormLayout>
     </DashboardPage>
   );
 }

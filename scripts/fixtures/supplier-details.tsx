@@ -4,6 +4,10 @@ import { DatasetDetail } from "../../src/components/datasets/DatasetDetail";
 import { MyDatasetDetail } from "../../src/components/datasets/MyDatasetDetail";
 import { DelistedDatasetEdit } from "../../src/components/datasets/DelistedDatasetEdit";
 import { CreateDataset } from "../../src/components/datasets/CreateDataset";
+import { MyDatasets } from "../../src/components/datasets/MyDatasets";
+import { SubmittedProposals } from "../../src/components/datasets/SubmittedProposals";
+import { CustomCollectionCreateView } from "../../src/components/custom-collection/CustomCollectionCreateView";
+import { DatasetSupplierProposalsResponseSchema } from "@kuinbee/dataset-preparation-contracts";
 import { CustomCollectionForm } from "../../src/components/custom-collection/CustomCollectionForm";
 import { CustomCollectionServiceDetail } from "../../src/components/custom-collection/CustomCollectionServiceDetail";
 import {
@@ -24,7 +28,10 @@ import type {
   ProposalDetailsResponse,
   DatasetPricingVersion,
 } from "../../src/types/dataset-proposal.types";
-import type { DatasetDetailsResponse } from "../../src/types/dataset.types";
+import type {
+  DatasetDetailsResponse,
+  ListDatasetsResponse,
+} from "../../src/types/dataset.types";
 import type {
   CustomCollectionRevisionInput,
   CustomCollectionRevision,
@@ -39,6 +46,75 @@ const category = {
   createdAt: stamp,
   createdBy: "fixture",
 };
+export const categoryFixtures = [
+  category,
+  ...Array.from({ length: 19 }, (_, index) => ({
+    ...category,
+    id: `secondary-${index}`,
+    name: `Additional category ${String(index + 1).padStart(2, "0")}`,
+  })),
+];
+export const datasetInventoryFixture: ListDatasetsResponse = {
+  page: 1,
+  pageSize: 10,
+  total: 4,
+  summary: {
+    total: 4,
+    byStatus: {
+      SUBMITTED: 1,
+      UNDER_REVIEW: 0,
+      VERIFIED: 1,
+      PUBLISHED: 0,
+      DELISTED: 1,
+      ARCHIVED: 1,
+    },
+    byVisibility: { PUBLIC: 4, PRIVATE: 0, UNLISTED: 0 },
+  },
+  items: (["SUBMITTED", "VERIFIED", "DELISTED", "ARCHIVED"] as const).map(
+    (status, index) => ({
+      id: `c${String(index + 400).padStart(24, "0")}`,
+      datasetUniqueId: `D0000000${index + 400}`,
+      title: `Collection ${status.toLowerCase()}`,
+      status,
+      visibility: "PUBLIC",
+      publishedAt: null,
+      publishedUploadId: null,
+      updatedAt: stamp,
+      rating: null,
+      reviewCount: 0,
+    })
+  ),
+};
+export const proposalInventoryFixture =
+  DatasetSupplierProposalsResponseSchema.parse({
+    page: 1,
+    pageSize: 10,
+    total: 4,
+    summary: {
+      total: 4,
+      byVerificationStatus: {
+        SUBMITTED: 1,
+        UNDER_REVIEW: 1,
+        CHANGES_REQUESTED: 0,
+        RESUBMITTED: 0,
+        VERIFIED: 1,
+        REJECTED: 1,
+      },
+    },
+    items: (["SUBMITTED", "UNDER_REVIEW", "REJECTED", "VERIFIED"] as const).map(
+      (verificationStatus, index) => ({
+        id: `c${String(index + 500).padStart(24, "0")}`,
+        datasetUniqueId: `D0000000${index + 500}`,
+        title: `Proposal ${verificationStatus.toLowerCase()}`,
+        verificationStatus,
+        status: verificationStatus === "VERIFIED" ? "VERIFIED" : "SUBMITTED",
+        primaryCategory: null,
+        createdAt: stamp,
+        updatedAt: stamp,
+        material: { representation: "LEGACY", currentUploadId: null },
+      })
+    ),
+  });
 const source = {
   id: "detail-source",
   name: "Supplier collection",
@@ -345,6 +421,11 @@ export function SupplierDetailsFixture({
   else if (["edit", "edit-correction", "edit-locked"].includes(view))
     content = <DelistedDatasetEdit datasetId={fixtureId} />;
   else if (view === "create") content = <CreateDataset isDark={dark} />;
+  else if (["inventory", "inventory-delisted"].includes(view))
+    content = <MyDatasets isDark={dark} />;
+  else if (view === "inventory-proposals")
+    content = <SubmittedProposals isDark={dark} />;
+  else if (view === "service-create") content = <CustomCollectionCreateView />;
   else if (["service-detail", "service-edit"].includes(view))
     content = <CustomCollectionServiceDetail serviceId={fixtureId} />;
   else if (view === "service-review")

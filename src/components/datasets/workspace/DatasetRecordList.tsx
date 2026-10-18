@@ -53,6 +53,11 @@ export function DatasetRecordList<TItem>({
 
   return (
     <DashboardDataTable
+      className={
+        !framed
+          ? "[&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4 md:[&_tr>:first-child]:pl-6 md:[&_tr>:last-child]:pr-6"
+          : undefined
+      }
       caption={caption}
       busy={busy}
       items={items}
@@ -117,7 +122,10 @@ export function DatasetMobileRecordCard({
   framed?: boolean;
 }) {
   return (
-    <DashboardMobileRecordCard framed={framed}>
+    <DashboardMobileRecordCard
+      framed={framed}
+      className={!framed ? "px-4 md:px-6" : undefined}
+    >
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="size-4" aria-hidden="true" />

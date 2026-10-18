@@ -278,8 +278,21 @@ editors divide field groups without drawing another card around each group.
 Keep record boundaries, selectable options, validation messages and confirmation
 controls when their borders communicate meaning.
 
+Dataset inventories keep their summary strip, toolbar, record list and pagination
+inside one `DashboardWorkspace`. Use `framed={false}` for its record list and
+mobile records; align the shared content rail at 16px on mobile and 24px on desktop.
+Desktop filter triggers have a bounded width so they share the search row.
+
+Custom-service creation uses `DashboardFormLayout` with an attached guidance
+column. Secondary categories start collapsed and support search without losing
+selected IDs. Form actions follow the content without covering fields; the status
+must distinguish unsaved values from a saved existing draft.
+
 `npm run test:details` renders populated, typed legacy proposal/publication and
 update states, all inline editors, creation, and custom-service detail/edit/review
-states. It checks both themes at 1440/1024/768/390px, opens and cancels editors
-and dialogs, and prohibits API mutations. This is component qualification with
-synthetic local responses, not hosted legacy-record or business acceptance.
+states. The original 120 cases check both themes at 1440/1024/768/390px; 40 more
+cover inventories, the Delisted shortcut, proposal filters and service creation,
+including 1920px. Checks cover URL/filter continuity, category search and the
+ten-category cap, footer placement, editor cancellation and dialog dismissal.
+API mutations are prohibited. These are synthetic local component fixtures,
+not hosted legacy-record or business acceptance.

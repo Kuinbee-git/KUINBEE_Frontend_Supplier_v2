@@ -54,7 +54,7 @@ export function DatasetFilterToolbar({
       {filters.length > 0 && (
         <DashboardToolbarFilters
           ariaLabel="Dataset filters"
-          className={filters.length === 1 ? "lg:[&>*]:w-56" : undefined}
+          className="lg:shrink-0 lg:flex-nowrap"
         >
           {filters.map((filter) => (
             <DashboardSelect
@@ -62,7 +62,10 @@ export function DatasetFilterToolbar({
               value={filter.value}
               onValueChange={filter.onValueChange}
             >
-              <DashboardSelectTrigger aria-label={filter.ariaLabel}>
+              <DashboardSelectTrigger
+                className="lg:w-44"
+                aria-label={filter.ariaLabel}
+              >
                 <DashboardSelectValue />
               </DashboardSelectTrigger>
               <DashboardSelectContent>
@@ -78,7 +81,12 @@ export function DatasetFilterToolbar({
       )}
 
       {hasCriteria && (
-        <DashboardButton type="button" variant="ghost" onClick={onClear}>
+        <DashboardButton
+          type="button"
+          variant="ghost"
+          onClick={onClear}
+          aria-label="Clear filters"
+        >
           <X aria-hidden="true" /> Clear
           {activeFilterCount > 0 && (
             <span className="dashboard-tone-neutral rounded-full border px-1.5 py-0.5 text-[11px]">

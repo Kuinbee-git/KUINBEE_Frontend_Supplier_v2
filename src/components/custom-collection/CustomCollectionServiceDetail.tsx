@@ -579,6 +579,7 @@ export function CustomCollectionServiceDetail({
               </Button>
             </div>
             <CustomCollectionForm
+              isExistingDraft
               initialValues={formInitialValues}
               submitLabel="Save draft"
               busy={saving}

@@ -4,7 +4,7 @@ import { useComponentRequest } from "@/hooks/useComponentRequest";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Archive,
   ArrowRight,
@@ -15,7 +15,11 @@ import {
   Plus,
 } from "lucide-react";
 
-import { DashboardButton, DashboardPagination } from "@/components/dashboard";
+import {
+  DashboardButton,
+  DashboardPagination,
+  DashboardWorkspace,
+} from "@/components/dashboard";
 import { listMyDatasets } from "@/lib/api";
 import type {
   DatasetStatus,
@@ -92,6 +96,7 @@ interface DatasetItem {
 }
 
 export function MyDatasets({ isDark = false }: MyDatasetsProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [datasets, setDatasets] = useState<DatasetItem[]>([]);
   const [totalDatasets, setTotalDatasets] = useState(0);
@@ -109,12 +114,18 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
   const fetchRequestIdRef = useRef(0);
 
   const queryStatus = searchParams.get("status");
-  const [lastQueryStatus, setLastQueryStatus] = useState<string | null | undefined>(undefined);
+  const [lastQueryStatus, setLastQueryStatus] = useState<
+    string | null | undefined
+  >(undefined);
   if (lastQueryStatus !== queryStatus) {
     setLastQueryStatus(queryStatus);
     setStatusFilter(
-      queryStatus === "VERIFIED" || queryStatus === "PUBLISHED" ||
-      queryStatus === "DELISTED" || queryStatus === "ARCHIVED" ? queryStatus : "ALL"
+      queryStatus === "VERIFIED" ||
+        queryStatus === "PUBLISHED" ||
+        queryStatus === "DELISTED" ||
+        queryStatus === "ARCHIVED"
+        ? queryStatus
+        : "ALL"
     );
   }
 
@@ -161,10 +172,19 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
     }
   }, [debouncedSearchQuery, page, statusFilter, visibilityFilter]);
 
-  useComponentRequest(() => fetchDatasets(), [debouncedSearchQuery, page, statusFilter, visibilityFilter]);
+  useComponentRequest(
+    () => fetchDatasets(),
+    [debouncedSearchQuery, page, statusFilter, visibilityFilter]
+  );
 
-  const [pageContext, setPageContext] = useState({ statusFilter, visibilityFilter });
-  if (pageContext.statusFilter !== statusFilter || pageContext.visibilityFilter !== visibilityFilter) {
+  const [pageContext, setPageContext] = useState({
+    statusFilter,
+    visibilityFilter,
+  });
+  if (
+    pageContext.statusFilter !== statusFilter ||
+    pageContext.visibilityFilter !== visibilityFilter
+  ) {
     setPageContext({ statusFilter, visibilityFilter });
     setPage(1);
   }
@@ -218,10 +238,21 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
     statusFilter !== "ALL" ||
     visibilityFilter !== "ALL";
 
+  const changeStatus = (status: FilterStatus) => {
+    setStatusFilter(status);
+    const params = new URLSearchParams(searchParams.toString());
+    if (status === "ALL") params.delete("status");
+    else params.set("status", status);
+    const query = params.toString();
+    router.replace(`/dashboard/my-datasets${query ? `?${query}` : ""}`, {
+      scroll: false,
+    });
+  };
+
   const clearFilters = () => {
     setSearchQuery("");
     setDebouncedSearchQuery("");
-    setStatusFilter("ALL");
+    changeStatus("ALL");
     setVisibilityFilter("ALL");
     setPage(1);
   };
@@ -270,8 +301,12 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
   return (
     <DatasetWorkspace>
       <DatasetPageHeader
-        title="My Datasets"
-        description="Manage verified datasets, control marketplace visibility, and keep published listings current."
+        title={queryStatus === "DELISTED" ? "Delisted edits" : "My Datasets"}
+        description={
+          queryStatus === "DELISTED"
+            ? "Review delisted datasets, prepare updates, and track their progress through review."
+            : "Manage verified datasets, control marketplace visibility, and keep published listings current."
+        }
         action={
           <DashboardButton asChild className="w-full sm:w-auto">
             <Link href="/dashboard/datasets/create">
@@ -280,115 +315,121 @@ export function MyDatasets({ isDark = false }: MyDatasetsProps) {
           </DashboardButton>
         }
       />
-
-      <section aria-label="Dataset lifecycle overview">
-        <DatasetMetricStrip
-          metrics={metrics}
-          activeValue={statusFilter}
-          onSelect={setStatusFilter}
-          loading={loading && datasetSummary.total === 0}
-        />
-      </section>
-
-      <DatasetFilterToolbar
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search title or dataset ID"
-        searchAriaLabel="Search datasets by title or dataset ID"
-        filters={[
-          {
-            value: statusFilter,
-            onValueChange: (value) => setStatusFilter(value as FilterStatus),
-            options: STATUS_OPTIONS,
-            ariaLabel: "Filter datasets by status",
-          },
-          {
-            value: visibilityFilter,
-            onValueChange: (value) =>
-              setVisibilityFilter(value as FilterVisibility),
-            options: VISIBILITY_OPTIONS,
-            ariaLabel: "Filter datasets by visibility",
-          },
-        ]}
-        activeFilterCount={
-          (statusFilter !== "ALL" ? 1 : 0) +
-          (visibilityFilter !== "ALL" ? 1 : 0)
-        }
-        onClear={clearFilters}
-        isDark={isDark}
-      />
-
-      {error && (
-        <DatasetErrorBanner
-          title="We could not load your datasets"
-          message={error}
-          onRetry={fetchDatasets}
-        />
-      )}
-
-      <section aria-labelledby="dataset-inventory-title">
-        <DatasetInventoryHeader
-          id="dataset-inventory-title"
-          title="Dataset inventory"
-          loading={loading}
-          total={totalDatasets}
-          singularLabel="dataset"
-          pluralLabel="datasets"
-        />
-
-        {loading && datasets.length === 0 ? (
-          <DatasetListSkeleton />
-        ) : !error && datasets.length === 0 ? (
-          <DatasetEmptyState
-            filtered={hasFilters}
-            onClear={clearFilters}
-            title="No verified datasets yet"
-            description="Create a dataset proposal and submit it for verification. Approved datasets will appear here."
-            filteredTitle="No datasets match this view"
-            filteredDescription="Try another title, dataset ID, status, or visibility setting."
-            action={
-              <DashboardButton asChild>
-                <Link href="/dashboard/datasets/create">
-                  <Plus /> Create dataset
-                </Link>
-              </DashboardButton>
-            }
+      <DashboardWorkspace data-dataset-inventory="true">
+        <section aria-label="Dataset lifecycle overview">
+          <DatasetMetricStrip
+            metrics={metrics}
+            activeValue={statusFilter}
+            onSelect={changeStatus}
+            loading={loading && datasetSummary.total === 0}
           />
-        ) : datasets.length > 0 ? (
-          <>
-            <DatasetRecordList
-              items={datasets}
-              busy={loading}
-              caption="Supplier datasets"
-              columns={columns}
-              getKey={(dataset) => dataset.id}
-              renderMobile={(dataset) => (
-                <DatasetMobileRecordCard
-                  href={`/dashboard/my-datasets/${dataset.id}`}
-                  title={dataset.title}
-                  identifier={dataset.datasetUniqueId}
-                  badges={
-                    <>
-                      <PublishStatusBadge status={dataset.status} />
-                      <DatasetVisibilityBadge visibility={dataset.visibility} />
-                    </>
-                  }
-                  supportingText={`Updated ${formatDatasetDate(dataset.updatedAt)}`}
-                  actionLabel={getDatasetActionLabel(dataset.status)}
-                />
-              )}
+        </section>
+
+        <DatasetFilterToolbar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search title or dataset ID"
+          searchAriaLabel="Search datasets by title or dataset ID"
+          filters={[
+            {
+              value: statusFilter,
+              onValueChange: (value) => changeStatus(value as FilterStatus),
+              options: STATUS_OPTIONS,
+              ariaLabel: "Filter datasets by status",
+            },
+            {
+              value: visibilityFilter,
+              onValueChange: (value) =>
+                setVisibilityFilter(value as FilterVisibility),
+              options: VISIBILITY_OPTIONS,
+              ariaLabel: "Filter datasets by visibility",
+            },
+          ]}
+          activeFilterCount={
+            (statusFilter !== "ALL" ? 1 : 0) +
+            (visibilityFilter !== "ALL" ? 1 : 0)
+          }
+          onClear={clearFilters}
+          isDark={isDark}
+        />
+
+        {error && (
+          <DatasetErrorBanner
+            title="We could not load your datasets"
+            message={error}
+            onRetry={fetchDatasets}
+          />
+        )}
+
+        <section aria-labelledby="dataset-inventory-title">
+          <DatasetInventoryHeader
+            className="mb-0 px-4 py-5 md:px-6"
+            id="dataset-inventory-title"
+            title="Dataset inventory"
+            loading={loading}
+            total={totalDatasets}
+            singularLabel="dataset"
+            pluralLabel="datasets"
+          />
+
+          {loading && datasets.length === 0 ? (
+            <DatasetListSkeleton />
+          ) : !error && datasets.length === 0 ? (
+            <DatasetEmptyState
+              filtered={hasFilters}
+              onClear={clearFilters}
+              title="No verified datasets yet"
+              description="Create a dataset proposal and submit it for verification. Approved datasets will appear here."
+              filteredTitle="No datasets match this view"
+              filteredDescription="Try another title, dataset ID, status, or visibility setting."
+              action={
+                <DashboardButton asChild>
+                  <Link href="/dashboard/datasets/create">
+                    <Plus /> Create dataset
+                  </Link>
+                </DashboardButton>
+              }
             />
-            <DashboardPagination
-              page={page}
-              pageSize={PAGE_SIZE}
-              totalItems={totalDatasets}
-              itemLabel="datasets"
-              onPageChange={setPage}
-              className="pt-4"
-            />
-          </>
-        ) : null}
-      </section>
+          ) : datasets.length > 0 ? (
+            <>
+              <DatasetRecordList
+                framed={false}
+                items={datasets}
+                busy={loading}
+                caption="Supplier datasets"
+                columns={columns}
+                getKey={(dataset) => dataset.id}
+                renderMobile={(dataset) => (
+                  <DatasetMobileRecordCard
+                    framed={false}
+                    href={`/dashboard/my-datasets/${dataset.id}`}
+                    title={dataset.title}
+                    identifier={dataset.datasetUniqueId}
+                    badges={
+                      <>
+                        <PublishStatusBadge status={dataset.status} />
+                        <DatasetVisibilityBadge
+                          visibility={dataset.visibility}
+                        />
+                      </>
+                    }
+                    supportingText={`Updated ${formatDatasetDate(dataset.updatedAt)}`}
+                    actionLabel={getDatasetActionLabel(dataset.status)}
+                  />
+                )}
+              />
+              <DashboardPagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                totalItems={totalDatasets}
+                itemLabel={totalDatasets === 1 ? "dataset" : "datasets"}
+                onPageChange={setPage}
+                className="border-t border-border px-4 py-4 md:px-6"
+              />
+            </>
+          ) : null}
+        </section>
+      </DashboardWorkspace>
     </DatasetWorkspace>
   );
 }

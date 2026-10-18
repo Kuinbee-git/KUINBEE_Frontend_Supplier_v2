@@ -17,12 +17,22 @@ alone does not qualify a populated detail, an editor or a business action.
 | Settings and help     | `/dashboard/profile`, `/dashboard/account`, `/dashboard/support`                                                                             | Connected main/aside form sections, existing profile/account controls, help content                                                                                                                  |
 
 The previous whole-panel pass is recorded in the workspace plan Section 6.116.
-The detail correction is recorded separately in Section 6.117. The permanent
+The detail correction is recorded separately in Section 6.117; the inventory and
+service-form composition correction is Section 6.118. The permanent
 `test:details` fixture uses actual components and typed synthetic responses for
-15 populated states, both themes and four widths (120 cases). It includes long
+19 populated states (160 cases). The original 15 states use both themes and four
+widths; the four added inventory/service states also include 1920px. It includes long
 titles, expanded inventories, every available inline editor, permitted/locked
 updates and confirmation-dialog dismissal. The theme assertion checks the
 hydrated DOM, not just a requested URL parameter. No fixture may submit a write.
+
+Inventories assert one connected frame, aligned desktop search/filter controls,
+status filtering, empty-search recovery, singular counts and Delisted URL/heading
+continuity. Service creation covers collapsed category options, filtered selection
+preservation, the ten-category cap, Escape focus return, accurate save status and
+form actions that follow the fields without covering them. This coverage was
+added after the user's screenshots exposed composition problems that the earlier
+detail and route checks did not detect.
 
 Existing `test:components`, `test:preparations`, `test:uploads`, `test:workflow`
 and the compiled `test:release` qualify their respective contracts and controls.

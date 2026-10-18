@@ -23,7 +23,7 @@ const css =
   (await readFile("src/app/dashboard/dashboard.css", "utf8"));
 const compiled = await build({
   stdin: {
-    contents: `import React from'react';import{createRoot}from'react-dom/client';import{SupplierDetailsFixture,proposalFixture,datasetFixture,pricingFixture,fixtureId,stamp,serviceFixture}from'./scripts/fixtures/supplier-details';const p=new URLSearchParams(location.search);window.fixture={proposal:proposalFixture(p.get('view')),dataset:datasetFixture(p.get('view')),pricing:pricingFixture,id:fixtureId,stamp,service:serviceFixture(p.get('view'))};createRoot(document.getElementById('root')).render(<React.StrictMode><SupplierDetailsFixture view={p.get('view')} dark={p.get('theme')==='dark'}/></React.StrictMode>);`,
+    contents: `import React from'react';import{createRoot}from'react-dom/client';import{SupplierDetailsFixture,proposalFixture,datasetFixture,pricingFixture,fixtureId,stamp,serviceFixture,categoryFixtures,datasetInventoryFixture,proposalInventoryFixture}from'./scripts/fixtures/supplier-details';const p=new URLSearchParams(location.search);window.fixture={proposal:proposalFixture(p.get('view')),dataset:datasetFixture(p.get('view')),pricing:pricingFixture,id:fixtureId,stamp,service:serviceFixture(p.get('view')),categories:categoryFixtures,datasetInventory:datasetInventoryFixture,proposalInventory:proposalInventoryFixture};createRoot(document.getElementById('root')).render(<React.StrictMode><SupplierDetailsFixture view={p.get('view')} dark={p.get('theme')==='dark'}/></React.StrictMode>);`,
     resolveDir: process.cwd(),
     loader: "jsx",
   },
@@ -53,7 +53,7 @@ const compiled = await build({
               ? "import React from'react';export default function Link(p){return <a {...p}/>}"
               : a.path === "next/image"
                 ? "import React from'react';export default function Image({priority,fill,quality,unoptimized,...p}){return <img {...p}/>}"
-                : "export function useRouter(){return{push:()=>{},replace:()=>{},back:()=>{}}}export function useParams(){return{id:'c000000000000000000000321'}}export function usePathname(){return '/dashboard/my-datasets/c000000000000000000000321'}export function useSearchParams(){return new URLSearchParams()}",
+                : "export function useRouter(){return{push:()=>{},replace:(url)=>{const current=new URL(location.href),next=new URL(url,location.origin);if(next.searchParams.has('status'))current.searchParams.set('status',next.searchParams.get('status'));else current.searchParams.delete('status');history.replaceState(null,'',current)},back:()=>{}}}export function useParams(){return{id:'c000000000000000000000321'}}export function usePathname(){return '/dashboard/my-datasets/c000000000000000000000321'}export function useSearchParams(){return new URLSearchParams(location.search)}",
         }));
       },
     },
@@ -109,7 +109,30 @@ try {
     requests.push(url.pathname);
     const f = await req.frame().evaluate(() => window.fixture);
     let data;
-    if (url.pathname.includes("/custom-collection-services/")) data = f.service;
+    if (
+      url.pathname === "/api/v1/supplier/datasets" ||
+      url.pathname === "/api/v2/supplier/dataset-proposals"
+    ) {
+      const isProposals = url.pathname.includes("dataset-proposals");
+      const source = isProposals ? f.proposalInventory : f.datasetInventory;
+      const status = url.searchParams.get(
+        isProposals ? "verificationStatus" : "status"
+      );
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const items = source.items.filter(
+        (item) =>
+          (!status ||
+            (isProposals ? item.verificationStatus : item.status) === status) &&
+          (!q ||
+            `${item.title} ${item.datasetUniqueId}`
+              .toLowerCase()
+              .includes(q)) &&
+          (!url.searchParams.get("visibility") ||
+            item.visibility === url.searchParams.get("visibility"))
+      );
+      data = { ...source, items, total: items.length };
+    } else if (url.pathname.includes("/custom-collection-services/"))
+      data = f.service;
     else if (url.pathname.endsWith("/pricing")) data = { pricing: f.pricing };
     else if (url.pathname.endsWith("/kdts"))
       data = {
@@ -121,8 +144,8 @@ try {
       data = { profile: { isOfflineContractDone: true } };
     else if (url.pathname.endsWith("/supplier/categories"))
       data = {
-        items: [f.dataset.primaryCategory, ...f.dataset.secondaryCategories],
-        total: 2,
+        items: f.categories,
+        total: f.categories.length,
         page: 1,
         pageSize: 100,
       };
@@ -139,6 +162,10 @@ try {
       body: JSON.stringify({ success: true, data }),
     });
   });
+  const requestedViews = process.argv
+    .find((arg) => arg.startsWith("--views="))
+    ?.slice(8)
+    .split(",");
   const views = [
     "proposal",
     "submitted",
@@ -155,11 +182,19 @@ try {
     "service-review",
     "service-detail",
     "service-edit",
-  ];
+    "inventory",
+    "inventory-delisted",
+    "inventory-proposals",
+    "service-create",
+  ].filter((view) => !requestedViews || requestedViews.includes(view));
+  assert.ok(views.length, "Choose a known detail or inventory fixture");
   let cases = 0;
   for (const theme of ["light", "dark"])
-    for (const width of [1440, 1024, 768, 390]) {
+    for (const width of [1920, 1440, 1024, 768, 390]) {
       for (const view of views) {
+        const inventoryView = view.startsWith("inventory");
+        if (width === 1920 && !inventoryView && view !== "service-create")
+          continue;
         activeCase = `${view}/${theme}/${width}`;
         // Cases are independent fixtures. Tear down portals, in-flight requests
         // and accessibility state before loading a different component tree.
@@ -167,9 +202,12 @@ try {
         page = await context.newPage();
         page.on("pageerror", (e) => errors.push(e.message));
         await page.setViewportSize({ width, height: 1000 });
-        await page.goto(`${origin}/?view=${view}&theme=${theme}`, {
-          waitUntil: "domcontentloaded",
-        });
+        await page.goto(
+          `${origin}/?view=${view}&theme=${theme}${view === "inventory-delisted" ? "&status=DELISTED" : ""}`,
+          {
+            waitUntil: "domcontentloaded",
+          }
+        );
         await page.getByRole("heading", { level: 1 }).waitFor();
         if (
           ![
@@ -177,9 +215,213 @@ try {
             "service-review",
             "service-detail",
             "service-edit",
+            "inventory",
+            "inventory-delisted",
+            "inventory-proposals",
+            "service-create",
           ].includes(view)
         )
           await page.locator("[data-dashboard-detail]").waitFor();
+        if (inventoryView) {
+          const board = page.locator('[data-dataset-inventory="true"]');
+          await board.waitFor();
+          await page
+            .getByRole("link", {
+              name:
+                view === "inventory-proposals"
+                  ? "Proposal submitted"
+                  : view === "inventory-delisted"
+                    ? "Collection delisted"
+                    : "Collection submitted",
+              exact: true,
+            })
+            .waitFor();
+          assert.equal(
+            await page.locator("[data-dashboard-workspace]").count(),
+            1,
+            "Summary, toolbar, inventory and footer share one frame"
+          );
+          assert.equal(await board.locator("[role=search]").count(), 1);
+          if (width >= 1024 && view !== "inventory-proposals") {
+            const rects = await page
+              .getByRole("combobox")
+              .evaluateAll((es) =>
+                es.map((e) => e.getBoundingClientRect().top)
+              );
+            const searchTop = await page
+              .getByRole("searchbox")
+              .evaluate((e) => e.getBoundingClientRect().top);
+            assert.ok(
+              rects.every((top) => Math.abs(top - searchTop) < 2),
+              "Desktop search and both filters share one row"
+            );
+          }
+          if (view === "inventory-delisted") {
+            await page
+              .getByText("Showing 1 dataset", { exact: true })
+              .waitFor();
+            await page
+              .getByRole("button", { name: "Clear filters", exact: true })
+              .click();
+            await page
+              .getByRole("heading", { name: "My Datasets", exact: true })
+              .waitFor();
+            assert.equal(new URL(page.url()).searchParams.has("status"), false);
+          } else if (view === "inventory") {
+            await page.getByRole("button", { name: /Needs attention/ }).click();
+            await page
+              .getByRole("heading", { name: "Delisted edits", exact: true })
+              .waitFor();
+            await page
+              .getByText("Showing 1 dataset", { exact: true })
+              .waitFor();
+            assert.equal(
+              new URL(page.url()).searchParams.get("status"),
+              "DELISTED"
+            );
+            await page
+              .getByRole("button", { name: "Clear filters", exact: true })
+              .click();
+          } else {
+            await page.getByRole("combobox").click();
+            await page
+              .getByRole("option", { name: "Rejected", exact: true })
+              .click();
+            await page
+              .getByRole("link", { name: "Proposal rejected", exact: true })
+              .waitFor();
+            await page
+              .getByText("Showing 1 proposal", { exact: true })
+              .waitFor();
+            await page
+              .getByRole("button", { name: "Clear filters", exact: true })
+              .click();
+          }
+          await page.getByRole("searchbox").fill("No matching collection xyz");
+          await page
+            .getByText(
+              view === "inventory-proposals"
+                ? "No proposals match this view"
+                : "No datasets match this view",
+              { exact: true }
+            )
+            .waitFor();
+          await page.getByRole("searchbox").fill("");
+          await page
+            .getByRole("link", {
+              name:
+                view === "inventory-proposals"
+                  ? "Proposal submitted"
+                  : "Collection submitted",
+              exact: true,
+            })
+            .waitFor();
+        }
+        if (view === "service-create") {
+          const primary = page.getByRole("combobox", {
+            name: "Primary category",
+            exact: true,
+          });
+          await primary.waitFor({ state: "visible" });
+          await page.waitForFunction(
+            () =>
+              !document
+                .querySelector("[role=combobox]")
+                ?.hasAttribute("disabled")
+          );
+          await page
+            .getByText("Your draft is created after the review step.", {
+              exact: true,
+            })
+            .waitFor();
+          const disclosure = page.locator(
+            'summary[aria-label="Choose secondary categories"]'
+          );
+          assert.equal(
+            await page.getByRole("checkbox").count(),
+            0,
+            "Secondary options start collapsed"
+          );
+          if (width >= 1024) {
+            const a = await primary.boundingBox(),
+              c = await disclosure.boundingBox();
+            assert.equal(a.height, c.height);
+            assert.ok(
+              Math.abs(a.y - c.y) < 2,
+              "Primary and secondary category controls align"
+            );
+          }
+          await disclosure.click();
+          const search = page.getByRole("textbox", {
+            name: "Search secondary categories",
+          });
+          await search.fill("Additional category 01");
+          await page
+            .getByRole("checkbox", {
+              name: "Additional category 01",
+              exact: true,
+            })
+            .check();
+          await search.fill("Additional category 02");
+          await page
+            .getByRole("checkbox", {
+              name: "Additional category 02",
+              exact: true,
+            })
+            .check();
+          await page.keyboard.press("Escape");
+          assert.equal(
+            await disclosure.evaluate((e) => e === document.activeElement),
+            true
+          );
+          assert.ok(
+            (await disclosure.innerText()).includes("2 selected"),
+            "Filtering preserves selections outside the visible list"
+          );
+          if (width === 1920 && theme === "light") {
+            await disclosure.click();
+            await search.fill("");
+            for (let number = 3; number <= 10; number++)
+              await page
+                .getByRole("checkbox", {
+                  name: `Additional category ${String(number).padStart(2, "0")}`,
+                  exact: true,
+                })
+                .check();
+            assert.equal(
+              await page
+                .getByRole("checkbox", {
+                  name: "Additional category 11",
+                  exact: true,
+                })
+                .isDisabled(),
+              true,
+              "Ten selected categories prevent an eleventh selection"
+            );
+            await page
+              .getByRole("button", { name: "Done", exact: true })
+              .click();
+            assert.ok((await disclosure.innerText()).includes("10 selected"));
+          }
+          const footer = page.locator(".dashboard-form-actions");
+          assert.equal(
+            await footer.evaluate((e) => getComputedStyle(e).position),
+            "static"
+          );
+          assert.ok(
+            (await footer.boundingBox()).y >=
+              (await disclosure.boundingBox()).y + 40,
+            "Attached form actions follow category fields without covering them"
+          );
+          await page
+            .getByLabel("Service title", { exact: false })
+            .fill("Collection service fixture");
+          await page
+            .getByText("Unsaved changes. Save at the review step.", {
+              exact: true,
+            })
+            .waitFor();
+        }
         if (["service-detail", "service-edit"].includes(view)) {
           await page
             .getByRole("heading", {
@@ -355,6 +597,19 @@ try {
           0
         );
         await page.evaluate(() => window.scrollTo(0, 0));
+        await page.evaluate(() => document.activeElement?.blur());
+        if (shots && view === "service-create") {
+          await page.screenshot({
+            path: resolve(shots, `${view}-${theme}-${width}-viewport.png`),
+          });
+          await page
+            .getByRole("button", { name: /^Next/ })
+            .scrollIntoViewIfNeeded();
+          await page.screenshot({
+            path: resolve(shots, `${view}-${theme}-${width}-footer.png`),
+          });
+          await page.evaluate(() => window.scrollTo(0, 0));
+        }
         if (shots)
           await page.screenshot({
             path: resolve(shots, `${view}-${theme}-${width}.png`),
@@ -362,14 +617,12 @@ try {
           });
         cases++;
       }
-      console.log(
-        `PASS populated supplier detail/edit/review layouts: ${theme}, ${width}px`
-      );
+      console.log(`PASS populated supplier layouts: ${theme}, ${width}px`);
     }
   assert.deepEqual(errors, []);
   assert.ok(requests.length > 0);
   console.log(
-    `PASS ${cases} populated detail states: legacy proposals, publication states, delisted edit, creation, service review; expansion/edit/cancel, no writes or nested main, light/dark and desktop/mobile`
+    `PASS ${cases} populated supplier layout cases: details, inventories, service forms and review; filters, category selection, expansion/edit/cancel, no writes or nested main, light/dark and desktop/mobile`
   );
 } catch (error) {
   console.error("Detailed UI case failed:", activeCase);

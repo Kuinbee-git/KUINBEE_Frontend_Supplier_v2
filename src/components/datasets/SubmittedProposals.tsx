@@ -14,7 +14,11 @@ import {
   Send,
 } from "lucide-react";
 
-import { DashboardButton, DashboardPagination } from "@/components/dashboard";
+import {
+  DashboardButton,
+  DashboardPagination,
+  DashboardWorkspace,
+} from "@/components/dashboard";
 import { listMyProposals } from "@/lib/api";
 import { listDatasetProposalInventory } from "@/lib/api/dataset-proposal-inventory";
 import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
@@ -330,101 +334,105 @@ export function SubmittedProposals({
         title="Submitted Proposals"
         description="Track each proposal through review, respond to requested changes, and see completed decisions."
       />
-
-      <section aria-label="Proposal review overview">
-        <DatasetMetricStrip
-          metrics={metrics}
-          activeValue={statusFilter}
-          onSelect={setStatusFilter}
-          loading={loading && proposals.length === 0}
-        />
-      </section>
-
-      <DatasetFilterToolbar
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search proposal title or dataset ID"
-        searchAriaLabel="Search submitted proposals"
-        filters={[
-          {
-            value: statusFilter,
-            onValueChange: (value) => setStatusFilter(value as FilterStatus),
-            options: STATUS_OPTIONS,
-            ariaLabel: "Filter proposals by review status",
-          },
-        ]}
-        activeFilterCount={statusFilter !== "ALL" ? 1 : 0}
-        onClear={clearFilters}
-        isDark={isDark}
-      />
-
-      {error && (
-        <DatasetErrorBanner
-          title="We could not load your proposals"
-          message={error}
-          onRetry={fetchProposals}
-        />
-      )}
-
-      <section aria-labelledby="proposal-inventory-title">
-        <DatasetInventoryHeader
-          id="proposal-inventory-title"
-          title="Review queue"
-          loading={loading}
-          total={totalProposals}
-          singularLabel="proposal"
-          pluralLabel="proposals"
-        />
-
-        {loading && proposals.length === 0 ? (
-          <DatasetListSkeleton />
-        ) : !error && proposals.length === 0 ? (
-          <DatasetEmptyState
-            filtered={hasFilters}
-            onClear={clearFilters}
-            title="No submitted proposals yet"
-            description="Submit a completed draft for review and its progress will appear here."
-            filteredTitle="No proposals match this view"
-            filteredDescription="Try another title, dataset ID, or review status."
+      <DashboardWorkspace data-dataset-inventory="true">
+        <section aria-label="Proposal review overview">
+          <DatasetMetricStrip
+            metrics={metrics}
+            activeValue={statusFilter}
+            onSelect={setStatusFilter}
+            loading={loading && proposals.length === 0}
           />
-        ) : proposals.length > 0 ? (
-          <>
-            <DatasetRecordList
-              items={proposals}
-              busy={loading}
-              caption="Submitted dataset proposals"
-              columns={columns}
-              getKey={(proposal) => proposal.id}
-              renderMobile={(proposal) => (
-                <DatasetMobileRecordCard
-                  href={proposalHref(proposal)}
-                  title={proposal.title}
-                  identifier={proposal.datasetUniqueId}
-                  icon={FileText}
-                  badges={
-                    <DatasetStatusBadge
-                      status={proposal.verificationStatus}
-                      isDark={isDark}
-                    />
-                  }
-                  supportingText={`Updated ${formatDatasetDate(proposal.updatedAt)}`}
-                  actionLabel={getProposalActionLabel(
-                    proposal.verificationStatus
-                  )}
-                />
-              )}
+        </section>
+
+        <DatasetFilterToolbar
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search proposal title or dataset ID"
+          searchAriaLabel="Search submitted proposals"
+          filters={[
+            {
+              value: statusFilter,
+              onValueChange: (value) => setStatusFilter(value as FilterStatus),
+              options: STATUS_OPTIONS,
+              ariaLabel: "Filter proposals by review status",
+            },
+          ]}
+          activeFilterCount={statusFilter !== "ALL" ? 1 : 0}
+          onClear={clearFilters}
+          isDark={isDark}
+        />
+
+        {error && (
+          <DatasetErrorBanner
+            title="We could not load your proposals"
+            message={error}
+            onRetry={fetchProposals}
+          />
+        )}
+
+        <section aria-labelledby="proposal-inventory-title">
+          <DatasetInventoryHeader
+            className="mb-0 px-4 py-5 md:px-6"
+            id="proposal-inventory-title"
+            title="Review queue"
+            loading={loading}
+            total={totalProposals}
+            singularLabel="proposal"
+            pluralLabel="proposals"
+          />
+
+          {loading && proposals.length === 0 ? (
+            <DatasetListSkeleton />
+          ) : !error && proposals.length === 0 ? (
+            <DatasetEmptyState
+              filtered={hasFilters}
+              onClear={clearFilters}
+              title="No submitted proposals yet"
+              description="Submit a completed draft for review and its progress will appear here."
+              filteredTitle="No proposals match this view"
+              filteredDescription="Try another title, dataset ID, or review status."
             />
-            <DashboardPagination
-              page={page}
-              pageSize={PAGE_SIZE}
-              totalItems={totalProposals}
-              itemLabel="proposals"
-              onPageChange={setPage}
-              className="pt-4"
-            />
-          </>
-        ) : null}
-      </section>
+          ) : proposals.length > 0 ? (
+            <>
+              <DatasetRecordList
+                framed={false}
+                items={proposals}
+                busy={loading}
+                caption="Submitted dataset proposals"
+                columns={columns}
+                getKey={(proposal) => proposal.id}
+                renderMobile={(proposal) => (
+                  <DatasetMobileRecordCard
+                    framed={false}
+                    href={proposalHref(proposal)}
+                    title={proposal.title}
+                    identifier={proposal.datasetUniqueId}
+                    icon={FileText}
+                    badges={
+                      <DatasetStatusBadge
+                        status={proposal.verificationStatus}
+                        isDark={isDark}
+                      />
+                    }
+                    supportingText={`Updated ${formatDatasetDate(proposal.updatedAt)}`}
+                    actionLabel={getProposalActionLabel(
+                      proposal.verificationStatus
+                    )}
+                  />
+                )}
+              />
+              <DashboardPagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                totalItems={totalProposals}
+                itemLabel={totalProposals === 1 ? "proposal" : "proposals"}
+                onPageChange={setPage}
+                className="border-t border-border px-4 py-4 md:px-6"
+              />
+            </>
+          ) : null}
+        </section>
+      </DashboardWorkspace>
     </DatasetWorkspace>
   );
 }

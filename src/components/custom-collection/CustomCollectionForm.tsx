@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Loader2,
   PencilLine,
 } from "lucide-react";
@@ -44,6 +45,7 @@ interface CustomCollectionFormProps {
   busy?: boolean;
   categoryOptions?: Array<{ id: string; name: string }>;
   loadCategories?: boolean;
+  isExistingDraft?: boolean;
   onSubmit: (values: CustomCollectionRevisionInput) => Promise<void>;
 }
 
@@ -114,12 +116,16 @@ export function CustomCollectionForm({
   busy = false,
   categoryOptions = EMPTY_CATEGORY_OPTIONS,
   loadCategories = true,
+  isExistingDraft = false,
   onSubmit,
 }: CustomCollectionFormProps) {
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState(categoryOptions);
   const [categoriesLoading, setCategoriesLoading] = useState(loadCategories);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const categoryDisclosure = useRef<HTMLDetailsElement>(null);
+  const categoryHelpId = useId();
 
   const {
     register,
@@ -222,7 +228,7 @@ export function CustomCollectionForm({
     >
       <nav
         aria-label="Service form progress"
-        className="grid gap-2 border-b border-border p-4 sm:grid-cols-2 md:p-6 xl:grid-cols-4"
+        className="grid grid-cols-2 border-b border-border xl:grid-cols-4"
       >
         {STEPS.map((item, index) => {
           const active = index === step;
@@ -233,17 +239,17 @@ export function CustomCollectionForm({
               type="button"
               onClick={() => setStep(index)}
               className={cn(
-                "rounded-xl border p-3 text-left transition-colors",
+                "flex min-w-0 flex-col items-start border-b-2 border-transparent p-4 text-left transition-colors",
                 active
-                  ? "border-[var(--dashboard-focus-ring)] bg-primary/5"
-                  : "dashboard-glass-control border-border hover:border-[var(--dashboard-control-border-strong)] hover:bg-muted/55"
+                  ? "border-b-[var(--dashboard-focus-ring)] bg-[var(--dashboard-control-background)]"
+                  : "hover:bg-muted/55"
               )}
               aria-current={active ? "step" : undefined}
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <span
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-full border text-xs",
+                    "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
                     active || complete
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border text-muted-foreground"
@@ -253,7 +259,7 @@ export function CustomCollectionForm({
                 </span>
                 {item.title}
               </span>
-              <span className="mt-1 hidden pl-8 text-xs text-muted-foreground lg:block">
+              <span className="mt-1 hidden pl-8 text-xs text-muted-foreground 2xl:block">
                 {item.description}
               </span>
             </button>
@@ -261,7 +267,7 @@ export function CustomCollectionForm({
         })}
       </nav>
 
-      <div className="dashboard-glass-card rounded-xl border border-border p-4 sm:p-6">
+      <div className="min-w-0 p-4 sm:p-6">
         {step === 0 && (
           <div className="space-y-6">
             <SectionHeading
@@ -311,7 +317,7 @@ export function CustomCollectionForm({
             >
               <Textarea
                 id="description"
-                rows={8}
+                rows={6}
                 maxLength={5000}
                 placeholder="Describe how an engagement works from scoping through delivery..."
                 {...register("description")}
@@ -323,7 +329,7 @@ export function CustomCollectionForm({
               <TextField
                 id="primaryCategoryId"
                 label="Primary category"
-                hint="Choose the closest marketplace category."
+                hint="Main marketplace category."
                 error={
                   errors.primaryCategoryId?.message ||
                   categoriesError ||
@@ -368,55 +374,137 @@ export function CustomCollectionForm({
                 </DashboardSelect>
               </TextField>
 
-              <fieldset className="space-y-2">
+              <fieldset className="min-w-0">
                 <legend className="text-sm font-medium">
                   Secondary categories
                 </legend>
-                <p className="text-xs text-muted-foreground">
-                  Optional. Select up to 10 additional relevant categories.
+                <p
+                  id={categoryHelpId}
+                  className="mt-1 text-xs text-muted-foreground"
+                >
+                  Optional. Choose up to 10.
                 </p>
-                <div className="dashboard-scroll-region max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--dashboard-control-border)] bg-input-background p-2">
-                  {secondaryCategories.length ? (
-                    secondaryCategories.map((category) => {
-                      const checked = secondaryCategoryIds.includes(
-                        category.id
-                      );
-                      const atLimit = secondaryCategoryIds.length >= 10;
-                      return (
-                        <label
-                          key={category.id}
-                          className={cn(
-                            "flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-accent",
-                            !checked &&
-                              atLimit &&
-                              "cursor-not-allowed opacity-50"
-                          )}
-                        >
-                          <DashboardCheckbox
-                            checked={checked}
-                            disabled={!checked && atLimit}
-                            onCheckedChange={() => {
-                              setValue(
-                                "secondaryCategoryIds",
-                                checked
-                                  ? secondaryCategoryIds.filter(
-                                      (id) => id !== category.id
-                                    )
-                                  : [...secondaryCategoryIds, category.id],
-                                { shouldDirty: true, shouldValidate: true }
-                              );
-                            }}
-                          />
-                          {category.name}
-                        </label>
-                      );
-                    })
-                  ) : (
-                    <p className="p-2 text-sm text-muted-foreground">
-                      Select a primary category first.
-                    </p>
-                  )}
-                </div>
+                <details
+                  className="mt-2"
+                  ref={categoryDisclosure}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.currentTarget.open = false;
+                      event.currentTarget.querySelector("summary")?.focus();
+                    }
+                  }}
+                >
+                  <summary
+                    aria-label="Choose secondary categories"
+                    aria-describedby={categoryHelpId}
+                    className="dashboard-field-control flex h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] [&::-webkit-details-marker]:hidden"
+                  >
+                    <span>
+                      {secondaryCategoryIds.length
+                        ? `${secondaryCategoryIds.length} selected`
+                        : "Choose categories"}
+                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="size-4 shrink-0"
+                    />
+                  </summary>
+                  <div className="mt-2 space-y-2 rounded-lg border border-border p-2">
+                    <Input
+                      aria-label="Search secondary categories"
+                      placeholder="Search categories"
+                      value={categoryQuery}
+                      onChange={(event) => setCategoryQuery(event.target.value)}
+                    />
+                    <div className="dashboard-scroll-region max-h-48 space-y-1 overflow-y-auto">
+                      {secondaryCategories.length ? (
+                        secondaryCategories
+                          .filter((category) =>
+                            category.name
+                              .toLowerCase()
+                              .includes(categoryQuery.trim().toLowerCase())
+                          )
+                          .map((category) => {
+                            const checked = secondaryCategoryIds.includes(
+                              category.id
+                            );
+                            const atLimit = secondaryCategoryIds.length >= 10;
+                            return (
+                              <label
+                                key={category.id}
+                                className={cn(
+                                  "flex min-h-9 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-accent",
+                                  !checked &&
+                                    atLimit &&
+                                    "cursor-not-allowed opacity-50"
+                                )}
+                              >
+                                <DashboardCheckbox
+                                  checked={checked}
+                                  disabled={!checked && atLimit}
+                                  onCheckedChange={() => {
+                                    setValue(
+                                      "secondaryCategoryIds",
+                                      checked
+                                        ? secondaryCategoryIds.filter(
+                                            (id) => id !== category.id
+                                          )
+                                        : [
+                                            ...secondaryCategoryIds,
+                                            category.id,
+                                          ],
+                                      {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      }
+                                    );
+                                  }}
+                                />
+                                {category.name}
+                              </label>
+                            );
+                          })
+                      ) : (
+                        <p className="p-2 text-sm text-muted-foreground">
+                          Select a primary category first.
+                        </p>
+                      )}
+                    </div>
+                    {secondaryCategories.length > 0 &&
+                      !secondaryCategories.some((category) =>
+                        category.name
+                          .toLowerCase()
+                          .includes(categoryQuery.trim().toLowerCase())
+                      ) && (
+                        <p className="px-2 text-sm text-muted-foreground">
+                          No categories match your search.
+                        </p>
+                      )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="compact"
+                      onClick={() => {
+                        if (categoryDisclosure.current) {
+                          categoryDisclosure.current.open = false;
+                          categoryDisclosure.current
+                            .querySelector("summary")
+                            ?.focus();
+                        }
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </details>
+                {secondaryCategoryIds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {secondaryCategoryIds
+                      .map((id) => categoryNames.get(id) ?? "Saved category")
+                      .join(", ")}
+                  </p>
+                )}
                 {errors.secondaryCategoryIds?.message && (
                   <FieldError>{errors.secondaryCategoryIds.message}</FieldError>
                 )}
@@ -780,12 +868,15 @@ export function CustomCollectionForm({
       </div>
 
       <DashboardFormActions
-        sticky
         className="rounded-none border-x-0 border-b-0 px-4 md:px-6"
         status={
-          isDirty
-            ? "You have unsaved changes."
-            : "All displayed changes are saved."
+          busy
+            ? "Saving draft…"
+            : isDirty
+              ? "Unsaved changes. Save at the review step."
+              : isExistingDraft
+                ? "No unsaved changes."
+                : "Your draft is created after the review step."
         }
       >
         {step > 0 && (
@@ -857,7 +948,7 @@ function TextField({
 }) {
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium text-foreground">
           {label} {required && <span className="text-destructive">*</span>}
         </label>

@@ -52,6 +52,7 @@ export function DatasetPageHeader({
 }
 
 export function DatasetInventoryHeader({
+  className,
   id,
   title,
   loading,
@@ -59,6 +60,7 @@ export function DatasetInventoryHeader({
   singularLabel,
   pluralLabel,
 }: {
+  className?: string;
   id: string;
   title: string;
   loading: boolean;
@@ -67,7 +69,7 @@ export function DatasetInventoryHeader({
   pluralLabel: string;
 }) {
   return (
-    <div className="mb-3">
+    <div className={cn("mb-3", className)}>
       <h2 id={id} className="text-base font-semibold text-foreground">
         {title}
       </h2>

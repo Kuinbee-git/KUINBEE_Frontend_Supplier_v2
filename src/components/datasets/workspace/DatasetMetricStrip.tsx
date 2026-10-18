@@ -47,6 +47,7 @@ export function DatasetMetricStrip<TValue extends string>({
           metric.filterValue !== undefined &&
           activeValue === metric.filterValue;
         const cardClassName = cn(
+          "min-h-0 p-4 md:px-6 md:py-4",
           interactive &&
             "cursor-pointer text-left transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transform-none",
           active &&
