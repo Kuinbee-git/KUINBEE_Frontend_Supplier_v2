@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  DashboardDetailLayout,
   DashboardButton,
   DashboardCard,
   DashboardInlineAlert,
@@ -234,7 +235,7 @@ export function DatasetDetail({
           tokens={tokens}
         />
 
-        <div className="mt-5 space-y-4">
+        <div className="space-y-4 empty:hidden">
           {isTerminalState && (
             <TerminalStateBanner
               verificationStatus={verificationStatus}
@@ -252,386 +253,390 @@ export function DatasetDetail({
             )}
         </div>
 
-        <div className="mt-6 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <main className="min-w-0 space-y-8">
-            <section
-              className="space-y-4"
-              aria-labelledby="proposal-basics-heading"
-            >
-              <div className="flex items-start gap-3 px-1">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <ClipboardCheck className="size-4" />
-                </span>
-                <div>
-                  <h2
-                    id="proposal-basics-heading"
-                    className="text-base font-semibold text-foreground"
-                  >
-                    Proposal basics
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Identity, positioning, coverage, and marketplace
-                    classification.
-                  </p>
-                </div>
-              </div>
-
-              <EditableSection
-                title="Basic Metadata"
-                icon={<Settings className="w-5 h-5" />}
-                isExpanded={expandedSections.metadata}
-                onToggle={() => toggleSection("metadata")}
-                isEditable={isEditable}
-                isEditing={activeEditingSection === "metadata"}
-                onEditClick={() => setEditingSection("metadata")}
-                isEmpty={false}
-                emptyIcon={<Settings className="w-12 h-12" />}
-                emptyMessage=""
-                editContent={
-                  <MetadataEditForm
-                    datasetId={proposal.dataset.id}
-                    initialData={{
-                      title: proposal.dataset.title,
-                      primaryCategoryId: proposal.dataset.primaryCategoryId,
-                      sourceId: proposal.dataset.sourceId,
-                      license: proposal.dataset.license,
-                      isSample: proposal.dataset.isSample ?? false,
-                      sampleNotes: proposal.dataset.sampleNotes ?? null,
-                      actualPrice: proposal.dataset.actualPrice ?? null,
-                      actualPriceCurrency: proposal.dataset.actualPriceCurrency,
-                      isNegotiable: proposal.dataset.isNegotiable ?? null,
-                    }}
-                    isDark={isDark}
-                    onSuccess={handleEditSuccess}
-                    onCancel={handleEditCancel}
-                  />
-                }
-                displayContent={
-                  <MetadataDisplay proposal={proposal} tokens={tokens} />
-                }
-                isDark={isDark}
-                tokens={tokens}
-              />
-
-              <EditableSection
-                title="Location & Tags"
-                icon={<MapPin className="w-5 h-5" />}
-                subtitle="Manage location details and discovery tags"
-                isExpanded={expandedSections.locationTags}
-                onToggle={() => toggleSection("locationTags")}
-                isEditable={isEditable}
-                isEditing={activeEditingSection === "locationTags"}
-                onEditClick={() => setEditingSection("locationTags")}
-                isEmpty={
-                  !proposal.locationInfo &&
-                  (!proposal.tags || proposal.tags.length === 0)
-                }
-                emptyIcon={<Tag className="w-12 h-12" />}
-                emptyMessage="Location and tags not provided yet"
-                emptyActionLabel="Add Location & Tags"
-                editContent={
-                  <LocationTagsEditForm
-                    datasetId={proposal.dataset.id}
-                    initialData={{
-                      locationInfo: proposal.locationInfo ?? null,
-                      tags: proposal.tags ?? [],
-                    }}
-                    isDark={isDark}
-                    onSuccess={handleEditSuccess}
-                    onCancel={handleEditCancel}
-                  />
-                }
-                displayContent={
-                  <LocationTagsDisplay proposal={proposal} tokens={tokens} />
-                }
-                isDark={isDark}
-                tokens={tokens}
-              />
-
-              <EditableSection
-                title="About Dataset"
-                icon={<FileText className="w-5 h-5" />}
-                isExpanded={expandedSections.about}
-                onToggle={() => toggleSection("about")}
-                isEditable={isEditable}
-                isEditing={activeEditingSection === "about"}
-                onEditClick={() => setEditingSection("about")}
-                isEmpty={!proposal.aboutDatasetInfo}
-                emptyIcon={<AlertCircle className="w-12 h-12" />}
-                emptyMessage="About information not provided yet"
-                emptyActionLabel="Add About Information"
-                editContent={
-                  <AboutDatasetForm
-                    datasetId={proposal.dataset.id}
-                    initialData={proposal.aboutDatasetInfo || undefined}
-                    isDark={isDark}
-                    onSuccess={handleEditSuccess}
-                    onCancel={handleEditCancel}
-                  />
-                }
-                displayContent={
-                  proposal.aboutDatasetInfo ? (
-                    <AboutDisplay
-                      about={proposal.aboutDatasetInfo}
-                      tokens={tokens}
-                      formatDate={formatDate}
-                    />
-                  ) : null
-                }
-                isDark={isDark}
-                tokens={tokens}
-              />
-
-              <EditableSection
-                title="Secondary Categories"
-                icon={<Settings className="w-5 h-5" />}
-                isExpanded={expandedSections.categories}
-                onToggle={() => toggleSection("categories")}
-                isEditable={isEditable}
-                isEditing={activeEditingSection === "categories"}
-                onEditClick={() => setEditingSection("categories")}
-                isEmpty={
-                  !proposal.secondaryCategories ||
-                  proposal.secondaryCategories.length === 0
-                }
-                emptyIcon={<Settings className="w-12 h-12" />}
-                emptyMessage="No secondary categories defined yet"
-                emptyActionLabel="Add Categories"
-                editContent={
-                  <SecondaryCategoriesForm
-                    datasetId={proposal.dataset.id}
-                    initialCategories={
-                      proposal.secondaryCategories?.map((c) => c.id) || []
-                    }
-                    isDark={isDark}
-                    onSuccess={handleEditSuccess}
-                    onCancel={handleEditCancel}
-                  />
-                }
-                displayContent={
-                  proposal.secondaryCategories &&
-                  proposal.secondaryCategories.length > 0 ? (
-                    <CategoriesDisplay
-                      categoryIds={proposal.secondaryCategories.map(
-                        (c) => c.id
-                      )}
-                      tokens={tokens}
-                      isDark={isDark}
-                    />
-                  ) : null
-                }
-                isDark={isDark}
-                tokens={tokens}
-              />
-
-              {isSampleProposal && (
-                <SampleProposalDetailsCard
-                  actualPrice={proposal.dataset.actualPrice}
-                  actualPriceCurrency={proposal.dataset.actualPriceCurrency}
-                  isNegotiable={proposal.dataset.isNegotiable}
-                  sampleNotes={proposal.dataset.sampleNotes}
-                  isEditable={isEditable}
-                  onEditClick={() => setEditingSection("metadata")}
+        <DashboardDetailLayout
+          stickyAside
+          mainClassName="dataset-detail-sections"
+          aside={
+            <>
+              {canSubmit && (
+                <SubmitForReviewSection
+                  verificationStatus={proposal.verification.status}
+                  missingPrerequisites={submitProposal.missingPrerequisites}
+                  submitting={submitProposal.submitting}
+                  onSubmit={submitProposal.handleSubmitForReview}
                   isDark={isDark}
                   tokens={tokens}
                 />
               )}
-            </section>
-
-            <section className="space-y-4" aria-labelledby="delivery-heading">
-              <div className="flex items-start gap-3 px-1">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Layers3 className="size-4" />
-                </span>
-                <div>
-                  <h2
-                    id="delivery-heading"
-                    className="text-base font-semibold text-foreground"
-                  >
-                    Files and structure
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Delivery assets, file format, and the schema buyers can
-                    expect.
-                  </p>
-                </div>
-              </div>
-
-              <CurrentUploadSection
-                currentUpload={proposal.currentUpload}
-                isExpanded={expandedSections.upload}
-                onToggle={() => toggleSection("upload")}
+              <SampleProposalToggleCard
+                isSampleProposal={isSampleProposal}
                 isEditable={isEditable}
-                onUploadClick={openCurrentUploadDialog}
+                sampleToggleSubmitting={sampleToggle.sampleToggleSubmitting}
+                onToggle={sampleToggle.handleOpenSampleToggle}
+                isDark={isDark}
+                tokens={tokens}
+              />
+              <KdtsScoreCard datasetId={proposal.dataset.id} variant="flat" />
+              <DashboardCard className="p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Workspace rules
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Section saves update the draft only. Submission is always a
+                  separate confirmed action from the readiness panel.
+                </p>
+              </DashboardCard>
+            </>
+          }
+        >
+          <section
+            className="dashboard-detail-group min-w-0"
+            aria-labelledby="proposal-basics-heading"
+          >
+            <div className="flex items-start gap-3 px-4 py-5 md:px-6">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ClipboardCheck className="size-4" />
+              </span>
+              <div>
+                <h2
+                  id="proposal-basics-heading"
+                  className="text-base font-semibold text-foreground"
+                >
+                  Proposal basics
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Identity, positioning, coverage, and marketplace
+                  classification.
+                </p>
+              </div>
+            </div>
+
+            <EditableSection
+              title="Basic Metadata"
+              icon={<Settings className="w-5 h-5" />}
+              isExpanded={expandedSections.metadata}
+              onToggle={() => toggleSection("metadata")}
+              isEditable={isEditable}
+              isEditing={activeEditingSection === "metadata"}
+              onEditClick={() => setEditingSection("metadata")}
+              isEmpty={false}
+              emptyIcon={<Settings className="w-12 h-12" />}
+              emptyMessage=""
+              editContent={
+                <MetadataEditForm
+                  datasetId={proposal.dataset.id}
+                  initialData={{
+                    title: proposal.dataset.title,
+                    primaryCategoryId: proposal.dataset.primaryCategoryId,
+                    sourceId: proposal.dataset.sourceId,
+                    license: proposal.dataset.license,
+                    isSample: proposal.dataset.isSample ?? false,
+                    sampleNotes: proposal.dataset.sampleNotes ?? null,
+                    actualPrice: proposal.dataset.actualPrice ?? null,
+                    actualPriceCurrency: proposal.dataset.actualPriceCurrency,
+                    isNegotiable: proposal.dataset.isNegotiable ?? null,
+                  }}
+                  isDark={isDark}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+              displayContent={
+                <MetadataDisplay proposal={proposal} tokens={tokens} />
+              }
+              isDark={isDark}
+              tokens={tokens}
+            />
+
+            <EditableSection
+              title="Location & Tags"
+              icon={<MapPin className="w-5 h-5" />}
+              subtitle="Manage location details and discovery tags"
+              isExpanded={expandedSections.locationTags}
+              onToggle={() => toggleSection("locationTags")}
+              isEditable={isEditable}
+              isEditing={activeEditingSection === "locationTags"}
+              onEditClick={() => setEditingSection("locationTags")}
+              isEmpty={
+                !proposal.locationInfo &&
+                (!proposal.tags || proposal.tags.length === 0)
+              }
+              emptyIcon={<Tag className="w-12 h-12" />}
+              emptyMessage="Location and tags not provided yet"
+              emptyActionLabel="Add Location & Tags"
+              editContent={
+                <LocationTagsEditForm
+                  datasetId={proposal.dataset.id}
+                  initialData={{
+                    locationInfo: proposal.locationInfo ?? null,
+                    tags: proposal.tags ?? [],
+                  }}
+                  isDark={isDark}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+              displayContent={
+                <LocationTagsDisplay proposal={proposal} tokens={tokens} />
+              }
+              isDark={isDark}
+              tokens={tokens}
+            />
+
+            <EditableSection
+              title="About Dataset"
+              icon={<FileText className="w-5 h-5" />}
+              isExpanded={expandedSections.about}
+              onToggle={() => toggleSection("about")}
+              isEditable={isEditable}
+              isEditing={activeEditingSection === "about"}
+              onEditClick={() => setEditingSection("about")}
+              isEmpty={!proposal.aboutDatasetInfo}
+              emptyIcon={<AlertCircle className="w-12 h-12" />}
+              emptyMessage="About information not provided yet"
+              emptyActionLabel="Add About Information"
+              editContent={
+                <AboutDatasetForm
+                  datasetId={proposal.dataset.id}
+                  initialData={proposal.aboutDatasetInfo || undefined}
+                  isDark={isDark}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+              displayContent={
+                proposal.aboutDatasetInfo ? (
+                  <AboutDisplay
+                    about={proposal.aboutDatasetInfo}
+                    tokens={tokens}
+                    formatDate={formatDate}
+                  />
+                ) : null
+              }
+              isDark={isDark}
+              tokens={tokens}
+            />
+
+            <EditableSection
+              title="Secondary Categories"
+              icon={<Settings className="w-5 h-5" />}
+              isExpanded={expandedSections.categories}
+              onToggle={() => toggleSection("categories")}
+              isEditable={isEditable}
+              isEditing={activeEditingSection === "categories"}
+              onEditClick={() => setEditingSection("categories")}
+              isEmpty={
+                !proposal.secondaryCategories ||
+                proposal.secondaryCategories.length === 0
+              }
+              emptyIcon={<Settings className="w-12 h-12" />}
+              emptyMessage="No secondary categories defined yet"
+              emptyActionLabel="Add Categories"
+              editContent={
+                <SecondaryCategoriesForm
+                  datasetId={proposal.dataset.id}
+                  initialCategories={
+                    proposal.secondaryCategories?.map((c) => c.id) || []
+                  }
+                  isDark={isDark}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+              displayContent={
+                proposal.secondaryCategories &&
+                proposal.secondaryCategories.length > 0 ? (
+                  <CategoriesDisplay
+                    categoryIds={proposal.secondaryCategories.map((c) => c.id)}
+                    categories={proposal.secondaryCategories}
+                    tokens={tokens}
+                    isDark={isDark}
+                  />
+                ) : null
+              }
+              isDark={isDark}
+              tokens={tokens}
+            />
+
+            {isSampleProposal && (
+              <SampleProposalDetailsCard
+                actualPrice={proposal.dataset.actualPrice}
+                actualPriceCurrency={proposal.dataset.actualPriceCurrency}
+                isNegotiable={proposal.dataset.isNegotiable}
+                sampleNotes={proposal.dataset.sampleNotes}
+                isEditable={isEditable}
+                onEditClick={() => setEditingSection("metadata")}
+                isDark={isDark}
+                tokens={tokens}
+              />
+            )}
+          </section>
+
+          <section
+            className="dashboard-detail-group min-w-0"
+            aria-labelledby="delivery-heading"
+          >
+            <div className="flex items-start gap-3 px-4 py-5 md:px-6">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Layers3 className="size-4" />
+              </span>
+              <div>
+                <h2
+                  id="delivery-heading"
+                  className="text-base font-semibold text-foreground"
+                >
+                  Files and structure
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Delivery assets, file format, and the schema buyers can
+                  expect.
+                </p>
+              </div>
+            </div>
+
+            <CurrentUploadSection
+              currentUpload={proposal.currentUpload}
+              isExpanded={expandedSections.upload}
+              onToggle={() => toggleSection("upload")}
+              isEditable={isEditable}
+              onUploadClick={openCurrentUploadDialog}
+              isDark={isDark}
+              tokens={tokens}
+              formatDate={formatDate}
+              formatFileSize={formatFileSize}
+            />
+            {shouldShowSampleUpload && (
+              <SampleUploadSection
+                sampleUpload={proposal.sampleUpload}
+                isEditable={isEditable}
+                onUploadClick={openSampleUploadDialog}
                 isDark={isDark}
                 tokens={tokens}
                 formatDate={formatDate}
                 formatFileSize={formatFileSize}
               />
-              {shouldShowSampleUpload && (
-                <SampleUploadSection
-                  sampleUpload={proposal.sampleUpload}
-                  isEditable={isEditable}
-                  onUploadClick={openSampleUploadDialog}
-                  isDark={isDark}
-                  tokens={tokens}
-                  formatDate={formatDate}
-                  formatFileSize={formatFileSize}
-                />
-              )}
-
-              <EditableSection
-                title="Data Format & Structure"
-                icon={<FileCode className="w-5 h-5" />}
-                isExpanded={expandedSections.format}
-                onToggle={() => toggleSection("format")}
-                isEditable={isEditable}
-                isEditing={activeEditingSection === "format"}
-                onEditClick={() => setEditingSection("format")}
-                isEmpty={!proposal.dataFormatInfo}
-                emptyIcon={<FileCode className="w-12 h-12" />}
-                emptyMessage="Data format information not provided yet"
-                emptyActionLabel="Add Format Information"
-                editContent={
-                  <DataFormatForm
-                    datasetId={proposal.dataset.id}
-                    initialData={proposal.dataFormatInfo || undefined}
-                    isDark={isDark}
-                    onSuccess={handleEditSuccess}
-                    onCancel={handleEditCancel}
-                  />
-                }
-                displayContent={
-                  proposal.dataFormatInfo ? (
-                    <DataFormatDisplay
-                      dataFormat={proposal.dataFormatInfo}
-                      tokens={tokens}
-                      formatDate={formatDate}
-                    />
-                  ) : null
-                }
-                isDark={isDark}
-                tokens={tokens}
-              />
-
-              <EditableSection
-                title="Features / Columns"
-                subtitle={`${proposal.features?.length || 0} features defined`}
-                icon={<Database className="w-5 h-5" />}
-                isExpanded={expandedSections.features}
-                onToggle={() => toggleSection("features")}
-                isEditable={isEditable}
-                isEditing={activeEditingSection === "features"}
-                onEditClick={() => setEditingSection("features")}
-                isEmpty={!proposal.features || proposal.features.length === 0}
-                emptyIcon={<Database className="w-12 h-12" />}
-                emptyMessage="No features defined yet"
-                emptyActionLabel="Define Features"
-                editContent={
-                  <FeaturesForm
-                    datasetId={proposal.dataset.id}
-                    initialData={proposal.features || []}
-                    isDark={isDark}
-                    onSuccess={handleEditSuccess}
-                    onCancel={handleEditCancel}
-                  />
-                }
-                displayContent={
-                  proposal.features && proposal.features.length > 0 ? (
-                    <FeaturesDisplay
-                      features={proposal.features}
-                      tokens={tokens}
-                      isDark={isDark}
-                    />
-                  ) : null
-                }
-                isDark={isDark}
-                tokens={tokens}
-              />
-            </section>
-
-            {(pricingData || pricingError) && (
-              <section
-                className="space-y-4"
-                aria-labelledby="commercial-heading"
-              >
-                <div className="flex items-start gap-3 px-1">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <BadgeDollarSign className="size-4" />
-                  </span>
-                  <div>
-                    <h2
-                      id="commercial-heading"
-                      className="text-base font-semibold text-foreground"
-                    >
-                      Commercial setup
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Pricing and approval state for this proposal.
-                    </p>
-                  </div>
-                </div>
-                {pricingError && (
-                  <DashboardInlineAlert
-                    tone="danger"
-                    title="Pricing unavailable"
-                    message={pricingError}
-                    action={
-                      <DashboardButton
-                        type="button"
-                        variant="outline"
-                        size="compact"
-                        onClick={() => void fetchPricing()}
-                      >
-                        Try again
-                      </DashboardButton>
-                    }
-                  />
-                )}
-                {pricingData && (
-                  <PricingSection
-                    pricingData={pricingData}
-                    isSampleProposal={isSampleProposal}
-                    onEditPricing={() => setShowPricingDialog(true)}
-                    isDark={isDark}
-                    tokens={tokens}
-                  />
-                )}
-              </section>
             )}
-          </main>
 
-          <aside className="space-y-4 xl:sticky xl:top-6">
-            {canSubmit && (
-              <SubmitForReviewSection
-                verificationStatus={proposal.verification.status}
-                missingPrerequisites={submitProposal.missingPrerequisites}
-                submitting={submitProposal.submitting}
-                onSubmit={submitProposal.handleSubmitForReview}
-                isDark={isDark}
-                tokens={tokens}
-              />
-            )}
-            <SampleProposalToggleCard
-              isSampleProposal={isSampleProposal}
+            <EditableSection
+              title="Data Format & Structure"
+              icon={<FileCode className="w-5 h-5" />}
+              isExpanded={expandedSections.format}
+              onToggle={() => toggleSection("format")}
               isEditable={isEditable}
-              sampleToggleSubmitting={sampleToggle.sampleToggleSubmitting}
-              onToggle={sampleToggle.handleOpenSampleToggle}
+              isEditing={activeEditingSection === "format"}
+              onEditClick={() => setEditingSection("format")}
+              isEmpty={!proposal.dataFormatInfo}
+              emptyIcon={<FileCode className="w-12 h-12" />}
+              emptyMessage="Data format information not provided yet"
+              emptyActionLabel="Add Format Information"
+              editContent={
+                <DataFormatForm
+                  datasetId={proposal.dataset.id}
+                  initialData={proposal.dataFormatInfo || undefined}
+                  isDark={isDark}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+              displayContent={
+                proposal.dataFormatInfo ? (
+                  <DataFormatDisplay
+                    dataFormat={proposal.dataFormatInfo}
+                    tokens={tokens}
+                    formatDate={formatDate}
+                  />
+                ) : null
+              }
               isDark={isDark}
               tokens={tokens}
             />
-            <KdtsScoreCard datasetId={proposal.dataset.id} variant="flat" />
-            <DashboardCard className="p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Workspace rules
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Section saves update the draft only. Submission is always a
-                separate confirmed action from the readiness panel.
-              </p>
-            </DashboardCard>
-          </aside>
-        </div>
+
+            <EditableSection
+              title="Features / Columns"
+              subtitle={`${proposal.features?.length || 0} features defined`}
+              icon={<Database className="w-5 h-5" />}
+              isExpanded={expandedSections.features}
+              onToggle={() => toggleSection("features")}
+              isEditable={isEditable}
+              isEditing={activeEditingSection === "features"}
+              onEditClick={() => setEditingSection("features")}
+              isEmpty={!proposal.features || proposal.features.length === 0}
+              emptyIcon={<Database className="w-12 h-12" />}
+              emptyMessage="No features defined yet"
+              emptyActionLabel="Define Features"
+              editContent={
+                <FeaturesForm
+                  datasetId={proposal.dataset.id}
+                  initialData={proposal.features || []}
+                  isDark={isDark}
+                  onSuccess={handleEditSuccess}
+                  onCancel={handleEditCancel}
+                />
+              }
+              displayContent={
+                proposal.features && proposal.features.length > 0 ? (
+                  <FeaturesDisplay
+                    features={proposal.features}
+                    tokens={tokens}
+                    isDark={isDark}
+                  />
+                ) : null
+              }
+              isDark={isDark}
+              tokens={tokens}
+            />
+          </section>
+
+          {(pricingData || pricingError) && (
+            <section
+              className="dashboard-detail-group min-w-0"
+              aria-labelledby="commercial-heading"
+            >
+              <div className="flex items-start gap-3 px-4 py-5 md:px-6">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <BadgeDollarSign className="size-4" />
+                </span>
+                <div>
+                  <h2
+                    id="commercial-heading"
+                    className="text-base font-semibold text-foreground"
+                  >
+                    Commercial setup
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Pricing and approval state for this proposal.
+                  </p>
+                </div>
+              </div>
+              {pricingError && (
+                <DashboardInlineAlert
+                  tone="danger"
+                  title="Pricing unavailable"
+                  message={pricingError}
+                  action={
+                    <DashboardButton
+                      type="button"
+                      variant="outline"
+                      size="compact"
+                      onClick={() => void fetchPricing()}
+                    >
+                      Try again
+                    </DashboardButton>
+                  }
+                />
+              )}
+              {pricingData && (
+                <PricingSection
+                  pricingData={pricingData}
+                  isSampleProposal={isSampleProposal}
+                  onEditPricing={() => setShowPricingDialog(true)}
+                  isDark={isDark}
+                  tokens={tokens}
+                />
+              )}
+            </section>
+          )}
+        </DashboardDetailLayout>
       </DatasetWorkspace>
 
       {/* Upload Dialog */}

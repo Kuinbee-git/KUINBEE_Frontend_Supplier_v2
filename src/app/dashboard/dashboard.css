@@ -1136,3 +1136,65 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
 .supplier-dashboard .dashboard-metric-card[role="button"]:focus-visible {
   outline-offset: -3px;
 }
+
+/* Detailed records use the same connected regions as the inventories. */
+.supplier-dashboard .dashboard-detail-group > .dashboard-glass-card {
+  border: 0;
+  border-top: 1px solid var(--dashboard-glass-border);
+  border-radius: 0;
+}
+.supplier-dashboard
+  .dashboard-detail-group
+  > :first-child:not(.dashboard-glass-card) {
+  border-bottom: 1px solid var(--dashboard-glass-border);
+}
+.supplier-dashboard
+  .dashboard-detail-group
+  > .dashboard-glass-card:nth-child(2) {
+  border-top: 0;
+}
+.supplier-dashboard .dashboard-panel-grid > [data-panel-cell] {
+  border-top: 1px solid var(--dashboard-glass-border);
+}
+.supplier-dashboard .dashboard-panel-grid > [data-panel-cell]:first-child {
+  border-top: 0;
+}
+@media (min-width: 1024px) {
+  .supplier-dashboard
+    .dashboard-panel-grid
+    > [data-panel-cell]:nth-child(-n + 2) {
+    border-top: 0;
+  }
+  .supplier-dashboard .dashboard-panel-grid > [data-panel-cell]:nth-child(2n) {
+    border-inline-start: 1px solid var(--dashboard-glass-border);
+  }
+}
+.supplier-dashboard .dataset-detail-editor .dataset-form-section {
+  border: 0;
+  border-top: 1px solid var(--dashboard-glass-border);
+  border-radius: 0;
+  background: transparent;
+  padding: 1.25rem 0;
+}
+.supplier-dashboard .dataset-detail-editor .dataset-form-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.supplier-dashboard .dataset-frozen-board > [data-proposal-tile="true"] {
+  border: 0;
+  border-top: 1px solid var(--dashboard-glass-border);
+  border-radius: 0;
+}
+.supplier-dashboard
+  .dataset-frozen-board
+  > [data-proposal-tile="true"]:first-child {
+  border-top: 0;
+}
+@media (min-width: 1024px) {
+  .supplier-dashboard
+    .dataset-frozen-board
+    > [data-proposal-tile="true"]:nth-child(2) {
+    border-top: 0;
+    border-inline-start: 1px solid var(--dashboard-glass-border);
+  }
+}

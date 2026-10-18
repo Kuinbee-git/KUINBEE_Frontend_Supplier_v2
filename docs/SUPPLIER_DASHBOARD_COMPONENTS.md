@@ -263,3 +263,23 @@ dropdown highlight, navigation, or default action colour.
   supplementary.
 - Validate keyboard use, visible focus, light/dark mode, and `390`, `768`,
   `1024`, and `1440px` widths before completing a page family.
+
+## Populated detail and editor coverage
+
+Use `DashboardPanelGrid` for pairs of related detail or analytics sections. It
+provides responsive cells and shared dividers; the last odd cell spans both
+columns. Use it inside the existing workspace rather than adding another surface.
+`DashboardSection flushContent` lets an already padded child reach the shared
+frame without a second inset.
+
+Legacy proposal, published Dataset, delisted update and fallback creation views
+use `DashboardDetailLayout` too. Read-only fields are definition lists, and open
+editors divide field groups without drawing another card around each group.
+Keep record boundaries, selectable options, validation messages and confirmation
+controls when their borders communicate meaning.
+
+`npm run test:details` renders populated, typed legacy proposal/publication and
+update states, all inline editors, creation, and custom-service detail/edit/review
+states. It checks both themes at 1440/1024/768/390px, opens and cancels editors
+and dialogs, and prohibits API mutations. This is component qualification with
+synthetic local responses, not hosted legacy-record or business acceptance.

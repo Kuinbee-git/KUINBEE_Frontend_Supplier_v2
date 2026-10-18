@@ -265,15 +265,7 @@ export function DataFormatForm({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* File Information Section */}
-          <div
-            className="rounded-xl border p-5 space-y-5"
-            style={{
-              background: isDark
-                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
-                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
-              borderColor: tokens.borderSubtle,
-            }}
-          >
+          <div className="dataset-form-section min-w-0 space-y-5">
             <div
               className="flex items-center gap-2 pb-3 border-b"
               style={{ borderColor: tokens.borderSubtle }}
@@ -348,15 +340,7 @@ export function DataFormatForm({
           </div>
 
           {/* Data Structure Section */}
-          <div
-            className="rounded-xl border p-5 space-y-5"
-            style={{
-              background: isDark
-                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
-                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
-              borderColor: tokens.borderSubtle,
-            }}
-          >
+          <div className="dataset-form-section min-w-0 space-y-5">
             <div
               className="flex items-center gap-2 pb-3 border-b"
               style={{ borderColor: tokens.borderSubtle }}
@@ -437,15 +421,7 @@ export function DataFormatForm({
           </div>
 
           {/* Technical Details Section */}
-          <div
-            className="rounded-xl border p-5 space-y-5"
-            style={{
-              background: isDark
-                ? "color-mix(in srgb, var(--dashboard-text) 2%, transparent)"
-                : "color-mix(in srgb, var(--dashboard-text) 2%, transparent)",
-              borderColor: tokens.borderSubtle,
-            }}
-          >
+          <div className="dataset-form-section min-w-0 space-y-5">
             <div
               className="flex items-center gap-2 pb-3 border-b"
               style={{ borderColor: tokens.borderSubtle }}

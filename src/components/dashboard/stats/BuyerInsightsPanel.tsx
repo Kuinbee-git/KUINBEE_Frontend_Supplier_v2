@@ -154,7 +154,7 @@ export function BuyerInsightsPanel({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-panel-stack min-w-0">
       <DashboardMetricGroup aria-label="Buyer summary">
         <DashboardMetricCard
           label="Total buyers"

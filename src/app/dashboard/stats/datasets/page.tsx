@@ -112,7 +112,7 @@ function DatasetsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-panel-stack min-w-0">
       <DashboardMetricGroup aria-label="Dataset analytics summary">
         {metrics.map((metric) => (
           <DashboardMetricCard

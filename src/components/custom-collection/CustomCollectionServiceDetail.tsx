@@ -367,47 +367,44 @@ export function CustomCollectionServiceDetail({
 
   return (
     <DashboardPage width="wide">
-      <header className="space-y-4">
-        <Button asChild variant="ghost" size="compact" className="-ml-3">
-          <Link href="/dashboard/custom-collection-services">
-            <ArrowLeft /> Back to services
-          </Link>
-        </Button>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
+      <DashboardPageHeader
+        title={revision.title}
+        description={status.description}
+        breadcrumbs={
+          <Button asChild variant="ghost" size="compact" className="-ml-3">
+            <Link href="/dashboard/custom-collection-services">
+              <ArrowLeft /> Back to services
+            </Link>
+          </Button>
+        }
+        meta={
+          <>
+            <DashboardStatusBadge
+              status={revision.status}
+              tone={STATUS_TONES[revision.status] ?? "neutral"}
+            >
+              {status.label}
+            </DashboardStatusBadge>
+            <span className="text-xs text-muted-foreground">
+              Revision v{revision.version}
+            </span>
+            {service.publishedRevision && !service.archivedAt && (
               <DashboardStatusBadge
-                status={revision.status}
-                tone={STATUS_TONES[revision.status] ?? "neutral"}
+                icon={service.isPublished ? Globe2 : EyeOff}
+                tone={service.isPublished ? "success" : "neutral"}
               >
-                {status.label}
+                {service.isPublished ? "Public" : "Private"}
               </DashboardStatusBadge>
-              <span className="text-xs text-muted-foreground">
-                Revision v{revision.version}
-              </span>
-              {service.publishedRevision && !service.archivedAt && (
-                <DashboardStatusBadge
-                  icon={service.isPublished ? Globe2 : EyeOff}
-                  tone={service.isPublished ? "success" : "neutral"}
-                >
-                  {service.isPublished ? "Public" : "Private"}
-                </DashboardStatusBadge>
-              )}
-              {service.archivedAt && (
-                <DashboardStatusBadge icon={Archive} tone="neutral">
-                  Archived
-                </DashboardStatusBadge>
-              )}
-            </div>
-            <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
-              {revision.title}
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              {status.description}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            )}
+            {service.archivedAt && (
+              <DashboardStatusBadge icon={Archive} tone="neutral">
+                Archived
+              </DashboardStatusBadge>
+            )}
+          </>
+        }
+        actions={
+          <>
             {service.isPublished &&
               service.publishedRevision &&
               !service.archivedAt && (
@@ -465,9 +462,9 @@ export function CustomCollectionServiceDetail({
                 <Archive /> Archive
               </Button>
             )}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
       <DashboardWorkspace>
         {error && (
           <DashboardInlineAlert

@@ -127,14 +127,8 @@ export function AboutDatasetForm({
   };
 
   return (
-    <DashboardCard
-      className="border overflow-hidden"
-      style={{
-        background: tokens.surfaceCard,
-        borderColor: tokens.borderDefault,
-      }}
-    >
-      <div className="p-6">
+    <DashboardCard className="rounded-none border-0 bg-transparent">
+      <div>
         {/* Header */}
         <div
           className="mb-6 pb-4 border-b"

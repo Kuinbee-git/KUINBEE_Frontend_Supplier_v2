@@ -129,9 +129,17 @@ export function PreparationSection({
   );
 }
 
-export function PreparationGrid({ children }: { children: ReactNode }) {
+export function PreparationGrid({
+  children,
+  connected = false,
+}: {
+  children: ReactNode;
+  connected?: boolean;
+}) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12">
+    <div
+      className={`grid min-w-0 grid-cols-1 lg:grid-cols-12 ${connected ? "dataset-frozen-board" : "gap-4"}`}
+    >
       {children}
     </div>
   );

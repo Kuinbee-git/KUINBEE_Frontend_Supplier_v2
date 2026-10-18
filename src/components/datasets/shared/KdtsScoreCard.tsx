@@ -75,12 +75,9 @@ export function KdtsScoreCard({
           </div>
 
           {/* Dimension grid */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-3">
             {KDTS_DIMS.map(({ key, label }) => (
-              <div
-                key={key}
-                className="rounded-lg border border-border bg-muted/35 p-2.5"
-              >
+              <div key={key} className="border-b border-border pb-3">
                 <p className="mb-1 text-xs text-muted-foreground">
                   {key} — {label}
                 </p>

@@ -396,13 +396,7 @@ export function MetadataEditForm({
 
       <div className="space-y-5">
         {mode !== "sampleOnly" && (
-          <div
-            className="rounded-xl border p-5 space-y-5"
-            style={{
-              background: tokens.surfaceCard,
-              borderColor: tokens.borderSubtle || tokens.inputBorder,
-            }}
-          >
+          <div className="dataset-form-section min-w-0 space-y-5">
             <div>
               <h4
                 className="text-sm font-semibold"
@@ -500,19 +494,7 @@ export function MetadataEditForm({
         )}
 
         {mode !== "basicOnly" && (
-          <div
-            className="rounded-xl border p-5"
-            style={{
-              background: formData.isSample
-                ? isDark
-                  ? "color-mix(in srgb, var(--dashboard-action) 8%, transparent)"
-                  : "color-mix(in srgb, var(--dashboard-action) 6%, transparent)"
-                : tokens.surfaceCard,
-              borderColor: formData.isSample
-                ? "var(--dashboard-info-foreground)"
-                : tokens.borderSubtle || tokens.inputBorder,
-            }}
-          >
+          <div className="dataset-form-section min-w-0 space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h4

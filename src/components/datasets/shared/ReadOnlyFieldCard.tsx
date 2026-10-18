@@ -17,21 +17,16 @@ export function ReadOnlyFieldCard({
   tokens,
 }: ReadOnlyFieldCardProps) {
   return (
-    <div
-      className="rounded-lg p-3"
-      style={{
-        background:
-          tokens.infoBg ||
-          "color-mix(in srgb, var(--dashboard-action) 6%, var(--dashboard-surface))",
-        border: `1px solid ${tokens.borderSubtle || "var(--dashboard-border)"}`,
-      }}
-    >
-      <p className="text-xs mb-1" style={{ color: tokens.textMuted }}>
+    <dl className="min-w-0 border-b border-border py-3">
+      <dt className="text-xs mb-1" style={{ color: tokens.textMuted }}>
         {label}
-      </p>
-      <p className="text-sm font-medium" style={{ color: tokens.textPrimary }}>
+      </dt>
+      <dd
+        className="break-words text-sm font-medium [overflow-wrap:anywhere]"
+        style={{ color: tokens.textPrimary }}
+      >
         {value ?? "N/A"}
-      </p>
-    </div>
+      </dd>
+    </dl>
   );
 }

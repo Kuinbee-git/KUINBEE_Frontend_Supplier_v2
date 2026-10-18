@@ -5,23 +5,25 @@ import type { DatasetDetailTokens } from "../detailTokens";
 
 interface CategoriesDisplayProps {
   categoryIds: string[];
+  categories?: Array<{ id: string; name: string }>;
   tokens: DatasetDetailTokens;
   isDark: boolean;
 }
 
 export function CategoriesDisplay({
   categoryIds,
+  categories = [],
   tokens,
   isDark,
 }: CategoriesDisplayProps) {
   return (
     <div className="space-y-2">
-      <Label style={{ color: tokens.textSecondary }}>Category IDs</Label>
+      <Label style={{ color: tokens.textSecondary }}>Other categories</Label>
       <div className="flex flex-wrap gap-2">
-        {categoryIds.map((categoryId, index) => (
+        {categoryIds.map((categoryId) => (
           <span
-            key={index}
-            className="px-3 py-1 text-xs font-mono rounded-full"
+            key={categoryId}
+            className="max-w-full break-words rounded-full px-3 py-1 text-xs [overflow-wrap:anywhere]"
             style={{
               background: isDark
                 ? "color-mix(in srgb, var(--dashboard-action) 15%, transparent)"
@@ -31,7 +33,8 @@ export function CategoriesDisplay({
                 "1px solid color-mix(in srgb, var(--dashboard-action) 30%, transparent)",
             }}
           >
-            {categoryId}
+            {categories.find((category) => category.id === categoryId)?.name ??
+              "Category label unavailable"}
           </span>
         ))}
       </div>

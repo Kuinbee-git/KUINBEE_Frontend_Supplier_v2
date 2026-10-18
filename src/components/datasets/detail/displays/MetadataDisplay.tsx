@@ -1,6 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
+import { DATASET_TYPES } from "@/constants/dataset.constants";
 import type { ProposalDetailsResponse } from "@/types/dataset-proposal.types";
 import type { DatasetDetailTokens } from "../detailTokens";
 
@@ -14,29 +15,35 @@ export function MetadataDisplay({ proposal, tokens }: MetadataDisplayProps) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label style={{ color: tokens.textSecondary }}>Dataset Type</Label>
+          <Label style={{ color: tokens.textSecondary }}>Study structure</Label>
           <p className="text-sm" style={{ color: tokens.textPrimary }}>
-            {proposal.dataset.superType.replace(/_/g, " ")}
+            {DATASET_TYPES.find(
+              (item) => item.value === proposal.dataset.superType
+            )?.label ?? proposal.dataset.superType.replace(/_/g, " ")}
           </p>
         </div>
         <div className="space-y-2">
           <Label style={{ color: tokens.textSecondary }}>
-            Primary Category ID
+            Primary category
           </Label>
           <p
-            className="text-sm font-mono"
+            className="break-words text-sm"
             style={{ color: tokens.textPrimary }}
           >
-            {proposal.dataset.primaryCategoryId}
+            {proposal.primaryCategory?.id === proposal.dataset.primaryCategoryId
+              ? proposal.primaryCategory.name
+              : "Current category label unavailable"}
           </p>
         </div>
         <div className="space-y-2">
-          <Label style={{ color: tokens.textSecondary }}>Source ID</Label>
+          <Label style={{ color: tokens.textSecondary }}>Data source</Label>
           <p
-            className="text-sm font-mono"
+            className="break-words text-sm"
             style={{ color: tokens.textPrimary }}
           >
-            {proposal.dataset.sourceId}
+            {proposal.source?.id === proposal.dataset.sourceId
+              ? proposal.source.name
+              : "Current source label unavailable"}
           </p>
         </div>
         <div className="space-y-2">

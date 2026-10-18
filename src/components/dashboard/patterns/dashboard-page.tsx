@@ -76,7 +76,7 @@ export const DashboardPageHeader = React.forwardRef<
           </nav>
         ) : null}
 
-        <h1 className="text-2xl font-semibold leading-8 tracking-tight text-foreground lg:text-[1.875rem] lg:leading-9">
+        <h1 className="break-words text-2xl font-semibold leading-8 tracking-tight text-foreground [overflow-wrap:anywhere] lg:text-[1.875rem] lg:leading-9">
           {title}
         </h1>
 
@@ -123,7 +123,7 @@ function DashboardSplitLayout({
   ...props
 }: DashboardSplitLayoutProps) {
   return (
-    <DashboardWorkspace>
+    <DashboardWorkspace data-dashboard-detail="true">
       <div
         className={cn(
           "grid min-w-0",
@@ -219,6 +219,7 @@ export interface DashboardSectionProps extends Omit<
   actions?: React.ReactNode;
   description?: React.ReactNode;
   surface?: "card" | "plain";
+  flushContent?: boolean;
   title: React.ReactNode;
 }
 
@@ -233,6 +234,7 @@ export const DashboardSection = React.forwardRef<
       className,
       description,
       surface = "card",
+      flushContent = false,
       title,
       ...props
     },
@@ -282,7 +284,11 @@ export const DashboardSection = React.forwardRef<
               </div>
             ) : null}
           </DashboardCardHeader>
-          <DashboardCardContent>{children}</DashboardCardContent>
+          <DashboardCardContent
+            className={flushContent ? "p-0 md:p-0" : undefined}
+          >
+            {children}
+          </DashboardCardContent>
         </DashboardCard>
       </section>
     );

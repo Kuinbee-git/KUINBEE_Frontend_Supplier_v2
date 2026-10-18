@@ -13,6 +13,7 @@ import Link from "next/link";
 import {
   DashboardButton,
   DashboardCard,
+  DashboardPanelGrid,
   DashboardSkeleton,
   DashboardStatusBadge,
 } from "@/components/dashboard";
@@ -100,7 +101,7 @@ function PerformanceCard({
           return (
             <div
               key={metric.label}
-              className="rounded-lg border border-border bg-muted/40 p-3"
+              className="min-w-0 border-b border-border py-3"
             >
               <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <MetricIcon className="size-3.5" aria-hidden="true" />
@@ -145,9 +146,9 @@ export function TopLowPerformingDatasets({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <DashboardPanelGrid>
       <PerformanceCard dataset={topPerforming} type="top" />
       <PerformanceCard dataset={lowPerforming} type="low" />
-    </div>
+    </DashboardPanelGrid>
   );
 }

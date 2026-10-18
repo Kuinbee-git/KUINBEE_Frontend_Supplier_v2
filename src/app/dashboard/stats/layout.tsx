@@ -50,7 +50,7 @@ function StatsLayoutInner({ children }: { children: ReactNode }) {
         <DashboardRegion>
           <StatsTabNav />
         </DashboardRegion>
-        <DashboardRegion>{children}</DashboardRegion>
+        <div className="min-w-0">{children}</div>
       </DashboardWorkspace>
     </DashboardPage>
   );

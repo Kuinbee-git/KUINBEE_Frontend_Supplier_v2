@@ -504,7 +504,7 @@ export default function SupplierReviewsPage() {
                   </DashboardCardDescription>
                 </DashboardCardHeader>
                 <DashboardCardContent className="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center">
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-muted/35 px-5 py-6 text-center">
+                  <div className="flex flex-col items-center justify-center px-5 py-6 text-center">
                     <p className="text-4xl font-semibold tracking-tight text-foreground tabular-nums">
                       {Number(selectedDataset.rating ?? 0).toFixed(1)}
                     </p>

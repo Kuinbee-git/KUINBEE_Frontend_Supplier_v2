@@ -15,12 +15,16 @@ import {
   DashboardMobileRecordCard,
   DashboardPage,
   DashboardWorkspace,
+  DashboardPanelGrid,
   DashboardPageHeader,
   DashboardSection,
   type DashboardTableColumn,
 } from "@/components/dashboard";
 import { DatasetConversionFunnel } from "@/components/dashboard/stats/DatasetConversionFunnel";
-import { DatasetDetailHeader } from "@/components/dashboard/stats/DatasetDetailHeader";
+import {
+  DatasetDetailHeader,
+  DatasetAnalyticsMetrics,
+} from "@/components/dashboard/stats/DatasetDetailHeader";
 import { DatasetViewsSalesChart } from "@/components/dashboard/stats/DatasetViewsSalesChart";
 import { RevenueTrendChart } from "@/components/dashboard/stats/RevenueTrendChart";
 import { TimeRangeSelector } from "@/components/dashboard/stats/TimeRangeSelector";
@@ -187,7 +191,8 @@ function DatasetDetailContent() {
         }
       />
       <DashboardWorkspace>
-        <div className="grid items-start gap-4 xl:grid-cols-2">
+        <DatasetAnalyticsMetrics dataset={detail.dataset} />
+        <DashboardPanelGrid>
           <DashboardSection
             title="Revenue over time"
             description="Recognized dataset revenue within the selected period."
@@ -249,7 +254,7 @@ function DatasetDetailContent() {
               />
             )}
           </DashboardSection>
-        </div>
+        </DashboardPanelGrid>
       </DashboardWorkspace>
     </DashboardPage>
   );

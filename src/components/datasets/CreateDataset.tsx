@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  DashboardDetailLayout,
   DashboardButton,
   DashboardCard,
   DashboardDialog,
@@ -256,76 +257,80 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
   const tokens = getDatasetThemeTokens(isDark);
 
   // Restore local progress only after checking any existing proposal on the server.
-  useComponentRequest(async () => {
-    if (draftLoaded || !isDraftStorageReady) return;
+  useComponentRequest(
+    async () => {
+      if (draftLoaded || !isDraftStorageReady) return;
 
-    const draft = loadDraft() as SavedDraftProposal | null;
-    if (draft) {
-      const restoreDraft = (d: SavedDraftProposal) => {
-        if (d.basicData) setBasicData(normalizeBasicData(d.basicData));
-        if (d.aboutData) setAboutData(d.aboutData);
-        if (d.locationData)
-          setLocationData({
-            ...DEFAULT_LOCATION_DATA,
-            ...d.locationData,
-          });
-        if (typeof d.tagsText === "string") setTagsText(d.tagsText);
-        if (d.formatData) setFormatData(d.formatData);
-        if (d.features && d.features.length > 0) setFeatures(d.features);
-        if (d.pricingData) setPricingData(d.pricingData);
-        if (d.createdProposalId) setCreatedProposalId(d.createdProposalId);
-        if (d.currentStep) setCurrentStep(d.currentStep as Step);
-        if (d.fileUploaded) setFileUploaded(d.fileUploaded);
-        if (d.sampleFileUploaded) setSampleFileUploaded(d.sampleFileUploaded);
+      const draft = loadDraft() as SavedDraftProposal | null;
+      if (draft) {
+        const restoreDraft = (d: SavedDraftProposal) => {
+          if (d.basicData) setBasicData(normalizeBasicData(d.basicData));
+          if (d.aboutData) setAboutData(d.aboutData);
+          if (d.locationData)
+            setLocationData({
+              ...DEFAULT_LOCATION_DATA,
+              ...d.locationData,
+            });
+          if (typeof d.tagsText === "string") setTagsText(d.tagsText);
+          if (d.formatData) setFormatData(d.formatData);
+          if (d.features && d.features.length > 0) setFeatures(d.features);
+          if (d.pricingData) setPricingData(d.pricingData);
+          if (d.createdProposalId) setCreatedProposalId(d.createdProposalId);
+          if (d.currentStep) setCurrentStep(d.currentStep as Step);
+          if (d.fileUploaded) setFileUploaded(d.fileUploaded);
+          if (d.sampleFileUploaded) setSampleFileUploaded(d.sampleFileUploaded);
 
-        // Only show toast if the draft actually contains meaningful progress
-        if (
-          d.createdProposalId ||
-          d.currentStep !== "basic" ||
-          (d.basicData && d.basicData.title)
-        ) {
-          toast.success("Draft proposal restored!");
+          // Only show toast if the draft actually contains meaningful progress
+          if (
+            d.createdProposalId ||
+            d.currentStep !== "basic" ||
+            (d.basicData && d.basicData.title)
+          ) {
+            toast.success("Draft proposal restored!");
+          }
+
+          setDraftLoaded(true);
+        };
+
+        if (draft.createdProposalId) {
+          // Proactively verify the drafted dataset is still editable
+          await getProposalDetails(draft.createdProposalId)
+            .then((res) => {
+              if (res.verification.status !== "PENDING") {
+                clearDraft();
+                setDraftLoaded(true);
+              } else {
+                restoreDraft({
+                  ...draft,
+                  fileUploaded:
+                    res.currentUpload?.status === "UPLOADED" ||
+                    res.currentUpload?.status === "PROMOTED",
+                  sampleFileUploaded:
+                    res.sampleUpload?.status === "UPLOADED" ||
+                    res.sampleUpload?.status === "PROMOTED",
+                });
+              }
+            })
+            .catch((err) => {
+              console.error(
+                "Failed to verify draft proposal. Restoring local draft.",
+                err
+              );
+              restoreDraft(draft);
+              setError(
+                "Your locally saved draft was restored, but its server status could not be verified. Check your connection before saving the next step."
+              );
+            });
+        } else {
+          restoreDraft(draft);
         }
-
-        setDraftLoaded(true);
-      };
-
-      if (draft.createdProposalId) {
-        // Proactively verify the drafted dataset is still editable
-        await getProposalDetails(draft.createdProposalId)
-          .then((res) => {
-            if (res.verification.status !== "PENDING") {
-              clearDraft();
-              setDraftLoaded(true);
-            } else {
-              restoreDraft({
-                ...draft,
-                fileUploaded:
-                  res.currentUpload?.status === "UPLOADED" ||
-                  res.currentUpload?.status === "PROMOTED",
-                sampleFileUploaded:
-                  res.sampleUpload?.status === "UPLOADED" ||
-                  res.sampleUpload?.status === "PROMOTED",
-              });
-            }
-          })
-          .catch((err) => {
-            console.error(
-              "Failed to verify draft proposal. Restoring local draft.",
-              err
-            );
-            restoreDraft(draft);
-            setError(
-              "Your locally saved draft was restored, but its server status could not be verified. Check your connection before saving the next step."
-            );
-          });
       } else {
-        restoreDraft(draft);
+        setDraftLoaded(true);
       }
-    } else {
-      setDraftLoaded(true);
-    }
-  }, [isDraftStorageReady], isDraftStorageReady && !draftLoaded);
+    },
+    [isDraftStorageReady],
+    isDraftStorageReady && !draftLoaded
+  );
 
   // Auto-save draft whenever form data changes
   useEffect(() => {
@@ -438,8 +443,12 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
     return !!(pricingData.price && pricingData.price.trim() !== "");
   };
 
-  if (basicData.isSample && (pricingData.isPaid ||
-      (pricingData.price != null && pricingData.price !== "") || pricingData.currency !== "USD")) {
+  if (
+    basicData.isSample &&
+    (pricingData.isPaid ||
+      (pricingData.price != null && pricingData.price !== "") ||
+      pricingData.currency !== "USD")
+  ) {
     setPricingData({ ...SAMPLE_FREE_PRICING });
   }
   if ((basicData.isSample || !pricingData.isPaid) && sampleFileUploaded) {
@@ -872,8 +881,8 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
 
   return (
     <>
-      <DatasetWorkspace className="max-w-[1320px]">
-        <div className="space-y-7">
+      <DatasetWorkspace>
+        <div className="contents">
           <DatasetPageHeader
             title="Create a dataset proposal"
             description="Build and save the proposal in seven clear steps. You will review the completed draft before deciding when to submit it for moderation."
@@ -890,456 +899,457 @@ export function CreateDataset({ isDark = false }: CreateDatasetProps) {
             }
           />
 
-          <DashboardCard className="p-4 xl:hidden">
-            <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Step {currentStepIndex + 1} of {steps.length}
-            </p>
-            <DashboardProgress
-              label={steps[currentStepIndex].label}
-              value={currentStepIndex + 1}
-              max={steps.length}
-            />
-          </DashboardCard>
-
           {/* Two Column Layout */}
-          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
-            {/* Left: Form Content (Wider) */}
-            <div className="min-w-0 space-y-5">
-              {/* Error Message */}
-              {error && (
-                <DashboardInlineAlert
-                  tone="danger"
-                  title="This step could not be saved"
-                  message={
-                    error.toLowerCase().includes("not editable")
-                      ? `${error} This draft might already be in review. Start over only if you want to clear this local draft.`
-                      : error
-                  }
-                  action={
-                    error.toLowerCase().includes("not editable") ? (
-                      <DashboardButton
-                        variant="outline"
-                        size="compact"
-                        onClick={handleStartOver}
-                      >
-                        Start over
-                      </DashboardButton>
-                    ) : undefined
-                  }
-                />
-              )}
-
-              {/* Success Message */}
-              {success && (
-                <DashboardInlineAlert
-                  tone="success"
-                  title="Saved"
-                  message={success}
-                />
-              )}
-
-              {/* Form Card */}
-              <DashboardCard className="overflow-hidden">
-                <div className="p-5 sm:p-7 lg:p-8">
-                  <div className="mb-6">
-                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                      Step {currentStepIndex + 1} of {steps.length}
-                    </p>
-                    <h2 className="text-xl font-semibold text-foreground sm:text-2xl">
-                      {steps[currentStepIndex].label}
-                    </h2>
-                  </div>
-
-                  <div className="space-y-6">
-                    {currentStep === "basic" && (
-                      <BasicInfoStep
-                        data={basicData}
-                        onChange={handleBasicChange}
-                        onSourceCreated={handleSourceCreated}
-                        disabled={submitting}
-                        tokens={tokens}
-                        isDark={isDark}
-                      />
-                    )}
-
-                    {currentStep === "about" && (
-                      <AboutStep
-                        data={aboutData}
-                        onChange={handleAboutChange}
-                        locationData={locationData}
-                        onLocationChange={handleLocationChange}
-                        tagsText={tagsText}
-                        onTagsChange={setTagsText}
-                        disabled={submitting}
-                        tokens={tokens}
-                      />
-                    )}
-
-                    {currentStep === "format" && (
-                      <DataFormatStep
-                        data={formatData}
-                        onChange={handleFormatChange}
-                        disabled={submitting}
-                        tokens={tokens}
-                        isDark={isDark}
-                      />
-                    )}
-
-                    {currentStep === "features" && (
-                      <FeaturesStep
-                        features={features}
-                        onChange={handleFeatureChange}
-                        onAdd={addFeature}
-                        onRemove={removeFeature}
-                        disabled={submitting}
-                        isDark={isDark}
-                        tokens={tokens}
-                      />
-                    )}
-
-                    {currentStep === "pricing" && (
-                      <PricingStep
-                        data={pricingData}
-                        onChange={handlePricingChange}
-                        disabled={submitting}
-                        isSample={basicData.isSample}
-                        tokens={tokens}
-                        isDark={isDark}
-                      />
-                    )}
-
-                    {currentStep === "upload" && (
-                      <div className="space-y-8 py-8">
-                        <div className="text-center space-y-6">
-                          <div
-                            className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
-                            style={{
-                              background: isDark
-                                ? "color-mix(in srgb, var(--dashboard-action) 10%, transparent)"
-                                : "color-mix(in srgb, var(--dashboard-action) 5%, transparent)",
-                              border: `2px dashed ${isDark ? "color-mix(in srgb, var(--dashboard-action) 30%, transparent)" : "color-mix(in srgb, var(--dashboard-action) 20%, transparent)"}`,
-                            }}
-                          >
-                            <FileText
-                              className="w-10 h-10"
-                              style={{ color: tokens.textSecondary }}
-                            />
-                          </div>
-
-                          <div>
-                            <h3
-                              className="text-xl font-semibold mb-2"
-                              style={{ color: tokens.textPrimary }}
-                            >
-                              {fileUploaded
-                                ? "File uploaded successfully!"
-                                : "Upload your dataset file"}
-                            </h3>
-                            <p
-                              className="text-sm max-w-md mx-auto"
-                              style={{ color: tokens.textMuted }}
-                            >
-                              {fileUploaded
-                                ? "Your file has been uploaded. Continue to review the complete saved draft."
-                                : "Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX, ZIP."}
-                            </p>
-                          </div>
-
-                          {fileUploaded ? (
-                            <div
-                              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg"
-                              style={{
-                                background:
-                                  "color-mix(in srgb, var(--dashboard-success) 10%, transparent)",
-                                border:
-                                  "1px solid color-mix(in srgb, var(--dashboard-success) 30%, transparent)",
-                              }}
-                            >
-                              <CheckCircle className="w-5 h-5 text-[var(--dashboard-success-foreground)]" />
-                              <span className="text-sm font-medium text-[var(--dashboard-success-foreground)]">
-                                Upload complete
-                              </span>
-                            </div>
-                          ) : (
-                            <DashboardButton
-                              onClick={() => setUploadDialogOpen(true)}
-                              size="large"
-                              className="gap-2 px-8 py-6 text-base"
-                            >
-                              <Upload className="w-5 h-5" />
-                              Upload Dataset File
-                            </DashboardButton>
-                          )}
-                        </div>
-
-                        {!fileUploaded && (
-                          <div
-                            className="rounded-lg border p-5 max-w-md mx-auto"
-                            style={{
-                              background:
-                                "color-mix(in srgb, var(--dashboard-action) 5%, transparent)",
-                              borderColor:
-                                "color-mix(in srgb, var(--dashboard-action) 20%, transparent)",
-                            }}
-                          >
-                            <div className="flex items-start gap-3">
-                              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-[var(--dashboard-info-foreground)]" />
-                              <div
-                                className="text-sm leading-relaxed"
-                                style={{ color: tokens.textSecondary }}
-                              >
-                                <p
-                                  className="font-semibold mb-2"
-                                  style={{ color: tokens.textPrimary }}
-                                >
-                                  Upload requirements:
-                                </p>
-                                <ul className="space-y-1.5 list-none">
-                                  <li className="flex items-start gap-2">
-                                    <span className="text-[var(--dashboard-info-foreground)]">
-                                      •
-                                    </span>
-                                    <span>
-                                      Supported formats: CSV, JSON, Parquet,
-                                      XLSX, ZIP
-                                    </span>
-                                  </li>
-                                  <li className="flex items-start gap-2">
-                                    <span className="text-[var(--dashboard-info-foreground)]">
-                                      •
-                                    </span>
-                                    <span>
-                                      File upload is required to complete your
-                                      proposal
-                                    </span>
-                                  </li>
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {shouldShowSampleUpload && (
-                          <div
-                            className="rounded-lg border p-5 max-w-md mx-auto"
-                            style={{
-                              background:
-                                "color-mix(in srgb, var(--dashboard-success) 6%, transparent)",
-                              borderColor:
-                                "color-mix(in srgb, var(--dashboard-success) 25%, transparent)",
-                            }}
-                          >
-                            <div className="text-center space-y-4">
-                              <div>
-                                <p
-                                  className="text-sm font-semibold"
-                                  style={{ color: tokens.textPrimary }}
-                                >
-                                  Optional: Upload sample file
-                                </p>
-                                <p
-                                  className="text-xs mt-1"
-                                  style={{ color: tokens.textMuted }}
-                                >
-                                  Buyers can download this sample file freely
-                                  before purchasing.
-                                </p>
-                              </div>
-
-                              {sampleFileUploaded ? (
-                                <div
-                                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
-                                  style={{
-                                    background:
-                                      "color-mix(in srgb, var(--dashboard-success) 12%, transparent)",
-                                    border:
-                                      "1px solid color-mix(in srgb, var(--dashboard-success) 35%, transparent)",
-                                  }}
-                                >
-                                  <CheckCircle className="w-4 h-4 text-[var(--dashboard-success-foreground)]" />
-                                  <span className="text-xs font-medium text-[var(--dashboard-success-foreground)]">
-                                    Sample upload complete
-                                  </span>
-                                </div>
-                              ) : null}
-
-                              <DashboardButton
-                                onClick={() => setSampleUploadDialogOpen(true)}
-                                size="compact"
-                                variant="outline"
-                                className="gap-2"
-                              >
-                                <Upload className="w-4 h-4" />
-                                {sampleFileUploaded
-                                  ? "Replace sample file"
-                                  : "Upload sample file"}
-                              </DashboardButton>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {currentStep === "review" && (
-                      <ReviewStep
-                        title={basicData.title}
-                        superType={basicData.superType}
-                        country={locationData.country}
-                        fileFormat={formatData.fileFormat}
-                        fileSize={formatData.fileSize}
-                        featureCount={features.length}
-                        isSample={basicData.isSample}
-                        isPaid={pricingData.isPaid}
-                        price={pricingData.price ?? null}
-                        currency={pricingData.currency ?? "USD"}
-                        fileUploaded={fileUploaded}
-                        sampleFileUploaded={sampleFileUploaded}
-                        shouldShowSampleUpload={shouldShowSampleUpload}
-                        onEdit={setCurrentStep}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Navigation Buttons */}
-                <DashboardFormActions
-                  className="px-5 sm:px-7"
-                  status={
-                    submitting
-                      ? "Saving this step…"
-                      : `Step ${currentStepIndex + 1} of ${steps.length}`
-                  }
-                >
-                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                    {currentStepIndex > 0 && (
-                      <DashboardButton
-                        variant="outline"
-                        onClick={handleBack}
-                        disabled={submitting}
-                        className="h-11 gap-2 px-5"
-                      >
-                        <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
-                        Back
-                      </DashboardButton>
-                    )}
-
-                    {(createdProposalId || currentStep !== "basic") && (
-                      <DashboardButton
-                        variant="ghost"
-                        onClick={handleStartOver}
-                        disabled={submitting}
-                        className="text-[var(--dashboard-danger-foreground)]"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        Start Over
-                      </DashboardButton>
-                    )}
-                  </div>
-
-                  <DashboardButton
-                    size="large"
-                    onClick={handleNext}
-                    disabled={submitting}
-                    className="w-full sm:w-auto"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : isLastStep ? (
-                      <>
-                        Open proposal workspace
-                        <ChevronRight className="w-4 h-4" />
-                      </>
-                    ) : currentStep === "upload" ? (
-                      fileUploaded ? (
-                        <>
-                          Review saved draft
-                          <ChevronRight className="w-4 h-4" />
-                        </>
-                      ) : (
-                        "Upload file to continue"
-                      )
-                    ) : (
-                      <>
-                        Next
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200" />
-                      </>
-                    )}
-                  </DashboardButton>
-                </DashboardFormActions>
-              </DashboardCard>
-            </div>
-
-            {/* Right: Progress Stepper (Wider, Sticky) */}
-            <aside className="hidden xl:block">
-              <DashboardCard className="sticky top-6 w-full p-5">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Proposal progress
-                </h3>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Your work is saved after every completed step.
-                </p>
-                <div className="mt-6 flex w-full flex-col gap-5">
-                  {steps.map((step, idx) => (
-                    <div
-                      key={step.id}
-                      className="flex flex-row items-start w-full relative"
-                    >
-                      {/* Step Circle */}
+          <DashboardDetailLayout
+            stickyAside
+            mainClassName="dataset-detail-sections"
+            asideClassName="hidden xl:block"
+            aside={
+              <>
+                <DashboardCard className="w-full p-5">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Proposal progress
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Your work is saved after every completed step.
+                  </p>
+                  <div className="mt-6 flex w-full flex-col gap-5">
+                    {steps.map((step, idx) => (
                       <div
-                        className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
-                          idx <= currentStepIndex
-                            ? "border-[var(--dashboard-indicator)] bg-[var(--dashboard-indicator)] text-primary-foreground"
-                            : "dashboard-tone-neutral"
-                        }`}
+                        key={step.id}
+                        className="flex flex-row items-start w-full relative"
                       >
-                        {idx < currentStepIndex ? "✓" : step.number}
-                      </div>
-
-                      {/* Step Label & Status */}
-                      <div className="ml-3 flex min-w-0 flex-col">
+                        {/* Step Circle */}
                         <div
-                          className={`text-sm font-semibold ${
+                          className={`relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
                             idx <= currentStepIndex
-                              ? "text-foreground"
-                              : "text-muted-foreground"
+                              ? "border-[var(--dashboard-indicator)] bg-[var(--dashboard-indicator)] text-primary-foreground"
+                              : "dashboard-tone-neutral"
                           }`}
                         >
-                          {step.label}
+                          {idx < currentStepIndex ? "✓" : step.number}
                         </div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {idx < currentStepIndex
-                            ? "Complete"
-                            : idx === currentStepIndex
-                              ? "In progress"
-                              : "Pending"}
+
+                        {/* Step Label & Status */}
+                        <div className="ml-3 flex min-w-0 flex-col">
+                          <div
+                            className={`text-sm font-semibold ${
+                              idx <= currentStepIndex
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {step.label}
+                          </div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {idx < currentStepIndex
+                              ? "Complete"
+                              : idx === currentStepIndex
+                                ? "In progress"
+                                : "Pending"}
+                          </div>
                         </div>
+
+                        {/* Connecting Line */}
+                        {idx < steps.length - 1 && (
+                          <div
+                            className={`absolute w-px transition-colors duration-300 motion-reduce:transition-none ${
+                              idx < currentStepIndex
+                                ? "bg-[var(--dashboard-indicator)]"
+                                : "bg-border"
+                            }`}
+                            style={{
+                              left: "1.125rem",
+                              top: "2.25rem",
+                              height: "1.25rem",
+                              zIndex: 0,
+                            }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </DashboardCard>
+              </>
+            }
+          >
+            <DashboardCard className="p-4 xl:hidden">
+              <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Step {currentStepIndex + 1} of {steps.length}
+              </p>
+              <DashboardProgress
+                label={steps[currentStepIndex].label}
+                value={currentStepIndex + 1}
+                max={steps.length}
+              />
+            </DashboardCard>
+
+            {/* Error Message */}
+            {error && (
+              <DashboardInlineAlert
+                tone="danger"
+                title="This step could not be saved"
+                message={
+                  error.toLowerCase().includes("not editable")
+                    ? `${error} This draft might already be in review. Start over only if you want to clear this local draft.`
+                    : error
+                }
+                action={
+                  error.toLowerCase().includes("not editable") ? (
+                    <DashboardButton
+                      variant="outline"
+                      size="compact"
+                      onClick={handleStartOver}
+                    >
+                      Start over
+                    </DashboardButton>
+                  ) : undefined
+                }
+              />
+            )}
+
+            {/* Success Message */}
+            {success && (
+              <DashboardInlineAlert
+                tone="success"
+                title="Saved"
+                message={success}
+              />
+            )}
+
+            {/* Form Card */}
+            <DashboardCard className="overflow-hidden">
+              <div className="p-5 sm:p-7 lg:p-8">
+                <div className="mb-6">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                    Step {currentStepIndex + 1} of {steps.length}
+                  </p>
+                  <h2 className="text-xl font-semibold text-foreground sm:text-2xl">
+                    {steps[currentStepIndex].label}
+                  </h2>
+                </div>
+
+                <div className="space-y-6">
+                  {currentStep === "basic" && (
+                    <BasicInfoStep
+                      data={basicData}
+                      onChange={handleBasicChange}
+                      onSourceCreated={handleSourceCreated}
+                      disabled={submitting}
+                      tokens={tokens}
+                      isDark={isDark}
+                    />
+                  )}
+
+                  {currentStep === "about" && (
+                    <AboutStep
+                      data={aboutData}
+                      onChange={handleAboutChange}
+                      locationData={locationData}
+                      onLocationChange={handleLocationChange}
+                      tagsText={tagsText}
+                      onTagsChange={setTagsText}
+                      disabled={submitting}
+                      tokens={tokens}
+                    />
+                  )}
+
+                  {currentStep === "format" && (
+                    <DataFormatStep
+                      data={formatData}
+                      onChange={handleFormatChange}
+                      disabled={submitting}
+                      tokens={tokens}
+                      isDark={isDark}
+                    />
+                  )}
+
+                  {currentStep === "features" && (
+                    <FeaturesStep
+                      features={features}
+                      onChange={handleFeatureChange}
+                      onAdd={addFeature}
+                      onRemove={removeFeature}
+                      disabled={submitting}
+                      isDark={isDark}
+                      tokens={tokens}
+                    />
+                  )}
+
+                  {currentStep === "pricing" && (
+                    <PricingStep
+                      data={pricingData}
+                      onChange={handlePricingChange}
+                      disabled={submitting}
+                      isSample={basicData.isSample}
+                      tokens={tokens}
+                      isDark={isDark}
+                    />
+                  )}
+
+                  {currentStep === "upload" && (
+                    <div className="space-y-8 py-8">
+                      <div className="text-center space-y-6">
+                        <div
+                          className="w-20 h-20 rounded-full mx-auto flex items-center justify-center"
+                          style={{
+                            background: isDark
+                              ? "color-mix(in srgb, var(--dashboard-action) 10%, transparent)"
+                              : "color-mix(in srgb, var(--dashboard-action) 5%, transparent)",
+                            border: `2px dashed ${isDark ? "color-mix(in srgb, var(--dashboard-action) 30%, transparent)" : "color-mix(in srgb, var(--dashboard-action) 20%, transparent)"}`,
+                          }}
+                        >
+                          <FileText
+                            className="w-10 h-10"
+                            style={{ color: tokens.textSecondary }}
+                          />
+                        </div>
+
+                        <div>
+                          <h3
+                            className="text-xl font-semibold mb-2"
+                            style={{ color: tokens.textPrimary }}
+                          >
+                            {fileUploaded
+                              ? "File uploaded successfully!"
+                              : "Upload your dataset file"}
+                          </h3>
+                          <p
+                            className="text-sm max-w-md mx-auto"
+                            style={{ color: tokens.textMuted }}
+                          >
+                            {fileUploaded
+                              ? "Your file has been uploaded. Continue to review the complete saved draft."
+                              : "Upload your dataset file to complete the proposal. Accepted formats: CSV, JSON, Parquet, XLSX, ZIP."}
+                          </p>
+                        </div>
+
+                        {fileUploaded ? (
+                          <div
+                            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg"
+                            style={{
+                              background:
+                                "color-mix(in srgb, var(--dashboard-success) 10%, transparent)",
+                              border:
+                                "1px solid color-mix(in srgb, var(--dashboard-success) 30%, transparent)",
+                            }}
+                          >
+                            <CheckCircle className="w-5 h-5 text-[var(--dashboard-success-foreground)]" />
+                            <span className="text-sm font-medium text-[var(--dashboard-success-foreground)]">
+                              Upload complete
+                            </span>
+                          </div>
+                        ) : (
+                          <DashboardButton
+                            onClick={() => setUploadDialogOpen(true)}
+                            size="large"
+                            className="gap-2 px-8 py-6 text-base"
+                          >
+                            <Upload className="w-5 h-5" />
+                            Upload Dataset File
+                          </DashboardButton>
+                        )}
                       </div>
 
-                      {/* Connecting Line */}
-                      {idx < steps.length - 1 && (
+                      {!fileUploaded && (
                         <div
-                          className={`absolute w-px transition-colors duration-300 motion-reduce:transition-none ${
-                            idx < currentStepIndex
-                              ? "bg-[var(--dashboard-indicator)]"
-                              : "bg-border"
-                          }`}
+                          className="rounded-lg border p-5 max-w-md mx-auto"
                           style={{
-                            left: "1.125rem",
-                            top: "2.25rem",
-                            height: "1.25rem",
-                            zIndex: 0,
+                            background:
+                              "color-mix(in srgb, var(--dashboard-action) 5%, transparent)",
+                            borderColor:
+                              "color-mix(in srgb, var(--dashboard-action) 20%, transparent)",
                           }}
-                        />
+                        >
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-[var(--dashboard-info-foreground)]" />
+                            <div
+                              className="text-sm leading-relaxed"
+                              style={{ color: tokens.textSecondary }}
+                            >
+                              <p
+                                className="font-semibold mb-2"
+                                style={{ color: tokens.textPrimary }}
+                              >
+                                Upload requirements:
+                              </p>
+                              <ul className="space-y-1.5 list-none">
+                                <li className="flex items-start gap-2">
+                                  <span className="text-[var(--dashboard-info-foreground)]">
+                                    •
+                                  </span>
+                                  <span>
+                                    Supported formats: CSV, JSON, Parquet, XLSX,
+                                    ZIP
+                                  </span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <span className="text-[var(--dashboard-info-foreground)]">
+                                    •
+                                  </span>
+                                  <span>
+                                    File upload is required to complete your
+                                    proposal
+                                  </span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {shouldShowSampleUpload && (
+                        <div
+                          className="rounded-lg border p-5 max-w-md mx-auto"
+                          style={{
+                            background:
+                              "color-mix(in srgb, var(--dashboard-success) 6%, transparent)",
+                            borderColor:
+                              "color-mix(in srgb, var(--dashboard-success) 25%, transparent)",
+                          }}
+                        >
+                          <div className="text-center space-y-4">
+                            <div>
+                              <p
+                                className="text-sm font-semibold"
+                                style={{ color: tokens.textPrimary }}
+                              >
+                                Optional: Upload sample file
+                              </p>
+                              <p
+                                className="text-xs mt-1"
+                                style={{ color: tokens.textMuted }}
+                              >
+                                Buyers can download this sample file freely
+                                before purchasing.
+                              </p>
+                            </div>
+
+                            {sampleFileUploaded ? (
+                              <div
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg"
+                                style={{
+                                  background:
+                                    "color-mix(in srgb, var(--dashboard-success) 12%, transparent)",
+                                  border:
+                                    "1px solid color-mix(in srgb, var(--dashboard-success) 35%, transparent)",
+                                }}
+                              >
+                                <CheckCircle className="w-4 h-4 text-[var(--dashboard-success-foreground)]" />
+                                <span className="text-xs font-medium text-[var(--dashboard-success-foreground)]">
+                                  Sample upload complete
+                                </span>
+                              </div>
+                            ) : null}
+
+                            <DashboardButton
+                              onClick={() => setSampleUploadDialogOpen(true)}
+                              size="compact"
+                              variant="outline"
+                              className="gap-2"
+                            >
+                              <Upload className="w-4 h-4" />
+                              {sampleFileUploaded
+                                ? "Replace sample file"
+                                : "Upload sample file"}
+                            </DashboardButton>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  ))}
+                  )}
+
+                  {currentStep === "review" && (
+                    <ReviewStep
+                      title={basicData.title}
+                      superType={basicData.superType}
+                      country={locationData.country}
+                      fileFormat={formatData.fileFormat}
+                      fileSize={formatData.fileSize}
+                      featureCount={features.length}
+                      isSample={basicData.isSample}
+                      isPaid={pricingData.isPaid}
+                      price={pricingData.price ?? null}
+                      currency={pricingData.currency ?? "USD"}
+                      fileUploaded={fileUploaded}
+                      sampleFileUploaded={sampleFileUploaded}
+                      shouldShowSampleUpload={shouldShowSampleUpload}
+                      onEdit={setCurrentStep}
+                    />
+                  )}
                 </div>
-              </DashboardCard>
-            </aside>
-          </div>
+              </div>
+
+              {/* Navigation Buttons */}
+              <DashboardFormActions
+                className="px-5 sm:px-7"
+                status={
+                  submitting
+                    ? "Saving this step…"
+                    : `Step ${currentStepIndex + 1} of ${steps.length}`
+                }
+              >
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                  {currentStepIndex > 0 && (
+                    <DashboardButton
+                      variant="outline"
+                      onClick={handleBack}
+                      disabled={submitting}
+                      className="h-11 gap-2 px-5"
+                    >
+                      <ChevronLeft className="w-4 h-4 transition-transform duration-200" />
+                      Back
+                    </DashboardButton>
+                  )}
+
+                  {(createdProposalId || currentStep !== "basic") && (
+                    <DashboardButton
+                      variant="ghost"
+                      onClick={handleStartOver}
+                      disabled={submitting}
+                      className="text-[var(--dashboard-danger-foreground)]"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Start Over
+                    </DashboardButton>
+                  )}
+                </div>
+
+                <DashboardButton
+                  size="large"
+                  onClick={handleNext}
+                  disabled={submitting}
+                  className="w-full sm:w-auto"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : isLastStep ? (
+                    <>
+                      Open proposal workspace
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  ) : currentStep === "upload" ? (
+                    fileUploaded ? (
+                      <>
+                        Review saved draft
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    ) : (
+                      "Upload file to continue"
+                    )
+                  ) : (
+                    <>
+                      Next
+                      <ChevronRight className="w-4 h-4 transition-transform duration-200" />
+                    </>
+                  )}
+                </DashboardButton>
+              </DashboardFormActions>
+            </DashboardCard>
+          </DashboardDetailLayout>
         </div>
       </DatasetWorkspace>
 

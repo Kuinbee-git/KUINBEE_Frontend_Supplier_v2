@@ -31,6 +31,39 @@ export const DashboardRegion = React.forwardRef<
 ));
 DashboardRegion.displayName = "DashboardRegion";
 
+/** Connected content regions, including populated detail and analytics panels. */
+export function DashboardPanelGrid({
+  children,
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  const cells = React.Children.toArray(children);
+  return (
+    <div
+      className={cn(
+        "dashboard-panel-grid grid min-w-0 grid-cols-1 lg:grid-cols-2",
+        className
+      )}
+      {...props}
+    >
+      {cells.map((cell, index) => (
+        <div
+          key={React.isValidElement(cell) ? (cell.key ?? index) : index}
+          data-panel-cell="true"
+          className={cn(
+            "dashboard-panel-stack min-w-0",
+            index === cells.length - 1 &&
+              cells.length % 2 === 1 &&
+              "lg:col-span-2"
+          )}
+        >
+          {cell}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const columnClasses = {
   2: "lg:grid-cols-2",
   3: "lg:grid-cols-3",

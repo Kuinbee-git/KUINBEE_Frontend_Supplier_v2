@@ -77,7 +77,7 @@ function StatsOverviewContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dashboard-panel-stack min-w-0">
       <StatsOverviewCards
         overview={stats?.overview ?? EMPTY_OVERVIEW}
         loading={loading}
@@ -93,7 +93,7 @@ function StatsOverviewContent() {
       <DashboardSection
         title="Portfolio performance"
         description="Compare your strongest dataset with the listing that may need attention."
-        surface="plain"
+        flushContent
       >
         <TopLowPerformingDatasets
           topPerforming={stats?.topPerformingDataset ?? null}

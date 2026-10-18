@@ -383,7 +383,7 @@ export function PreparationFrozenSubmission({
           status before taking another action.
         </p>
       )}
-      <PreparationGrid>
+      <PreparationGrid connected>
         <PreparationSection
           title="Submitted proposal"
           className="lg:col-span-8"

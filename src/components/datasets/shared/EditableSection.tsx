@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { DashboardButton, DashboardCard } from "@/components/dashboard";
 import { ChevronDown, Edit2 } from "lucide-react";
 
@@ -57,6 +57,8 @@ export function EditableSection({
   editContent,
   displayContent,
 }: EditableSectionProps) {
+  const toggleId = useId(),
+    contentId = useId();
   return (
     <DashboardCard className="overflow-hidden transition-colors duration-200">
       {/* Header */}
@@ -67,8 +69,10 @@ export function EditableSection({
       >
         <button
           type="button"
+          id={toggleId}
           onClick={onToggle}
           aria-expanded={isExpanded}
+          aria-controls={contentId}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-2 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <div className="dashboard-tone-neutral flex size-9 shrink-0 items-center justify-center rounded-lg border">
@@ -92,6 +96,7 @@ export function EditableSection({
             <DashboardButton
               size="compact"
               variant="outline"
+              aria-label={`Edit ${title}`}
               onClick={(e) => {
                 e.stopPropagation();
                 onEditClick();
@@ -107,7 +112,12 @@ export function EditableSection({
 
       {/* Content */}
       {isExpanded && (
-        <div className="animate-in fade-in slide-in-from-top-1 p-4 duration-200 sm:p-5">
+        <div
+          id={contentId}
+          role="region"
+          aria-labelledby={toggleId}
+          className="dataset-detail-editor p-4 sm:p-6"
+        >
           {isEditing ? (
             editContent
           ) : isEmpty ? (

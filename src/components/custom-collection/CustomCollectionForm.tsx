@@ -898,7 +898,7 @@ function ReviewSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="dashboard-glass-card overflow-hidden rounded-xl border border-border">
+    <section className="min-w-0 border-t border-border first:border-t-0">
       <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/35 px-4 py-3 sm:px-5">
         <h3 className="font-semibold">{title}</h3>
         <Button type="button" variant="ghost" size="compact" onClick={onEdit}>

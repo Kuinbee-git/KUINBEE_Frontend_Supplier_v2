@@ -40,6 +40,34 @@ export function DatasetDetailHeader({
   action,
 }: DatasetDetailHeaderProps) {
   const status = dataset.status.toUpperCase();
+  return (
+    <DashboardPageHeader
+      title={dataset.title}
+      description="Understand how marketplace discovery converts into purchases and revenue for this dataset."
+      meta={
+        <>
+          <span className="font-mono text-xs">{dataset.datasetId}</span>
+          <DashboardStatusBadge
+            tone={statusTones[status] ?? "neutral"}
+            status={status}
+          >
+            {formatStatus(dataset.status)}
+          </DashboardStatusBadge>
+          <DashboardStatusBadge tone="neutral" icon={Star}>
+            Quality {dataset.qualityScore ?? "—"}/100
+          </DashboardStatusBadge>
+        </>
+      }
+      actions={action}
+    />
+  );
+}
+
+export function DatasetAnalyticsMetrics({
+  dataset,
+}: {
+  dataset: DatasetPerformanceItem;
+}) {
   const revenue = `${formatCurrencyValue(
     dataset.revenue,
     dataset.revenueCurrency
@@ -72,32 +100,10 @@ export function DatasetDetailHeader({
   ];
 
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader
-        title={dataset.title}
-        description="Understand how marketplace discovery converts into purchases and revenue for this dataset."
-        meta={
-          <>
-            <span className="font-mono text-xs">{dataset.datasetId}</span>
-            <DashboardStatusBadge
-              tone={statusTones[status] ?? "neutral"}
-              status={status}
-            >
-              {formatStatus(dataset.status)}
-            </DashboardStatusBadge>
-            <DashboardStatusBadge tone="neutral" icon={Star}>
-              Quality {dataset.qualityScore ?? "—"}/100
-            </DashboardStatusBadge>
-          </>
-        }
-        actions={action}
-      />
-
-      <DashboardMetricGroup aria-label="Dataset analytics summary">
-        {metrics.map((metric) => (
-          <DashboardMetricCard key={metric.label} {...metric} />
-        ))}
-      </DashboardMetricGroup>
-    </div>
+    <DashboardMetricGroup aria-label="Dataset analytics summary">
+      {metrics.map((metric) => (
+        <DashboardMetricCard key={metric.label} {...metric} />
+      ))}
+    </DashboardMetricGroup>
   );
 }
