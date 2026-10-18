@@ -8,6 +8,7 @@ import { chromium } from "playwright";
 import {
   DatasetPreparationCreateBodySchema,
   DatasetPreparationPatchBodySchema,
+  DatasetSupplierProposalsResponseSchema,
   DatasetFilesContextBodySchema,
   DatasetFilesContextResponseSchema,
   DatasetFilesInventoryPageQuerySchema,
@@ -220,6 +221,7 @@ const fileContexts = new Map();
 const fileReplays = new Map();
 const fileMembers = new Map();
 const requests = [];
+const requestDocuments = new WeakMap();
 const flags = {
   workspaceTake: null,
   workspaceFailure: "",
@@ -355,6 +357,7 @@ const server = createServer(async (req, res) => {
       query: url.search,
     };
     requests.push(recorded);
+    requestDocuments.set(recorded, req.headers.referer ?? "");
     const base = "/api/v2/supplier/dataset-drafts";
     const fileRoute = url.pathname.match(
       /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files\/organization|files)$/
@@ -629,6 +632,76 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (
+      url.pathname === "/api/v2/supplier/dataset-proposals" &&
+      req.method === "GET"
+    ) {
+      assert.equal(url.searchParams.get("scope"), "SUBMITTED");
+      const common = {
+        status: "SUBMITTED",
+        verificationStatus: "SUBMITTED",
+        primaryCategory: null,
+        createdAt: "2026-10-14T00:00:00.000Z",
+        updatedAt: "2026-10-14T00:00:00.000Z",
+      };
+      const entries = [
+        {
+          ...common,
+          id: cuid(9999),
+          datasetUniqueId: "KB-EARLIER-1",
+          title: "Existing submitted proposal",
+          material: { representation: "LEGACY", currentUploadId: null },
+        },
+        {
+          ...common,
+          id: cuid(8888),
+          datasetUniqueId: "D0000000101",
+          title: "New submitted proposal",
+          material: {
+            representation: "CONTENT",
+            activeContentId: null,
+            reviewedContentId: cuid(8889),
+            publishedContentId: null,
+            uploadChoice: "FULL_ONLY",
+            workflowRevision: 2,
+          },
+        },
+      ];
+      const q = (url.searchParams.get("q") ?? "").toLowerCase();
+      const matching = entries.filter(
+        (item) =>
+          (!q ||
+            (item.title + " " + item.datasetUniqueId)
+              .toLowerCase()
+              .includes(q)) &&
+          (!url.searchParams.get("verificationStatus") ||
+            item.verificationStatus ===
+              url.searchParams.get("verificationStatus"))
+      );
+      const page = Number(url.searchParams.get("page") ?? 1),
+        pageSize = Number(url.searchParams.get("pageSize") ?? 20);
+      json(res, 200, {
+        success: true,
+        data: DatasetSupplierProposalsResponseSchema.parse({
+          items: matching.slice((page - 1) * pageSize, page * pageSize),
+          total: matching.length,
+          page,
+          pageSize,
+          summary: {
+            total: 2,
+            byVerificationStatus: {
+              SUBMITTED: 2,
+              CHANGES_REQUESTED: 0,
+              RESUBMITTED: 0,
+              UNDER_REVIEW: 0,
+              VERIFIED: 0,
+              REJECTED: 0,
+            },
+          },
+        }),
+      });
+      return;
+    }
+    if (
       url.pathname === "/api/v1/supplier/dataset-proposals" &&
       req.method === "GET"
     ) {
@@ -877,7 +950,30 @@ async function save(page, label = "Save draft") {
     );
   });
   await page.getByRole("button", { name: label, exact: true }).click();
-  const response = await acknowledgement;
+  const response = await acknowledgement.catch(async (failure) => {
+    console.error(
+      "Draft save diagnostics",
+      JSON.stringify({
+        page: new URL(page.url()).pathname,
+        alerts: await page.getByRole("alert").allTextContents(),
+        coverage: await page
+          .locator('[data-dataset-field^="collectionPeriod"]')
+          .evaluateAll((nodes) =>
+            nodes.map((node) => ({
+              field: node.dataset.datasetField,
+              value: node.value,
+            }))
+          ),
+        activeField: await page.evaluate(() =>
+          document.activeElement?.getAttribute("data-dataset-field")
+        ),
+        recentRequests: requests
+          .slice(-6)
+          .map(({ method, path }) => ({ method, path })),
+      })
+    );
+    throw failure;
+  });
   assert(
     [200, 201].includes(response.status()),
     "A successful save needs an acknowledged mutation response"
@@ -1039,6 +1135,9 @@ async function assertTileLayout(page, first, second, width) {
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({
+    // Functional actions must not race the error-target smooth scroll. Normal
+    // theme animation remains covered by the compiled release/browser checks.
+    reducedMotion: "reduce",
     viewport: { width: 1280, height: 900 },
   });
   page.on("pageerror", (error) => errors.push(error.message));
@@ -2480,11 +2579,40 @@ try {
     .first()
     .waitFor();
   assert(
+    requests
+      .slice(beforeSubmitted)
+      .some(
+        (request) =>
+          requestDocuments.get(request) ===
+            origin + "/dashboard/datasets?status=submitted" &&
+          request.path === "/api/v2/supplier/dataset-proposals"
+      ),
+    "The submitted document uses its mixed proposal reader"
+  );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "New submitted proposal", exact: true })
+      .first()
+      .getAttribute("href"),
+    "/dashboard/datasets/drafts/" + cuid(8888)
+  );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Existing submitted proposal", exact: true })
+      .first()
+      .getAttribute("href"),
+    "/dashboard/datasets/" + cuid(9999)
+  );
+  assert(
     !requests
       .slice(beforeSubmitted)
-      .some((request) =>
-        request.path.startsWith("/api/v2/supplier/dataset-drafts")
-      )
+      .some(
+        (request) =>
+          requestDocuments.get(request) ===
+            origin + "/dashboard/datasets?status=submitted" &&
+          request.path.startsWith("/api/v2/supplier/dataset-drafts")
+      ),
+    "The submitted document must not fetch a draft inventory; previous documents can still complete their cancelled reads"
   );
   console.log(
     "PASS old preparation bookmarks redirect and historical submitted proposal view remains unchanged"

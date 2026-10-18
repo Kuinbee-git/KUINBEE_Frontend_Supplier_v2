@@ -16,6 +16,8 @@ import {
 
 import { DashboardButton, DashboardPagination } from "@/components/dashboard";
 import { listMyProposals } from "@/lib/api";
+import { listDatasetProposalInventory } from "@/lib/api/dataset-proposal-inventory";
+import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
 import type {
   ListProposalsResponse,
   VerificationStatus,
@@ -84,7 +86,11 @@ interface ProposalItem {
   title: string;
   verificationStatus: VerificationStatus;
   updatedAt: string;
+  href?: string;
 }
+
+const proposalHref = (proposal: ProposalItem) =>
+  proposal.href ?? `/dashboard/datasets/${proposal.id}`;
 
 export function SubmittedProposals({
   isDark = false,
@@ -113,6 +119,41 @@ export function SubmittedProposals({
     try {
       setLoading(true);
       setError(null);
+      if (DATASET_PREPARATION_ENABLED) {
+        const result = await listDatasetProposalInventory({
+          scope: "SUBMITTED",
+          q: debouncedSearchQuery || undefined,
+          verificationStatus: statusFilter === "ALL" ? undefined : statusFilter,
+          page,
+          pageSize: PAGE_SIZE,
+        });
+        if (requestId !== requestIdRef.current) return;
+        setProposals(
+          result.items.map((item) => ({
+            id: item.id,
+            datasetUniqueId: item.datasetUniqueId,
+            title: item.title,
+            verificationStatus: item.verificationStatus!,
+            updatedAt: item.updatedAt,
+            href:
+              item.material.representation === "CONTENT"
+                ? item.status === "VERIFIED"
+                  ? `/dashboard/my-datasets/${item.id}`
+                  : `/dashboard/datasets/drafts/${item.id}`
+                : `/dashboard/datasets/${item.id}`,
+          }))
+        );
+        setTotalProposals(result.total);
+        setSummary({
+          ...EMPTY_SUMMARY,
+          total: result.summary.total,
+          byVerificationStatus: {
+            ...EMPTY_SUMMARY.byVerificationStatus,
+            ...result.summary.byVerificationStatus,
+          },
+        });
+        return;
+      }
       const response = await listMyProposals({
         q: debouncedSearchQuery || undefined,
         scope: "SUBMITTED",
@@ -176,7 +217,10 @@ export function SubmittedProposals({
     }
   }, [debouncedSearchQuery, page, statusFilter]);
 
-  useComponentRequest(() => fetchProposals(), [debouncedSearchQuery, page, statusFilter]);
+  useComponentRequest(
+    () => fetchProposals(),
+    [debouncedSearchQuery, page, statusFilter]
+  );
 
   const [pageContext, setPageContext] = useState(statusFilter);
   if (pageContext !== statusFilter) {
@@ -240,7 +284,7 @@ export function SubmittedProposals({
       headerClassName: "w-[38%]",
       render: (proposal) => (
         <DatasetRecordIdentity
-          href={`/dashboard/datasets/${proposal.id}`}
+          href={proposalHref(proposal)}
           title={proposal.title}
           identifier={proposal.datasetUniqueId}
           icon={FileText}
@@ -272,7 +316,7 @@ export function SubmittedProposals({
       className: "text-right",
       render: (proposal) => (
         <DashboardButton asChild variant="outline" size="compact">
-          <Link href={`/dashboard/datasets/${proposal.id}`}>
+          <Link href={proposalHref(proposal)}>
             {getProposalActionLabel(proposal.verificationStatus)} <ArrowRight />
           </Link>
         </DashboardButton>
@@ -353,7 +397,7 @@ export function SubmittedProposals({
               getKey={(proposal) => proposal.id}
               renderMobile={(proposal) => (
                 <DatasetMobileRecordCard
-                  href={`/dashboard/datasets/${proposal.id}`}
+                  href={proposalHref(proposal)}
                   title={proposal.title}
                   identifier={proposal.datasetUniqueId}
                   icon={FileText}

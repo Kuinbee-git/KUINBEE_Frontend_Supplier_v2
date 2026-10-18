@@ -15,8 +15,19 @@ import {
   DashboardPageHeader,
 } from "@/components/dashboard";
 import { DatasetWorkspace } from "@/components/datasets/workspace";
+import { DatasetContractRoute } from "@/components/datasets/DatasetContractRoute";
 
 export default function DatasetDetailPage() {
+  const params = useParams();
+  const datasetId = params.id as string;
+  return (
+    <DatasetContractRoute datasetId={datasetId}>
+      <LegacyDatasetDetailPage />
+    </DatasetContractRoute>
+  );
+}
+
+function LegacyDatasetDetailPage() {
   const { theme } = useThemeStore();
   const params = useParams();
   const router = useRouter();

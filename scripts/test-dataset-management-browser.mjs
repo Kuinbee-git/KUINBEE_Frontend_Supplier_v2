@@ -8,6 +8,7 @@ import {
   DatasetContentVisibilityBodySchema,
   DatasetPublicationReadinessResponseSchema,
   DatasetPublicationResponseSchema,
+  DatasetWorkflowResponseSchema,
 } from "@kuinbee/dataset-preparation-contracts";
 
 // Real rendered management controls and HTTP, with a synthetic state authority.
@@ -18,7 +19,7 @@ const id = (n) => "c" + String(n).padStart(24, "0"),
   stamp = "2026-10-18T00:00:00.000Z";
 const compiled = await build({
   stdin: {
-    contents: `import React from'react';import{createRoot}from'react-dom/client';import{QueryProvider}from'./src/components/QueryProvider';import{ContentDatasetManagement}from'./src/components/datasets/ContentDatasetManagement';import{useAuthStore}from'./src/store/auth.store';useAuthStore.getState().login({id:'${actorId}',email:'fixture@example.test',name:'Fixture',role:'supplier'});createRoot(document.getElementById('root')).render(<React.StrictMode><QueryProvider><ContentDatasetManagement datasetId='${datasetId}' isDark={false}/></QueryProvider></React.StrictMode>);`,
+    contents: `import React from'react';import{createRoot}from'react-dom/client';import{QueryProvider}from'./src/components/QueryProvider';import{ContentDatasetManagement}from'./src/components/datasets/ContentDatasetManagement';import{useAuthStore}from'./src/store/auth.store';import{DatasetContractRoute}from'./src/components/datasets/DatasetContractRoute';useAuthStore.getState().login({id:'${actorId}',email:'fixture@example.test',name:'Fixture',role:'supplier'});createRoot(document.getElementById('root')).render(<React.StrictMode><QueryProvider>{location.search==='?route'?<DatasetContractRoute datasetId='${datasetId}'><button>Legacy edit fixture</button></DatasetContractRoute>:<ContentDatasetManagement datasetId='${datasetId}' isDark={false}/>}</QueryProvider></React.StrictMode>);`,
     loader: "jsx",
     resolveDir: process.cwd(),
   },
@@ -46,7 +47,7 @@ const compiled = await build({
               ? "import React from'react';export default function Link(p){return <a {...p}/>}"
               : a.path === "next/image"
                 ? "import React from'react';export default function Image({priority,fill,quality,unoptimized,...p}){return <img {...p}/>}"
-                : "export function useRouter(){return{push:()=>{},replace:()=>{}}}export function useSearchParams(){return new URLSearchParams()}export function usePathname(){return location.pathname}",
+                : "export function useRouter(){return{push:()=>{},replace:(path)=>{document.documentElement.dataset.redirect=path}}}export function useSearchParams(){return new URLSearchParams()}export function usePathname(){return location.pathname}",
         }));
       },
     },
@@ -76,6 +77,7 @@ let publication = null,
   lose = false,
   foreignAck = false,
   serverError = false,
+  routeRead = "canonical",
   mutations = 0,
   replays = 0;
 const receipts = new Map(),
@@ -130,6 +132,40 @@ const server = createServer(async (req, res) => {
     }
     res.setHeader("Content-Type", "application/json");
     if (req.method === "GET") {
+      if (url.pathname.endsWith("/workflow")) {
+        if (routeRead === "canonical") {
+          res.end(
+            JSON.stringify({
+              success: true,
+              data: DatasetWorkflowResponseSchema.parse({
+                state: {
+                  ...state,
+                  pricing: {
+                    ...state.pricing,
+                    notes: null,
+                    rejectionReason: null,
+                    submittedAt: null,
+                    approvedAt: null,
+                    updatedAt: stamp,
+                  },
+                },
+              }),
+            })
+          );
+        } else {
+          res.writeHead(routeRead === "legacy" ? 404 : 500);
+          res.end(
+            JSON.stringify({
+              success: false,
+              error: {
+                code: "NOT_FOUND",
+                message: "Synthetic route read failed",
+              },
+            })
+          );
+        }
+        return;
+      }
       if (url.pathname.endsWith("/publication")) {
         if (serverError) {
           res.writeHead(500);
@@ -359,10 +395,34 @@ try {
     6,
     "Read failure must not call a legacy writer or start a new action"
   );
+  await page.goto(origin + "?route");
+  await page.waitForFunction(
+    (expected) => document.documentElement.dataset.redirect === expected,
+    `/dashboard/datasets/drafts/${datasetId}`
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Legacy edit fixture" }).count(),
+    0,
+    "Canonical bookmarks must not mount legacy writers"
+  );
+  routeRead = "error";
+  await page.reload();
+  await page
+    .getByText("Synthetic route read failed", { exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "Legacy edit fixture" }).count(),
+    0,
+    "An unavailable authority cannot select a legacy writer"
+  );
+  routeRead = "legacy";
+  await page.reload();
+  await page.getByRole("button", { name: "Legacy edit fixture" }).waitFor();
+  assert.equal(mutations, 4, "Resolving old bookmarks is read-only");
   assert.deepEqual(errors, []);
   assert.deepEqual(browserErrors, []);
   console.log(
-    "PASS Dataset management: read-only opening, explicit publish/visibility/delist, lost-ACK reload and exact replay, foreign publication ACK protection, no fallback on server errors"
+    "PASS Dataset management: read-only opening, explicit publish/visibility/delist/archive, lost-ACK reload and exact replay, foreign publication ACK protection, canonical bookmark routing and no fallback on server errors"
   );
 } catch (failure) {
   console.error(
