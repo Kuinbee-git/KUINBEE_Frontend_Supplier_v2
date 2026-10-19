@@ -255,7 +255,7 @@ export function PreparationQuantities({
               Remove
             </DashboardButton>
           </div>
-          <div className="grid gap-4 @min-[16rem]:grid-cols-2">
+          <div className="grid items-start gap-4 @min-[16rem]:grid-cols-2">
             <div className="col-span-full">
               <PreparationSelect
                 label="Do you know the amount?"
