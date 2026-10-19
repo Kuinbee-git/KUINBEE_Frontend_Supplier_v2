@@ -1090,10 +1090,22 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
 .supplier-dashboard [data-metric-cell="true"]:last-child {
   border-inline-end: 0;
 }
+.supplier-dashboard .dashboard-metric-card[role="button"] {
+  position: relative;
+}
 .supplier-dashboard .dashboard-metric-card[aria-pressed="true"] {
   background: var(--dashboard-control-background);
-  outline: 1px solid var(--dashboard-focus-ring);
-  outline-offset: -1px;
+}
+/* A selected summary shares the grid frame; its indicator must not draw a
+   square outline across the frame's rounded corners or shared dividers. */
+.supplier-dashboard .dashboard-metric-card[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--dashboard-focus-ring);
+  pointer-events: none;
 }
 .supplier-dashboard
   [data-dashboard-content="true"]
