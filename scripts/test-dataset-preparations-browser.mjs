@@ -1758,13 +1758,15 @@ try {
       .getByLabel("Add a quantity to " + label, { exact: true })
       .selectOption("AUDIO_DURATION");
     await page
-      .getByLabel(label + ": Audio duration answer", { exact: true })
+      .getByLabel(`Do you know the amount? (${label}: Audio duration answer)`, {
+        exact: true,
+      })
       .selectOption("KNOWN");
     await page
-      .getByLabel(label + ": Audio duration value", { exact: true })
+      .getByLabel(`Amount (${label}: Audio duration value)`, { exact: true })
       .fill(value);
     await page
-      .getByLabel(label + ": Audio duration unit", { exact: true })
+      .getByLabel(`Unit (${label}: Audio duration unit)`, { exact: true })
       .selectOption(unit);
   }
   await step(page, "3. Dataset details");
@@ -1774,12 +1776,15 @@ try {
     })
     .selectOption("AUDIO_DURATION");
   await page
-    .getByLabel("Collection size: Audio duration answer", {
-      exact: true,
-    })
+    .getByLabel(
+      "Do you know the amount? (Collection size: Audio duration answer)",
+      {
+        exact: true,
+      }
+    )
     .selectOption("ESTIMATED");
   await page
-    .getByLabel("Collection size: Audio duration value", {
+    .getByLabel("Amount (Collection size: Audio duration value)", {
       exact: true,
     })
     .fill("200");
@@ -1815,10 +1820,12 @@ try {
   );
   await collectionQuantity.selectOption("IMAGE_COUNT");
   await page
-    .getByLabel("Collection size: Images answer", { exact: true })
+    .getByLabel("Do you know the amount? (Collection size: Images answer)", {
+      exact: true,
+    })
     .selectOption("KNOWN");
   await page
-    .getByLabel("Collection size: Images value", { exact: true })
+    .getByLabel("Amount (Collection size: Images value)", { exact: true })
     .fill("42");
   await page
     .getByRole("button", {
@@ -1829,13 +1836,16 @@ try {
   await collectionQuantity.focus();
   assert.equal(
     await page
-      .getByLabel("Collection size: Images value", { exact: true })
+      .getByLabel("Amount (Collection size: Images value)", { exact: true })
       .inputValue(),
     "42"
   );
   assert.equal(
     await page
-      .getByLabel("Collection size: Audio duration answer", { exact: true })
+      .getByLabel(
+        "Do you know the amount? (Collection size: Audio duration answer)",
+        { exact: true }
+      )
       .count(),
     0
   );
@@ -1849,7 +1859,7 @@ try {
   await step(page, "3. Dataset details");
   assert.equal(
     await page
-      .getByLabel("Collection size: Images value", { exact: true })
+      .getByLabel("Amount (Collection size: Images value)", { exact: true })
       .inputValue(),
     "42"
   );
@@ -1883,13 +1893,18 @@ try {
     .selectOption("AUDIO_DURATION");
   assert.equal(
     await page
-      .getByLabel("Collection size: Audio duration value", { exact: true })
+      .getByLabel("Amount (Collection size: Audio duration value)", {
+        exact: true,
+      })
       .count(),
     0
   );
   assert.equal(
     await page
-      .getByLabel("Collection size: Audio duration answer", { exact: true })
+      .getByLabel(
+        "Do you know the amount? (Collection size: Audio duration answer)",
+        { exact: true }
+      )
       .locator('option[value=""]')
       .count(),
     0
@@ -1899,10 +1914,15 @@ try {
     { metric: "AUDIO_DURATION", unit: "HOUR", state: "UNKNOWN" },
   ]);
   await page
-    .getByLabel("Collection size: Audio duration answer", { exact: true })
+    .getByLabel(
+      "Do you know the amount? (Collection size: Audio duration answer)",
+      { exact: true }
+    )
     .selectOption("ESTIMATED");
   await page
-    .getByLabel("Collection size: Audio duration value", { exact: true })
+    .getByLabel("Amount (Collection size: Audio duration value)", {
+      exact: true,
+    })
     .fill("200");
   await save(page);
   console.log(
@@ -2907,17 +2927,20 @@ try {
     })
     .selectOption("AUDIO_DURATION");
   await page
-    .getByLabel("Collection size: Audio duration answer", {
-      exact: true,
-    })
+    .getByLabel(
+      "Do you know the amount? (Collection size: Audio duration answer)",
+      {
+        exact: true,
+      }
+    )
     .selectOption("ESTIMATED");
   await page
-    .getByLabel("Collection size: Audio duration value", {
+    .getByLabel("Amount (Collection size: Audio duration value)", {
       exact: true,
     })
     .fill("200");
   await page
-    .getByLabel("Collection size: Audio duration unit", {
+    .getByLabel("Unit (Collection size: Audio duration unit)", {
       exact: true,
     })
     .selectOption("HOUR");
@@ -2940,7 +2963,7 @@ try {
     );
     assert.equal(
       await page
-        .getByLabel("Collection size: Audio duration value", {
+        .getByLabel("Amount (Collection size: Audio duration value)", {
           exact: true,
         })
         .inputValue(),

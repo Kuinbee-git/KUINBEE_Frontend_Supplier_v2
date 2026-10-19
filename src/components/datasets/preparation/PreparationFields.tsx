@@ -46,7 +46,7 @@ export function PreparationField({
   const props = {
     id,
     "data-dataset-field": field,
-    "aria-label": ariaLabel,
+    "aria-label": ariaLabel ? `${label} (${ariaLabel})` : undefined,
     value: value ?? "",
     maxLength,
     disabled,
@@ -95,7 +95,7 @@ export function PreparationSelect({
         <PreparationNativeSelect
           {...controlProps}
           data-dataset-field={field}
-          aria-label={ariaLabel}
+          aria-label={ariaLabel ? `${label} (${ariaLabel})` : undefined}
           className={preparationControl}
           disabled={disabled}
           value={value ?? ""}
