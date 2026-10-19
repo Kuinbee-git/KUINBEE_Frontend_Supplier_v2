@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useId, type ReactNode } from "react";
 import {
   DashboardButton,
@@ -82,7 +84,7 @@ export function PreparationSelect({
   return (
     <DashboardField id={id} label={label} description={help}>
       {(controlProps) => (
-        <select
+        <PreparationNativeSelect
           {...controlProps}
           data-dataset-field={field}
           className={preparationControl}
@@ -96,7 +98,7 @@ export function PreparationSelect({
               {text}
             </option>
           ))}
-        </select>
+        </PreparationNativeSelect>
       )}
     </DashboardField>
   );
@@ -292,11 +294,11 @@ export function PreparationQuantities({
           </DashboardButton>
         </fieldset>
       ))}
-      <label className="block text-sm font-medium">
+      <label className="block space-y-1 text-sm font-medium">
         Add a quantity
-        <select
+        <PreparationNativeSelect
           aria-label={`Add a quantity to ${label}`}
-          className={`${preparationControl} mt-1`}
+          className={preparationControl}
           value=""
           onChange={(event) => {
             const metric = event.target
@@ -327,7 +329,7 @@ export function PreparationQuantities({
                 {metricLabels[metric]}
               </option>
             ))}
-        </select>
+        </PreparationNativeSelect>
       </label>
     </PreparationSection>
   );

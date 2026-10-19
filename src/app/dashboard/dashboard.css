@@ -1012,18 +1012,78 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   transform: none;
 }
 
-/* Native menus need an explicit existing surface colour: Chromium does not
-   consistently apply the dark scheme to option popups by itself. */
+/* Native proposal menus use the existing surface and text in both themes.
+   Their chevrons share the dashboard control geometry in React. */
+.supplier-dashboard [data-proposal-panel="true"] {
+  color-scheme: light;
+}
+
 .supplier-dashboard:is(.dark *) [data-proposal-panel="true"] {
   color-scheme: dark;
 }
 
-.supplier-dashboard:is(.dark *)
-  [data-proposal-panel="true"]
-  select
-  :is(option, optgroup) {
+.supplier-dashboard [data-proposal-panel="true"] select :is(option, optgroup) {
   background-color: var(--dashboard-surface);
   color: var(--dashboard-text);
+}
+
+/* Style the native picker where the browser supports customizable selects.
+   Other browsers retain the same accessible native control and shared chevron. */
+@supports (appearance: base-select) {
+  .supplier-dashboard [data-proposal-panel="true"] .preparation-native-select,
+  .supplier-dashboard
+    [data-proposal-panel="true"]
+    .preparation-native-select::picker(select) {
+    appearance: base-select;
+  }
+
+  .supplier-dashboard
+    [data-proposal-panel="true"]
+    .preparation-native-select::picker-icon {
+    display: none;
+  }
+
+  .supplier-dashboard
+    [data-proposal-panel="true"]
+    .preparation-native-select::picker(select) {
+    max-block-size: min(20rem, 50dvh);
+    margin-block: 0.25rem;
+    overflow-y: auto;
+    border: 1px solid var(--dashboard-glass-border);
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    background: var(--dashboard-popover);
+    color: var(--dashboard-text);
+    box-shadow: none;
+  }
+
+  .supplier-dashboard
+    [data-proposal-panel="true"]
+    .preparation-native-select
+    option {
+    min-block-size: 2.25rem;
+    gap: 0.5rem;
+    border-radius: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .supplier-dashboard
+    [data-proposal-panel="true"]
+    .preparation-native-select
+    option:is(:checked, :hover, :focus-visible) {
+    background: var(--dashboard-control-background-hover);
+  }
+
+  .supplier-dashboard
+    [data-proposal-panel="true"]
+    .preparation-native-select
+    option:focus-visible {
+    outline: 2px solid var(--dashboard-focus-ring);
+    outline-offset: -2px;
+  }
 }
 
 /* The supplier panel uses the same grounded workspace as Dataset preparation.

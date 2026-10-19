@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useEffect, useId, useMemo, useState } from "react";
 import {
   DatasetMaterialMutationResponseSchema,
@@ -244,7 +246,7 @@ function Select({
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <select
+      <PreparationNativeSelect
         id={id}
         className={preparationControl}
         value={value}
@@ -264,7 +266,7 @@ function Select({
               {item.label}
             </option>
           ))}
-      </select>
+      </PreparationNativeSelect>
     </div>
   );
 }

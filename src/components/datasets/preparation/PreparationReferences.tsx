@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
@@ -210,7 +212,7 @@ function ColumnPicker({
     <div className="min-w-0 space-y-2">
       <label className="block space-y-2 text-sm">
         <span className="font-medium">{name}</span>
-        <select
+        <PreparationNativeSelect
           className={preparationControl}
           value=""
           disabled={disabled || !page.data}
@@ -242,7 +244,7 @@ function ColumnPicker({
                 </option>
               )
           )}
-        </select>
+        </PreparationNativeSelect>
       </label>
       <Problem error={page.error} />
       <Pager
@@ -341,7 +343,7 @@ function TargetPicker({
           Target file in this{" "}
           {plan.subject.component === "FULL" ? "full dataset" : "sample"}
         </span>
-        <select
+        <PreparationNativeSelect
           className={preparationControl}
           disabled={disabled}
           value={member?.id ?? ""}
@@ -361,7 +363,7 @@ function TargetPicker({
               {row.role.toLowerCase()}
             </option>
           ))}
-        </select>
+        </PreparationNativeSelect>
       </label>
       <Problem error={members.error} />
       <Pager
@@ -379,7 +381,7 @@ function TargetPicker({
                 ? "Inspected target table"
                 : "Dictionary file or inspected archive entry"}
             </span>
-            <select
+            <PreparationNativeSelect
               className={preparationControl}
               disabled={disabled || !targets.data}
               value=""
@@ -427,7 +429,7 @@ function TargetPicker({
                     : locationLabel(row.locator)}
                 </option>
               ))}
-            </select>
+            </PreparationNativeSelect>
           </label>
           <Problem error={targets.error} />
           {targets.data?.items.length === 0 && (

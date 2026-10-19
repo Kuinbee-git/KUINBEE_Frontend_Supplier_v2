@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useId, useState } from "react";
 import type {
   DatasetFilesInventoryPageResponse,
@@ -290,7 +292,7 @@ export function PreparationUploadPanel({
             <>
               <div className="grid gap-2 text-sm font-medium">
                 <label htmlFor={`${id}-component`}>Upload to</label>
-                <select
+                <PreparationNativeSelect
                   id={`${id}-component`}
                   className={preparationControl}
                   value={actualComponent}
@@ -303,11 +305,11 @@ export function PreparationUploadPanel({
                   {hasSample && (
                     <option value="SAMPLE">Sample · displayed to buyers</option>
                   )}
-                </select>
+                </PreparationNativeSelect>
               </div>
               <div className="grid gap-2 text-sm font-medium">
                 <label htmlFor={`${id}-role`}>File purpose</label>
-                <select
+                <PreparationNativeSelect
                   id={`${id}-role`}
                   className={preparationControl}
                   value={role}
@@ -322,11 +324,11 @@ export function PreparationUploadPanel({
                   <option value="SENSOR">Sensor data</option>
                   <option value="CALIBRATION">Calibration</option>
                   <option value="DOCUMENTATION">Documentation</option>
-                </select>
+                </PreparationNativeSelect>
               </div>
               <div className="grid gap-2 text-sm font-medium">
                 <label htmlFor={`${id}-format`}>File format</label>
-                <select
+                <PreparationNativeSelect
                   id={`${id}-format`}
                   className={preparationControl}
                   value={format}
@@ -341,7 +343,7 @@ export function PreparationUploadPanel({
                       {formats[item.profileId]}
                     </option>
                   ))}
-                </select>
+                </PreparationNativeSelect>
               </div>
               {format === "ZIP32_CONTAINER_V1" && !packagedZip && (
                 <fieldset
@@ -383,7 +385,7 @@ export function PreparationUploadPanel({
               {needsHeader && (
                 <div className="grid gap-2 text-sm font-medium">
                   <label htmlFor={`${id}-header`}>CSV / TSV first row</label>
-                  <select
+                  <PreparationNativeSelect
                     id={`${id}-header`}
                     className={preparationControl}
                     value={header}
@@ -402,7 +404,7 @@ export function PreparationUploadPanel({
                     </option>
                     <option value="PRESENT">Column names</option>
                     <option value="ABSENT">Data · no header row</option>
-                  </select>
+                  </PreparationNativeSelect>
                   {format === "ZIP32_CONTAINER_V1" && (
                     <span
                       id={`${id}-header-help`}
@@ -417,7 +419,7 @@ export function PreparationUploadPanel({
               {needsRecordKind && (
                 <div className="grid gap-2 text-sm font-medium">
                   <label htmlFor={`${id}-record`}>JSON Lines records</label>
-                  <select
+                  <PreparationNativeSelect
                     id={`${id}-record`}
                     className={preparationControl}
                     value={recordKind}
@@ -431,7 +433,7 @@ export function PreparationUploadPanel({
                     <option value="OBJECT_OR_ARRAY">
                       One object or array per line
                     </option>
-                  </select>
+                  </PreparationNativeSelect>
                 </div>
               )}
             </>

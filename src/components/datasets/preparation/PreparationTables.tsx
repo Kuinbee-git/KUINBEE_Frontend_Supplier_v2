@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   DatasetTableDescriptionChangesSchema,
@@ -679,7 +681,7 @@ function TableEditor({
       )}
       <label className="block space-y-2 text-sm">
         <span className="font-medium">File to describe</span>
-        <select
+        <PreparationNativeSelect
           aria-label="File to describe"
           className={preparationControl}
           value={member?.id ?? ""}
@@ -705,7 +707,7 @@ function TableEditor({
               {fileLabel(item)}
             </option>
           ))}
-        </select>
+        </PreparationNativeSelect>
       </label>
       {member && (
         <>
@@ -728,7 +730,7 @@ function TableEditor({
             <>
               <label className="block space-y-2 text-sm">
                 <span className="font-medium">Inspected table</span>
-                <select
+                <PreparationNativeSelect
                   aria-label="Inspected table"
                   className={preparationControl}
                   value={tableId ?? ""}
@@ -769,7 +771,7 @@ function TableEditor({
                         </option>
                       )
                   )}
-                </select>
+                </PreparationNativeSelect>
               </label>
               <Pages
                 page={tables}
@@ -853,7 +855,7 @@ function TableEditor({
             <div className="min-w-0 space-y-4 border-t border-border pt-4">
               <label className="block space-y-2 text-sm">
                 <span className="font-medium">Column to describe</span>
-                <select
+                <PreparationNativeSelect
                   aria-label="Column to describe"
                   className={preparationControl}
                   value={column.id}
@@ -882,7 +884,7 @@ function TableEditor({
                         </option>
                       )
                   )}
-                </select>
+                </PreparationNativeSelect>
               </label>
               <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
                 Observed column {column.position}:{" "}

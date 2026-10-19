@@ -898,11 +898,11 @@ export function DatasetPreparationEditor({
                 <div className="border-t border-border pt-5">
                   <fieldset data-dataset-field="contexts" className="space-y-2">
                     <legend className="text-sm font-medium">
-                      Relevant capture or domain context
+                      Additional context (optional)
                     </legend>
                     <p className="text-xs text-muted-foreground">
-                      A category does not automatically enable these questions
-                      or specialist formats.
+                      These options add questions in Dataset details. Leave both
+                      unchecked when neither applies to your collection.
                     </p>
                     {(
                       [

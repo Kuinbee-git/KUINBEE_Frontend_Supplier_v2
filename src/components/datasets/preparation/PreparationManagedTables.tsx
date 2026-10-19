@@ -1,4 +1,6 @@
 "use client";
+
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
@@ -295,7 +297,7 @@ export function PreparationManagedTables({
       )}
       <label className="block space-y-2 text-sm">
         <span className="font-medium">Table definitions material</span>
-        <select
+        <PreparationNativeSelect
           aria-label="Table definitions material"
           className={preparationControl}
           value={area}
@@ -307,7 +309,7 @@ export function PreparationManagedTables({
               {component === "FULL" ? "Full dataset" : "Sample"}
             </option>
           ))}
-        </select>
+        </PreparationNativeSelect>
       </label>
       {members.isError && (
         <p role="alert" className="text-sm">

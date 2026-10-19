@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useEffect, useState, type ReactNode } from "react";
 import {
   DATASET_MODALITIES,
@@ -600,7 +602,7 @@ export function PreparationFrozenSubmission({
             <div className="flex flex-wrap items-end gap-3">
               <label className="min-w-0 flex-1 space-y-1 text-sm">
                 <span className="font-medium">Inventory</span>
-                <select
+                <PreparationNativeSelect
                   aria-label="Inventory"
                   className={preparationControl}
                   value={inventory}
@@ -614,11 +616,11 @@ export function PreparationFrozenSubmission({
                   <option value="FILES">Files</option>
                   <option value="GROUPS">Groups</option>
                   <option value="RELATIONSHIPS">Relationships</option>
-                </select>
+                </PreparationNativeSelect>
               </label>
               <label className="min-w-0 flex-1 space-y-1 text-sm">
                 <span className="font-medium">Material</span>
-                <select
+                <PreparationNativeSelect
                   aria-label="Material"
                   className={preparationControl}
                   value={component}
@@ -632,7 +634,7 @@ export function PreparationFrozenSubmission({
                   <option value="ALL">Full dataset and sample</option>
                   <option value="FULL">Full dataset</option>
                   <option value="SAMPLE">Sample</option>
-                </select>
+                </PreparationNativeSelect>
               </label>
               <DashboardButton
                 variant="outline"

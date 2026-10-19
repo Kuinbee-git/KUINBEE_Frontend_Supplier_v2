@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import { useCallback, useId, useRef, useState } from "react";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 import {
@@ -134,7 +136,7 @@ export function PreparationCatalogPicker({
             ? "Choose the subject of the collection. Data type is selected separately."
             : "Select your owned source. Changing the search preserves your saved selection.")}
       </p>
-      <select
+      <PreparationNativeSelect
         id={id}
         data-dataset-field={field}
         className={preparationControl}
@@ -162,11 +164,12 @@ export function PreparationCatalogPicker({
               {item.name}
             </option>
           ))}
-      </select>
+      </PreparationNativeSelect>
       <div className="flex flex-wrap gap-2">
         <DashboardInput
           className="min-w-0 flex-1"
           aria-label={`Search ${kind}`}
+          placeholder={`Search ${kind}…`}
           value={search}
           disabled={disabled}
           onChange={(event) => setSearch(event.target.value)}

@@ -1,5 +1,7 @@
 "use client";
 
+import { PreparationNativeSelect } from "./PreparationNativeSelect";
+
 import {
   DashboardButton,
   DashboardField,
@@ -198,7 +200,7 @@ export function PreparationWorkflowPanel({
                     </DashboardField>
                     <DashboardField id="dataset-currency" label="Currency">
                       {(props) => (
-                        <select
+                        <PreparationNativeSelect
                           {...props}
                           className={preparationControl}
                           value={price.currency}
@@ -212,7 +214,7 @@ export function PreparationWorkflowPanel({
                           {["INR", "USD", "EUR", "GBP"].map((value) => (
                             <option key={value}>{value}</option>
                           ))}
-                        </select>
+                        </PreparationNativeSelect>
                       )}
                     </DashboardField>
                   </div>
