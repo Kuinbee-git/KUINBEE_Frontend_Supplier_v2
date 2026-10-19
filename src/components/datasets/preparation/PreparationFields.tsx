@@ -229,18 +229,13 @@ export function PreparationQuantities({
       className={className}
       help={help}
     >
-      {rows.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No quantities added yet. Choose what you want to measure below.
-        </p>
-      )}
       {rows.map((row, index) => (
         <fieldset
           key={row.metric}
-          className="space-y-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
+          className="preparation-quantity min-w-0 overflow-hidden rounded-lg border"
         >
           <legend className="sr-only">{metricLabels[row.metric]}</legend>
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="preparation-quantity-heading flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
             <span className="text-sm font-semibold">
               {metricLabels[row.metric]}
             </span>
@@ -255,7 +250,7 @@ export function PreparationQuantities({
               Remove
             </DashboardButton>
           </div>
-          <div className="grid items-start gap-4 @min-[16rem]:grid-cols-2">
+          <div className="grid items-start gap-4 p-4 @min-[18rem]:grid-cols-2">
             <div className="col-span-full">
               <PreparationSelect
                 label="Do you know the amount?"
@@ -332,44 +327,51 @@ export function PreparationQuantities({
           </div>
         </fieldset>
       ))}
-      <label className="block space-y-2 text-sm font-medium">
-        <span className="block">Add a quantity</span>
-        <PreparationNativeSelect
-          ref={addControl}
-          aria-label={`Add a quantity to ${label}`}
-          className={preparationControl}
-          value=""
-          onChange={(event) => {
-            const metric = event.target
-              .value as DatasetDeclaredMeasurement["metric"];
-            if (!metric) return;
-            onUpdate((previous) => ({
-              ...previous,
-              [field]: [
-                ...(previous[field] ?? []),
-                {
-                  metric,
-                  unit: metric.endsWith("DURATION")
-                    ? "HOUR"
-                    : metric === "BYTE_SIZE"
-                      ? "BYTE"
-                      : "COUNT",
-                  state: "UNKNOWN",
-                },
-              ],
-            }));
-          }}
-        >
-          <option value="">Choose what to measure</option>
-          {DatasetDeclaredMetricSchema.options
-            .filter((metric) => !rows.some((row) => row.metric === metric))
-            .map((metric) => (
-              <option key={metric} value={metric}>
-                {metricLabels[metric]}
-              </option>
-            ))}
-        </PreparationNativeSelect>
-      </label>
+      <div className="preparation-quantity-add space-y-3 rounded-lg border p-4">
+        {rows.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No quantities added yet. Choose what you want to measure below.
+          </p>
+        )}
+        <label className="block space-y-2 text-sm font-medium">
+          <span className="block">Add a quantity</span>
+          <PreparationNativeSelect
+            ref={addControl}
+            aria-label={`Add a quantity to ${label}`}
+            className={preparationControl}
+            value=""
+            onChange={(event) => {
+              const metric = event.target
+                .value as DatasetDeclaredMeasurement["metric"];
+              if (!metric) return;
+              onUpdate((previous) => ({
+                ...previous,
+                [field]: [
+                  ...(previous[field] ?? []),
+                  {
+                    metric,
+                    unit: metric.endsWith("DURATION")
+                      ? "HOUR"
+                      : metric === "BYTE_SIZE"
+                        ? "BYTE"
+                        : "COUNT",
+                    state: "UNKNOWN",
+                  },
+                ],
+              }));
+            }}
+          >
+            <option value="">Choose what to measure</option>
+            {DatasetDeclaredMetricSchema.options
+              .filter((metric) => !rows.some((row) => row.metric === metric))
+              .map((metric) => (
+                <option key={metric} value={metric}>
+                  {metricLabels[metric]}
+                </option>
+              ))}
+          </PreparationNativeSelect>
+        </label>
+      </div>
     </PreparationSection>
   );
 }

@@ -994,6 +994,22 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   container: preparation / inline-size;
 }
 
+/* Keep each declared quantity together, with its own heading and editable
+   controls. The add area is separate without adding elevation or new colours. */
+.supplier-dashboard .preparation-quantity {
+  border-color: var(--dashboard-control-border);
+  background: var(--dashboard-glass-background-soft);
+}
+
+.supplier-dashboard .preparation-quantity-heading {
+  border-color: var(--dashboard-glass-border);
+  background: var(--dashboard-control-background);
+}
+
+.supplier-dashboard .preparation-quantity-add {
+  border-color: var(--dashboard-glass-border);
+}
+
 @container preparation (max-width: 55.999rem) {
   .supplier-dashboard
     .dataset-preparation-panel
