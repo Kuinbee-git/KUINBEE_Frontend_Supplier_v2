@@ -988,6 +988,27 @@ html[data-dashboard-theme-transition="true"]::view-transition-new(root) {
   background: var(--dashboard-control-background-hover);
 }
 
+/* Preparation sections stack when the expanded navigation leaves too little
+   actual form width for comfortable side-by-side inputs. */
+.supplier-dashboard .dataset-preparation-panel {
+  container: preparation / inline-size;
+}
+
+@container preparation (max-width: 55.999rem) {
+  .supplier-dashboard
+    .dataset-preparation-panel
+    [data-preparation-grid="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .supplier-dashboard
+    .dataset-preparation-panel
+    [data-preparation-grid="true"]
+    > * {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Header actions belong to the same proposal workspace, so they stay flat
    alongside the attached board actions. Global shell controls keep their style. */
 .supplier-dashboard

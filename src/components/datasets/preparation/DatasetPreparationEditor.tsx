@@ -552,7 +552,7 @@ export function DatasetPreparationEditor({
   };
 
   return (
-    <DatasetWorkspace className="dataset-proposal-workspace max-w-[70rem]">
+    <DatasetWorkspace className="dataset-proposal-workspace max-w-[80rem]">
       <DatasetPageHeader
         title={
           workflow.readOnly
@@ -574,7 +574,7 @@ export function DatasetPreparationEditor({
       />
       <DashboardCard
         ref={editorRef}
-        className="overflow-hidden"
+        className="dataset-preparation-panel overflow-hidden"
         data-proposal-panel="true"
       >
         <div
@@ -786,7 +786,7 @@ export function DatasetPreparationEditor({
         <fieldset
           disabled={fieldsLocked}
           data-dataset-step={activeStep}
-          className="min-w-0 space-y-6 p-4 sm:p-6"
+          className="min-w-0 space-y-8 p-5 sm:p-6"
           hidden={activeStep === 3}
         >
           <legend className="sr-only">{steps[activeStep]}</legend>
@@ -808,7 +808,7 @@ export function DatasetPreparationEditor({
                 />
                 <fieldset
                   data-dataset-field="uploadChoice"
-                  className="space-y-2"
+                  className="space-y-3"
                   disabled={workflow.managed}
                 >
                   <legend className="mb-2 text-sm font-medium">
@@ -851,7 +851,7 @@ export function DatasetPreparationEditor({
                       Choose one or more. Category and encoding are separate;
                       changing types keeps your earlier answers.
                     </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {DATASET_MODALITIES.map((modality) => (
                         <label
                           key={modality.value}
@@ -943,7 +943,7 @@ export function DatasetPreparationEditor({
                 className="lg:col-span-5"
                 help="Describe the subject and source of your collection, then record its stated license."
               >
-                <div className="grid gap-5">
+                <div className="grid gap-6">
                   <PreparationCatalogPicker
                     field="primaryCategoryId"
                     kind="categories"
@@ -1016,7 +1016,8 @@ export function DatasetPreparationEditor({
                   field="fullMeasurements"
                   metadata={metadata}
                   onUpdate={update}
-                  label="Declared amount in prepared full material"
+                  label="Full dataset size"
+                  help="Optional. Describe only the full material you plan to upload. These are your figures, separate from storage usage."
                 />
               )}
               {hasSample && (
@@ -1024,7 +1025,8 @@ export function DatasetPreparationEditor({
                   field="sampleMeasurements"
                   metadata={metadata}
                   onUpdate={update}
-                  label="Declared amount in prepared sample"
+                  label="Sample size"
+                  help="Optional. Describe only your sample, for example 15 minutes of audio. These are your figures, separate from storage usage."
                 />
               )}
             </PreparationGrid>
@@ -1098,7 +1100,8 @@ export function DatasetPreparationEditor({
                 className="lg:col-span-4"
                 metadata={metadata}
                 onUpdate={update}
-                label="Represented collection quantity"
+                label="Collection size"
+                help="Describe the whole collection, including material represented by a sample. For example: 200 hours of audio. Add at least one quantity before Submit; Unknown is allowed."
               />
               <PreparationProfileFields metadata={metadata} onUpdate={update} />
               {hasSample && (
@@ -1232,7 +1235,7 @@ export function DatasetPreparationEditor({
         <div
           data-dataset-step="3"
           hidden={activeStep !== 3}
-          className="min-w-0 space-y-4 p-4 sm:p-6"
+          className="min-w-0 space-y-6 p-5 sm:p-6"
         >
           {workflow.readOnly && workflow.snapshot?.submission ? (
             <PreparationFrozenSubmission

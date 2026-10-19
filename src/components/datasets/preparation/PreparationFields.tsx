@@ -2,7 +2,8 @@
 
 import { PreparationNativeSelect } from "./PreparationNativeSelect";
 
-import { useId, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
 import {
   DashboardButton,
   DashboardField,
@@ -23,6 +24,7 @@ export const preparationControl =
 export function PreparationField({
   field,
   label,
+  ariaLabel,
   value,
   onChange,
   help,
@@ -32,6 +34,7 @@ export function PreparationField({
 }: {
   field?: string;
   label: string;
+  ariaLabel?: string;
   value?: string | null;
   onChange: (value: string | null) => void;
   help?: string;
@@ -43,6 +46,7 @@ export function PreparationField({
   const props = {
     id,
     "data-dataset-field": field,
+    "aria-label": ariaLabel,
     value: value ?? "",
     maxLength,
     disabled,
@@ -66,19 +70,23 @@ export function PreparationField({
 export function PreparationSelect({
   field,
   label,
+  ariaLabel,
   value,
   onChange,
   options,
   help,
   disabled = false,
+  allowEmpty = true,
 }: {
   field?: string;
   label: string;
+  ariaLabel?: string;
   value?: string | null;
   onChange: (value: string | null) => void;
   options: ReadonlyArray<readonly [string, string]>;
   help?: string;
   disabled?: boolean;
+  allowEmpty?: boolean;
 }) {
   const id = useId();
   return (
@@ -87,12 +95,13 @@ export function PreparationSelect({
         <PreparationNativeSelect
           {...controlProps}
           data-dataset-field={field}
+          aria-label={ariaLabel}
           className={preparationControl}
           disabled={disabled}
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value || null)}
         >
-          <option value="">Choose later</option>
+          {allowEmpty && <option value="">Choose later</option>}
           {options.map(([key, text]) => (
             <option key={key} value={key}>
               {text}
@@ -122,9 +131,9 @@ export function PreparationSection({
       description={help}
       surface="plain"
       data-proposal-tile="true"
-      className={`@container col-span-full min-w-0 rounded-xl border border-border p-4 sm:p-5 ${className ?? "lg:col-span-6"}`}
+      className={`@container col-span-full min-w-0 rounded-xl border border-border p-5 sm:p-6 ${className ?? "lg:col-span-6"}`}
     >
-      <div data-dataset-field={field} className="space-y-4">
+      <div data-dataset-field={field} className="space-y-5 sm:space-y-6">
         {children}
       </div>
     </DashboardSection>
@@ -140,7 +149,8 @@ export function PreparationGrid({
 }) {
   return (
     <div
-      className={`grid min-w-0 grid-cols-1 lg:grid-cols-12 ${connected ? "dataset-frozen-board" : "gap-4"}`}
+      data-preparation-grid={connected ? undefined : "true"}
+      className={`grid min-w-0 grid-cols-1 lg:grid-cols-12 ${connected ? "dataset-frozen-board" : "gap-5 sm:gap-6"}`}
     >
       {children}
     </div>
@@ -183,15 +193,25 @@ export function PreparationQuantities({
   metadata,
   onUpdate,
   label,
+  help,
   className,
 }: {
   field: MeasurementField;
   metadata: DatasetPreparationMetadata;
   onUpdate: PreparationUpdate;
   label: string;
+  help?: string;
   className?: string;
 }) {
   const rows = metadata[field] ?? [];
+  const addControl = useRef<HTMLSelectElement>(null);
+  const remove = (metric: DatasetDeclaredMeasurement["metric"]) => {
+    onUpdate((previous) => ({
+      ...previous,
+      [field]: (previous[field] ?? []).filter((row) => row.metric !== metric),
+    }));
+    requestAnimationFrame(() => addControl.current?.focus());
+  };
   const write = (
     index: number,
     updater: (row: DatasetDeclaredMeasurement) => DatasetDeclaredMeasurement
@@ -207,96 +227,115 @@ export function PreparationQuantities({
       field={field}
       title={label}
       className={className}
-      help="These are your declarations, not measured uploads or storage usage. Unknown has no numeric value. Each quantity applies only to the scope named above."
+      help={help}
     >
+      {rows.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No quantities added yet. Choose what you want to measure below.
+        </p>
+      )}
       {rows.map((row, index) => (
         <fieldset
           key={row.metric}
-          className="space-y-3 border-t border-border pt-4 first:border-t-0 first:pt-0"
+          className="space-y-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
         >
-          <legend className="px-1 text-sm font-medium">
-            {metricLabels[row.metric]}
-          </legend>
-          <div className="grid gap-3 @md:grid-cols-3">
-            <PreparationSelect
-              label={`${label}: ${metricLabels[row.metric]} answer`}
-              value={row.state}
-              onChange={(state) => {
-                if (!state) return;
-                write(index, (old) =>
-                  state === "UNKNOWN"
-                    ? { metric: old.metric, unit: old.unit, state: "UNKNOWN" }
-                    : {
-                        ...old,
-                        state: state as "KNOWN" | "ESTIMATED",
-                        value: old.state === "UNKNOWN" ? "" : old.value,
-                      }
-                );
-              }}
-              options={[
-                ["KNOWN", "Known"],
-                ["ESTIMATED", "Estimate"],
-                ["UNKNOWN", "Unknown"],
-              ]}
-            />
-            {row.state !== "UNKNOWN" && (
-              <PreparationField
-                label={`${label}: ${metricLabels[row.metric]} value`}
-                multiline={false}
-                maxLength={24}
-                value={row.value}
-                onChange={(value) =>
-                  write(index, (old) =>
-                    old.state === "UNKNOWN"
-                      ? old
-                      : { ...old, value: value ?? "" }
-                  )
-                }
-                help="Use a nonnegative number. Counts and bytes must be whole numbers."
-              />
-            )}
-            <PreparationSelect
-              label={`${label}: ${metricLabels[row.metric]} unit`}
-              value={row.unit}
-              onChange={(unit) => {
-                if (unit)
-                  write(index, (old) => ({
-                    ...old,
-                    unit: unit as DatasetDeclaredMeasurement["unit"],
-                  }));
-              }}
-              options={
-                row.metric.endsWith("DURATION")
-                  ? [
-                      ["SECOND", "Seconds"],
-                      ["MINUTE", "Minutes"],
-                      ["HOUR", "Hours"],
-                    ]
-                  : row.metric === "BYTE_SIZE"
-                    ? [["BYTE", "Bytes"]]
-                    : [["COUNT", "Count"]]
-              }
-            />
+          <legend className="sr-only">{metricLabels[row.metric]}</legend>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm font-semibold">
+              {metricLabels[row.metric]}
+            </span>
+            <DashboardButton
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              aria-label={`Remove ${metricLabels[row.metric]} from ${label.toLowerCase()}`}
+              onClick={() => remove(row.metric)}
+            >
+              <X aria-hidden="true" />
+              Remove
+            </DashboardButton>
           </div>
-          <DashboardButton
-            type="button"
-            variant="link"
-            size="compact"
-            className="h-auto whitespace-normal p-0 text-left"
-            onClick={() =>
-              onUpdate((previous) => ({
-                ...previous,
-                [field]: (previous[field] ?? []).filter((_, i) => i !== index),
-              }))
-            }
-          >
-            Remove {metricLabels[row.metric]} from {label.toLowerCase()}
-          </DashboardButton>
+          <div className="grid gap-4 @min-[16rem]:grid-cols-2">
+            <div className="col-span-full">
+              <PreparationSelect
+                label="Do you know the amount?"
+                ariaLabel={`${label}: ${metricLabels[row.metric]} answer`}
+                value={row.state}
+                allowEmpty={false}
+                help="Choose Known or Estimate to enter an amount, or leave it as Unknown."
+                onChange={(state) => {
+                  if (!state) return;
+                  write(index, (old) =>
+                    state === "UNKNOWN"
+                      ? { metric: old.metric, unit: old.unit, state: "UNKNOWN" }
+                      : {
+                          ...old,
+                          state: state as "KNOWN" | "ESTIMATED",
+                          value: old.state === "UNKNOWN" ? "" : old.value,
+                        }
+                  );
+                }}
+                options={[
+                  ["KNOWN", "Known"],
+                  ["ESTIMATED", "Estimate"],
+                  ["UNKNOWN", "Unknown"],
+                ]}
+              />
+            </div>
+            {row.state !== "UNKNOWN" && (
+              <>
+                <PreparationField
+                  label="Amount"
+                  ariaLabel={`${label}: ${metricLabels[row.metric]} value`}
+                  multiline={false}
+                  maxLength={24}
+                  value={row.value}
+                  onChange={(value) =>
+                    write(index, (old) =>
+                      old.state === "UNKNOWN"
+                        ? old
+                        : { ...old, value: value ?? "" }
+                    )
+                  }
+                  help={
+                    row.metric.endsWith("DURATION")
+                      ? "Decimals are allowed."
+                      : "Use a whole number."
+                  }
+                />
+                <PreparationSelect
+                  label="Unit"
+                  ariaLabel={`${label}: ${metricLabels[row.metric]} unit`}
+                  value={row.unit}
+                  allowEmpty={false}
+                  onChange={(unit) => {
+                    if (unit)
+                      write(index, (old) => ({
+                        ...old,
+                        unit: unit as DatasetDeclaredMeasurement["unit"],
+                      }));
+                  }}
+                  options={
+                    row.metric.endsWith("DURATION")
+                      ? [
+                          ["SECOND", "Seconds"],
+                          ["MINUTE", "Minutes"],
+                          ["HOUR", "Hours"],
+                        ]
+                      : row.metric === "BYTE_SIZE"
+                        ? [["BYTE", "Bytes"]]
+                        : [["COUNT", "Count"]]
+                  }
+                />
+              </>
+            )}
+          </div>
         </fieldset>
       ))}
-      <label className="block space-y-1 text-sm font-medium">
-        Add a quantity
+      <label className="block space-y-2 text-sm font-medium">
+        <span className="block">Add a quantity</span>
         <PreparationNativeSelect
+          ref={addControl}
           aria-label={`Add a quantity to ${label}`}
           className={preparationControl}
           value=""
@@ -321,7 +360,7 @@ export function PreparationQuantities({
             }));
           }}
         >
-          <option value="">Select a meaningful quantity</option>
+          <option value="">Choose what to measure</option>
           {DatasetDeclaredMetricSchema.options
             .filter((metric) => !rows.some((row) => row.metric === metric))
             .map((metric) => (

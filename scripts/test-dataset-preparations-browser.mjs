@@ -1080,7 +1080,7 @@ async function assertTileLayout(page, first, second, width) {
   const left = await (await tileForHeading(page, first)).boundingBox();
   const right = await (await tileForHeading(page, second)).boundingBox();
   assert(left && right, "Both named content tiles must be visible");
-  if (width >= 1024) {
+  if (width >= 1280) {
     assert(
       Math.abs(left.y - right.y) <= 2,
       "Related desktop tiles start on the same row"
@@ -1751,8 +1751,8 @@ try {
   await page.getByRole("checkbox", { name: /^Healthcare content/ }).check();
   await step(page, "2. Files & contents");
   for (const [label, value, unit] of [
-    ["Declared amount in prepared full material", "200", "HOUR"],
-    ["Declared amount in prepared sample", "15", "MINUTE"],
+    ["Full dataset size", "200", "HOUR"],
+    ["Sample size", "15", "MINUTE"],
   ]) {
     await page
       .getByLabel("Add a quantity to " + label, { exact: true })
@@ -1769,17 +1769,17 @@ try {
   }
   await step(page, "3. Dataset details");
   await page
-    .getByLabel("Add a quantity to Represented collection quantity", {
+    .getByLabel("Add a quantity to Collection size", {
       exact: true,
     })
     .selectOption("AUDIO_DURATION");
   await page
-    .getByLabel("Represented collection quantity: Audio duration answer", {
+    .getByLabel("Collection size: Audio duration answer", {
       exact: true,
     })
     .selectOption("ESTIMATED");
   await page
-    .getByLabel("Represented collection quantity: Audio duration value", {
+    .getByLabel("Collection size: Audio duration value", {
       exact: true,
     })
     .fill("200");
@@ -1806,6 +1806,107 @@ try {
     .waitFor();
   console.log(
     "PASS separate represented/full/sample declarations, stated license and private healthcare preparation"
+  );
+
+  await step(page, "3. Dataset details");
+  const collectionQuantity = page.getByLabel(
+    "Add a quantity to Collection size",
+    { exact: true }
+  );
+  await collectionQuantity.selectOption("IMAGE_COUNT");
+  await page
+    .getByLabel("Collection size: Images answer", { exact: true })
+    .selectOption("KNOWN");
+  await page
+    .getByLabel("Collection size: Images value", { exact: true })
+    .fill("42");
+  await page
+    .getByRole("button", {
+      name: "Remove Audio duration from collection size",
+      exact: true,
+    })
+    .click();
+  await collectionQuantity.focus();
+  assert.equal(
+    await page
+      .getByLabel("Collection size: Images value", { exact: true })
+      .inputValue(),
+    "42"
+  );
+  assert.equal(
+    await page
+      .getByLabel("Collection size: Audio duration answer", { exact: true })
+      .count(),
+    0
+  );
+  assert.equal(
+    await collectionQuantity.locator('option[value="AUDIO_DURATION"]').count(),
+    1
+  );
+  await save(page);
+  await page.reload();
+  await page.getByRole("status").filter({ hasText: "Draft saved" }).waitFor();
+  await step(page, "3. Dataset details");
+  assert.equal(
+    await page
+      .getByLabel("Collection size: Images value", { exact: true })
+      .inputValue(),
+    "42"
+  );
+  await page
+    .getByRole("button", {
+      name: "Remove Images from collection size",
+      exact: true,
+    })
+    .click();
+  await page.waitForFunction(
+    () =>
+      document.activeElement?.getAttribute("aria-label") ===
+      "Add a quantity to Collection size"
+  );
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionMeasurements, []);
+  assert.equal(drafts.get(scopedId).metadata.fullMeasurements[0].value, "200");
+  assert.equal(drafts.get(scopedId).metadata.sampleMeasurements[0].value, "15");
+  await page.reload();
+  await page.getByRole("status").filter({ hasText: "Draft saved" }).waitFor();
+  await step(page, "3. Dataset details");
+  const collectionSection = await tileForHeading(page, "Collection size");
+  await collectionSection
+    .getByText(
+      "No quantities added yet. Choose what you want to measure below.",
+      { exact: true }
+    )
+    .waitFor();
+  await page
+    .getByLabel("Add a quantity to Collection size", { exact: true })
+    .selectOption("AUDIO_DURATION");
+  assert.equal(
+    await page
+      .getByLabel("Collection size: Audio duration value", { exact: true })
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByLabel("Collection size: Audio duration answer", { exact: true })
+      .locator('option[value=""]')
+      .count(),
+    0
+  );
+  await save(page);
+  assert.deepEqual(drafts.get(scopedId).metadata.collectionMeasurements, [
+    { metric: "AUDIO_DURATION", unit: "HOUR", state: "UNKNOWN" },
+  ]);
+  await page
+    .getByLabel("Collection size: Audio duration answer", { exact: true })
+    .selectOption("ESTIMATED");
+  await page
+    .getByLabel("Collection size: Audio duration value", { exact: true })
+    .fill("200");
+  await save(page);
+  console.log(
+    "PASS quantity removal preserves other rows and full/sample declarations; empty arrays save/reload, removed choices can be added again and keyboard focus returns to Add"
   );
 
   await step(page, "1. Basics");
@@ -2801,22 +2902,22 @@ try {
     .getByLabel("How was the sample selected?", { exact: true })
     .fill("A short continuous interval from the collection");
   await page
-    .getByLabel("Add a quantity to Represented collection quantity", {
+    .getByLabel("Add a quantity to Collection size", {
       exact: true,
     })
     .selectOption("AUDIO_DURATION");
   await page
-    .getByLabel("Represented collection quantity: Audio duration answer", {
+    .getByLabel("Collection size: Audio duration answer", {
       exact: true,
     })
     .selectOption("ESTIMATED");
   await page
-    .getByLabel("Represented collection quantity: Audio duration value", {
+    .getByLabel("Collection size: Audio duration value", {
       exact: true,
     })
     .fill("200");
   await page
-    .getByLabel("Represented collection quantity: Audio duration unit", {
+    .getByLabel("Collection size: Audio duration unit", {
       exact: true,
     })
     .selectOption("HOUR");
@@ -2824,12 +2925,7 @@ try {
   const bentoMetadata = copy(drafts.get(bentoId).metadata);
   for (const width of [1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await assertTileLayout(
-      page,
-      "Dataset details",
-      "Represented collection quantity",
-      width
-    );
+    await assertTileLayout(page, "Dataset details", "Collection size", width);
     assert.equal(
       await page
         .getByLabel("What collection does this Dataset cover?", { exact: true })
@@ -2844,7 +2940,7 @@ try {
     );
     assert.equal(
       await page
-        .getByLabel("Represented collection quantity: Audio duration value", {
+        .getByLabel("Collection size: Audio duration value", {
           exact: true,
         })
         .inputValue(),
