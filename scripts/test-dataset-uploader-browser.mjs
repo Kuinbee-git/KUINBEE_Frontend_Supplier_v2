@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { build } from "esbuild";
-import { chromium } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
 import {
   DatasetPreparationResponseSchema,
   DatasetPreparationPatchBodySchema,
@@ -265,7 +265,11 @@ function context(draft) {
     serverUploadChoice: draft.metadata.uploadChoice,
     editable: true,
     synchronizationRequired: draft.generation !== draft.sourceGeneration,
-    usage: {
+    usage: draft.storageSetupRequired ? {
+      state: "RECONCILING",
+      dataset: { limitBytes: "5000000000", retainedBytes: null, reservedBytes: null, chargedBytes: null, remainingBytes: null },
+      supplier: { limitBytes: "100000000000", retainedBytes: null, reservedBytes: null, chargedBytes: null, remainingBytes: null },
+    } : {
       state: "ACCOUNTED",
       dataset: account(draft, "5000000000"),
       supplier: account(draft, "100000000000"),
@@ -461,6 +465,7 @@ const server = createServer(async (req, res) => {
     if (tail === "intake-config") {
       const ready =
         !flags.closed &&
+        !draft.storageSetupRequired &&
         draft.generation === draft.sourceGeneration &&
         Boolean(draft.metadata.uploadChoice);
       ok(
@@ -892,6 +897,7 @@ const server = createServer(async (req, res) => {
       }
       draft.contentGeneration++;
       draft.sourceGeneration = draft.generation;
+      draft.storageSetupRequired = false;
       saveReceipt(
         res,
         key,
@@ -1275,7 +1281,9 @@ const uploadRow = (page, item) =>
   page.locator(`[data-upload-attempt="${item.id}"]`);
 const folderTemporary = await mkdtemp(resolve(tmpdir(), "supplier-folder-browser-"));
 try {
-  browser = await chromium.launch({ headless: true });
+  const engine = process.env.DATASET_BROWSER_ENGINE ?? "chromium";
+  assert(["chromium", "firefox", "webkit"].includes(engine), "Unknown browser engine");
+  browser = await ({ chromium, firefox, webkit })[engine].launch({ headless: true });
   const page = await browser.newPage({
     viewport: { width: 1366, height: 1000 },
   });
@@ -1288,6 +1296,23 @@ try {
     }
     return route.continue();
   });
+
+  // A real first Save already has content, but no storage ledger yet. Reading
+  // must not initialize it or strand the supplier without a setup action.
+  for (const choice of choices) {
+    const draft = seed(choice);
+    draft.storageSetupRequired = true;
+    const before = requests.length;
+    await open(page, draft);
+    await namedButton(page, "Set up files").waitFor();
+    assert.equal(draft.storageSetupRequired, true);
+    assert.equal(requests.slice(before).filter(item => item.method === "POST" && item.path.endsWith("/files-context")).length, 0);
+    await namedButton(page, "Set up files").click();
+    await page.getByLabel("Choose folder", { exact: true }).waitFor();
+    assert.equal(draft.storageSetupRequired, false);
+    assert.equal(requests.slice(before).filter(item => item.method === "POST" && item.path.endsWith("/files-context")).length, 1);
+  }
+  console.log("PASS first-save synchronized content still offers explicit storage setup across all three choices; reads do not initialize quota");
 
   // Real browser directory selection preserves nested duplicate basenames.
   flags.autoAccept = true;

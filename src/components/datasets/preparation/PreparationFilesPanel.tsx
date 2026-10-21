@@ -269,6 +269,10 @@ export function PreparationFilesPanel({
     !readFailed
   );
   const choice = current ? context!.serverUploadChoice : null;
+  // The first metadata Save can create content before its empty storage ledger.
+  // Keep an explicit setup action available even when metadata is synchronized.
+  const storageSetupRequired =
+    current && context?.usage.state === "RECONCILING";
   const hasFull = choice === "FULL_ONLY" || choice === "FULL_AND_SAMPLE";
   const hasSample = choice === "SAMPLE_ONLY" || choice === "FULL_AND_SAMPLE";
   const usableInventory =
@@ -386,9 +390,11 @@ export function PreparationFilesPanel({
                       ? "Files are not loaded."
                       : context?.synchronizationRequired
                         ? "Saved details changed. Update files to use your saved choices."
-                        : context?.contentId
-                          ? "Files use your saved upload choice."
-                          : "Set up files to start your inventory."}
+                        : storageSetupRequired
+                          ? "Set up files to check storage before uploading."
+                          : context?.contentId
+                            ? "Files use your saved upload choice."
+                            : "Set up files to start your inventory."}
             </div>
             {metadataDirty && (
               <p className="text-sm text-muted-foreground">
@@ -428,13 +434,17 @@ export function PreparationFilesPanel({
                 </DashboardButton>
               ) : current &&
                 choice &&
-                (!context?.contentId || context.synchronizationRequired) ? (
+                (!context?.contentId ||
+                  context.synchronizationRequired ||
+                  storageSetupRequired) ? (
                 <DashboardButton
                   type="button"
                   disabled={mutationDisabled}
                   onClick={() => void synchronize()}
                 >
-                  {context?.contentId ? "Update files" : "Set up files"}
+                  {context?.contentId && !storageSetupRequired
+                    ? "Update files"
+                    : "Set up files"}
                 </DashboardButton>
               ) : null}
               <DashboardButton
