@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { build } from "esbuild";
 import { chromium } from "playwright";
 import {
+  getDatasetPreparationReadiness,
   DatasetPreparationCreateBodySchema,
   DatasetPreparationPatchBodySchema,
   DatasetSupplierProposalsResponseSchema,
@@ -39,6 +40,7 @@ const entry = [
   "import {QueryProvider} from './src/components/QueryProvider';",
   "import {DashboardShell} from './src/components/layout/DashboardShell';",
   "import CreateDatasetPage from './src/app/dashboard/datasets/create/page';",
+  "import ProposalGuidePage from './src/app/dashboard/datasets/guide/page';",
   "import ProposalsPage from './src/app/dashboard/datasets/page';",
   "import DraftProposalPage from './src/app/dashboard/datasets/drafts/[draftId]/page';",
   "import OldDraftListPage from './src/app/dashboard/datasets/prepare/page';",
@@ -55,7 +57,7 @@ const entry = [
   "const root=createRoot(document.getElementById('root')); let mount=0;",
   "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
   "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",
-  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
+  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets/guide')view=ProposalGuidePage();else if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
   "window.showRoute();",
 ].join("\n");
 const mockedNext = {
@@ -248,20 +250,7 @@ function dto(metadata, id, generation = 0) {
     metadata,
     createdAt: "2026-10-14T00:00:00.000Z",
     updatedAt: new Date(Date.UTC(2026, 9, 14, 0, 0, generation)).toISOString(),
-    readiness: {
-      canSubmit: false,
-      issues: [
-        {
-          code: "FILES_NOT_ENABLED",
-          message:
-            "File upload and required file checks are not available in this testing release.",
-        },
-        {
-          code: "SUBMISSION_NOT_ENABLED",
-          message: "Admin submission is unavailable in this testing release.",
-        },
-      ],
-    },
+    readiness: getDatasetPreparationReadiness(metadata),
   };
 }
 function mutate(id, changes) {
@@ -1148,10 +1137,79 @@ try {
     }
     return route.continue();
   });
+  const guideWriteCount = requests.filter(
+    (request) => !["GET", "HEAD", "OPTIONS"].includes(request.method)
+  ).length;
+  await page.goto(origin + "/dashboard/datasets/guide");
+  await page
+    .getByRole("heading", { name: "Dataset proposal guide", exact: true })
+    .waitFor();
+  for (const title of [
+    "1. Basics",
+    "2. Files & contents",
+    "3. Dataset details",
+    "4. Review draft",
+    "What happens after submission?",
+  ])
+    await page.getByRole("heading", { name: title, exact: true }).waitFor();
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Create proposal", exact: true })
+      .getAttribute("href"),
+    "/dashboard/datasets/create"
+  );
+  await page
+    .getByRole("link", { name: "After submission", exact: true })
+    .click();
+  assert.equal(new URL(page.url()).hash, "#review-process");
+  assert.equal(
+    requests.filter(
+      (request) => !["GET", "HEAD", "OPTIONS"].includes(request.method)
+    ).length,
+    guideWriteCount,
+    "Reading the tutorial never creates, saves or submits a proposal"
+  );
   await page.goto(origin + "/dashboard/datasets/create");
   await page
     .getByRole("heading", { name: "Create proposal", exact: true })
     .waitFor();
+  const help = page.locator("[data-proposal-step-help=true]");
+  assert.equal(await help.getAttribute("open"), null);
+  await help.locator("summary").click();
+  await help
+    .getByText("Introduce the collection and choose what you plan to upload.", {
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("link", {
+        name: "Proposal guide (opens in a new tab)",
+        exact: true,
+      })
+      .getAttribute("target"),
+    "_blank"
+  );
+  assert.equal(
+    await help
+      .getByRole("link", {
+        name: "Read the full proposal guide (opens in a new tab)",
+        exact: true,
+      })
+      .getAttribute("href"),
+    "/dashboard/datasets/guide#step-1"
+  );
+  await help.locator("summary").click();
+  assert.equal(
+    requests.filter(
+      (request) => !["GET", "HEAD", "OPTIONS"].includes(request.method)
+    ).length,
+    guideWriteCount,
+    "Step help is read-only"
+  );
+  console.log(
+    "PASS proposal tutorial, process navigation and contextual step help preserve the draft and perform no business writes"
+  );
   assert.equal(
     await page
       .getByRole("link", { name: "Draft proposals", exact: true })
@@ -3233,6 +3291,7 @@ try {
       )
   );
   for (const path of [
+    "/guide",
     "/prepare",
     "/prepare/new",
     "/drafts/" + scopedId,

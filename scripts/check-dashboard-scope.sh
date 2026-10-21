@@ -369,6 +369,7 @@ src/app/dashboard/data-requirements/submit/page.tsx
 src/app/dashboard/datasets/[id]/page.tsx
 src/app/dashboard/datasets/create/page.tsx
 src/app/dashboard/datasets/drafts/[draftId]/page.tsx
+src/app/dashboard/datasets/guide/page.tsx
 src/app/dashboard/datasets/page.tsx
 src/app/dashboard/datasets/prepare/[draftId]/page.tsx
 src/app/dashboard/datasets/prepare/page.tsx
@@ -402,4 +403,4 @@ if [[ "$actual_dashboard_routes" != "$expected_dashboard_routes" ]]; then
   exit 1
 fi
 
-echo "Dashboard UI scope check passed: 26 authenticated routes; Gates 5 through 9 use the scoped dashboard system; excluded surfaces unchanged."
+echo "Dashboard UI scope check passed: 27 authenticated routes; Gates 5 through 9 use the scoped dashboard system; excluded surfaces unchanged."

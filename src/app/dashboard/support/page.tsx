@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
+import { PROPOSAL_GUIDE_PATH } from "@/lib/datasets/proposal-guidance";
 import {
   ArrowRight,
   BadgePercent,
@@ -34,10 +36,15 @@ const workspaceGuides = [
     icon: UserRound,
   },
   {
-    href: "/dashboard/datasets/create",
-    title: "Create a dataset proposal",
-    description:
-      "Start a structured proposal and prepare dataset details for marketplace review.",
+    href: DATASET_PREPARATION_ENABLED
+      ? PROPOSAL_GUIDE_PATH
+      : "/dashboard/datasets/create",
+    title: DATASET_PREPARATION_ENABLED
+      ? "Dataset proposal guide"
+      : "Create a dataset proposal",
+    description: DATASET_PREPARATION_ENABLED
+      ? "Learn what to prepare, how to save and upload, and what happens during review and publication."
+      : "Start a structured proposal and prepare dataset details for marketplace review.",
     icon: Database,
   },
   {

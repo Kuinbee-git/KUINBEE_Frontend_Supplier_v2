@@ -47,6 +47,8 @@ import {
 } from "@/lib/datasets/dataset-readiness-navigation";
 import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
 import { PreparationFrozenSubmission } from "./PreparationFrozenSubmission";
+import { PreparationStepHelp } from "./PreparationStepHelp";
+import { PROPOSAL_GUIDE_PATH } from "@/lib/datasets/proposal-guidance";
 import {
   PreparationField,
   PreparationGrid,
@@ -567,9 +569,21 @@ export function DatasetPreparationEditor({
             : "Save a draft and complete it step by step. Saving does not submit it for review."
         }
         action={
-          <DashboardButton asChild variant="outline" size="compact">
-            <Link href="/dashboard/datasets">Draft proposals</Link>
-          </DashboardButton>
+          <div className="flex flex-wrap gap-3">
+            <DashboardButton asChild variant="outline" size="compact">
+              <Link
+                href={PROPOSAL_GUIDE_PATH}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Proposal guide
+                <span className="sr-only"> (opens in a new tab)</span>
+              </Link>
+            </DashboardButton>
+            <DashboardButton asChild variant="outline" size="compact">
+              <Link href="/dashboard/datasets">Draft proposals</Link>
+            </DashboardButton>
+          </div>
         }
       />
       <DashboardCard
@@ -611,14 +625,7 @@ export function DatasetPreparationEditor({
             </span>
           )}
         </div>
-        <div className="border-b border-border bg-muted/20 px-4 py-3 text-sm sm:px-6">
-          <strong>Draft testing release</strong>
-          <p className="mt-1 text-muted-foreground">
-            Save your draft step by step and manage uploads in Files &amp;
-            contents. Submitting for admin review is a separate action. Nothing
-            is published automatically.
-          </p>
-        </div>
+        <PreparationStepHelp step={step} />
         {saved?.legacyBaseFingerprint && (
           <p
             role="status"

@@ -43,7 +43,7 @@ excluded screens: `src/components/ui/**`, `src/components/shared/**`,
 
 Run `npm run check:dashboard-scope` at every gate. It fails if a protected file
 changes, authenticated selectors appear in excluded surfaces, or the recorded
-26-route inventory drifts without an intentional contract update.
+27-route inventory drifts without an intentional contract update.
 
 ## Visual direction
 
@@ -180,13 +180,14 @@ a genuine zero or successful empty result.
 
 ## Authenticated route inventory
 
-The refresh covers 26 routes:
+The refresh covers 27 routes:
 
 - Overview: `/dashboard`
 - Analytics: `/dashboard/stats`, `/dashboard/stats/buyers`,
   `/dashboard/stats/datasets`, `/dashboard/stats/datasets/[id]`
 - Draft datasets: `/dashboard/datasets`, `/dashboard/datasets/create`,
   `/dashboard/datasets/[id]`, `/dashboard/datasets/drafts/[draftId]`,
+  `/dashboard/datasets/guide`,
   `/dashboard/datasets/prepare`, `/dashboard/datasets/prepare/[draftId]`
 - Supplier datasets: `/dashboard/my-datasets`, `/dashboard/my-datasets/[id]`,
   `/dashboard/my-datasets/[id]/edit`
@@ -386,3 +387,14 @@ which safe diagnostic details to provide without implying a support-ticket API.
 The Gate 9 scope guard rejects protected token hooks, legacy profile helpers,
 shared glass helpers, base controls, blocking overlays, inline visual recipes,
 ad hoc transitions, and literal colours throughout Supplier settings.
+
+## Proposal tutorial — 21 October 2026
+
+The authenticated `/dashboard/datasets/guide` route documents the existing four
+steps and review/publication process in one partitioned glass surface. It shares
+the palette, borders, controls and focus behavior of the dataset workspace.
+Short native disclosures in the editor provide help for the active step. Guide
+links from the editor open a new tab to retain unsaved input; My drafts and
+Support also link to the guide. The route follows the existing preparation
+environment gate and does not create or change a proposal. Subject-category
+consolidation remains a separate recommendation, not a live directory change.

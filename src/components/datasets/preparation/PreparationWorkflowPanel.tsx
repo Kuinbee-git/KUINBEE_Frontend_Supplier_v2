@@ -46,7 +46,15 @@ export function PreparationWorkflowPanel({
   const priceCanSubmit =
     currentPricing &&
     ["DRAFT", "CHANGES_REQUESTED", "REJECTED"].includes(currentPricing.status);
-  const issues = snapshot?.readiness.issues ?? saved?.readiness.issues ?? [];
+  // A stale workflow snapshot cannot describe today's submission requirements.
+  // Older exact save replays may retain the original preparation-only messages;
+  // keep those acknowledgements intact while omitting obsolete availability copy.
+  const issues = fresh
+    ? (snapshot?.readiness.issues ?? [])
+    : (saved?.readiness.issues ?? []).filter(
+        (issue) =>
+          !["FILES_NOT_ENABLED", "SUBMISSION_NOT_ENABLED"].includes(issue.code)
+      );
   return (
     <div data-workflow-panel="true" className="min-w-0 space-y-4">
       {(workflow.error || workflow.notice || workflow.pending) && (
@@ -294,6 +302,12 @@ export function PreparationWorkflowPanel({
           {metadataDirty && (
             <p className="text-sm">
               Save your changed answers to refresh these checks.
+            </p>
+          )}
+          {saved && !fresh && !workflow.readOnly && (
+            <p className="text-sm text-muted-foreground">
+              The items below cover saved answers only. Refresh review checks to
+              include selected files, pricing and the current review state.
             </p>
           )}
           {uploadsActive && (
