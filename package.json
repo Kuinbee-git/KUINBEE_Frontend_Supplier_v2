@@ -18,13 +18,14 @@
     "test:release": "node scripts/check-release.mjs",
     "test:errors": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-error-details.mjs scripts/test-api-errors.mjs",
     "test:components": "node scripts/test-supplier-session-browser.mjs && node scripts/test-components-browser.mjs && node scripts/test-state-lifecycle-browser.mjs && node scripts/test-dataset-preparations-browser.mjs && npm run test:uploads && npm run test:workflow && npm run test:details",
-    "test:contracts": "npm run test:release-gate && npm run test:environment && npm run test:errors && node scripts/check-dataset-preparation-contracts.mjs",
+    "test:contracts": "npm run test:dataset-production && npm run test:release-gate && npm run test:environment && npm run test:errors && node scripts/check-dataset-preparation-contracts.mjs",
     "test:preparations": "node --test scripts/test-dataset-save-recovery.mjs && node scripts/test-dataset-preparations-browser.mjs",
     "test:uploads": "node --test scripts/test-dataset-browser-lifecycle.mjs scripts/test-dataset-folders.mjs scripts/test-dataset-save-recovery.mjs scripts/test-dataset-upload-transfer.mjs scripts/test-dataset-tables.mjs scripts/test-dataset-table-page.mjs && node scripts/test-dataset-uploader-browser.mjs",
     "test:workflow": "node scripts/test-dataset-workflow.mjs && node scripts/test-dataset-workflow-browser.mjs && node scripts/test-dataset-management-browser.mjs",
     "audit:runtime": "npm audit --omit=dev --audit-level=high",
     "test:release-gate": "node --test scripts/check-github-release.test.mjs",
-    "test:details": "node scripts/test-supplier-details-browser.mjs"
+    "test:details": "node scripts/test-supplier-details-browser.mjs",
+    "test:dataset-production": "node --test scripts/test-dataset-production.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
