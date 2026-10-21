@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { build } from "esbuild";
 import { chromium, firefox, webkit } from "playwright";
+import { installDatasetReadDiagnostics, recordDatasetNavigation, classifyDatasetBrowserErrors } from "./dataset-browser-lifecycle.mjs";
 import {
   DatasetPreparationResponseSchema,
   DatasetPreparationPatchBodySchema,
@@ -38,6 +39,8 @@ import {
 // bounded synthetic service. This qualifies UI orchestration, never the native
 // scanner, cloud provider, 2 GB transfer, or hosted deployment.
 const require = createRequire(import.meta.url);
+const reactMode = process.env.DATASET_BROWSER_REACT_MODE ?? "development";
+assert(["development", "production"].includes(reactMode), "Unknown React build mode");
 const postcss = require(
   require.resolve("postcss", {
     paths: [require.resolve("@tailwindcss/postcss")],
@@ -64,6 +67,7 @@ const bundle = await build({
     window.fixtureLogin=(id)=>useAuthStore.getState().login({id,email:'fixture@example.test',name:'Fixture supplier',role:'supplier'});
     window.fixtureLogin('c000000000000000000999999');
     const root=createRoot(document.getElementById('root'));let mount=0;
+    window.unmount=()=>root.unmount();
     window.mount=(id)=>root.render(<React.StrictMode><QueryProvider><DashboardShell><DatasetPreparationEditor key={++mount} draftId={id} onExit={()=>window.fixtureExits=(window.fixtureExits??0)+1}/></DashboardShell></QueryProvider></React.StrictMode>);
     window.mount(window.location.pathname.split('/').at(-1));
   `,
@@ -75,7 +79,7 @@ const bundle = await build({
   format: "iife",
   jsx: "automatic",
   define: {
-    "process.env.NODE_ENV": '"development"',
+    "process.env.NODE_ENV": JSON.stringify(reactMode),
     "process.env.NEXT_PUBLIC_APP_ENV": '"local"',
   },
   plugins: [
@@ -111,19 +115,25 @@ const requests = [],
   fixtureErrors = [],
   browserErrors = [],
   external = [];
-const unhandledEvents = [], failedRequests = [];
+const unhandledEvents = [], failedRequests = [], readFailures = [], browserErrorDetails = [], transitions = [];
 const recordBrowserError = error => {
   browserErrors.push(error.message);
+  browserErrorDetails.push({ at: Date.now(), stack: error.stack });
   console.error("BROWSER_EXCEPTION", JSON.stringify({ name: error.name, message: error.message, stack: error.stack }));
 };
 async function observeBrowser(page) {
   page.on("pageerror", recordBrowserError);
+  page.on("request", request => {
+    if (new URL(request.url()).origin !== origin) external.push(request.url());
+  });
   page.on("requestfailed", request => {
     failedRequests.push({ url: request.url(), error: request.failure()?.errorText });
   });
   page.on("console", message => {
     if (message.text().startsWith("UNHANDLED_FIXTURE_EVENT ")) unhandledEvents.push(message.text());
+    if (message.text().startsWith("FAILED_FIXTURE_READ ")) readFailures.push(JSON.parse(message.text().slice("FAILED_FIXTURE_READ ".length)));
   });
+  await page.addInitScript(installDatasetReadDiagnostics);
   await page.addInitScript(() => {
     window.addEventListener("error", event => console.log("UNHANDLED_FIXTURE_EVENT " + String(event.message)));
     window.addEventListener("unhandledrejection", event => console.log("UNHANDLED_FIXTURE_EVENT " + String(event.reason)));
@@ -386,7 +396,9 @@ const server = createServer(async (req, res) => {
       return;
     }
     if (!url.pathname.startsWith("/api/")) {
-      res.writeHead(200, { "Content-Type": "text/html" });
+      // Enforce the fixture's network boundary without intercepting requests.
+      res.writeHead(200, { "Content-Type": "text/html",
+        "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'" });
       res.end(
         '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>'
       );
@@ -1269,17 +1281,26 @@ async function filesStep(page) {
     .waitFor();
 }
 async function open(page, draft) {
-  await page.goto(origin + "/dashboard/datasets/drafts/" + draft.id);
+  // Dispose the previous independent fixture while its document is still
+  // alive, so late React effects cannot start requests during hard teardown.
+  // Actual user reload/interruption scenarios deliberately do not use this.
+  await page.evaluate(() => window.unmount?.());
+  await page.waitForLoadState("networkidle");
+  await recordDatasetNavigation(page, transitions, () => page.goto(origin + "/dashboard/datasets/drafts/" + draft.id));
   await page.getByLabel("Dataset title", { exact: true }).waitFor();
   await filesStep(page);
+  await page.waitForLoadState("networkidle");
 }
 async function reloadWithOptionalPrompt(page) {
   // Engines may suppress beforeunload. Do not leave an unused listener to
   // accept an unrelated confirmation later in the journey.
+  // The unknown write is already acknowledged as uncertain by the UI; settle
+  // its unrelated reads before testing persistence of that exact command.
+  await page.waitForLoadState("networkidle");
   const pending = [];
   const confirm = dialog => { pending.push(dialog.accept()); };
   page.on("dialog", confirm);
-  try { await page.reload(); await Promise.all(pending); }
+  try { await recordDatasetNavigation(page, transitions, () => page.reload()); await Promise.all(pending); }
   finally { page.off("dialog", confirm); }
 }
 async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
@@ -1316,13 +1337,6 @@ try {
   });
   page.setDefaultTimeout(15000);
   await observeBrowser(page);
-  await page.route("**/*", (route) => {
-    if (new URL(route.request().url()).origin !== origin) {
-      external.push(route.request().url());
-      return route.abort();
-    }
-    return route.continue();
-  });
 
   // A real first Save already has content, but no storage ledger yet. Reading
   // must not initialize it or strand the supplier without a setup action.
@@ -1359,7 +1373,8 @@ try {
     assert(draft.members.every(member => member.relativePath.startsWith("folder-fixture/") && member.relativePath.endsWith("/data.txt")));
     assert.equal(new Set(draft.members.map(member => member.relativePath)).size, 4);
     assert(draft.members.every(member => member.component === (choice === "FULL_ONLY" ? "FULL" : "SAMPLE")));
-    await page.reload(); await filesStep(page);
+    await page.waitForLoadState("networkidle");
+    await recordDatasetNavigation(page, transitions, () => page.reload()); await filesStep(page);
     await page.getByText("4 of 4 files added to the draft.", { exact: true }).waitFor();
     await namedButton(page, "Clear queue").click();
     assert.equal(draft.members.length, 4, "Clearing a local queue never deletes selected files");
@@ -1708,13 +1723,6 @@ try {
   const storageDraft = seed("FULL_ONLY"),
     storagePage = await browser.newPage();
   await observeBrowser(storagePage);
-  await storagePage.route("**/*", (route) => {
-    if (new URL(route.request().url()).origin !== origin) {
-      external.push(route.request().url());
-      return route.abort();
-    }
-    return route.continue();
-  });
   await storagePage.addInitScript(() => {
     const get = Storage.prototype.getItem;
     Storage.prototype.getItem = function (key) {
@@ -1736,6 +1744,8 @@ try {
         request.path.includes(storageDraft.id) && request.method !== "GET"
     )
   );
+  await storagePage.evaluate(() => window.unmount?.());
+  await storagePage.waitForLoadState("networkidle");
   await storagePage.close();
   console.log(
     "PASS unavailable browser request storage pauses file writes while keeping metadata Save usable"
@@ -2391,6 +2401,9 @@ try {
       .slice(20)
       .every((item) => item.description.meaningState === "UNKNOWN")
   );
+  // Finish this successful save's inventory refresh before the separate
+  // stale-generation case below deliberately changes the service state.
+  await page.waitForLoadState("networkidle");
   console.log(
     "PASS explicit unknown shortcut touches only unanswered fields on the current columns page"
   );
@@ -2405,6 +2418,7 @@ try {
     .getByLabel("What does this column mean?", { exact: true })
     .fill("Unsaved column interpretation");
   assert(await namedButton(tableRegion, "Previous columns page").isDisabled());
+  await page.waitForLoadState("networkidle");
   tableDraft.contentGeneration++;
   await namedButton(page, "Refresh files").click();
   await tableRegion
@@ -2825,15 +2839,19 @@ try {
   );
   assert.deepEqual(fixtureErrors, []);
   if (process.env.DATASET_BROWSER_DIAGNOSTICS === "1")
-    console.log("BROWSER_DIAGNOSTICS", JSON.stringify({ unhandledEvents, failedRequests }));
+    console.log("BROWSER_DIAGNOSTICS", JSON.stringify({ unhandledEvents, failedRequests, readFailures, browserErrorDetails, transitions }));
   assert.deepEqual(unhandledEvents, []);
-  assert.deepEqual(browserErrors, []);
+  assert.equal(browserErrors.length, browserErrorDetails.length);
+  const runtime = classifyDatasetBrowserErrors({ engine, origin, errors: browserErrorDetails, readFailures, transitions });
+  console.log("BROWSER_RUNTIME_GUARD", JSON.stringify({ unexpectedErrors: runtime.unexpected.length,
+    expectedCancellationDiagnostics: runtime.expectedCancellations }));
+  assert.deepEqual(runtime.unexpected, []);
   assert.deepEqual(external, []);
   assert(
     !requests.some((item) => /submit|publish|payment|presign/.test(item.path))
   );
   console.log(
-    "PASS rendered supplier uploader qualification; no hosted/cloud/native-scanner or complete-flow claim"
+    `PASS rendered supplier uploader qualification (${engine}, React ${reactMode}); no hosted/cloud/native-scanner or complete-flow claim`
   );
 } catch (failure) {
   console.error("UI fixture errors:", fixtureErrors);
