@@ -1152,6 +1152,38 @@ try {
     "What happens after submission?",
   ])
     await page.getByRole("heading", { name: title, exact: true }).waitFor();
+  assert.equal(
+    await page.locator("[data-proposal-guide-visual]").count(),
+    4,
+    "The guide illustrates each actual proposal screen"
+  );
+  assert.equal(
+    await page
+      .locator('nav[aria-label="Proposal guide contents"] a[href^="#step-"]')
+      .count(),
+    4,
+    "Suppliers can jump directly to each illustrated screen"
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Save draft", exact: true }).count(),
+    0,
+    "Illustrated controls are not mistaken for a live draft form"
+  );
+  for (const [step, landmark] of [
+    [1, "What are you uploading?"],
+    [2, "Selected material"],
+    [3, "Three different scopes"],
+    [4, "Ready for admin review?"],
+  ]) {
+    const visual = page.locator(`[data-proposal-guide-visual="${step}"]`);
+    await visual.getByText(landmark, { exact: true }).waitFor();
+    assert.equal(await visual.locator("figcaption").count(), 1);
+  }
+  assert.equal(
+    await page.getByRole("heading", { name: "Follow the callouts" }).count(),
+    4,
+    "Each illustration has visible numbered explanations"
+  );
   for (const field of [
     "Dataset title",
     "What are you uploading?",

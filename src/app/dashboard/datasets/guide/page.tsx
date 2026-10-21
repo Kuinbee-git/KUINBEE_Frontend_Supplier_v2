@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ClipboardList, FolderUp, ListChecks, Send } from "lucide-react";
 import { DashboardButton, DashboardCard } from "@/components/dashboard";
+import {
+  ProposalGuideVisual,
+  ProposalMaterialChoicesVisual,
+} from "@/components/datasets/guide/ProposalGuideVisuals";
 import {
   DatasetPageHeader,
   DatasetWorkspace,
@@ -11,11 +16,13 @@ import {
   PROPOSAL_REVIEW_GUIDANCE,
   PROPOSAL_SCREEN_WALKTHROUGH,
   PROPOSAL_STEP_GUIDANCE,
+  PROPOSAL_VISUAL_NOTES,
 } from "@/lib/datasets/proposal-guidance";
 
 const sectionClass = "min-w-0 scroll-mt-24 space-y-5 px-5 py-6 sm:px-8 sm:py-8";
 const linkClass =
   "inline-flex min-h-10 items-center rounded-sm text-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]";
+const screenIcons = [ClipboardList, FolderUp, ListChecks, Send] as const;
 
 export default function DatasetProposalGuidePage() {
   if (!DATASET_PREPARATION_ENABLED) notFound();
@@ -23,7 +30,7 @@ export default function DatasetProposalGuidePage() {
     <DatasetWorkspace className="dataset-proposal-workspace max-w-[80rem]">
       <DatasetPageHeader
         title="Dataset proposal guide"
-        description="Prepare your collection, save it step by step, and understand what happens before and after admin review."
+        description="See each proposal screen, what to enter, and what happens after submission."
         action={
           <div className="flex flex-wrap gap-3">
             <DashboardButton asChild variant="outline">
@@ -42,26 +49,53 @@ export default function DatasetProposalGuidePage() {
         <article className="divide-y divide-border leading-6">
           <nav aria-label="Proposal guide contents" className={sectionClass}>
             <h2 className="text-lg font-semibold">
-              Follow the four proposal screens
+              Choose a screen to explore
             </h2>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              Choose a screen below to see the actual fields, what to enter and
-              a concrete example. You can save after the first title and return
-              through My drafts. Complete the applicable fields before Submit.
+              Each illustrated screen has numbered callouts and field examples.
+              Open any step below, then use the live editor for your own draft.
             </p>
+            <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border xl:grid-cols-4">
+              {PROPOSAL_STEP_GUIDANCE.map((step, index) => {
+                const Icon = screenIcons[index];
+                const borderClass = [
+                  "border-b border-r xl:border-b-0",
+                  "border-b xl:border-r xl:border-b-0",
+                  "border-r",
+                  "",
+                ][index];
+                return (
+                  <a
+                    key={step.title}
+                    href={`#step-${index + 1}`}
+                    className={`min-w-0 border-border p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dashboard-focus-ring)] ${borderClass}`}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                        Screen {index + 1}
+                      </span>
+                      <Icon
+                        className="size-5 text-[var(--dashboard-action)]"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span className="mt-3 block text-sm font-semibold">
+                      {step.title}
+                    </span>
+                    <span className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">
+                      {step.summary}
+                    </span>
+                    <span className="mt-3 block text-xs font-semibold text-[var(--dashboard-action)]">
+                      View illustrated screen →
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <a href="#prepare" className={linkClass}>
                 Before you start
               </a>
-              {PROPOSAL_STEP_GUIDANCE.map((step, index) => (
-                <a
-                  key={step.title}
-                  href={`#step-${index + 1}`}
-                  className={linkClass}
-                >
-                  {index + 1}. {step.title}
-                </a>
-              ))}
               <a href="#review-process" className={linkClass}>
                 After submission
               </a>
@@ -84,53 +118,7 @@ export default function DatasetProposalGuidePage() {
               describes the subject; data types describe the content; the upload
               choice describes the material you are supplying now.
             </p>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">
-                  Choose the material for this proposal
-                </caption>
-                <thead className="border-b border-border bg-muted/20">
-                  <tr>
-                    <th scope="col" className="p-4 font-medium">
-                      Upload choice
-                    </th>
-                    <th scope="col" className="p-4 font-medium">
-                      What to prepare
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  <tr>
-                    <th scope="row" className="p-4 align-top font-medium">
-                      Sample only
-                    </th>
-                    <td className="p-4 text-muted-foreground">
-                      A prepared sample and an honest description of the
-                      collection it represents. This does not mean the full
-                      collection is uploaded or available for purchase.
-                    </td>
-                  </tr>
-                  <tr>
-                    <th scope="row" className="p-4 align-top font-medium">
-                      Full dataset only
-                    </th>
-                    <td className="p-4 text-muted-foreground">
-                      The complete material for the collection boundary you
-                      define. No sample is generated automatically.
-                    </td>
-                  </tr>
-                  <tr>
-                    <th scope="row" className="p-4 align-top font-medium">
-                      Full dataset + sample
-                    </th>
-                    <td className="p-4 text-muted-foreground">
-                      The complete material and a separately prepared sample
-                      that buyers can inspect.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <ProposalMaterialChoicesVisual />
             <p className="max-w-3xl text-sm text-muted-foreground">
               Current upload limits are 2 GB per file, 5 GB shared across full
               material, samples and companions in one Dataset, and 100 GB across
@@ -161,6 +149,30 @@ export default function DatasetProposalGuidePage() {
                   {PROPOSAL_SCREEN_WALKTHROUGH[index].goal}
                 </p>
               </div>
+              <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+                <ProposalGuideVisual step={index} />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold">Follow the callouts</h3>
+                  <ol className="mt-2 divide-y divide-border">
+                    {PROPOSAL_VISUAL_NOTES[index].map(
+                      ([title, detail], noteIndex) => (
+                        <li key={title} className="flex gap-3 py-3 first:pt-0">
+                          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--dashboard-action)] text-xs font-bold text-[var(--dashboard-action-foreground)]">
+                            {noteIndex + 1}
+                          </span>
+                          <div className="min-w-0 text-sm">
+                            <p className="font-semibold">{title}</p>
+                            <p className="mt-1 text-muted-foreground">
+                              {detail}
+                            </p>
+                          </div>
+                        </li>
+                      )
+                    )}
+                  </ol>
+                </div>
+              </div>
+              <h3 className="text-sm font-semibold">Field-by-field help</h3>
               <div className="border-y border-border">
                 {PROPOSAL_SCREEN_WALKTHROUGH[index].fields.map(
                   ([field, instruction, example]) => (

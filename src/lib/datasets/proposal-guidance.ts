@@ -50,6 +50,83 @@ export const PROPOSAL_STEP_GUIDANCE = [
   },
 ] as const;
 
+// Numbered explanations beside the illustrated version of each live editor screen.
+// The illustrations use fictional content and are never a saved draft or receipt.
+export const PROPOSAL_VISUAL_NOTES = [
+  [
+    [
+      "Name the collection",
+      "A clear title is enough to save your first draft.",
+    ],
+    [
+      "Choose the material",
+      "Pick sample, full, or both. This controls the file areas on the next screen.",
+    ],
+    [
+      "Describe the data",
+      "Select every actual data type. Add Healthcare or Egocentric context only when it applies.",
+    ],
+    [
+      "Record subject and rights",
+      "Category, source and stated license are separate from file format and upload choice.",
+    ],
+  ],
+  [
+    [
+      "Set up and upload",
+      "Save Basics first, then use the file controls and wait for each confirmed upload.",
+    ],
+    [
+      "Place the material",
+      "Select accepted files into Full dataset or Sample. Only the relevant areas appear for your choice.",
+    ],
+    [
+      "Connect companions",
+      "Link a transcript, annotation or other companion to the material it explains.",
+    ],
+    [
+      "Confirm the inventory",
+      "Refresh files and check the selected list. Backend file and storage limits still apply.",
+    ],
+  ],
+  [
+    [
+      "Define the boundary",
+      "Say exactly which items belong to the represented collection.",
+    ],
+    [
+      "Keep quantities separate",
+      "Collection size, prepared full material and prepared sample describe different scopes.",
+    ],
+    [
+      "Answer relevant questions",
+      "The selected data types reveal their own questions; optional context adds its own questions.",
+    ],
+    [
+      "Explain the sample",
+      "Describe coverage, omissions and limitations without treating the sample as proof of unseen material.",
+    ],
+  ],
+  [
+    [
+      "Read the saved summary",
+      "Check what was saved, including scope, stated license and selected files.",
+    ],
+    [
+      "Handle pricing separately",
+      "Choose free or paid access where offered. Save pricing and submit paid pricing for its own review.",
+    ],
+    [
+      "Refresh review checks",
+      "The backend checks saved answers, files, capacity, pricing and current proposal state.",
+    ],
+    [
+      "Submit explicitly",
+      "Submit requests admin review; approval and marketplace publication are later actions.",
+    ],
+  ],
+] as const;
+
 // Each row names a control that exists on the matching proposal screen.
 // Keep this walkthrough aligned with DatasetPreparationEditor, FilesPanel,
 // ProfileFields and WorkflowPanel when those controls change.
