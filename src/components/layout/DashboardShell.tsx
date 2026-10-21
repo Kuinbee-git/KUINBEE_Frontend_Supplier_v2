@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BadgePercent,
   BarChart3,
+  BookOpenText,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -44,6 +45,8 @@ import {
   DashboardTooltipTrigger,
 } from "@/components/dashboard";
 import { cn } from "@/lib/utils/cn";
+import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
+import { PROPOSAL_GUIDE_PATH } from "@/lib/datasets/proposal-guidance";
 import { useAuthStore, useThemeStore } from "@/store";
 
 interface DashboardShellProps {
@@ -118,6 +121,16 @@ const navigationGroups: readonly NavigationGroup[] = [
         icon: Database,
         path: "/dashboard/my-datasets?status=DELISTED",
       },
+      ...(DATASET_PREPARATION_ENABLED
+        ? [
+            {
+              id: "proposal-guide",
+              label: "Proposal guide",
+              icon: BookOpenText,
+              path: PROPOSAL_GUIDE_PATH,
+            },
+          ]
+        : []),
     ],
   },
   {
@@ -180,6 +193,7 @@ function isNavigationItemActive(
   if (item.id === "datasets") {
     return pathname.startsWith("/dashboard/my-datasets") && !delistedView;
   }
+  if (item.id === "drafts" && pathname === PROPOSAL_GUIDE_PATH) return false;
 
   const itemPathname = item.path.split("?")[0];
   return (
@@ -488,6 +502,22 @@ export function DashboardShell({ children }: DashboardShellProps) {
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
+                {DATASET_PREPARATION_ENABLED && (
+                  <DashboardButton
+                    asChild
+                    variant="outline"
+                    size="compact"
+                    className="dashboard-glass-control gap-2"
+                  >
+                    <Link
+                      href={PROPOSAL_GUIDE_PATH}
+                      aria-label="Proposal guide"
+                    >
+                      <BookOpenText aria-hidden="true" />
+                      <span>Guide</span>
+                    </Link>
+                  </DashboardButton>
+                )}
                 <DashboardButton
                   variant="outline"
                   size="icon"

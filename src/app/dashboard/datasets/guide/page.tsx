@@ -9,6 +9,7 @@ import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environme
 import {
   PROPOSAL_DATA_TYPE_GUIDANCE,
   PROPOSAL_REVIEW_GUIDANCE,
+  PROPOSAL_SCREEN_WALKTHROUGH,
   PROPOSAL_STEP_GUIDANCE,
 } from "@/lib/datasets/proposal-guidance";
 
@@ -40,11 +41,13 @@ export default function DatasetProposalGuidePage() {
       >
         <article className="divide-y divide-border leading-6">
           <nav aria-label="Proposal guide contents" className={sectionClass}>
-            <h2 className="text-lg font-semibold">Start here</h2>
+            <h2 className="text-lg font-semibold">
+              Follow the four proposal screens
+            </h2>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              You do not need every answer before starting. Save a draft with a
-              clear title, return through My drafts, and complete the applicable
-              information before Submit. Saving never submits your proposal.
+              Choose a screen below to see the actual fields, what to enter and
+              a concrete example. You can save after the first title and return
+              through My drafts. Complete the applicable fields before Submit.
             </p>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <a href="#prepare" className={linkClass}>
@@ -144,45 +147,47 @@ export default function DatasetProposalGuidePage() {
               aria-labelledby={`step-${index + 1}-title`}
               className={sectionClass}
             >
-              <h2
-                id={`step-${index + 1}-title`}
-                className="text-xl font-semibold"
-              >
-                {index + 1}. {step.title}
-              </h2>
-              <p className="max-w-3xl text-sm text-muted-foreground">
-                {step.summary}
-              </p>
-              <ol className="max-w-3xl list-decimal space-y-3 pl-5 text-sm">
-                {step.instructions.map((instruction) => (
-                  <li key={instruction}>{instruction}</li>
-                ))}
-              </ol>
-              <p className="max-w-3xl border-l-2 border-border pl-4 text-sm text-muted-foreground">
-                <strong className="font-medium text-foreground">
-                  Example:{" "}
-                </strong>
-                {step.example}
-              </p>
-              {index === 0 && (
-                <p className="max-w-3xl text-sm text-muted-foreground">
-                  Use the closest subject category offered in the current list.
-                  Healthcare and first-person/egocentric capture are optional
-                  context questions, not a complete list of industries. Leaving
-                  both unchecked is valid when neither applies. State the
-                  license that already applies; licensing agreements and
-                  negotiation are handled outside Kuinbee.
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Screen {index + 1} of 4
                 </p>
-              )}
-              {index === 1 && (
+                <h2
+                  id={`step-${index + 1}-title`}
+                  className="text-xl font-semibold"
+                >
+                  {index + 1}. {step.title}
+                </h2>
                 <p className="max-w-3xl text-sm text-muted-foreground">
-                  A ZIP is one packaged upload. Its entries are not
-                  automatically separate buyer downloads. Use a separate
-                  prepared sample rather than exposing a full archive as a
-                  sample. A completed upload still needs to be included in the
-                  correct area of the proposal.
+                  {PROPOSAL_SCREEN_WALKTHROUGH[index].goal}
                 </p>
-              )}
+              </div>
+              <div className="border-y border-border">
+                {PROPOSAL_SCREEN_WALKTHROUGH[index].fields.map(
+                  ([field, instruction, example]) => (
+                    <div
+                      key={field}
+                      className="grid gap-2 border-b border-border py-4 last:border-b-0 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-5"
+                    >
+                      <h3 className="text-sm font-semibold">{field}</h3>
+                      <div className="space-y-1 text-sm">
+                        <p>{instruction}</p>
+                        <p className="text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            Example:{" "}
+                          </span>
+                          {example}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+              <p className="max-w-3xl border-l-2 border-[var(--dashboard-action)] pl-4 text-sm">
+                <span className="font-semibold">
+                  Before you leave this screen:{" "}
+                </span>
+                {PROPOSAL_SCREEN_WALKTHROUGH[index].finish}
+              </p>
               {index === 2 && (
                 <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full text-left text-sm">

@@ -1152,6 +1152,32 @@ try {
     "What happens after submission?",
   ])
     await page.getByRole("heading", { name: title, exact: true }).waitFor();
+  for (const field of [
+    "Dataset title",
+    "What are you uploading?",
+    "Data source",
+    "Dataset license",
+    "Set up files",
+    "File purpose and relationships",
+    "What collection does this Dataset cover?",
+    "Collection size",
+    "Refresh review checks",
+    "Submit for admin review",
+  ])
+    await page.getByRole("heading", { name: field, exact: true }).waitFor();
+  const dashboardNavigation = page.getByRole("navigation", {
+    name: "Supplier dashboard",
+  });
+  assert.equal(
+    await dashboardNavigation
+      .getByRole("link", { name: "Proposal guide" })
+      .getAttribute("aria-current"),
+    "page"
+  );
+  await page
+    .getByRole("link", { name: "Proposal guide", exact: true })
+    .last()
+    .waitFor();
   assert.equal(
     await page
       .getByRole("link", { name: "Create proposal", exact: true })
@@ -1172,6 +1198,16 @@ try {
   await page.goto(origin + "/dashboard/datasets/create");
   await page
     .getByRole("heading", { name: "Create proposal", exact: true })
+    .waitFor();
+  assert.equal(
+    await dashboardNavigation
+      .getByRole("link", { name: "Proposal guide" })
+      .getAttribute("aria-current"),
+    null
+  );
+  await page
+    .getByRole("link", { name: "Proposal guide", exact: true })
+    .last()
     .waitFor();
   const help = page.locator("[data-proposal-step-help=true]");
   assert.equal(await help.getAttribute("open"), null);

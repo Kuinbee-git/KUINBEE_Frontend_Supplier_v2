@@ -50,6 +50,165 @@ export const PROPOSAL_STEP_GUIDANCE = [
   },
 ] as const;
 
+// Each row names a control that exists on the matching proposal screen.
+// Keep this walkthrough aligned with DatasetPreparationEditor, FilesPanel,
+// ProfileFields and WorkflowPanel when those controls change.
+export const PROPOSAL_SCREEN_WALKTHROUGH = [
+  {
+    goal: "Give the proposal its identity and choose the material you will supply.",
+    fields: [
+      [
+        "Dataset title",
+        "Use a name a buyer can recognize. A title is enough for the first Save draft.",
+        "English and Hindi customer-support calls",
+      ],
+      [
+        "What are you uploading?",
+        "Choose Sample only, Full dataset only, or Full dataset + sample. This decides which file areas appear; it does not submit anything.",
+        "Choose Full dataset + sample if you have both the complete defined collection and a prepared buyer sample.",
+      ],
+      [
+        "Main types of data",
+        "Tick every type actually present: tables, audio, images, video, text or sensors. Mixed collections use multiple ticks.",
+        "Calls with transcripts: audio and text.",
+      ],
+      [
+        "Additional context (optional)",
+        "Healthcare adds healthcare questions; egocentric adds first-person capture questions. Leave both clear if neither applies.",
+        "A chest X-ray collection uses Healthcare; it does not need Egocentric.",
+      ],
+      [
+        "Primary category",
+        "Choose the closest subject from the specific category list. Category describes the subject, while data type describes the files.",
+        "Medical Audio for clinical speech; Call Center for customer-support calls.",
+      ],
+      [
+        "Data source",
+        "Choose the source you own or have authority to use. Create a source if yours is missing.",
+        "Your organization's consented support-call collection.",
+      ],
+      [
+        "Dataset license",
+        "Enter the stated standard license or existing license text. Kuinbee displays it; agreements are handled outside the platform.",
+        "CC BY 4.0, only if that is the license that actually applies.",
+      ],
+    ],
+    finish:
+      "Select Save draft to keep partial answers. Return through My drafts at any time. Complete the applicable fields before the separate Submit action.",
+  },
+  {
+    goal: "Upload files and place each accepted file in the material buyers may inspect or receive.",
+    fields: [
+      [
+        "Set up files",
+        "Save Basics first. Then use Set up files or Update files so the file inventory follows the saved upload choice.",
+        "A Full dataset + sample proposal opens both the Full dataset and Sample areas.",
+      ],
+      [
+        "Upload",
+        "Choose the area, upload the file and wait for the confirmed result. An uploaded file must also appear in the selected material inventory.",
+        "Upload the full audio archive under Full dataset and a prepared clip under Sample.",
+      ],
+      [
+        "File purpose and relationships",
+        "Mark main data, transcript, annotation, documentation or other relevant purpose. Link companions to the file or group they explain.",
+        "Link a transcript to its matching call, not to every call in the collection.",
+      ],
+      [
+        "Full dataset and Sample",
+        "Review the two areas separately. A ZIP is packaging; its entries do not become separate buyer downloads just because the ZIP contains them.",
+        "A 15-minute sample stays in Sample; the private full archive stays in Full dataset.",
+      ],
+      [
+        "Full dataset size and Sample size",
+        "Add optional declared quantities for the uploaded materials. These are separate from the represented Collection size on the next screen.",
+        "Full: 2 hours of audio. Sample: 15 minutes of audio.",
+      ],
+      [
+        "Storage and corrections",
+        "The backend enforces 2 GB per file, 5 GB per Dataset and 100 GB per supplier. To replace an eligible file, delete the old stored file before uploading the correction.",
+        "Removing a file from the selected list alone does not free its stored bytes.",
+      ],
+    ],
+    finish:
+      "Use Refresh files to confirm the saved inventory. Resolve interrupted upload or file changes with the shown Retry/Resume action before moving on.",
+  },
+  {
+    goal: "Explain the whole collection and keep its scope separate from uploaded material.",
+    fields: [
+      [
+        "What collection does this Dataset cover?",
+        "State the exact boundary: what one item is, which items belong, and what the proposal excludes.",
+        "All 120 consented support calls collected for a defined September 2026 release.",
+      ],
+      [
+        "Full collection boundary",
+        "When full material is supplied, confirm it covers the boundary you just defined. This is your declaration, not a platform proof.",
+        "The uploaded 120 calls are all calls in that release.",
+      ],
+      [
+        "Short summary and Detailed description",
+        "Write a short buyer-facing summary, then explain organization and how to interpret records and companions.",
+        "Two hours of bilingual calls; one recording and matched transcript per call ID.",
+      ],
+      [
+        "Collection size",
+        "Describe the represented collection, even when you upload only a sample. Use Known, Estimate or Unknown honestly. Remove cancels an added quantity.",
+        "200 supplier-declared hours in the collection; do not enter zero when the amount is unknown.",
+      ],
+      [
+        "Questions for selected data types",
+        "Complete only the relevant table, audio, image, video, text or sensor questions. Some answers reveal follow-up questions.",
+        "For audio, state languages, recording context, speaker coverage and transcript timing.",
+      ],
+      [
+        "How the sample represents the collection",
+        "When a sample is supplied, explain selection, coverage, omissions, changes and its relation to the full material.",
+        "The 15-minute sample spans both languages but omits most calls.",
+      ],
+      [
+        "Quality, limitations and optional enrichment",
+        "State what you checked, what remains unknown, collection method, possible uses, tags, additional categories, geography and capture period where applicable.",
+        "Some calls contain noise; one organization and month limit representativeness.",
+      ],
+    ],
+    finish:
+      "Save these answers before changing file organization or reviewing submission checks. Supplier-declared quantities do not replace measured upload bytes.",
+  },
+  {
+    goal: "Check the saved proposal, set access pricing and explicitly request admin review.",
+    fields: [
+      [
+        "Saved summary",
+        "Read the title, collection boundary, full/sample quantities, selected files and stated license as a buyer or reviewer would.",
+        "Check that a 15-minute sample is never described as a fully uploaded 200-hour collection.",
+      ],
+      [
+        "Access & pricing",
+        "Choose free or paid access where offered. Save pricing separately from the metadata draft.",
+        "A sample-only proposal displays a sample and has no on-platform sample purchase.",
+      ],
+      [
+        "Submit pricing for review",
+        "For paid access, submit the saved price for its separate review. Save pricing by itself does not request that review.",
+        "A paid full dataset needs its pricing review action before proposal Submit.",
+      ],
+      [
+        "Refresh review checks",
+        "Refresh after saving or changing files. The backend checks saved answers, selected files, capacity, pricing and current proposal state.",
+        "If a required file is missing, return to Files & contents and fix that exact item.",
+      ],
+      [
+        "Submit for admin review",
+        "Use Submit only when the current checks permit it. This freezes the submitted content for admin review; it does not publish the listing.",
+        "After Submit, follow the proposal under Submitted proposals.",
+      ],
+    ],
+    finish:
+      "Changes requested require a correction and another explicit Submit. Approval and marketplace publication remain separate actions.",
+  },
+] as const;
+
 export const PROPOSAL_DATA_TYPE_GUIDANCE = [
   [
     "Tables",
