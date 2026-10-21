@@ -111,6 +111,24 @@ const requests = [],
   fixtureErrors = [],
   browserErrors = [],
   external = [];
+const unhandledEvents = [], failedRequests = [];
+const recordBrowserError = error => {
+  browserErrors.push(error.message);
+  console.error("BROWSER_EXCEPTION", JSON.stringify({ name: error.name, message: error.message, stack: error.stack }));
+};
+async function observeBrowser(page) {
+  page.on("pageerror", recordBrowserError);
+  page.on("requestfailed", request => {
+    failedRequests.push({ url: request.url(), error: request.failure()?.errorText });
+  });
+  page.on("console", message => {
+    if (message.text().startsWith("UNHANDLED_FIXTURE_EVENT ")) unhandledEvents.push(message.text());
+  });
+  await page.addInitScript(() => {
+    window.addEventListener("error", event => console.log("UNHANDLED_FIXTURE_EVENT " + String(event.message)));
+    window.addEventListener("unhandledrejection", event => console.log("UNHANDLED_FIXTURE_EVENT " + String(event.reason)));
+  });
+}
 const flags = {
   closed: false,
   lose: null,
@@ -1255,6 +1273,15 @@ async function open(page, draft) {
   await page.getByLabel("Dataset title", { exact: true }).waitFor();
   await filesStep(page);
 }
+async function reloadWithOptionalPrompt(page) {
+  // Engines may suppress beforeunload. Do not leave an unused listener to
+  // accept an unrelated confirmation later in the journey.
+  const pending = [];
+  const confirm = dialog => { pending.push(dialog.accept()); };
+  page.on("dialog", confirm);
+  try { await page.reload(); await Promise.all(pending); }
+  finally { page.off("dialog", confirm); }
+}
 async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
   await page
     .getByLabel("File to upload or resume", { exact: true })
@@ -1288,7 +1315,7 @@ try {
     viewport: { width: 1366, height: 1000 },
   });
   page.setDefaultTimeout(15000);
-  page.on("pageerror", (error) => browserErrors.push(error.message));
+  await observeBrowser(page);
   await page.route("**/*", (route) => {
     if (new URL(route.request().url()).origin !== origin) {
       external.push(route.request().url());
@@ -1427,8 +1454,7 @@ try {
     )
     .at(-1).body;
   assert.equal(scopedAttempts(lost).length, 1);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.reload();
+  await reloadWithOptionalPrompt(page);
   await filesStep(page);
   flags.fileDeny = true;
   await namedButton(page, "Retry upload request").click();
@@ -1681,7 +1707,7 @@ try {
 
   const storageDraft = seed("FULL_ONLY"),
     storagePage = await browser.newPage();
-  storagePage.on("pageerror", (failure) => browserErrors.push(failure.message));
+  await observeBrowser(storagePage);
   await storagePage.route("**/*", (route) => {
     if (new URL(route.request().url()).origin !== origin) {
       external.push(route.request().url());
@@ -2042,8 +2068,7 @@ try {
     ).length,
     1
   );
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.reload();
+  await reloadWithOptionalPrompt(page);
   await filesStep(page);
   flags.lose = null;
   await namedButton(page, "Retry upload request").click();
@@ -2239,6 +2264,11 @@ try {
         : choice === "FULL_ONLY"
           ? ["FULL"]
           : ["FULL", "SAMPLE"];
+    await page.waitForFunction(allowed => {
+      const label = [...document.querySelectorAll("label")].find(item => item.textContent === "Organize area");
+      const select = label && document.getElementById(label.htmlFor);
+      return select && !select.disabled && allowed.includes(select.value);
+    }, allowedAreas);
     assert(
       allowedAreas.includes(
         await page.getByLabel("Organize area", { exact: true }).inputValue()
@@ -2794,6 +2824,9 @@ try {
     "PASS backend pause removes advertised formats/admission; light/dark desktop/mobile contain no horizontal overflow"
   );
   assert.deepEqual(fixtureErrors, []);
+  if (process.env.DATASET_BROWSER_DIAGNOSTICS === "1")
+    console.log("BROWSER_DIAGNOSTICS", JSON.stringify({ unhandledEvents, failedRequests }));
+  assert.deepEqual(unhandledEvents, []);
   assert.deepEqual(browserErrors, []);
   assert.deepEqual(external, []);
   assert(
