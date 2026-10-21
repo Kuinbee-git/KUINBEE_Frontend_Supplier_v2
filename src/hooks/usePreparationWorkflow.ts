@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useAuthStore } from "@/store/auth.store";
 import {
   DatasetPricingValuesSchema,
   type DatasetPreparationResponse,
@@ -401,7 +402,14 @@ export function usePreparationWorkflow(options: Options) {
       storeDatasetWorkflowCommand(command);
       pendingRef.current = command;
       setPending(command);
+      const actorId = useAuthStore.getState().user?.id;
       await dispatchDatasetWorkflowCommand(command);
+      if (useAuthStore.getState().user?.id !== actorId)
+        throw new PreparationApiError(
+          "Your account changed. Return with the original supplier account to confirm this request.",
+          "SESSION_CHANGED",
+          401
+        );
       confirmed = true;
       setReconciliationRequired(true);
       reconciliationRef.current = true;

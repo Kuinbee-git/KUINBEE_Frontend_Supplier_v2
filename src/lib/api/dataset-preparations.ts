@@ -35,9 +35,20 @@ async function request<T>(
       "NOT_ENABLED"
     );
   let response: Response;
+  let body: unknown;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 30_000);
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
+      signal: controller.signal,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -45,22 +56,34 @@ async function request<T>(
         ...options.headers,
       },
     });
+    body = await response.json().catch(() => null);
   } catch {
     throw new PreparationApiError(
-      "We could not complete this request. Your input is retained.",
+      timedOut
+        ? "The request took too long. Your input and original request are retained; retry to confirm the result."
+        : "We could not complete this request. Your input is retained.",
       "NETWORK_ERROR"
     );
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", abort);
   }
-  const body = await response.json().catch(() => null);
-  if (response.ok && body?.success !== true) {
+  const payload = body as {
+    success?: boolean;
+    error?: { code?: string; message?: string };
+    code?: string;
+    message?: string;
+    data?: unknown;
+  } | null;
+  if (response.ok && payload?.success !== true) {
     throw new PreparationApiError(
       "We could not read the server response. Your input is retained.",
       "INCOMPATIBLE_RESPONSE",
       response.status
     );
   }
-  if (!response.ok || body?.success !== true) {
-    const error = body?.error ?? body;
+  if (!response.ok || payload?.success !== true) {
+    const error = payload?.error ?? payload;
     throw new PreparationApiError(
       typeof error?.message === "string"
         ? error.message
@@ -70,7 +93,7 @@ async function request<T>(
     );
   }
   try {
-    return schema.parse(body.data);
+    return schema.parse(payload.data);
   } catch {
     throw new PreparationApiError(
       "The server response is incompatible. Your input is retained; retry the same request before continuing.",

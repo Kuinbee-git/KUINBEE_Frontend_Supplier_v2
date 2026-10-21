@@ -1,6 +1,7 @@
 "use client";
 
 import { PreparationNativeSelect } from "./PreparationNativeSelect";
+import { PreparationFolderUpload } from "./PreparationFolderUpload";
 
 import { useId, useState } from "react";
 import type {
@@ -236,6 +237,13 @@ export function PreparationUploadPanel({
         <p role="status" className="text-sm" aria-live="polite">
           {model.notice}
         </p>
+      )}
+      {showForm && (
+        <PreparationFolderUpload
+          model={model}
+          hasFull={hasFull}
+          hasSample={hasSample}
+        />
       )}
       {(model.hasUploadForm || model.page?.items.some(model.receiving)) && (
         <div
@@ -542,7 +550,7 @@ export function PreparationUploadPanel({
             >
               <div className="min-w-0 space-y-2">
                 <p className="break-words text-sm font-medium [overflow-wrap:anywhere]">
-                  {status.originalName}
+                  {status.relativePath ?? status.originalName}
                 </p>
                 <p
                   className={`text-xs ${status.state === "REJECTED" ? "text-destructive" : "text-muted-foreground"}`}

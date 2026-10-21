@@ -17,7 +17,7 @@ export const PROPOSAL_STEP_GUIDANCE = [
     summary:
       "Upload your prepared files and put them in the correct full or sample area.",
     instructions: [
-      "Save the draft first. Use the Full dataset and Sample areas offered for your upload choice, and select the received files you want to include.",
+      "Save the draft first. Choose files or a folder, choose Full dataset or Sample, then start the queue. Files are uploaded and added to that draft area; folder paths are preserved and empty folders are not stored.",
       "Keep buyer samples separate from private full material. Link transcripts, annotations or other companion files to the content they describe.",
       "Wait for each upload to finish and confirm its result. To replace a file, remove the eligible old file before uploading its replacement; removing a selection alone does not free storage.",
     ],
@@ -74,7 +74,7 @@ export const PROPOSAL_VISUAL_NOTES = [
   [
     [
       "Set up and upload",
-      "Save Basics first, then use the file controls and wait for each confirmed upload.",
+      "Save Basics first, then choose files or a folder. Confirm the destination and start the queue; wait until all selected files are added.",
     ],
     [
       "Place the material",
@@ -183,7 +183,7 @@ export const PROPOSAL_SCREEN_WALKTHROUGH = [
       ],
       [
         "Upload",
-        "Choose the area, upload the file and wait for the confirmed result. An uploaded file must also appear in the selected material inventory.",
+        "Choose files or a folder and select Full dataset or Sample. Start the queue and wait for all files to appear in the selected material inventory. Pause and reselect the original files to continue an interrupted queue.",
         "Upload the full audio archive under Full dataset and a prepared clip under Sample.",
       ],
       [

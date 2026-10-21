@@ -14,10 +14,16 @@ import {
   DatasetPreparationMetadataSchema,
   type DatasetPreparationMetadata,
   type DatasetPreparationResponse,
-  type DatasetPreparationCreateBody,
-  type DatasetPreparationPatchBody,
 } from "@kuinbee/dataset-preparation-contracts";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
+import { useAuthStore } from "@/store/auth.store";
+import {
+  readPreparationSave,
+  retainPreparationSave,
+  clearPreparationSave,
+  uncertainPreparationSave,
+  type PreparationSaveOperation,
+} from "@/lib/datasets/preparation-save-command";
 import { usePreparationWorkflow } from "@/hooks/usePreparationWorkflow";
 import type { DatasetEditBase } from "@/lib/api/dataset-workflow";
 import {
@@ -120,19 +126,29 @@ function metadataForSave(metadata: DatasetPreparationMetadata) {
       : {}),
   });
 }
-type Pending =
-  | { kind: "create"; body: DatasetPreparationCreateBody }
-  | { kind: "patch"; id: string; body: DatasetPreparationPatchBody };
+type Pending = PreparationSaveOperation;
 
-export function DatasetPreparationEditor({
-  draftId,
-  onCreated,
-  onExit,
-}: {
+type EditorProps = {
   draftId?: string;
   onCreated?: (id: string) => void;
   onExit?: () => void;
-}) {
+};
+export function DatasetPreparationEditor(props: EditorProps) {
+  const actorId = useAuthStore((state) => state.user?.id);
+  return (
+    <PreparationEditor
+      key={`${actorId}:${props.draftId ?? "new"}`}
+      {...props}
+      actorId={actorId}
+    />
+  );
+}
+function PreparationEditor({
+  draftId,
+  onCreated,
+  onExit,
+  actorId,
+}: EditorProps & { actorId?: string }) {
   const hydrated = useSyncExternalStore(
     subscribeHydration,
     browserReady,
@@ -145,7 +161,8 @@ export function DatasetPreparationEditor({
   const [step, setStep] = useState(0);
   const [issueFocus, setIssueFocus] = useState<{ field: string } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(Boolean(draftId));
+  const [loading, setLoading] = useState(true);
+  const [recoveryReady, setRecoveryReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [retryPending, setRetryPending] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -203,6 +220,7 @@ export function DatasetPreparationEditor({
     );
   }, []);
   const pending = useRef<Pending | null>(null);
+  const recoveryBaseline = useRef<DatasetPreparationMetadata | null>(null);
   const busy = useRef(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const update: PreparationUpdate = (change) =>
@@ -239,13 +257,24 @@ export function DatasetPreparationEditor({
     [invalidateWorkflow]
   );
   const load = useCallback(async () => {
-    if (!draftId) return;
     setLoading(true);
     setError("");
     try {
-      const result = await preparationApi.get(draftId);
-      setSaved(result);
-      setMetadata(result.metadata);
+      if (!actorId) throw Error("Sign in before opening or saving a draft.");
+      const retained = readPreparationSave(actorId, draftId);
+      if (retained) {
+        pending.current = retained.operation;
+        recoveryBaseline.current = retained.baseline;
+        setRetryPending(true);
+        setMetadata(retained.metadata);
+      }
+      setRecoveryReady(true);
+      if (draftId) {
+        const result = await preparationApi.get(draftId);
+        if (useAuthStore.getState().user?.id !== actorId) return;
+        setSaved(result);
+        if (!retained) setMetadata(result.metadata);
+      }
     } catch (failure) {
       setError(
         failure instanceof Error
@@ -255,8 +284,8 @@ export function DatasetPreparationEditor({
     } finally {
       setLoading(false);
     }
-  }, [draftId]);
-  useComponentRequest(load, [draftId], Boolean(draftId));
+  }, [actorId, draftId]);
+  useComponentRequest(load, [actorId, draftId]);
   useEffect(() => {
     if (
       !dirty &&
@@ -329,6 +358,7 @@ export function DatasetPreparationEditor({
   async function save(): Promise<DatasetPreparationResponse | null> {
     if (
       !hydrated ||
+      !recoveryReady ||
       busy.current ||
       loading ||
       conflict ||
@@ -343,6 +373,7 @@ export function DatasetPreparationEditor({
     busy.current = true;
     setSaving(true);
     setError("");
+    let persisted = false;
     try {
       if (!pending.current) {
         const normalized = metadataForSave(metadata);
@@ -396,12 +427,38 @@ export function DatasetPreparationEditor({
           };
       }
       const operation = pending.current;
+      if (!actorId || useAuthStore.getState().user?.id !== actorId)
+        throw new PreparationApiError(
+          "Sign in with the supplier account that started this save.",
+          "SESSION_CHANGED",
+          401
+        );
+      if (!retryPending) recoveryBaseline.current = saved?.metadata ?? null;
+      retainPreparationSave(
+        actorId,
+        operation.kind === "patch" ? operation.id : undefined,
+        operation,
+        metadataForSave(metadata),
+        recoveryBaseline.current
+      );
+      persisted = true;
       workflow.invalidate();
       const wasRetry = retryPending;
       const result =
         operation.kind === "create"
           ? await preparationApi.create(operation.body)
           : await preparationApi.patch(operation.id, operation.body);
+      if (useAuthStore.getState().user?.id !== actorId)
+        throw new PreparationApiError(
+          "Your account changed while saving. Return with the original supplier account to confirm the saved request.",
+          "SESSION_CHANGED",
+          401
+        );
+      clearPreparationSave(
+        actorId,
+        operation.kind === "patch" ? operation.id : undefined,
+        operation
+      );
       pending.current = null;
       setRetryPending(false);
       setSaved(result);
@@ -413,7 +470,9 @@ export function DatasetPreparationEditor({
         try {
           const current = await preparationApi.get(result.id);
           if (current.generation > result.generation) {
-            setReplayBase(saved?.metadata ?? { title: "" });
+            setReplayBase(
+              recoveryBaseline.current ?? saved?.metadata ?? { title: "" }
+            );
             setLatest(current);
             setConflict(true);
             setError(
@@ -431,22 +490,34 @@ export function DatasetPreparationEditor({
     } catch (failure) {
       if (failure instanceof PreparationApiError) {
         if (failure.code === "DRAFT_CHANGED") {
+          if (actorId && pending.current)
+            clearPreparationSave(
+              actorId,
+              pending.current.kind === "patch" ? pending.current.id : undefined,
+              pending.current
+            );
           pending.current = null;
           setRetryPending(false);
           setReplayBase(null);
           setConflict(true);
-        } else if (
-          ["NETWORK_ERROR", "INCOMPATIBLE_RESPONSE"].includes(failure.code) ||
-          (failure.status ?? 0) >= 500
-        )
+        } else if (uncertainPreparationSave(failure))
           setRetryPending(Boolean(pending.current));
         else {
+          if (actorId && pending.current)
+            clearPreparationSave(
+              actorId,
+              pending.current.kind === "patch" ? pending.current.id : undefined,
+              pending.current
+            );
           pending.current = null;
           setRetryPending(false);
         }
         setError(datasetActionError(failure));
       } else {
-        pending.current = null;
+        // A failure before dispatch has no retained command. A failure after
+        // persistence keeps the original command and answers for exact replay.
+        if (persisted) setRetryPending(true);
+        else pending.current = null;
         const details =
           failure &&
           typeof failure === "object" &&
@@ -501,6 +572,7 @@ export function DatasetPreparationEditor({
   const unavailableExisting = Boolean(draftId && saved?.id !== draftId);
   const locked =
     !hydrated ||
+    !recoveryReady ||
     loading ||
     saving ||
     retryPending ||

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { build } from "esbuild";
@@ -116,6 +117,7 @@ const flags = {
   holdPart: null,
   failChecks: false,
   packagedZip: false,
+  autoAccept: false,
 };
 const held = new Set();
 const choices = ["SAMPLE_ONLY", "FULL_ONLY", "FULL_AND_SAMPLE"];
@@ -1075,6 +1077,7 @@ const server = createServer(async (req, res) => {
         role: body.role,
         inspectionProfile: body.inspectionProfile,
         originalName: body.originalName,
+        ...(body.relativePath ? { relativePath: body.relativePath } : {}),
         expectedBytes: body.expectedBytes,
         retainedBytes: "0",
         reservedBytes: body.expectedBytes,
@@ -1171,6 +1174,7 @@ const server = createServer(async (req, res) => {
       assert.equal(item.retainedBytes, item.expectedBytes);
       item.state = "CHECKING";
       item.revision++;
+      if (flags.autoAccept) accept(item);
       saveReceipt(res, key, body, ack(item, body.requestId), "FINALIZE");
       return;
     }
@@ -1269,6 +1273,7 @@ async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
 }
 const uploadRow = (page, item) =>
   page.locator(`[data-upload-attempt="${item.id}"]`);
+const folderTemporary = await mkdtemp(resolve(tmpdir(), "supplier-folder-browser-"));
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({
@@ -1283,6 +1288,32 @@ try {
     }
     return route.continue();
   });
+
+  // Real browser directory selection preserves nested duplicate basenames.
+  flags.autoAccept = true;
+  const folderRoot = resolve(folderTemporary, "folder-fixture");
+  for (const part of ["a", "b", "日本語", "notes"]) {
+    await mkdir(resolve(folderRoot, part), { recursive: true });
+    await writeFile(resolve(folderRoot, part, "data.txt"), `Folder bytes for ${part}`);
+  }
+  for (const choice of choices) {
+    const draft = seed(choice);
+    await open(page, draft);
+    await page.getByLabel("Choose folder", { exact: true }).setInputFiles(folderRoot);
+    if (choice === "FULL_AND_SAMPLE") await page.getByLabel("Add these files to", { exact: true }).selectOption("SAMPLE");
+    await namedButton(page, "Upload 4 files").click();
+    await page.getByText("4 of 4 files added to the draft.", { exact: true }).waitFor();
+    assert.equal(draft.members.length, 4);
+    assert(draft.members.every(member => member.relativePath.startsWith("folder-fixture/") && member.relativePath.endsWith("/data.txt")));
+    assert.equal(new Set(draft.members.map(member => member.relativePath)).size, 4);
+    assert(draft.members.every(member => member.component === (choice === "FULL_ONLY" ? "FULL" : "SAMPLE")));
+    await page.reload(); await filesStep(page);
+    await page.getByText("4 of 4 files added to the draft.", { exact: true }).waitFor();
+    await namedButton(page, "Clear queue").click();
+    assert.equal(draft.members.length, 4, "Clearing a local queue never deletes selected files");
+  }
+  flags.autoAccept = false;
+  console.log("PASS actual directory picker uploads four nested same-basename files for all three choices; reload retains queue and paths; clearing preserves draft files");
 
   // Every creation choice reaches receipt/check/selection through the real UI.
   for (const capability of capabilities)
@@ -1791,7 +1822,7 @@ try {
   }
   for (const choice of choices) {
     const draft = [...drafts.values()].find(
-      (d) => d.metadata.uploadChoice === choice && d.members.length
+      (d) => d.metadata.uploadChoice === choice && d.members.some(member => member.component === "FULL") === (choice !== "SAMPLE_ONLY") && d.members.some(member => member.component === "SAMPLE") === (choice !== "FULL_ONLY")
     );
     organized.push(draft);
     await open(page, draft);
@@ -2516,19 +2547,15 @@ try {
       item.path.endsWith(wideDraft.id + "/files/tables")
   ).length;
   await page.evaluate(() => window.fixtureLogin("c000000000000000000999998"));
+  await page.getByRole("button", { name: "1. Basics", exact: true }).waitFor();
   assert.equal(
     await tableRegion
       .getByText("Review retained table answers", { exact: true })
       .count(),
     0
   );
-  await namedButton(tableRegion, "Confirm table change").click();
-  await page
-    .getByText(
-      "Sign in with the supplier account that started this table save to confirm it.",
-      { exact: true }
-    )
-    .waitFor();
+  assert.equal(await namedButton(tableRegion, "Confirm table change").count(), 0,
+    "Changing supplier accounts unmounts the prior editor and hides its pending table action");
   assert.equal(
     requests.filter(
       (item) =>
@@ -2538,6 +2565,10 @@ try {
     beforeAccountChange
   );
   await page.evaluate(() => window.fixtureLogin("c000000000000000000999999"));
+  await page.getByLabel("Dataset title", { exact: true }).waitFor();
+  await filesStep(page);
+  tableRegion = page.getByRole("region", { name: "Tables and columns", exact: true });
+  await namedButton(tableRegion, "Confirm table change").waitFor();
   flags.lose = false;
   await namedButton(tableRegion, "Confirm table change").click();
   await namedButton(tableRegion, "Save remaining column answers").waitFor();
@@ -2772,6 +2803,7 @@ try {
   throw failure;
 } finally {
   await browser?.close();
+  await rm(folderTemporary, { recursive: true, force: true });
   server.closeAllConnections();
   await new Promise((resolveClose) => server.close(resolveClose));
 }

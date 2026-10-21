@@ -51,6 +51,10 @@ import {
 } from "@/lib/datasets/dataset-reference-plan";
 import type { DatasetReferenceCommand } from "@/lib/datasets/dataset-upload-commands";
 import { datasetActionError } from "@/lib/datasets/dataset-action-error";
+import {
+  runDatasetFolderUpload,
+  type DatasetFolderPlan,
+} from "@/lib/datasets/folder-upload";
 
 type Member = DatasetFilesInventoryPageResponse["items"][number];
 type Status = DatasetUploadAttemptStatusResponse;
@@ -325,6 +329,12 @@ export function usePreparationUploads(options: Options) {
       setPending(command);
       dispatched = true;
       const response = await dispatchDatasetUploadCommand(command);
+      if (useAuthStore.getState().user?.id !== actorId)
+        throw new PreparationApiError(
+          "Your account changed. Return with the original supplier account to confirm this request.",
+          "SESSION_CHANGED",
+          401
+        );
       if (command.kind === "TABLES")
         recordTablePageAcknowledgement(actorId, command, response);
       if (command.kind === "REFERENCES")
@@ -538,6 +548,9 @@ export function usePreparationUploads(options: Options) {
             uploadObjectId: status.uploadObjectId,
             component,
             role: status.role,
+            ...(status.relativePath
+              ? { relativePath: status.relativePath }
+              : {}),
           },
         ],
       },
@@ -565,6 +578,90 @@ export function usePreparationUploads(options: Options) {
         operations: [{ operation: "REMOVE_MEMBER", memberId: member.id }],
       },
     });
+  }
+  async function uploadFolder(
+    plan: DatasetFolderPlan,
+    files: File[],
+    onChange: (plan: DatasetFolderPlan) => void
+  ) {
+    if (busy.current || transfer.current || !ready || reconcileRef.current)
+      return;
+    if ((!plan.command && !canAdmit) || plan.draftId !== options.saved?.id)
+      return;
+    if (
+      pendingRef.current &&
+      JSON.stringify(pendingRef.current) !== JSON.stringify(plan.command)
+    ) {
+      setError(
+        "Confirm the other pending file request before continuing this queue."
+      );
+      return;
+    }
+    const controller = new AbortController();
+    const actor = plan.actorId;
+    const assertActor = () => {
+      if (
+        !alive.current ||
+        useAuthStore.getState().user?.id !== actor ||
+        latest.current.saved?.id !== plan.draftId
+      )
+        throw Error(
+          "Sign in with the supplier account that started this upload queue."
+        );
+    };
+    busy.current = true;
+    transfer.current = controller;
+    setWriting(true);
+    latest.current.onWritingChange(true);
+    latest.current.onActivityChange(true, () => controller.abort());
+    setError("");
+    setNotice("");
+    try {
+      await runDatasetFolderUpload({
+        plan,
+        files,
+        signal: controller.signal,
+        assertActor,
+        onChange: (value) => {
+          pendingRef.current = value.command;
+          setPending(value.command);
+          onChange(value);
+        },
+        onProgress: (path, value) => {
+          if (alive.current) {
+            setProgress({ attemptId: path, value });
+            setNotice(`Uploading ${path}`);
+          }
+        },
+      });
+      setNotice(
+        "All files in this queue were uploaded and added to the draft. Saving files does not submit for review."
+      );
+    } catch (failure) {
+      if (alive.current) {
+        if (controller.signal.aborted)
+          setNotice(
+            "Upload queue paused. Reselect the original files or folder to continue. Completed uploads are retained."
+          );
+        else setError(message(failure));
+      }
+    } finally {
+      transfer.current = null;
+      busy.current = false;
+      if (alive.current) {
+        setWriting(false);
+        latest.current.onWritingChange(false);
+        latest.current.onActivityChange(false);
+        const refreshed = await refresh();
+        const filesFresh = await latest.current
+          .onFilesChanged()
+          .catch(() => false);
+        if (!refreshed || !filesFresh) {
+          reconcileRef.current = true;
+          setReconcileRequired(true);
+        }
+      }
+    }
   }
   function nextPage() {
     const afterId = page?.nextCursor?.afterId;
@@ -638,6 +735,8 @@ export function usePreparationUploads(options: Options) {
         ? perform(pendingRef.current, true)
         : Promise.resolve(null),
     admit,
+    uploadFolder,
+    draftId: options.saved?.id,
     resume,
     finalize,
     cleanup,

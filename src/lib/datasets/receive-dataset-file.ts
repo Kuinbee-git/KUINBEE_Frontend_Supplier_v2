@@ -186,7 +186,7 @@ export async function receiveDatasetFile(input: {
     status.rootId !== draftId ||
     status.id !== attemptId ||
     status.contentId !== context.expectedContentId ||
-    status.originalName !== file.name ||
+    status.originalName.normalize("NFC") !== file.name.normalize("NFC") ||
     status.expectedBytes !== String(file.size)
   )
     fail(

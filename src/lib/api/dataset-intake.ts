@@ -169,6 +169,7 @@ export const datasetIntakeApi = {
       result.component !== body.component ||
       result.role !== body.role ||
       result.originalName !== body.originalName ||
+      (result.relativePath ?? null) !== (body.relativePath ?? null) ||
       result.expectedBytes !== body.expectedBytes ||
       JSON.stringify(result.inspectionProfile) !==
         JSON.stringify(body.inspectionProfile)

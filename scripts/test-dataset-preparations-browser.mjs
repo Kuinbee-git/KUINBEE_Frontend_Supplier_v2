@@ -2854,6 +2854,40 @@ try {
   console.log(
     "PASS old preparation bookmarks redirect and historical submitted proposal view remains unchanged"
   );
+  // Lose CREATE before the browser receives its Dataset ID, reload the actual
+  // route, then recover the original UUID instead of creating a second draft.
+  await showNew(page);
+  await page.getByLabel("Dataset title", { exact: true }).fill("Recover new draft after reload");
+  const recoveredCreateCount = drafts.size, recoveredCreateStart = requests.length;
+  flags.acknowledgement = "malformed";
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
+  await page.reload();
+  await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
+  assert.equal(await page.getByLabel("Dataset title", { exact: true }).inputValue(), "Recover new draft after reload");
+  await page.getByRole("button", { name: "Retry save", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Draft saved" }).waitFor();
+  assert.equal(drafts.size, recoveredCreateCount + 1);
+  const recoveredCreates = requests.slice(recoveredCreateStart).filter(request => request.method === "POST");
+  assert.equal(recoveredCreates.length, 2); assert.deepEqual(recoveredCreates[0].body, recoveredCreates[1].body);
+  const recoveredDraftId = page.url().split("/").at(-1), recoveredPatchStart = requests.length;
+  await page.getByLabel("Dataset title", { exact: true }).fill("Recover local title and keep remote description");
+  flags.acknowledgement = "malformed";
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
+  mutate(recoveredDraftId, { description: "Remote description committed after the uncertain save" });
+  await page.reload();
+  await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Retry save", exact: true }).click();
+  await page.getByRole("heading", { name: "Resolve the changed draft", exact: true }).waitFor();
+  const recoveredPatches = requests.slice(recoveredPatchStart).filter(request => request.method === "PATCH");
+  assert.equal(recoveredPatches.length, 2); assert.deepEqual(recoveredPatches[0].body, recoveredPatches[1].body);
+  await page.getByRole("button", { name: "Reapply my changes to latest draft", exact: true }).click();
+  await save(page);
+  assert.equal(drafts.get(recoveredDraftId).metadata.title, "Recover local title and keep remote description");
+  assert.equal(drafts.get(recoveredDraftId).metadata.description, "Remote description committed after the uncertain save");
+  console.log("PASS lost CREATE and PATCH acknowledgements survive actual page reload; exact UUIDs prevent duplicate drafts and preserve another tab's independent edits");
+
   await showNew(page);
   await page
     .getByLabel("Dataset title", { exact: true })
