@@ -121,16 +121,6 @@ const navigationGroups: readonly NavigationGroup[] = [
         icon: Database,
         path: "/dashboard/my-datasets?status=DELISTED",
       },
-      ...(DATASET_PREPARATION_ENABLED
-        ? [
-            {
-              id: "proposal-guide",
-              label: "Proposal guide",
-              icon: BookOpenText,
-              path: PROPOSAL_GUIDE_PATH,
-            },
-          ]
-        : []),
     ],
   },
   {

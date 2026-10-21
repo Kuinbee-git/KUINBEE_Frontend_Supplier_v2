@@ -1,9 +1,5 @@
-import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import {
-  PROPOSAL_GUIDE_PATH,
-  PROPOSAL_STEP_GUIDANCE,
-} from "@/lib/datasets/proposal-guidance";
+import { PROPOSAL_STEP_GUIDANCE } from "@/lib/datasets/proposal-guidance";
 
 export function PreparationStepHelp({ step }: { step: number }) {
   const guidance = PROPOSAL_STEP_GUIDANCE[step];
@@ -32,15 +28,6 @@ export function PreparationStepHelp({ step }: { step: number }) {
           <strong className="font-medium text-foreground">Example: </strong>
           {guidance.example}
         </p>
-        <Link
-          href={`${PROPOSAL_GUIDE_PATH}#step-${step + 1}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex min-h-10 items-center font-medium underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]"
-        >
-          Read the full proposal guide
-          <span className="sr-only"> (opens in a new tab)</span>
-        </Link>
       </div>
     </details>
   );

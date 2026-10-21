@@ -1203,13 +1203,17 @@ try {
   assert.equal(
     await dashboardNavigation
       .getByRole("link", { name: "Proposal guide" })
-      .getAttribute("aria-current"),
-    "page"
+      .count(),
+    0,
+    "The proposal guide appears in the header, not the sidebar"
   );
   await page
     .getByRole("link", { name: "Proposal guide", exact: true })
-    .last()
     .waitFor();
+  assert.equal(
+    await page.locator('a[href^="/dashboard/datasets/guide"]').count(),
+    1
+  );
   assert.equal(
     await page
       .getByRole("link", { name: "Create proposal", exact: true })
@@ -1234,13 +1238,16 @@ try {
   assert.equal(
     await dashboardNavigation
       .getByRole("link", { name: "Proposal guide" })
-      .getAttribute("aria-current"),
-    null
+      .count(),
+    0
   );
   await page
     .getByRole("link", { name: "Proposal guide", exact: true })
-    .last()
     .waitFor();
+  assert.equal(
+    await page.locator('a[href^="/dashboard/datasets/guide"]').count(),
+    1
+  );
   const help = page.locator("[data-proposal-step-help=true]");
   assert.equal(await help.getAttribute("open"), null);
   await help.locator("summary").click();
@@ -1249,24 +1256,7 @@ try {
       exact: true,
     })
     .waitFor();
-  assert.equal(
-    await page
-      .getByRole("link", {
-        name: "Proposal guide (opens in a new tab)",
-        exact: true,
-      })
-      .getAttribute("target"),
-    "_blank"
-  );
-  assert.equal(
-    await help
-      .getByRole("link", {
-        name: "Read the full proposal guide (opens in a new tab)",
-        exact: true,
-      })
-      .getAttribute("href"),
-    "/dashboard/datasets/guide#step-1"
-  );
+  assert.equal(await help.getByRole("link").count(), 0);
   await help.locator("summary").click();
   assert.equal(
     requests.filter(

@@ -48,7 +48,6 @@ import {
 import { PreparationWorkflowPanel } from "./PreparationWorkflowPanel";
 import { PreparationFrozenSubmission } from "./PreparationFrozenSubmission";
 import { PreparationStepHelp } from "./PreparationStepHelp";
-import { PROPOSAL_GUIDE_PATH } from "@/lib/datasets/proposal-guidance";
 import {
   PreparationField,
   PreparationGrid,
@@ -570,16 +569,6 @@ export function DatasetPreparationEditor({
         }
         action={
           <div className="flex flex-wrap gap-3">
-            <DashboardButton asChild variant="outline" size="compact">
-              <Link
-                href={PROPOSAL_GUIDE_PATH}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Proposal guide
-                <span className="sr-only"> (opens in a new tab)</span>
-              </Link>
-            </DashboardButton>
             <DashboardButton asChild variant="outline" size="compact">
               <Link href="/dashboard/datasets">Draft proposals</Link>
             </DashboardButton>

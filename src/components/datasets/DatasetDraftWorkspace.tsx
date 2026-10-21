@@ -5,7 +5,6 @@ import Link from "next/link";
 import { FileText, Plus } from "lucide-react";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 import { listDatasetDraftWorkspace } from "@/lib/api/dataset-draft-workspace";
-import { PROPOSAL_GUIDE_PATH } from "@/lib/datasets/proposal-guidance";
 import { DATASET_UPLOAD_CHOICES } from "@kuinbee/dataset-preparation-contracts";
 import {
   DashboardButton,
@@ -152,9 +151,6 @@ export function DatasetDraftWorkspace() {
         description="Continue your proposals step by step and review everything before submission."
         action={
           <div className="flex flex-wrap gap-3">
-            <DashboardButton asChild variant="outline">
-              <Link href={PROPOSAL_GUIDE_PATH}>Proposal guide</Link>
-            </DashboardButton>
             <DashboardButton asChild>
               <Link href="/dashboard/datasets/create">
                 <Plus /> Create proposal
