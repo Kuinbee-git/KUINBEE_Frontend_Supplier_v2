@@ -534,14 +534,25 @@ test("backend pause, changed content, withdrawn choice and closed upload prevent
   }
 });
 
-test("files above 2 GB are refused locally before any request while backend checks remain required", async () => {
+test("files above 5 GB are refused locally before any request while backend checks remain required", async () => {
   const f = fixture();
   await assert.rejects(
-    f.run({ file: { ...f.file, size: 2000000001 } }),
+    f.run({ file: { ...f.file, size: 5000000001 } }),
     code("FILE_SIZE_NOT_ALLOWED")
   );
   assert.deepEqual(f.calls, []);
   assert.deepEqual(f.reads, []);
+});
+
+test("an existing 2 GB backend capability remains authoritative during the 5 GB rollout", async () => {
+  const f = fixture();
+  f.status.expectedBytes = "2000000001";
+  await assert.rejects(
+    f.run({ file: { ...f.file, size: 2000000001 } }),
+    code("FORMAT_NOT_ENABLED")
+  );
+  assert.deepEqual(f.reads, []);
+  assert.equal(f.calls.some((call) => call.startsWith("PUT:")), false);
 });
 
 test("pause while waiting for allocation sends no bytes and leaves the existing attempt intact", async () => {

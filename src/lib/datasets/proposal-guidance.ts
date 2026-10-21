@@ -203,7 +203,7 @@ export const PROPOSAL_SCREEN_WALKTHROUGH = [
       ],
       [
         "Storage and corrections",
-        "The backend enforces 2 GB per file, 5 GB per Dataset and 100 GB per supplier. To replace an eligible file, delete the old stored file before uploading the correction.",
+        "The backend enforces a maximum of 5 GB per file, 5 GB per Dataset and 100 GB per supplier. Files & contents shows the current limit for each file type. To replace an eligible file, delete the old stored file before uploading the correction.",
         "Removing a file from the selected list alone does not free its stored bytes.",
       ],
     ],

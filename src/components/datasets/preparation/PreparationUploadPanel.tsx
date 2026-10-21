@@ -83,6 +83,13 @@ export function PreparationUploadPanel({
   const capability = model.config?.capabilities.find(
     (item) => item.profileId === format
   );
+  const currentFileLimit = model.config?.capabilities.length
+    ? Math.max(
+        ...model.config.capabilities.map((item) =>
+          Number(item.maximumObjectBytes)
+        )
+      )
+    : Number(model.config?.maximumFileBytes ?? "5000000000");
   const packagedZip =
     capability?.profileId === "ZIP32_CONTAINER_V1" &&
     capability.archiveContents === "PACKAGED_FILE";
@@ -277,9 +284,10 @@ export function PreparationUploadPanel({
               id={`${id}-file-help`}
               className="text-xs font-normal text-muted-foreground"
             >
-              One file at a time · up to 2 GB per file, 5 GB per Dataset. To
-              resume, reselect the original file; its received bytes are
-              verified before transfer continues.
+              One file at a time · up to {size(currentFileLimit)} per file, 5 GB
+              per Dataset. Each file type may have a smaller limit. To resume,
+              reselect the original file; its received bytes are verified before
+              transfer continues.
             </span>
             {packagedZip && (
               <span className="text-xs font-normal text-muted-foreground">

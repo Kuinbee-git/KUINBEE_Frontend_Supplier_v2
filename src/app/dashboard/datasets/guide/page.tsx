@@ -120,12 +120,12 @@ export default function DatasetProposalGuidePage() {
             </p>
             <ProposalMaterialChoicesVisual />
             <p className="max-w-3xl text-sm text-muted-foreground">
-              Current upload limits are 2 GB per file, 5 GB shared across full
-              material, samples and companions in one Dataset, and 100 GB across
-              your supplier account. GB means one billion bytes. Retained files
-              and active upload reservations count; the backend decides
-              available capacity. Use the supported file types offered by the
-              upload form.
+              The maximum is 5 GB per file and 5 GB shared across full material,
+              samples and companions in one Dataset, and 100 GB across your
+              supplier account. GB means one billion bytes. Retained files and
+              active upload reservations count; the backend decides available
+              capacity. The Files & contents screen shows the current limit for
+              each supported file type.
             </p>
           </section>
           {PROPOSAL_STEP_GUIDANCE.map((step, index) => (

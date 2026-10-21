@@ -448,12 +448,25 @@ export function usePreparationUploads(options: Options) {
     profile: DatasetInspectionProfile
   ) {
     if (!canAdmit || !file || busy.current || pendingRef.current) return;
+    const capability = config?.capabilities.find(
+      (item) => item.profileId === profile.profileId
+    );
+    if (!config || !capability) {
+      setError("Choose a file type currently enabled by Kuinbee.");
+      return;
+    }
+    const maximumBytes = Math.min(
+      Number(config.maximumFileBytes),
+      Number(capability.maximumObjectBytes)
+    );
     if (
       !Number.isSafeInteger(file.size) ||
       file.size < 1 ||
-      file.size > 2_000_000_000
+      file.size > maximumBytes
     ) {
-      setError("Choose a nonempty file no larger than 2 GB.");
+      setError(
+        `Choose a nonempty file no larger than ${maximumBytes / 1_000_000_000} GB for this file type.`
+      );
       return;
     }
     const response = await perform({

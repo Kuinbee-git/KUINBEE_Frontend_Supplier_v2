@@ -143,7 +143,7 @@ export async function receiveDatasetFile(input: {
     BigInt(file.size) > BigInt(DATASET_UPLOAD_FILE_LIMIT_BYTES)
   )
     fail(
-      "Choose a nonempty file no larger than 2 GB.",
+      "Choose a nonempty file no larger than 5 GB.",
       "FILE_SIZE_NOT_ALLOWED"
     );
   const progress: DatasetFileReceiptProgress = {
