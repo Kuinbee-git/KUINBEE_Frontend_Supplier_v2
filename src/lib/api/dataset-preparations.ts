@@ -1,4 +1,5 @@
 import {
+  DatasetCreationContextResponseSchema,
   DatasetPreparationCreateBodySchema,
   DatasetPreparationPatchBodySchema,
   DatasetPreparationResponseSchema,
@@ -106,6 +107,11 @@ async function request<T>(
 export { request as requestPreparationResource };
 
 export const preparationApi = {
+  creationContext: (signal?: AbortSignal) =>
+    request(`${base}/creation-context`, DatasetCreationContextResponseSchema, {
+      signal,
+      cache: "no-store",
+    }),
   list: (page = 1, q?: string) => {
     const query = DatasetPreparationsListQuerySchema.parse({
       page,
