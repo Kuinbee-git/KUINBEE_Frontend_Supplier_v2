@@ -94,6 +94,7 @@ async function bundle(environment) {
     define: {
       "process.env.NODE_ENV": '"development"',
       "process.env.NEXT_PUBLIC_APP_ENV": JSON.stringify(environment),
+      "process.env.NEXT_PUBLIC_DATASET_CONTENT_ENABLED": '"false"',
     },
   });
   assert(
@@ -3349,6 +3350,7 @@ try {
 
   const beforeProduction = requests.length;
   const productionPage = await browser.newPage();
+  productionPage.on("pageerror", (error) => errors.push(error.message));
   await productionPage.goto(
     origin + "/dashboard/datasets/create?environment=production"
   );
