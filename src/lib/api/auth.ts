@@ -196,8 +196,8 @@ export async function changeSupplierPassword(data: {
  * Logout supplier
  */
 export async function logout(): Promise<void> {
-  // Implement logout endpoint when available
-  // For now, just clear session by redirecting
+  const { supplierSignOut } = await import("./supplier-onboarding");
+  await supplierSignOut();
 }
 
 /**

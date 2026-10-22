@@ -8,7 +8,9 @@ import { useAuthStore } from "@/store";
 export default function AccountPage() {
   const { logout, user } = useAuthStore();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const {supplierSignOut} = await import("@/lib/api/supplier-onboarding");
+    await supplierSignOut();
     logout();
     reloadAt("/auth/login");
   };

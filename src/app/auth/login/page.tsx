@@ -34,7 +34,8 @@ export default function LoginPage() {
   const handleSuccess = useCallback(() => {
     // Check onboarding status - this will be handled by dashboard layout
     // If onboarding incomplete, dashboard layout will redirect appropriately
-    router.push("/dashboard");
+    const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+    router.push(returnTo === "/invitation" ? "/invitation" : "/dashboard");
   }, [router]);
 
   // Handle forgot password
@@ -45,7 +46,7 @@ export default function LoginPage() {
 
   // Handle create account
   const handleCreateAccount = useCallback(() => {
-    router.push("/auth/register");
+    router.push("/apply");
   }, [router]);
 
   return (

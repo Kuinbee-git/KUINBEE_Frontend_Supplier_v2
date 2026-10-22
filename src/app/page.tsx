@@ -1,8 +1,2 @@
-import { redirect } from "next/navigation";
-
-/**
- * Root page - redirects to auth
- */
-export default function HomePage() {
-  redirect("/auth/login");
-}
+import { SupplierLanding } from "@/components/onboarding/SupplierLanding";
+export default function Page() { return <SupplierLanding/>; }

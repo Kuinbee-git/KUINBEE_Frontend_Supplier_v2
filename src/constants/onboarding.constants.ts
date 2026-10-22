@@ -10,12 +10,12 @@ import type { OnboardingNextStep } from "@/types/onboarding.types";
  * Maps backend `nextStep` values to frontend routes
  */
 export const ONBOARDING_STEP_ROUTES: Record<OnboardingNextStep, string> = {
-  SELECT_TYPE: "/onboarding/select-type",
-  VERIFY_EMAIL_OTP: "/onboarding/verify-email",
-  VERIFY_PAN: "/onboarding/verify-pan",
-  COMPLETE_PROFILE: "/onboarding/complete-profile",
-  PARTIAL_COMPLETE: "/onboarding/complete-profile",
-  PENDING_VERIFICATION: "/onboarding/pending-verification",
+  SELECT_TYPE: "/onboarding/workspace",
+  VERIFY_EMAIL_OTP: "/onboarding/workspace",
+  VERIFY_PAN: "/onboarding/workspace",
+  COMPLETE_PROFILE: "/onboarding/workspace",
+  PARTIAL_COMPLETE: "/onboarding/workspace",
+  PENDING_VERIFICATION: "/onboarding/workspace",
   DONE: "/dashboard",
 };
 

@@ -83,7 +83,7 @@ async function apiFetch<T>(
       error.data = errorData;
 
       // CRITICAL: Global 401/403 handler - Force logout and redirect
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         if (typeof window !== "undefined") {
           // Clear auth state immediately
           try {

@@ -67,34 +67,7 @@ export function useOnboardingStatus(): UseOnboardingStatusReturn {
   // Compute derived values
   const isComplete = data?.onboarding?.nextStep === "DONE";
 
-  // Determine next step - fallback if backend returns null
-  let nextStep = data?.onboarding?.nextStep || null;
-
-  // If nextStep is null but we have onboarding data, determine it from steps
-  if (!nextStep && data?.onboarding) {
-    const steps = data.onboarding.steps;
-    const supplierType = data.onboarding.supplierType;
-    const supplierStatus = data.supplier?.status;
-
-    if (supplierStatus === "PENDING_VERIFICATION") {
-      nextStep = "PENDING_VERIFICATION";
-    } else {
-      if (!steps.supplierTypeSelected) {
-        nextStep = "SELECT_TYPE";
-      } else if (!steps.emailOtpVerified) {
-        nextStep = "VERIFY_EMAIL_OTP";
-      } else if (
-        supplierType === "INDIVIDUAL" &&
-        steps.individualPan.status !== "VERIFIED"
-      ) {
-        nextStep = "VERIFY_PAN";
-      } else if (!steps.profileCompleted) {
-        nextStep = "COMPLETE_PROFILE";
-      } else {
-        nextStep = "DONE";
-      }
-    }
-  }
+  const nextStep = isComplete ? "DONE" : data ? "COMPLETE_PROFILE" : null;
 
   return {
     data,
