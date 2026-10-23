@@ -1,8 +1,10 @@
 # Supplier onboarding UI alignment
 
 The onboarding flow shares the supplier panel's scoped visual foundation. The
-public landing is deliberately minimal: a single heading, short introduction,
-apply/login actions and an application-status link.
+public landing is centered horizontally and vertically: one short line,
+"Join Kuinbee’s supplier network.", and exactly two actions, "Become a supplier"
+and "Supplier login". It has no heading, extra status link or duplicate login.
+The landing keeps the panel brand/theme header and omits the support footer.
 
 The new shell consumes `dashboard.css` without authenticated navigation. Shared
 buttons, input/textarea fields, labels and Radix select/portal components supply
@@ -63,3 +65,9 @@ invalid-link recovery. All email/password endpoints are intercepted fixtures.
 There are no browser runtime errors, unexpected external requests or horizontal
 overflow. The original 1024px onboarding check remains available in the first
 revision's evidence. Hosted staging acceptance is recorded in the root plan.
+
+The final landing correction passed eight focused browser checks at
+320/390/768/1440px in light and dark mode. These assert centering, zero headings,
+exactly two content links, a single login link, 40px buttons, panel typography,
+contrast and no horizontal overflow. `ONBOARDING_UI_CASES=landing` runs this
+focused set; omitting it runs the complete matrix.

@@ -8,6 +8,11 @@ import { chromium } from "playwright";
 // This never calls staging/production or sends real notifications.
 const base = process.env.ONBOARDING_UI_URL || "http://127.0.0.1:3241";
 assert.equal(new URL(base).hostname, "127.0.0.1");
+const selectedCases = new Set(
+  (process.env.ONBOARDING_UI_CASES || "").split(",").filter(Boolean)
+);
+const includeCase = (name) =>
+  selectedCases.size === 0 || selectedCases.has(name);
 const evidence =
   process.env.ONBOARDING_UI_EVIDENCE || "/tmp/kuinbee-onboarding-ui-20261023";
 mkdirSync(evidence, { recursive: true });
@@ -213,6 +218,7 @@ async function check(page, name, width, theme, screenshot = true) {
   );
   const measurements = await page.evaluate(() => {
     const h = document.querySelector("h1"),
+      text = h ?? document.querySelector("[data-supplier-landing-copy]"),
       inputs = [
         ...document.querySelectorAll("input:not([type=file]),[role=combobox]"),
       ].filter((n) => n.getBoundingClientRect().width);
@@ -241,7 +247,7 @@ async function check(page, name, width, theme, screenshot = true) {
       contrast = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     }
     return {
-      font: h ? getComputedStyle(h).fontFamily : null,
+      font: text ? getComputedStyle(text).fontFamily : null,
       h1Size: h ? parseFloat(getComputedStyle(h).fontSize) : null,
       controls: inputs.map((n) => ({
         height: n.getBoundingClientRect().height,
@@ -321,7 +327,7 @@ try {
         ["existing-invitation", "/invitation", "existing-invitation"],
         ["application", "/application/status", "application"],
         ["verification", "/onboarding/workspace", "verification"],
-      ]) {
+      ].filter(([name]) => includeCase(name))) {
         const page = await context.newPage();
         page.on("pageerror", (e) => errors.push(e.message));
         await fixture(page, mode);
@@ -439,9 +445,37 @@ try {
             ).startsWith("/apply")
           );
           assert.equal(
-            await page.locator("h2").count(),
+            await page.locator("h1,h2,h3").count(),
             0,
-            "Minimal landing has no extra cards"
+            "Landing has no title"
+          );
+          const landing = page.getByRole("region", {
+            name: "Supplier access",
+            exact: true,
+          });
+          assert.equal(
+            await landing.getByRole("link").count(),
+            2,
+            "Exactly two landing CTAs"
+          );
+          assert.equal(
+            await page
+              .getByRole("link", { name: "Supplier login", exact: true })
+              .count(),
+            1,
+            "No duplicate login"
+          );
+          const centered = await landing.evaluate((n) => {
+            const a = n.getBoundingClientRect(),
+              b = n.closest("main").getBoundingClientRect();
+            return {
+              x: Math.abs(a.x + a.width / 2 - (b.x + b.width / 2)),
+              y: Math.abs(a.y + a.height / 2 - (b.y + b.height / 2)),
+            };
+          });
+          assert.ok(
+            centered.x <= 1 && centered.y <= 5,
+            "Landing centered in content area"
           );
         }
         if (name === "apply") {
@@ -552,7 +586,7 @@ try {
       ["approved-profile", "approved", "/dashboard/profile"],
       ["corrections", "corrections", "/onboarding/workspace"],
       ["submitted", "submitted", "/onboarding/workspace"],
-    ]) {
+    ].filter(([name]) => includeCase(name))) {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
       });

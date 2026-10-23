@@ -67,21 +67,26 @@
 }
 .landing {
   width: 100%;
-  max-width: 640px;
-  margin: clamp(40px, 12vh, 120px) auto;
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
 }
-.landingTitle {
-  font-size: clamp(28px, 4vw, 36px);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.035em;
-  margin: 0 0 16px;
+.centeredMain {
+  display: grid;
+  place-items: center;
 }
-.landingStatus {
-  margin-top: 24px;
+.landingCopy {
+  margin: 0 0 24px;
   color: var(--dashboard-text-muted);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 16px;
+  line-height: 24px;
+}
+.landingActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .eyebrow {
   color: var(--dashboard-text-muted);

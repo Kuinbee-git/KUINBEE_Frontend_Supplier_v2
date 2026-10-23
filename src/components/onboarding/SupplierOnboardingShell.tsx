@@ -12,9 +12,13 @@ import styles from "./supplier-onboarding.module.css";
 export function SupplierOnboardingShell({
   children,
   actions,
+  centered = false,
+  showFooter = true,
 }: {
   children: ReactNode;
   actions?: ReactNode;
+  centered?: boolean;
+  showFooter?: boolean;
 }) {
   const { isDark, toggleTheme } = useThemeStore();
 
@@ -83,15 +87,17 @@ export function SupplierOnboardingShell({
       <main
         id="supplier-onboarding-main"
         tabIndex={-1}
-        className={styles.main}
+        className={`${styles.main} ${centered ? styles.centeredMain : ""}`}
         data-dashboard-content="true"
       >
         {children}
       </main>
-      <footer className={styles.footer}>
-        <span>© {new Date().getFullYear()} Kuinbee</span>
-        <a href="mailto:support@kuinbee.com">Contact support</a>
-      </footer>
+      {showFooter && (
+        <footer className={styles.footer}>
+          <span>© {new Date().getFullYear()} Kuinbee</span>
+          <a href="mailto:support@kuinbee.com">Contact support</a>
+        </footer>
+      )}
     </div>
   );
 }
