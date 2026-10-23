@@ -1,9 +1,9 @@
 /*
  * Authenticated supplier UI boundary.
  *
- * This stylesheet is loaded by the dashboard layout only. Every selector added
- * during the supplier dashboard refresh must remain under `.supplier-dashboard`
- * so authentication and onboarding keep their current presentation.
+ * This stylesheet is loaded by the dashboard layout and the approved supplier
+ * onboarding shell. Selectors remain scoped to `.supplier-dashboard` and its
+ * portals; legacy authentication screens keep their current presentation.
  *
  * Colour aliases intentionally point to the existing Kuinbee semantic tokens in
  * globals.css. This scope must not introduce a second palette.

@@ -26,6 +26,19 @@ protected_paths=(
   "public/logo-light.png"
 )
 
+# The user-authorized onboarding UI alignment reuses the panel foundation.
+# Other auth/onboarding/shared surfaces remain protected.
+onboarding_foundation_files=(
+  SupplierOnboardingShell.tsx SupplierLanding.tsx SupplierApplicationEntry.tsx
+  SupplierInvitation.tsx SupplierWorkspace.tsx SupplierProfileLogo.tsx
+  supplier-onboarding.module.css
+)
+onboarding_rg_exclusions=()
+for onboarding_file in "${onboarding_foundation_files[@]}"; do
+  protected_paths+=(":(exclude)src/components/onboarding/$onboarding_file")
+  onboarding_rg_exclusions+=(--glob "!src/components/onboarding/$onboarding_file")
+done
+
 protected_worktree_changes="$(git status --short -- "${protected_paths[@]}")"
 
 if [[ -n "$protected_worktree_changes" ]]; then
@@ -65,7 +78,7 @@ if [[ -n "$base_ref" ]]; then
 fi
 
 scope_leaks="$(
-  rg -n "supplier-dashboard|dashboard\\.css" \
+  rg -n "${onboarding_rg_exclusions[@]}" "supplier-dashboard|dashboard\\.css" \
     src/app/auth \
     src/app/onboarding \
     src/components/auth \
@@ -80,7 +93,7 @@ if [[ -n "$scope_leaks" ]]; then
 fi
 
 excluded_dashboard_imports="$(
-  rg -n "@/(components|app)/dashboard" \
+  rg -n "${onboarding_rg_exclusions[@]}" "@/(components|app)/dashboard" \
     src/app/auth \
     src/app/onboarding \
     src/components/auth \
@@ -403,4 +416,4 @@ if [[ "$actual_dashboard_routes" != "$expected_dashboard_routes" ]]; then
   exit 1
 fi
 
-echo "Dashboard UI scope check passed: 27 authenticated routes; Gates 5 through 9 use the scoped dashboard system; excluded surfaces unchanged."
+echo "Dashboard UI scope check passed: 27 authenticated routes; approved onboarding consumers share the foundation; other excluded surfaces unchanged."

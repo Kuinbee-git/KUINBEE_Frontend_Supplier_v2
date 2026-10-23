@@ -14,7 +14,9 @@ import {
 } from "@/components/dashboard";
 ```
 
-Authentication and onboarding must not import this barrel. Run
+Legacy authentication and onboarding must not import this barrel. The six new
+supplier onboarding components named in the UI contract may import individual
+foundation modules under the user-approved alignment. Run
 `npm run check:dashboard-scope` after every migration.
 
 ## Foundation inventory

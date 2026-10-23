@@ -27,7 +27,8 @@
     "test:details": "node scripts/test-supplier-details-browser.mjs",
     "test:dataset-production": "node --test scripts/test-dataset-production.mjs",
     "test:creation-routing": "node scripts/test-dataset-creation-routing-browser.mjs",
-    "test:onboarding:browser": "node scripts/test-onboarding-browser.mjs"
+    "test:onboarding:browser": "node scripts/test-onboarding-browser.mjs",
+    "test:onboarding:ui": "node scripts/test-onboarding-ui-browser.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

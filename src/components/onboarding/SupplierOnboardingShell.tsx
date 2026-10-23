@@ -1,18 +1,97 @@
 "use client";
-import Link from "next/link";
-import Image from "next/image";
-import { PageBackground } from "@/components/shared";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { useThemeStore } from "@/store";
+
 import type { ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Moon, Sun } from "lucide-react";
+import { DashboardButton } from "@/components/dashboard/ui/dashboard-button";
+import { useThemeStore } from "@/store";
+import "@/app/dashboard/dashboard.css";
 import styles from "./supplier-onboarding.module.css";
 
-export function SupplierOnboardingShell({children}: {children: ReactNode}) {
-  const {isDark, toggleTheme} = useThemeStore();
-  return <PageBackground withGrid><div className={styles.shell}>
-    <header className={styles.header}><Link href="/" aria-label="Kuinbee suppliers" style={{width: 72, height: 40, position: "relative", overflow: "hidden", display: "block"}}><Image src={isDark ? "/logo-dark.png" : "/logo-light.png"} alt="Kuinbee" width={130} height={40} style={{height: 180, width: 180, maxWidth: "none", position: "absolute", left: -57, top: -68}} /></Link>
-      <div className={styles.headerActions}><Link href="/auth/login">Supplier login</Link><ThemeToggle isDark={isDark} onToggle={toggleTheme}/></div></header>
-    <main className={styles.main}>{children}</main>
-    <footer className={styles.footer}>Need help? <a href="mailto:support@kuinbee.com">support@kuinbee.com</a></footer>
-  </div></PageBackground>;
+export function SupplierOnboardingShell({
+  children,
+  actions,
+}: {
+  children: ReactNode;
+  actions?: ReactNode;
+}) {
+  const { isDark, toggleTheme } = useThemeStore();
+
+  return (
+    <div
+      className={`supplier-dashboard dashboard-canvas ${styles.shell}`}
+      data-ui-scope="supplier-onboarding"
+    >
+      <a href="#supplier-onboarding-main" className={styles.skipLink}>
+        Skip to content
+      </a>
+      <header className={`dashboard-shell-topbar ${styles.header}`}>
+        <div className={styles.headerInner}>
+          <Link
+            href="/"
+            aria-label="Kuinbee suppliers"
+            className={styles.brand}
+          >
+            <span className={styles.logo}>
+              <Image
+                src="/logo-light.png"
+                alt=""
+                width={256}
+                height={256}
+                className="size-8 scale-[2.4] object-contain dark:hidden"
+                priority
+              />
+              <Image
+                src="/logo-dark.png"
+                alt=""
+                width={256}
+                height={256}
+                className="hidden size-8 scale-[2.4] object-contain dark:block"
+                priority
+              />
+            </span>
+            <span>
+              Kuinbee
+              <span className={styles.brandDivider} aria-hidden="true" />
+              <span className={styles.brandCaption}>Suppliers</span>
+            </span>
+          </Link>
+          <nav aria-label="Supplier account" className={styles.headerActions}>
+            {actions ?? (
+              <DashboardButton asChild variant="ghost" size="compact">
+                <Link href="/auth/login">Supplier login</Link>
+              </DashboardButton>
+            )}
+            <DashboardButton
+              variant="outline"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              {isDark ? (
+                <Sun aria-hidden="true" />
+              ) : (
+                <Moon aria-hidden="true" />
+              )}
+            </DashboardButton>
+          </nav>
+        </div>
+      </header>
+      <main
+        id="supplier-onboarding-main"
+        tabIndex={-1}
+        className={styles.main}
+        data-dashboard-content="true"
+      >
+        {children}
+      </main>
+      <footer className={styles.footer}>
+        <span>© {new Date().getFullYear()} Kuinbee</span>
+        <a href="mailto:support@kuinbee.com">Contact support</a>
+      </footer>
+    </div>
+  );
 }

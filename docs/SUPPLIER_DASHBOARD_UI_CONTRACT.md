@@ -8,7 +8,8 @@ gradient-grid background, restrained glass treatment, content, and business
 workflows.
 
 This contract applies to every route under `/dashboard` and to components when
-they are rendered inside the authenticated dashboard shell.
+they are rendered inside the authenticated dashboard shell. The approved new
+onboarding flow also consumes its visual foundation as described below.
 
 ## Hard scope boundary
 
@@ -398,3 +399,20 @@ links from the editor open a new tab to retain unsaved input; My drafts and
 Support also link to the guide. The route follows the existing preparation
 environment gate and does not create or change a proposal. Subject-category
 consolidation remains a separate recommendation, not a live directory change.
+
+## 23 October onboarding alignment
+
+The user explicitly requested that the new supplier onboarding screens follow
+supplier panel design principles in light and dark mode. The six new components
+`SupplierOnboardingShell`, `SupplierLanding`, `SupplierApplicationEntry`,
+`SupplierInvitation`, `SupplierWorkspace` and `SupplierProfileLogo`, together
+with `supplier-onboarding.module.css`, are approved consumers of the existing
+foundation. This supersedes the original exclusion for these files only.
+
+The public shell loads the same scoped stylesheet without authenticated
+navigation. Inputs, actions and the portalled supplier-type select use the
+existing dashboard primitives. The onboarding CSS owns only layout, responsive
+spacing and semantic-token composition. It introduces no palette values or
+global overrides. The landing remains minimal. Existing login/auth screens,
+global tokens, shared legacy primitives and the theme store remain protected.
+The scope guard keeps those protections and explicitly lists these consumers.
