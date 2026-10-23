@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback, Suspense } from "react";
+import React, { useCallback, Suspense } from "react";
+import { useThemeStore } from "@/store";
 import { AuthShellWrapper } from "@/components/auth";
 import { ForgotPasswordFlow } from "@/components/auth/ForgotPasswordFlow";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,13 +9,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isDark, setIsDark] = useState(false);
+  const { isDark, toggleTheme: handleToggleDark } = useThemeStore();
   const resetToken = searchParams.get("token");
   const resetEmail = searchParams.get("email");
-
-  const handleToggleDark = useCallback(() => {
-    setIsDark((prev) => !prev);
-  }, []);
 
   const handleBackToLogin = useCallback(() => {
     router.push("/auth/login");

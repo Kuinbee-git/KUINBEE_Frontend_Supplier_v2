@@ -576,3 +576,25 @@
   white-space: normal;
   padding-block: 8px;
 }
+
+.authDescription {
+  color: var(--dashboard-text-muted);
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+.passwordToggle {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  min-width: 48px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.passwordToggle:focus-visible {
+  outline: 2px solid var(--dashboard-focus-ring);
+  outline-offset: 1px;
+}

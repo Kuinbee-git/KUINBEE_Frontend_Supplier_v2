@@ -416,3 +416,13 @@ spacing and semantic-token composition. It introduces no palette values or
 global overrides. The landing remains minimal. Existing login/auth screens,
 global tokens, shared legacy primitives and the theme store remain protected.
 The scope guard keeps those protections and explicitly lists these consumers.
+
+## Approved account-access alignment, 23 October 2026
+
+The user requested consistency throughout the supplier journey. The active login,
+signing-in, forgot-password and reset-password screens now also consume the
+onboarding shell and dashboard primitives. The exact files are enumerated in
+`auth_foundation_files` in the scope guard. Shared auth presentation helpers are
+included because the active recovery flow uses them. Authentication, session,
+reset-token validation, legacy routes, global colours and theme-store behaviour
+are unchanged. Other protected files remain excluded.

@@ -13,8 +13,8 @@ uses compact heading levels and consistent field/section spacing. The theme
 store and global palette are unchanged.
 
 The existing UI contract and scope guard now explicitly allow the six new
-onboarding components and their CSS module to consume that foundation. Other
-legacy auth/onboarding components and shared primitives remain protected.
+onboarding components and their CSS module to consume that foundation. The active login and password recovery screens are also explicitly included;
+other legacy auth/onboarding components and shared primitives remain protected.
 
 ## Validation
 
@@ -46,3 +46,20 @@ release's separate staging evidence.
 
 This visual revision is prepared on `feat/supplier-onboarding-ui-20261023` for
 preview review before any production promotion.
+
+## Account-access follow-up
+
+Login and password recovery now use the same compact shell and 40px controls.
+The decorative split panel, duplicate heading, separate theme palette and
+button gradients have been removed. Recovery uses the existing persisted theme.
+Login hydration protection, API contracts, validation, token handling and
+invitation-return routing are preserved.
+
+The extended local matrix passes **154 checks / 162 screenshots** at 320, 390,
+768 and 1440px in both themes. It additionally covers password visibility,
+keyboard login and server error display, apply navigation, reset-email validation,
+sent/resend feedback, mismatched passwords, successful reset feedback and
+invalid-link recovery. All email/password endpoints are intercepted fixtures.
+There are no browser runtime errors, unexpected external requests or horizontal
+overflow. The original 1024px onboarding check remains available in the first
+revision's evidence. Hosted staging acceptance is recorded in the root plan.

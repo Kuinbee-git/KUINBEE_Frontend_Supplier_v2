@@ -1,8 +1,11 @@
 "use client";
 
 import React from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { DashboardButton } from "@/components/dashboard/ui/dashboard-button";
+import {
+  DashboardField,
+  DashboardInput,
+} from "@/components/dashboard/ui/dashboard-form";
 import { ArrowLeft } from "lucide-react";
 import { AuthHeader, InfoCard, AuthButton } from "../shared";
 import type { AuthTokens } from "@/hooks/useAuthTokens";
@@ -36,33 +39,19 @@ export function PasswordResetRequest({
         tokens={tokens}
       />
 
-      <div className="space-y-2">
-        <Label
-          htmlFor="reset-email"
-          className="text-sm transition-colors duration-300"
-          style={{ color: tokens.textPrimary, fontWeight: 500 }}
-        >
-          Email address
-        </Label>
-        <Input
-          id="reset-email"
-          type="email"
-          placeholder="your@company.com"
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
-          className="h-12 transition-all duration-300"
-          style={{
-            borderColor: emailError ? "#ef4444" : tokens.inputBorder,
-            backgroundColor: tokens.inputBg,
-            color: tokens.textPrimary,
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-          }}
-          autoFocus
-          autoComplete="email"
-        />
-        {emailError && <p className="text-xs text-red-500">{emailError}</p>}
-      </div>
+      <DashboardField id="reset-email" label="Email address" error={emailError}>
+        {(control) => (
+          <DashboardInput
+            {...control}
+            type="email"
+            placeholder="your@company.com"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            autoFocus
+            autoComplete="email"
+          />
+        )}
+      </DashboardField>
 
       <InfoCard icon="mail" isDark={isDark} tokens={tokens}>
         <p>
@@ -76,15 +65,15 @@ export function PasswordResetRequest({
           Send reset instructions
         </AuthButton>
 
-        <button
+        <DashboardButton
+          variant="ghost"
+          className="w-full"
           onClick={onBack}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 text-sm transition-colors hover:opacity-80"
-          style={{ color: tokens.textSecondary }}
         >
           <ArrowLeft className="w-4 h-4" />
           Back to login
-        </button>
+        </DashboardButton>
       </div>
     </div>
   );

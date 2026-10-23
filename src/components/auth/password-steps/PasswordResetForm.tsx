@@ -65,7 +65,12 @@ export function PasswordResetForm({
         />
 
         {passwordError && (
-          <p className="text-xs text-red-500">{passwordError}</p>
+          <p
+            role="alert"
+            className="text-xs text-[var(--dashboard-danger-foreground)]"
+          >
+            {passwordError}
+          </p>
         )}
       </div>
 

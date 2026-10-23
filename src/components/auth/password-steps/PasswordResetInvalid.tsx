@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { DashboardButton } from "@/components/dashboard/ui/dashboard-button";
 import { AuthHeader, InfoCard, AuthButton } from "../shared";
 import type { AuthTokens } from "@/hooks/useAuthTokens";
 
@@ -25,12 +26,7 @@ export function PasswordResetInvalid({
         tokens={tokens}
       />
 
-      <InfoCard
-        icon="alert"
-        iconColor="#f59e0b"
-        isDark={isDark}
-        tokens={tokens}
-      >
+      <InfoCard icon="alert" isDark={isDark} tokens={tokens}>
         <p>
           The reset link may have expired or already been used. Password reset
           links are valid for 30 minutes.
@@ -45,13 +41,9 @@ export function PasswordResetInvalid({
           Request new reset link
         </AuthButton>
 
-        <button
-          onClick={onBack}
-          className="w-full text-sm transition-colors hover:underline underline-offset-4"
-          style={{ color: tokens.textSecondary }}
-        >
+        <DashboardButton variant="ghost" className="w-full" onClick={onBack}>
           Back to login
-        </button>
+        </DashboardButton>
       </div>
     </div>
   );

@@ -56,7 +56,12 @@ function workspace(mode = "application") {
     emailVerified: true,
     userId: verified ? "fixture-user" : null,
     applicationStatus: verified ? "INVITED" : "DRAFT",
-    verificationStatus: mode === "approved" ? "APPROVED" : "DRAFT",
+    verificationStatus:
+      mode === "approved"
+        ? "APPROVED"
+        : mode === "submitted"
+          ? "SUBMITTED"
+          : "DRAFT",
     identity,
     capabilities,
     verificationDetails: details,
@@ -102,7 +107,22 @@ async function fixture(page, mode) {
     const req = route.request(),
       path = new URL(req.url()).pathname;
     let result;
-    if (path.endsWith("/onboarding/status"))
+    if (path.endsWith("/auth/login")) {
+      return route.fulfill({
+        status: 401,
+        json: {
+          error: {
+            code: "INVALID_CREDENTIALS",
+            message: "Email or password is incorrect.",
+          },
+        },
+      });
+    } else if (
+      path.endsWith("/password/reset/request") ||
+      path.endsWith("/password/reset/confirm")
+    ) {
+      result = { message: "Request accepted" };
+    } else if (path.endsWith("/onboarding/status"))
       result = {
         supplier: {
           id: "fixture-user",
@@ -286,6 +306,14 @@ try {
             route.abort())
       );
       for (const [name, path, mode] of [
+        ["login", "/auth/login", "login"],
+        ["forgot-password", "/auth/forgot-password", "recovery"],
+        [
+          "reset-password",
+          "/auth/reset-password?token=fixture-token&email=fixture%40example.test",
+          "recovery",
+        ],
+        ["invalid-reset", "/auth/reset-password", "recovery"],
         ["landing", "/", "application"],
         ["apply", "/apply", "application"],
         ["status", "/application/status", "application"],
@@ -305,6 +333,103 @@ try {
         }
         // The status route resumes the isolated saved application fixture.
         await check(page, name, width, theme);
+        if (name === "login") {
+          await page
+            .getByLabel("Email", { exact: true })
+            .fill("fixture@example.test");
+          await page
+            .getByLabel("Password", { exact: true })
+            .fill("FixturePassword123!");
+          await page
+            .getByRole("button", { name: "Show password", exact: true })
+            .click();
+          assert.equal(
+            await page
+              .getByLabel("Password", { exact: true })
+              .getAttribute("type"),
+            "text"
+          );
+          await page
+            .getByRole("button", { name: "Hide password", exact: true })
+            .click();
+          await page.getByLabel("Password", { exact: true }).press("Enter");
+          await page
+            .getByRole("alert")
+            .filter({ hasText: "Email or password is incorrect." })
+            .waitFor();
+          await check(page, "login-error", width, theme);
+          await page
+            .getByRole("button", {
+              name: "New supplier? Apply to join",
+              exact: true,
+            })
+            .click();
+          await page.waitForURL(base + "/apply");
+        }
+        if (name === "forgot-password") {
+          await page
+            .getByRole("button", {
+              name: "Send reset instructions",
+              exact: true,
+            })
+            .click();
+          await page.locator('[aria-invalid="true"]').waitFor();
+          await page
+            .getByLabel("Email address", { exact: true })
+            .fill("fixture@example.test");
+          await page
+            .getByRole("button", {
+              name: "Send reset instructions",
+              exact: true,
+            })
+            .click();
+          await page
+            .getByRole("heading", { name: "Check your email", exact: true })
+            .waitFor();
+          await check(page, "reset-sent", width, theme);
+          await page
+            .getByRole("button", {
+              name: "Resend reset instructions",
+              exact: true,
+            })
+            .click();
+        }
+        if (name === "reset-password") {
+          await page
+            .getByLabel("New password", { exact: true })
+            .fill("FixturePassword123!");
+          await page
+            .getByLabel("Confirm password", { exact: true })
+            .fill("DifferentPassword123!");
+          await page
+            .getByRole("button", { name: "Update password", exact: true })
+            .click();
+          await page
+            .getByRole("alert")
+            .filter({ hasText: "Passwords do not match" })
+            .waitFor();
+          await page
+            .getByLabel("Confirm password", { exact: true })
+            .fill("FixturePassword123!");
+          await page
+            .getByRole("button", { name: "Update password", exact: true })
+            .click();
+          await page
+            .getByRole("heading", { name: "Password updated!", exact: true })
+            .waitFor();
+          await check(page, "reset-success", width, theme);
+        }
+        if (name === "invalid-reset") {
+          await page
+            .getByRole("button", {
+              name: "Request new reset link",
+              exact: true,
+            })
+            .click();
+          await page
+            .getByRole("heading", { name: "Reset your password", exact: true })
+            .waitFor();
+        }
         if (name === "landing") {
           assert.ok(
             (

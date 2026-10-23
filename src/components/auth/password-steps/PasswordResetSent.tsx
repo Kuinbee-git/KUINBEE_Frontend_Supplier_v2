@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Mail } from "lucide-react";
+import { DashboardButton } from "@/components/dashboard/ui/dashboard-button";
 import { AuthHeader, InfoCard, AuthButton } from "../shared";
 import { maskEmail } from "@/lib/utils/auth.utils";
 import type { AuthTokens } from "@/hooks/useAuthTokens";
@@ -25,18 +25,6 @@ export function PasswordResetSent({
 }: PasswordResetSentProps) {
   return (
     <div className="space-y-5">
-      <div className="flex justify-center mb-4">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center"
-          style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            boxShadow: "0 8px 24px rgba(102, 126, 234, 0.3)",
-          }}
-        >
-          <Mail className="w-8 h-8 text-white" />
-        </div>
-      </div>
-
       <AuthHeader
         title="Check your email"
         subtitle={`If an account exists for ${maskEmail(email)}, you'll receive password reset instructions.`}
@@ -64,13 +52,9 @@ export function PasswordResetSent({
           Resend reset instructions
         </AuthButton>
 
-        <button
-          onClick={onBack}
-          className="w-full text-sm transition-colors hover:underline underline-offset-4"
-          style={{ color: tokens.textSecondary }}
-        >
+        <DashboardButton variant="ghost" className="w-full" onClick={onBack}>
           Back to login
-        </button>
+        </DashboardButton>
       </div>
     </div>
   );

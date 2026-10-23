@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState, useCallback, useSyncExternalStore, memo } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, {
+  useState,
+  useCallback,
+  useSyncExternalStore,
+  memo,
+} from "react";
+import {
+  DashboardField,
+  DashboardInput,
+} from "@/components/dashboard/ui/dashboard-form";
+import { DashboardButton } from "@/components/dashboard/ui/dashboard-button";
 import { useAuthTokens } from "@/hooks/useAuthTokens";
 import { AuthHeader, AuthButton, AuthAlert, PasswordInput } from "./shared";
 
@@ -78,38 +86,24 @@ function LoginFormComponent({
     <fieldset className="min-w-0 space-y-5" disabled={!isReady}>
       <AuthHeader
         title="Sign in to your account"
-        subtitle="Enter your credentials to access the supplier portal"
+        subtitle="Access your supplier workspace."
         tokens={tokens}
       />
 
-      {/* Email field */}
-      <div className="space-y-2">
-        <Label
-          htmlFor="email"
-          className="text-sm transition-colors duration-300"
-          style={{ color: tokens.textPrimary, fontWeight: 500 }}
-        >
-          Email
-        </Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="your@company.com"
-          value={localEmail}
-          onChange={handleEmailChange}
-          onKeyDown={handleKeyDown}
-          className="h-12 transition-all duration-300 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
-          style={{
-            borderColor: tokens.inputBorder,
-            backgroundColor: tokens.inputBg,
-            color: tokens.textPrimary,
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-          }}
-          autoFocus
-          autoComplete="email"
-        />
-      </div>
+      <DashboardField id="email" label="Email">
+        {(control) => (
+          <DashboardInput
+            {...control}
+            type="email"
+            placeholder="your@company.com"
+            value={localEmail}
+            onChange={handleEmailChange}
+            onKeyDown={handleKeyDown}
+            autoFocus
+            autoComplete="email"
+          />
+        )}
+      </DashboardField>
 
       {/* Password field */}
       <PasswordInput
@@ -131,48 +125,16 @@ function LoginFormComponent({
         />
       )}
 
-      {/* Forgot password link */}
-      <div className="text-center pt-2">
-        <button
-          type="button"
-          onClick={onForgotPassword}
-          className="text-sm transition-all duration-300 hover:underline"
-          style={{
-            color: isDark ? "rgba(255,255,255,0.6)" : "#525d6f",
-          }}
-        >
-          Forgot password?
-        </button>
-      </div>
-
-      {/* Submit button */}
       <AuthButton onClick={handleSubmit} isDark={isDark}>
         Sign in
       </AuthButton>
-
-      {/* Secondary actions */}
-      <div className="space-y-2.5 text-center pt-4">
-        <button
-          type="button"
-          className="text-sm transition-colors block w-full hover:underline underline-offset-4"
-          style={{ color: tokens.textSecondary }}
-          onClick={onCreateAccount}
-        >
-          New supplier? Create account
-        </button>
-      </div>
-
-      {/* Security notice */}
-      <div
-        className="mt-8 pt-6 transition-colors duration-300"
-        style={{ borderTop: `1px solid ${tokens.divider}` }}
-      >
-        <p
-          className="text-xs text-center leading-relaxed"
-          style={{ color: tokens.textMuted }}
-        >
-          Access monitored · Additional verification may be required
-        </p>
+      <div className="grid gap-1">
+        <DashboardButton variant="ghost" onClick={onForgotPassword}>
+          Forgot password?
+        </DashboardButton>
+        <DashboardButton variant="ghost" onClick={onCreateAccount}>
+          New supplier? Apply to join
+        </DashboardButton>
       </div>
     </fieldset>
   );

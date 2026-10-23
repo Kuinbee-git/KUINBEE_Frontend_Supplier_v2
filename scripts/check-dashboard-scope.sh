@@ -39,6 +39,30 @@ for onboarding_file in "${onboarding_foundation_files[@]}"; do
   onboarding_rg_exclusions+=(--glob "!src/components/onboarding/$onboarding_file")
 done
 
+# Active login/recovery screens are included in the same approved alignment.
+auth_foundation_files=(
+  "src/components/auth/AuthShellWrapper.tsx"
+  "src/components/auth/LoginForm.tsx"
+  "src/components/auth/LoadingState.tsx"
+  "src/app/auth/forgot-password/page.tsx"
+  "src/app/auth/reset-password/page.tsx"
+  "src/components/auth/shared/AuthHeader.tsx"
+  "src/components/auth/shared/AuthButton.tsx"
+  "src/components/auth/shared/AuthAlert.tsx"
+  "src/components/auth/shared/PasswordInput.tsx"
+  "src/components/auth/shared/InfoCard.tsx"
+  "src/components/auth/shared/PasswordStrengthIndicator.tsx"
+  "src/components/auth/password-steps/PasswordResetRequest.tsx"
+  "src/components/auth/password-steps/PasswordResetForm.tsx"
+  "src/components/auth/password-steps/PasswordResetSent.tsx"
+  "src/components/auth/password-steps/PasswordResetInvalid.tsx"
+  "src/components/auth/password-steps/PasswordResetSuccess.tsx"
+)
+for auth_file in "${auth_foundation_files[@]}"; do
+  protected_paths+=(":(exclude)$auth_file")
+  onboarding_rg_exclusions+=(--glob "!$auth_file")
+done
+
 protected_worktree_changes="$(git status --short -- "${protected_paths[@]}")"
 
 if [[ -n "$protected_worktree_changes" ]]; then
@@ -416,4 +440,4 @@ if [[ "$actual_dashboard_routes" != "$expected_dashboard_routes" ]]; then
   exit 1
 fi
 
-echo "Dashboard UI scope check passed: 27 authenticated routes; approved onboarding consumers share the foundation; other excluded surfaces unchanged."
+echo "Dashboard UI scope check passed: 27 authenticated routes; approved onboarding and account-access consumers share the foundation; other excluded surfaces unchanged."
