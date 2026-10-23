@@ -71,3 +71,19 @@ The final landing correction passed eight focused browser checks at
 exactly two content links, a single login link, 40px buttons, panel typography,
 contrast and no horizontal overflow. `ONBOARDING_UI_CASES=landing` runs this
 focused set; omitting it runs the complete matrix.
+
+
+## Premium minimal landing refinement
+
+The landing alone now fades the existing panel grid away from the center,
+adds a very soft ambient highlight derived from the panel text token, blends
+the header into the canvas, and balances the two 180px actions. Copy remains
+one short line with no title or additional links. Other onboarding and account
+screens keep their current presentation.
+
+Copy and actions reveal once with opacity and an 8px rise (520/640ms); desktop
+hover lifts the actions by 1px. Reduced motion removes both entrance and hover
+movement. No animation runs continuously and no runtime dependency was added.
+Eight focused layout checks passed across four widths and both themes; browser
+checks also passed for finite motion, equal button widths, hover, reduced motion
+and repeated referral parameters. TypeScript, lint and scope guard passed.

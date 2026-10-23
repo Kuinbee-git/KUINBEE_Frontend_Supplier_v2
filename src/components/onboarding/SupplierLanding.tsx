@@ -14,7 +14,12 @@ export function SupplierLanding() {
   );
 
   return (
-    <SupplierOnboardingShell actions={<></>} centered showFooter={false}>
+    <SupplierOnboardingShell
+      actions={<></>}
+      centered
+      showFooter={false}
+      className={styles.landingShell}
+    >
       <section className={styles.landing} aria-label="Supplier access">
         <p className={styles.landingCopy} data-supplier-landing-copy>
           Join Kuinbee’s supplier network.
