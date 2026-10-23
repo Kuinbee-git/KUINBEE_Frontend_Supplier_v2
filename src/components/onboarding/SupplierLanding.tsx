@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { DashboardButton } from "@/components/dashboard/ui/dashboard-button";
+import { DashboardCard } from "@/components/dashboard/ui/dashboard-card";
 import { SupplierOnboardingShell } from "./SupplierOnboardingShell";
 import styles from "./supplier-onboarding.module.css";
 
@@ -14,25 +15,24 @@ export function SupplierLanding() {
   );
 
   return (
-    <SupplierOnboardingShell
-      actions={<></>}
-      centered
-      showFooter={false}
-      className={styles.landingShell}
-    >
-      <section className={styles.landing} aria-label="Supplier access">
+    <SupplierOnboardingShell actions={<></>} centered showFooter={false}>
+      <DashboardCard
+        className={styles.landing}
+        role="region"
+        aria-label="Supplier access"
+      >
         <p className={styles.landingCopy} data-supplier-landing-copy>
-          Join Kuinbee’s supplier network.
+          Partner with Kuinbee.
         </p>
         <div className={styles.landingActions}>
-          <DashboardButton asChild>
+          <DashboardButton asChild size="large">
             <Link href={`/apply${search}`}>Become a supplier</Link>
           </DashboardButton>
-          <DashboardButton asChild variant="outline">
+          <DashboardButton asChild variant="outline" size="large">
             <Link href="/auth/login">Supplier login</Link>
           </DashboardButton>
         </div>
-      </section>
+      </DashboardCard>
     </SupplierOnboardingShell>
   );
 }

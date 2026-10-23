@@ -2,9 +2,10 @@
 
 The onboarding flow shares the supplier panel's scoped visual foundation. The
 public landing is centered horizontally and vertically: one short line,
-"Join Kuinbee’s supplier network.", and exactly two actions, "Become a supplier"
+"Partner with Kuinbee.", and exactly two actions, "Become a supplier"
 and "Supplier login". It has no heading, extra status link or duplicate login.
-The landing keeps the panel brand/theme header and omits the support footer.
+The landing uses the existing DashboardCard glass frame, standard grid canvas,
+brand/theme header and 44px large DashboardButton actions. It omits the support footer.
 
 The new shell consumes `dashboard.css` without authenticated navigation. Shared
 buttons, input/textarea fields, labels and Radix select/portal components supply
@@ -73,17 +74,17 @@ contrast and no horizontal overflow. `ONBOARDING_UI_CASES=landing` runs this
 focused set; omitting it runs the complete matrix.
 
 
-## Premium minimal landing refinement
+## Supplier panel landing correction
 
-The landing alone now fades the existing panel grid away from the center,
-adds a very soft ambient highlight derived from the panel text token, blends
-the header into the canvas, and balances the two 180px actions. Copy remains
-one short line with no title or additional links. Other onboarding and account
-screens keep their current presentation.
+The user rejected the flattened treatment. The current landing uses the actual
+DashboardCard and DashboardButton components with the unmodified dashboard
+canvas, grid, glass surface, border, blur, header and theme colors. The copy is
+"Partner with Kuinbee." in the standard 16px/24px foreground text. A single
+centered glass frame groups exactly two 44px actions, with responsive columns.
+No title, extra link, custom background, grid mask, spotlight or entrance/lift
+animation remains. Earlier premium-preview evidence describes a rejected revision.
 
-Copy and actions reveal once with opacity and an 8px rise (520/640ms); desktop
-hover lifts the actions by 1px. Reduced motion removes both entrance and hover
-movement. No animation runs continuously and no runtime dependency was added.
-Eight focused layout checks passed across four widths and both themes; browser
-checks also passed for finite motion, equal button widths, hover, reduced motion
-and repeated referral parameters. TypeScript, lint and scope guard passed.
+Twelve focused browser checks passed at 320/390/768/1440/1920/2560px in both
+themes. Centering, headings/actions, typography, primary contrast and no horizontal
+overflow pass. TypeScript, lint, scope guard and diff checks pass. Staging CI and
+hosted acceptance are recorded in the root plan for the exact current source.

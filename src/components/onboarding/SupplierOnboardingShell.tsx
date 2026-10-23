@@ -14,19 +14,17 @@ export function SupplierOnboardingShell({
   actions,
   centered = false,
   showFooter = true,
-  className = "",
 }: {
   children: ReactNode;
   actions?: ReactNode;
   centered?: boolean;
   showFooter?: boolean;
-  className?: string;
 }) {
   const { isDark, toggleTheme } = useThemeStore();
 
   return (
     <div
-      className={`supplier-dashboard dashboard-canvas ${styles.shell} ${className}`}
+      className={`supplier-dashboard dashboard-canvas ${styles.shell}`}
       data-ui-scope="supplier-onboarding"
     >
       <a href="#supplier-onboarding-main" className={styles.skipLink}>

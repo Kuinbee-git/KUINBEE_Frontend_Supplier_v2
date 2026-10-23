@@ -69,33 +69,8 @@
   width: 100%;
   max-width: 520px;
   margin: 0 auto;
+  padding: 32px;
   text-align: center;
-}
-.landingShell:global(.dashboard-canvas)::before {
-  opacity: 0.18;
-  mask-image: radial-gradient(
-    ellipse 64% 72% at 50% 54%,
-    transparent 12%,
-    var(--dashboard-text) 100%
-  );
-}
-.landingShell::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse 42% 40% at 50% 54%,
-    color-mix(in srgb, var(--dashboard-text) 3%, transparent),
-    transparent 100%
-  );
-}
-.landingShell .header {
-  background: transparent;
-  border-bottom-color: transparent;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
 }
 .centeredMain {
   display: grid;
@@ -103,68 +78,24 @@
 }
 .landingCopy {
   margin: 0 0 24px;
-  color: var(--dashboard-text-muted);
-  font-size: 18px;
-  line-height: 28px;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-  animation: landingReveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  color: var(--dashboard-text);
+  font-size: 16px;
+  line-height: 24px;
 }
 .landingActions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  animation: landingReveal 640ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 .landingActions :global(.dashboard-button) {
-  width: 180px;
-  max-width: 100%;
-  padding-inline: 24px;
-  transition-duration: 180ms;
-  transition-timing-function: ease-out;
+  width: 100%;
 }
-@keyframes landingReveal {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+@media (max-width: 479px) {
+  .landing {
+    padding: 24px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@media (hover: hover) and (pointer: fine) {
-  .landingShell
-    .centeredMain
-    .landingActions
-    :global(.dashboard-button):not(:disabled):hover {
-    transform: translateY(-1px);
-  }
-  .landingShell
-    .centeredMain
-    .landingActions
-    :global(.dashboard-button):not(:disabled):active {
-    transform: translateY(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .landingCopy,
   .landingActions {
-    animation: none;
-  }
-  .landingShell .centeredMain .landingActions :global(.dashboard-button),
-  .landingShell
-    .centeredMain
-    .landingActions
-    :global(.dashboard-button):not(:disabled):hover,
-  .landingShell
-    .centeredMain
-    .landingActions
-    :global(.dashboard-button):not(:disabled):active {
-    transform: none;
-    transition: none;
+    grid-template-columns: 1fr;
   }
 }
 .eyebrow {
