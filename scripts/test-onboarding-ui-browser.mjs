@@ -261,7 +261,7 @@ async function check(page, name, width, theme, screenshot = true) {
     `${name}: supplier panel typeface`
   );
   assert.ok(
-    measurements.h1Size <= (name === "landing" ? 36 : 30),
+    measurements.h1Size <= (name === "landing" ? 60 : 30),
     `${name}: compact heading`
   );
   for (const c of measurements.controls) {
@@ -446,8 +446,8 @@ try {
           );
           assert.equal(
             await page.locator("h1,h2,h3").count(),
-            0,
-            "Landing has no title"
+            1,
+            "Landing has one clear headline"
           );
           const landing = page.getByRole("region", {
             name: "Supplier access",

@@ -88,3 +88,23 @@ Twelve focused browser checks passed at 320/390/768/1440/1920/2560px in both
 themes. Centering, headings/actions, typography, primary contrast and no horizontal
 overflow pass. TypeScript, lint, scope guard and diff checks pass. Staging CI and
 hosted acceptance are recorded in the root plan for the exact current source.
+
+
+## Professional landing composition, 24 October
+
+The user superseded the minimal/no-heading direction and rejected the small
+entry panel. The current landing is a full composition: a concise display
+headline and introduction, two standard entry actions, entity-type guidance,
+and a static data-network illustration using the existing glass cards, icons
+and original logos. It retains the supplier canvas/grid, semantic palette and
+Geist. The illustration is decorative and non-interactive, with no fabricated
+metrics or customer claims. On phones the copy/actions take focus; the illustration
+is omitted. Tablet and desktop layouts keep the graphic bounded and separated.
+
+Sixteen focused UI checks pass across 320/390/768/1024/1100/1440/1920/2560px and
+both themes. Twelve additional checks verify illustration bounds, no overlapping
+cards, readable labels and repeated referral preservation. TypeScript, lint,
+scope guard and diff checks pass. The browser UI contract intentionally changes
+from zero headings to one display headline; other onboarding page title limits
+and the authenticated type scale remain unchanged. This design is staged for
+review; earlier screenshots represent rejected directions.

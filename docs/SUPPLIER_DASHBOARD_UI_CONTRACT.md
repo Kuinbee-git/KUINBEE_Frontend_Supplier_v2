@@ -426,3 +426,15 @@ onboarding shell and dashboard primitives. The exact files are enumerated in
 included because the active recovery flow uses them. Authentication, session,
 reset-token validation, legacy routes, global colours and theme-store behaviour
 are unchanged. Other protected files remain excluded.
+
+
+## Public supplier landing composition, 24 October 2026
+
+The user superseded the earlier minimal/no-heading landing direction and requested
+professional visual hierarchy and presence. The public landing can use a concise
+40–56px display headline (32–40px on phones), short supporting copy and a static
+illustration built from the existing glass cards, icons and logo assets. It keeps
+the shared palette, canvas/grid, Geist, corner/blur/border tokens and two standard
+44px entry actions. This public display scale does not change authenticated page
+titles or the other onboarding/account screens. No fabricated metrics, customer
+logos, interactive-looking controls or new colour system are introduced.

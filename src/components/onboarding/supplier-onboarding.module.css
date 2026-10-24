@@ -67,35 +67,235 @@
 }
 .landing {
   width: 100%;
-  max-width: 520px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 32px;
-  text-align: center;
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  align-items: center;
+  gap: 64px;
 }
 .centeredMain {
   display: grid;
   place-items: center;
 }
-.landingCopy {
+.landingIntro {
+  min-width: 0;
+}
+.landingTitle {
   margin: 0 0 24px;
   color: var(--dashboard-text);
+  font-size: clamp(40px, 4.2vw, 56px);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.landingCopy {
+  max-width: 440px;
+  margin: 0 0 32px;
+  color: var(--dashboard-text-muted);
   font-size: 16px;
-  line-height: 24px;
+  line-height: 26px;
+  text-wrap: pretty;
 }
 .landingActions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 .landingActions :global(.dashboard-button) {
-  width: 100%;
+  padding-inline: 20px;
 }
-@media (max-width: 479px) {
+.landingNote {
+  margin: 20px 0 0;
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+.networkVisual {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 46 / 42;
+  justify-self: end;
+  pointer-events: none;
+}
+.networkLines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--dashboard-text-muted);
+  opacity: 0.4;
+  stroke: currentColor;
+  stroke-width: 1.25;
+}
+.networkLines circle {
+  fill: var(--dashboard-surface);
+}
+.dataTile {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tileLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--dashboard-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.tileLabel svg {
+  width: 14px;
+  height: 14px;
+  color: var(--dashboard-text-muted);
+  flex-shrink: 0;
+}
+.textTile {
+  left: 0;
+  top: 6%;
+  width: 43%;
+  height: 108px;
+}
+.textSample {
+  display: grid;
+  gap: 6px;
+}
+.textSample i {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dashboard-control-border);
+  opacity: 0.45;
+}
+.textSample i:nth-child(2) {
+  width: 74%;
+}
+.textSample i:nth-child(3) {
+  width: 88%;
+}
+.audioTile {
+  right: 0;
+  top: 4%;
+  width: 40%;
+  height: 112px;
+}
+.audioSample {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  gap: 3px;
+}
+.audioSample i {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--dashboard-text-muted);
+  opacity: 0.6;
+}
+.visionTile {
+  left: 12%;
+  bottom: 0;
+  width: 52%;
+  height: 104px;
+}
+.visionSample {
+  display: flex;
+  gap: 8px;
+}
+.visionSample svg {
+  width: calc(50% - 4px);
+  height: 42px;
+  stroke: var(--dashboard-text-muted);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+.networkHub {
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+  width: 104px;
+  height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.landing .networkVisual .networkHub {
+  background: var(--dashboard-glass-background-strong);
+}
+.landing .networkVisual .dataTile,
+.landing .networkVisual .networkHub {
+  position: absolute;
+}
+.hubLogo {
+  display: flex;
+  width: 48px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+@media (max-width: 1023px) {
   .landing {
-    padding: 24px;
+    gap: 32px;
+  }
+  .landingTitle {
+    font-size: 44px;
+  }
+  .dataTile {
+    padding: 12px;
+  }
+  .tileLabel {
+    gap: 6px;
+  }
+}
+@media (max-width: 1099px) {
+  .landing {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+    gap: 40px;
+    text-align: center;
+  }
+  .landingCopy {
+    margin-inline: auto;
   }
   .landingActions {
-    grid-template-columns: 1fr;
+    justify-content: center;
+  }
+  .networkVisual {
+    max-width: 400px;
+    justify-self: center;
+  }
+}
+@media (max-width: 639px) {
+  .landing {
+    max-width: 460px;
+  }
+  .landingTitle {
+    font-size: clamp(32px, 9vw, 40px);
+    line-height: 1.12;
+    margin-bottom: 20px;
+  }
+  .landingCopy {
+    margin-bottom: 28px;
+  }
+  .networkVisual {
+    display: none;
+  }
+}
+@media (max-width: 389px) {
+  .landingActions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 .eyebrow {
