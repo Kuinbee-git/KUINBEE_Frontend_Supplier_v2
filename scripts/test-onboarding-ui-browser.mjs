@@ -260,10 +260,8 @@ async function check(page, name, width, theme, screenshot = true) {
     measurements.font?.includes("Geist"),
     `${name}: supplier panel typeface`
   );
-  assert.ok(
-    measurements.h1Size <= (name === "landing" ? 60 : 30),
-    `${name}: compact heading`
-  );
+  if (measurements.h1Size !== null)
+    assert.ok(measurements.h1Size <= 30, `${name}: compact heading`);
   for (const c of measurements.controls) {
     assert.equal(c.height, 40, `${name}: standard control height`);
     assert.equal(c.font, 14, `${name}: input type size`);
@@ -446,13 +444,23 @@ try {
           );
           assert.equal(
             await page.locator("h1,h2,h3").count(),
-            1,
-            "Landing has one clear headline"
+            0,
+            "Landing has no headline"
           );
           const landing = page.getByRole("region", {
             name: "Supplier access",
             exact: true,
           });
+          assert.equal(
+            await landing.locator("p").count(),
+            1,
+            "One short information line above the actions"
+          );
+          assert.equal(
+            await landing.locator("svg,img,.dashboard-glass-card").count(),
+            0,
+            "No illustration or entry card"
+          );
           assert.equal(
             await landing.getByRole("link").count(),
             2,

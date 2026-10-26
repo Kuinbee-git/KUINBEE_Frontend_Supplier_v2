@@ -438,3 +438,14 @@ the shared palette, canvas/grid, Geist, corner/blur/border tokens and two standa
 44px entry actions. This public display scale does not change authenticated page
 titles or the other onboarding/account screens. No fabricated metrics, customer
 logos, interactive-looking controls or new colour system are introduced.
+
+## Public supplier landing composition, 26 October 2026
+
+The latest user direction supersedes the 24 October visual composition. The
+public landing centers one short information line above exactly two standard
+44px actions. It has no headline, illustration, enclosing card, third CTA or
+extra supporting copy. Keep the supplier panel's original canvas/grid, header,
+Geist, semantic palette and theme behavior. The existing application and login
+routes remain the two destinations; original application query parameters are
+preserved. This exception changes only public landing composition, not the
+onboarding workflow or authenticated dashboard pages.
