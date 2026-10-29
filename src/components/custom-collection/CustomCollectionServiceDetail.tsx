@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceSampleFiles } from "./ServiceSampleFiles";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -598,6 +599,16 @@ export function CustomCollectionServiceDetail({
                 fileInputRef={fileInputRef}
                 onUpload={uploadCover}
               />
+              {revision.sampleFiles !== undefined && (
+                <ServiceSampleFiles
+                  key={revision.id}
+                  serviceId={service.id}
+                  revisionId={revision.id}
+                  files={revision.sampleFiles}
+                  editable={editable}
+                  onChanged={() => load(false)}
+                />
+              )}
               <ServicePreview revision={revision} />
             </div>
 

@@ -15,7 +15,7 @@
     "check:environment": "node scripts/deployment-environment.mjs",
     "test:environment": "node --test scripts/deployment-environment.test.mjs",
     "prebuild": "npm run check:environment && node scripts/check-github-release.mjs",
-    "test:release": "node scripts/check-release.mjs",
+    "test:release": "node scripts/check-release.mjs && npm run test:service-samples:browser",
     "test:errors": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-error-details.mjs scripts/test-api-errors.mjs",
     "test:components": "node scripts/test-supplier-session-browser.mjs && node scripts/test-components-browser.mjs && node scripts/test-state-lifecycle-browser.mjs && node scripts/test-dataset-preparations-browser.mjs && npm run test:creation-routing && npm run test:uploads && npm run test:workflow && npm run test:details",
     "test:contracts": "npm run test:dataset-production && npm run test:release-gate && npm run test:environment && npm run test:errors && node scripts/check-dataset-preparation-contracts.mjs && node scripts/check-supplier-onboarding-contract.mjs",
@@ -28,7 +28,8 @@
     "test:dataset-production": "node --test scripts/test-dataset-production.mjs",
     "test:creation-routing": "node scripts/test-dataset-creation-routing-browser.mjs",
     "test:onboarding:browser": "node scripts/test-onboarding-browser.mjs",
-    "test:onboarding:ui": "node scripts/test-onboarding-ui-browser.mjs"
+    "test:onboarding:ui": "node scripts/test-onboarding-ui-browser.mjs",
+    "test:service-samples:browser": "node scripts/test-service-samples-browser.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
