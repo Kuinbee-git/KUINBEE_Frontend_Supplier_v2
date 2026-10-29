@@ -165,3 +165,71 @@ export const customCollectionApi = {
     );
   },
 };
+
+export const serviceSamplesApi = {
+  configuration: () =>
+    request<{
+      maxFiles: number;
+      maximumTotalBytes: string;
+      formats: Array<{ extensions: string[]; mimeTypes: string[] }>;
+    }>(`${root}/sample-upload-config`),
+  start: (
+    serviceId: string,
+    revisionId: string,
+    file: File,
+    requestId: string
+  ) =>
+    request<{
+      sample: { id: string; status: "STAGED" | "READY" };
+      upload: {
+        uploadUrl: string;
+        headers: Record<string, string>;
+        expiresAt: string;
+      } | null;
+    }>(`${root}/${serviceId}/revisions/${revisionId}/samples`, {
+      method: "POST",
+      body: JSON.stringify({
+        requestId,
+        fileName: file.name,
+        contentType: file.type || "application/octet-stream",
+        sizeBytes: String(file.size),
+      }),
+    }),
+  complete: (serviceId: string, revisionId: string, sampleId: string) =>
+    request(
+      `${root}/${serviceId}/revisions/${revisionId}/samples/${sampleId}/complete`,
+      { method: "POST" }
+    ),
+  remove: (serviceId: string, revisionId: string, sampleId: string) =>
+    request(
+      `${root}/${serviceId}/revisions/${revisionId}/samples/${sampleId}`,
+      { method: "DELETE" }
+    ),
+  download: async (serviceId: string, revisionId: string, sampleId: string) =>
+    validateServiceSampleDownload(
+      await request<{ url: string; expiresAt: string; fileName: string }>(
+        `${root}/${serviceId}/revisions/${revisionId}/samples/${sampleId}/download-url`,
+        { method: "POST" }
+      )
+    ),
+};
+
+function validateServiceSampleDownload(result: {
+  url: string;
+  expiresAt: string;
+  fileName: string;
+}) {
+  const url = new URL(result.url);
+  const expiresAt = Date.parse(result.expiresAt);
+  if (
+    !(
+      url.protocol === "https:" ||
+      (url.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))
+    ) ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= Date.now()
+  )
+    throw new Error("This download link is unavailable. Please try again.");
+  return result;
+}
