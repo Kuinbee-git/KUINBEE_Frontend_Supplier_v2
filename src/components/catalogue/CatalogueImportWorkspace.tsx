@@ -1,5 +1,14 @@
 "use client";
-import { useId, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Children,
+  isValidElement,
+  type ReactNode,
+  useId,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import {
   CATALOGUE_IMPORT_LIMITS,
@@ -10,7 +19,6 @@ import {
 import {
   type CatalogueApi,
   type CatalogueBatch,
-  type CatalogueCapacity,
   type CatalogueCandidates,
   CatalogueRetainedRequestSchema,
   catalogueError,
@@ -19,15 +27,64 @@ import {
   readCatalogueFile,
 } from "@/lib/catalogue-imports";
 import { CatalogueImportSteps } from "./CatalogueImportSteps";
+import {
+  DashboardButton,
+  DashboardInput,
+  DashboardCheckbox,
+  DashboardInlineAlert,
+  DashboardWorkspace,
+  DashboardRegion,
+  DashboardSelect,
+  DashboardSelectTrigger,
+  DashboardSelectValue,
+  DashboardSelectContent,
+  DashboardSelectItem,
+} from "@/components/dashboard";
+import {
+  DatasetWorkspace,
+  DatasetPageHeader,
+} from "@/components/datasets/workspace/DatasetWorkspace";
 import { CATALOGUE_IMPORT_GUIDE_PATH } from "@/lib/datasets/catalogue-import-guidance";
 
-const button =
-  "inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-const primary = `${button} bg-primary text-primary-foreground hover:bg-primary/90`;
-const input =
-  "w-full min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2";
-const section =
-  "min-w-0 space-y-4 rounded-xl border border-border bg-background p-4 sm:p-6";
+const section = "min-w-0 space-y-5 px-4 py-5 md:px-6 md:py-6";
+function CatalogueSelect({
+  id,
+  value,
+  onValueChange,
+  disabled,
+  children,
+}: {
+  id: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  const options = Children.toArray(children).filter(
+    isValidElement<{ value: string; children: ReactNode }>
+  );
+  return (
+    <DashboardSelect
+      value={value || "__none"}
+      onValueChange={(next) => onValueChange(next === "__none" ? "" : next)}
+      disabled={disabled}
+    >
+      <DashboardSelectTrigger id={id}>
+        <DashboardSelectValue />
+      </DashboardSelectTrigger>
+      <DashboardSelectContent>
+        {options.map((option) => (
+          <DashboardSelectItem
+            key={option.props.value || "__none"}
+            value={option.props.value || "__none"}
+          >
+            {option.props.children}
+          </DashboardSelectItem>
+        ))}
+      </DashboardSelectContent>
+    </DashboardSelect>
+  );
+}
 const label = "grid min-w-0 gap-2 text-sm font-medium";
 const uuid = () => crypto.randomUUID();
 const display = (value: unknown): string =>
@@ -50,176 +107,16 @@ type Pending =
   | { action: "commit"; id: string; body: CatalogueImportCommitBody }
   | { action: "cancel"; id: string; body: { requestId: string } };
 
-export function CatalogueCapacityPanel({
-  api,
-  canManage = false,
-  onChanged,
-}: {
-  api: CatalogueApi;
-  canManage?: boolean;
-  onChanged?: () => void;
-}) {
-  const fieldId = useId();
-  const [capacity, setCapacity] = useState<CatalogueCapacity | null>(null);
-  const [limit, setLimit] = useState(""),
-    [reason, setReason] = useState("");
-  const [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false);
-  const [retained, setRetained] = useState<
-    Parameters<CatalogueApi["updateCapacity"]>[0] | null
-  >(null);
-  const refresh = useCallback(async () => {
-    try {
-      const result = await api.capacity();
-      setCapacity(result);
-      setLimit(result.override === null ? "" : String(result.override));
-      setError("");
-    } catch (e) {
-      setError(catalogueError(e));
-    }
-  }, [api]);
-  useEffect(() => {
-    const controller = new AbortController();
-    void api
-      .capacity(controller.signal)
-      .then((result) => {
-        setCapacity(result);
-        setLimit(result.override === null ? "" : String(result.override));
-        setError("");
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setError(catalogueError(error));
-      });
-    return () => controller.abort();
-  }, [api]);
-  async function save() {
-    if (!capacity) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    const body = retained ?? {
-      requestId: uuid(),
-      expectedGeneration: capacity.generation,
-      limitOverride: limit.trim() ? Number(limit) : null,
-      reason,
-    };
-    setRetained(body);
-    try {
-      const result = await api.updateCapacity(body);
-      setCapacity(result);
-      setRetained(null);
-      setNotice("Saved preparation allowance updated.");
-      setReason("");
-      onChanged?.();
-    } catch (e) {
-      setError(catalogueError(e));
-      if (!catalogueRequestUncertain(e)) setRetained(null);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <section className={section} aria-label="Saved preparation capacity">
-      <h2 className="text-lg font-semibold">Saved preparation allowance</h2>
-      {capacity ? (
-        <p>
-          <strong>{capacity.used.toLocaleString()}</strong> of{" "}
-          <strong>{capacity.limit.toLocaleString()}</strong> saved preparations
-          · {capacity.remaining.toLocaleString()} available
-        </p>
-      ) : (
-        <p role="status">Loading allowance…</p>
-      )}
-      <p className="text-sm text-muted-foreground">
-        This counts all retained preparations, including those later submitted
-        or published. File storage has its own allowance.
-      </p>
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
-        </p>
-      )}
-      {canManage && capacity && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save();
-          }}
-          className="grid items-end gap-3 sm:grid-cols-2"
-        >
-          <label htmlFor={`${fieldId}-control-1`} className={label}>
-            Supplier allowance override
-            <input
-              id={`${fieldId}-control-1`}
-              className={input}
-              type="number"
-              min={1}
-              max={100000}
-              value={limit}
-              disabled={busy || Boolean(retained)}
-              placeholder="Use platform default"
-              onChange={(e) => setLimit(e.target.value)}
-            />
-          </label>
-          <label htmlFor={`${fieldId}-control-2`} className={label}>
-            Reason for allowance change
-            <input
-              id={`${fieldId}-control-2`}
-              className={input}
-              value={reason}
-              maxLength={1000}
-              required
-              disabled={busy || Boolean(retained)}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-          <p className="text-xs text-muted-foreground">
-            Leave the override blank to restore the platform default. Existing
-            preparations are preserved.
-          </p>
-          <button
-            className={button}
-            type="submit"
-            disabled={busy || (!reason.trim() && !retained)}
-          >
-            {busy
-              ? "Saving allowance…"
-              : retained
-                ? "Retry allowance request"
-                : "Save allowance"}
-          </button>
-        </form>
-      )}
-      <button
-        className={button}
-        type="button"
-        disabled={busy || Boolean(retained)}
-        onClick={() => void refresh()}
-      >
-        Refresh allowance
-      </button>
-    </section>
-  );
-}
-
 export function CatalogueImportWorkspace({
   api,
   ownerLabel,
   storageKey,
   canImport = true,
-  canManageCapacity = false,
 }: {
   api: CatalogueApi;
   ownerLabel: string;
   storageKey: string;
   canImport?: boolean;
-  canManageCapacity?: boolean;
 }) {
   const fieldId = useId();
   const [batch, setBatch] = useState<CatalogueBatch | null>(null);
@@ -258,6 +155,12 @@ export function CatalogueImportWorkspace({
   }, []);
   useEffect(() => {
     let cancelled = false;
+    void api
+      .template("csv")
+      .then((result) => {
+        if (!cancelled) setTemplate(result);
+      })
+      .catch(() => {});
     void (async () => {
       try {
         try {
@@ -384,17 +287,15 @@ export function CatalogueImportWorkspace({
   async function preview() {
     setError("");
     if (!files.length) {
-      setError("Choose a catalogue CSV or Excel workbook first.");
+      setError("Choose your catalogue CSV or Excel workbook first.");
       return;
     }
     if (
-      files.length > 3 ||
+      files.length !== 1 ||
       files.reduce((total, file) => total + file.size, 0) >
         CATALOGUE_IMPORT_LIMITS.uploadBytes
     ) {
-      setError(
-        "Choose at most three files, with a combined size of 32 MB or less."
-      );
+      setError("Choose one Excel or CSV file, up to 32 MB.");
       return;
     }
     setBusy(true);
@@ -447,800 +348,808 @@ export function CatalogueImportWorkspace({
     batch &&
     ["COMPLETED", "CANCELLED", "FAILED", "EXPIRED"].includes(batch.status);
   return (
-    <div
-      className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6"
-      data-catalogue-import="true"
-    >
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Import private catalogue</h1>
-        <p className="break-words text-sm text-muted-foreground">
-          {ownerLabel}
-        </p>
-        <p className="max-w-3xl text-sm">
-          Save metadata as private drafts. This does not submit for review,
-          publish a listing or grant buyer access.
-        </p>
-        <a
-          href={CATALOGUE_IMPORT_GUIDE_PATH}
-          className="inline-flex min-h-10 items-center text-sm font-medium underline underline-offset-4"
-        >
-          How to import an Excel or CSV catalogue
-        </a>
-      </header>
-      <CatalogueImportSteps
-        currentStep={
-          batch
-            ? batch.counts.applied > 0 ||
-              batch.status === "RUNNING" ||
-              batch.status === "COMPLETED"
-              ? 3
-              : 2
-            : 1
+    <DatasetWorkspace className="dataset-proposal-workspace">
+      <DatasetPageHeader
+        title="Import private catalogue"
+        breadcrumbs={<Link href="/dashboard/datasets">My drafts</Link>}
+        description="Prepare collection metadata from an Excel or CSV template. Preview every change before saving private drafts."
+        meta={
+          <span className="text-sm text-muted-foreground">{ownerLabel}</span>
+        }
+        action={
+          <DashboardButton asChild variant="outline">
+            <Link href={CATALOGUE_IMPORT_GUIDE_PATH}>File import guide</Link>
+          </DashboardButton>
         }
       />
-      <CatalogueCapacityPanel api={api} canManage={canManageCapacity} />
-      {error && (
-        <p
-          role="alert"
-          className="rounded-lg border border-destructive p-4 text-sm text-destructive"
-        >
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="rounded-lg border p-4 text-sm">
-          {notice}
-        </p>
-      )}
-      {pending && (
-        <section className={section} aria-label="Pending import request">
-          <h2 className="font-semibold">Confirm the previous request</h2>
-          <p className="text-sm">
-            Retry the retained request before making another change. The same
-            request identifier prevents repeating a completed operation.
+      <DashboardWorkspace data-catalogue-import="true">
+        <DashboardRegion>
+          <CatalogueImportSteps
+            currentStep={
+              batch
+                ? batch.counts.applied > 0 ||
+                  batch.status === "RUNNING" ||
+                  batch.status === "COMPLETED"
+                  ? 3
+                  : 2
+                : 1
+            }
+          />
+          <p className="mt-4 text-sm text-muted-foreground">
+            Saving keeps collections private. Submission, review, publication
+            and buyer access require separate actions.
           </p>
-          <button
-            type="button"
-            className={button}
-            disabled={busy}
-            onClick={() => void perform(pending)}
-          >
-            Retry previous request
-          </button>
-        </section>
-      )}
-      {canImport && (
-        <section className={section} aria-label="Catalogue file preparation">
-          <h2 className="text-lg font-semibold">
-            1. Prepare your metadata file
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Use our template and its field dictionary. Catalogue identifier and
-            title are required. Leave undocumented metadata unconfirmed. Format
-            gaps do not block valid private drafts.
-          </p>
-          <div className="space-y-2 border-l-2 border-primary pl-4 text-sm">
-            <h3 className="font-semibold">
-              Use the provided Excel or CSV format
-            </h3>
-            <p className="max-w-3xl text-muted-foreground">
-              Download our template first and copy your metadata into its
-              columns. Keep the column headers and Excel worksheet names
-              unchanged. Use an .xlsx workbook or UTF-8 CSV files. CSV filenames
-              must be catalogue.csv, measurements.csv and sensor_channels.csv;
-              only catalogue.csv is required. Enter values only, without
-              formulas, macros or external workbook links.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {(["csv", "xlsx"] as const).map((format) => (
-              <button
-                type="button"
-                key={format}
-                className={button}
-                disabled={busy}
-                onClick={() =>
-                  void readAction(async () =>
-                    setTemplate(await api.template(format))
-                  )
-                }
-              >
-                Get {format === "csv" ? "CSV templates" : "Excel template"}
-              </button>
-            ))}
-          </div>
-          {template && (
-            <div className="space-y-4">
-              <p role="status" className="text-sm">
-                Template ready. Choose the Download links below, complete your
-                file, then select it under Catalogue file.
-              </p>
-              <ul className="space-y-2" aria-label="Template downloads">
-                {template.files.map((file) => (
-                  <li key={file.name}>
-                    <button
-                      type="button"
-                      className="text-sm underline underline-offset-4"
-                      onClick={() => downloadCatalogueFile(file)}
-                    >
-                      Download {file.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {Boolean(template.fields?.length) && (
-                <details className="rounded-lg border border-border p-4">
-                  <summary className="min-h-8 cursor-pointer text-sm font-semibold">
-                    Field dictionary and required columns
-                  </summary>
-                  <p className="my-3 text-sm text-muted-foreground">
-                    Copy your existing metadata into these template columns.
-                    There is no separate column-mapping screen. Lists use
-                    semicolons. Blank optional cells leave new answers
-                    undeclared and preserve existing answers when matched.
-                  </p>
-                  <div className="max-h-96 overflow-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th scope="col" className="p-2">
-                            Template column
-                          </th>
-                          <th scope="col" className="p-2">
-                            Required
-                          </th>
-                          <th scope="col" className="p-2">
-                            What to enter
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {template.fields?.map((field) => (
-                          <tr
-                            key={field.field}
-                            className="border-b border-border last:border-0"
-                          >
-                            <th
-                              scope="row"
-                              className="max-w-60 break-words p-2 font-mono font-medium [overflow-wrap:anywhere]"
-                            >
-                              {field.field}
-                            </th>
-                            <td className="p-2 align-top">
-                              {field.required ? "Yes" : "Optional"}
-                            </td>
-                            <td className="min-w-48 p-2 align-top text-muted-foreground">
-                              {field.help}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
-              )}
-              {Boolean(template.instructions?.length) && (
-                <details className="rounded-lg border border-border p-4">
-                  <summary className="min-h-8 cursor-pointer text-sm font-semibold">
-                    Template instructions
-                  </summary>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-                    {template.instructions?.map((instruction) => (
-                      <li key={instruction}>{instruction}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              {template.lookups && (
-                <details className="rounded-lg border border-border p-4">
-                  <summary className="min-h-8 cursor-pointer text-sm font-semibold">
-                    Category and source IDs
-                  </summary>
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    Use these IDs in primaryCategoryId and sourceId. Leave
-                    optional values blank when they are not documented.
-                  </p>
-                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                    {(
-                      [
-                        ["Categories", template.lookups.categories],
-                        ["Your sources", template.lookups.sources],
-                      ] as const
-                    ).map(([title, values]) => (
-                      <div key={title} className="min-w-0 text-sm">
-                        <h4 className="font-semibold">{title}</h4>
-                        {values.length ? (
-                          <dl className="mt-2 max-h-64 space-y-3 overflow-auto">
-                            {values.map((value) => (
-                              <div key={value.id}>
-                                <dt>{value.name}</dt>
-                                <dd className="break-all font-mono text-xs text-muted-foreground">
-                                  {value.id}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : (
-                          <p className="mt-2 text-muted-foreground">
-                            None available.
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
-          <label htmlFor={`${fieldId}-control-3`} className={label}>
-            Catalogue file
-            <input
-              id={`${fieldId}-control-3`}
-              ref={fileInput}
-              className={input}
-              type="file"
-              accept=".csv,.xlsx"
-              multiple
-              disabled={busy || Boolean(pending)}
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+        </DashboardRegion>
+        {error && (
+          <DashboardRegion>
+            <DashboardInlineAlert
+              tone="danger"
+              title="Import could not be completed"
+              message={error}
             />
-          </label>
-          <p className="text-xs text-muted-foreground">
-            One Excel workbook, or catalogue.csv with optional measurements.csv
-            and sensor_channels.csv. Up to 1,000 collections and 32 MB combined.
-            Arabic text and text identifiers are supported.
+          </DashboardRegion>
+        )}
+        {notice && (
+          <p role="status" className="rounded-lg border p-4 text-sm">
+            {notice}
           </p>
-          {files.length > 0 && (
-            <p className="break-words text-sm" role="status">
-              Selected: {files.map((file) => file.name).join(", ")}. Choose
-              Validate and preview next; this will not save dataset drafts.
+        )}
+        {pending && (
+          <section className={section} aria-label="Pending import request">
+            <h2 className="font-semibold">Confirm the previous request</h2>
+            <p className="text-sm">
+              Retry the retained request before making another change. The same
+              request identifier prevents repeating a completed operation.
             </p>
-          )}
-          <label htmlFor={`${fieldId}-control-4`} className={label}>
-            How to handle matching identifiers
-            <select
-              id={`${fieldId}-control-4`}
-              className={input}
-              value={mode}
-              disabled={busy || Boolean(pending)}
-              onChange={(e) =>
-                setMode(e.target.value as CatalogueImportUploadBody["mode"])
-              }
+            <DashboardButton
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void perform(pending)}
             >
-              <option value="CREATE_MISSING">
-                Create missing drafts; preserve matched metadata
-              </option>
-              <option value="UPDATE_EXISTING">
-                Create missing drafts and preview updates to matched drafts
-              </option>
-            </select>
-          </label>
-          <p className="text-sm text-muted-foreground">
-            Matching uses your catalogue identifier. Blank cells preserve
-            existing answers. Review exact matches and changes before saving.
-          </p>
-          <button
-            type="button"
-            className={button}
-            disabled={busy || Boolean(pending) || !files.length}
-            onClick={() => void preview()}
-          >
-            {busy ? "Working…" : "Validate and preview"}
-          </button>
-        </section>
-      )}
-      {batch && (
-        <section className={section} aria-label="Import preview">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">2. Review catalogue</h2>
-              <p className="mt-1 break-all text-xs text-muted-foreground">
-                Batch {batch.id} ·{" "}
-                {batch.status.replaceAll("_", " ").toLowerCase()} · revision{" "}
-                {batch.revision}
+              Retry previous request
+            </DashboardButton>
+          </section>
+        )}
+        {canImport && (
+          <section className={section} aria-label="Catalogue file preparation">
+            <h2 className="text-lg font-semibold">
+              1. Prepare your metadata file
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Download one template and enter one collection per row. Only your
+              Collection ID and Collection name are required. Fill the details
+              you know and leave the rest blank.
+            </p>
+            <div className="space-y-2 border-l-2 border-primary pl-4 text-sm">
+              <h3 className="font-semibold">
+                Use the provided Excel or CSV format
+              </h3>
+              <p className="max-w-3xl text-muted-foreground">
+                Use one Excel workbook or one CSV file. All collection details,
+                quantities and dates go on the same row. Excel includes category
+                dropdowns and a short How to use sheet. For CSV, use the
+                category names shown below. Keep the column headings and leave
+                unknown answers blank. Enter text and numbers, without formulas.
               </p>
             </div>
-            <button
-              type="button"
-              className={button}
-              disabled={busy || changed}
-              onClick={() =>
-                void readAction(async () =>
-                  acceptBatch(await api.get(batch.id))
-                )
-              }
-            >
-              Refresh progress
-            </button>
-          </div>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(
-              [
-                ["Collections", batch.counts.total],
-                ["Create", batch.counts.creates],
-                ["Bind existing", batch.counts.bindings],
-                ["Update", batch.counts.updates],
-                ["Unchanged", batch.counts.unchanged],
-                ["Saved", batch.counts.applied],
-                [
-                  "Errors / conflicts",
-                  batch.counts.invalid +
-                    batch.counts.conflicts +
-                    batch.counts.failed,
-                ],
-                ["Warnings", batch.counts.warnings],
-              ] as const
-            ).map(([name, value]) => (
-              <div key={name} className="rounded-md border p-3">
-                <dt className="text-xs text-muted-foreground">{name}</dt>
-                <dd className="mt-1 text-xl font-semibold">{value}</dd>
+            <div className="flex flex-wrap gap-3">
+              {(["csv", "xlsx"] as const).map((format) => (
+                <DashboardButton
+                  type="button"
+                  key={format}
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    void readAction(async () => {
+                      const result = await api.template(format);
+                      setTemplate(result);
+                      if (result.files[0])
+                        downloadCatalogueFile(result.files[0]);
+                    })
+                  }
+                >
+                  Download{" "}
+                  {format === "csv" ? "CSV template" : "Excel template"}
+                </DashboardButton>
+              ))}
+            </div>
+            {template && (
+              <div className="space-y-4">
+                <p role="status" className="text-sm">
+                  Your template is ready. Fill in the Catalogue rows and choose
+                  your completed file below. You only need one file.
+                </p>
+                {Boolean(template.fields?.length) && (
+                  <details className="rounded-lg border border-border p-4">
+                    <summary className="min-h-8 cursor-pointer text-sm font-semibold">
+                      What to enter in each column
+                    </summary>
+                    <p className="my-3 text-sm text-muted-foreground">
+                      Only Collection ID and Collection name are required. Your
+                      Collection ID is your own reference, not a Kuinbee ID. Use
+                      semicolons between multiple data types, formats or tags.
+                      Leave unknown values blank; blank cells preserve saved
+                      answers.
+                    </p>
+                    <div className="max-h-96 overflow-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th scope="col" className="p-2">
+                              Template column
+                            </th>
+                            <th scope="col" className="p-2">
+                              Required
+                            </th>
+                            <th scope="col" className="p-2">
+                              What to enter
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {template.fields?.map((field) => (
+                            <tr
+                              key={field.field}
+                              className="border-b border-border last:border-0"
+                            >
+                              <th
+                                scope="row"
+                                className="max-w-60 break-words p-2 font-mono font-medium [overflow-wrap:anywhere]"
+                              >
+                                {field.field}
+                              </th>
+                              <td className="p-2 align-top">
+                                {field.required ? "Yes" : "Optional"}
+                              </td>
+                              <td className="min-w-48 p-2 align-top text-muted-foreground">
+                                {field.help}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
+                {Boolean(template.instructions?.length) && (
+                  <details className="rounded-lg border border-border p-4">
+                    <summary className="min-h-8 cursor-pointer text-sm font-semibold">
+                      How to fill your catalogue
+                    </summary>
+                    <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                      {template.instructions?.map((instruction) => (
+                        <li key={instruction}>{instruction}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                {template.lookups && (
+                  <details className="rounded-lg border border-border p-4">
+                    <summary className="min-h-8 cursor-pointer text-sm font-semibold">
+                      Category and source choices
+                    </summary>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Enter one of these names in Category or Source. Kuinbee
+                      matches it automatically; you never need an internal ID.
+                      Unmatched or ambiguous names are flagged in the preview
+                      and left unset. Leave Source blank if you have not added
+                      it yet.
+                    </p>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                      {(
+                        [
+                          ["Categories", template.lookups.categories],
+                          ["Your sources", template.lookups.sources],
+                        ] as const
+                      ).map(([title, values]) => (
+                        <div key={title} className="min-w-0 text-sm">
+                          <h4 className="font-semibold">{title}</h4>
+                          {values.length ? (
+                            <dl className="mt-2 max-h-64 space-y-3 overflow-auto">
+                              {values.map((value) => (
+                                <div key={value.id}>
+                                  <dt>{value.name}</dt>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : (
+                            <p className="mt-2 text-muted-foreground">
+                              None available.
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
-            ))}
-          </dl>
-          {canRevise && canImport && (
-            <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto]">
-              <label htmlFor={`${fieldId}-control-5`} className={label}>
-                Find an existing draft to match
-                <input
-                  id={`${fieldId}-control-5`}
-                  className={input}
-                  value={search}
-                  placeholder="Search by identifier or title"
-                  disabled={busy || Boolean(pending)}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                className={button}
+            )}
+            <label htmlFor={`${fieldId}-control-3`} className={label}>
+              Catalogue file
+              <DashboardInput
+                id={`${fieldId}-control-3`}
+                ref={fileInput}
+                type="file"
+                accept=".csv,.xlsx"
                 disabled={busy || Boolean(pending)}
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              />
+            </label>
+            <p className="text-xs text-muted-foreground">
+              One Excel workbook or catalogue.csv, up to 1,000 collections and
+              32 MB. Arabic text is supported. Keep your collection references
+              as text to preserve leading zeroes.
+            </p>
+            {files.length > 0 && (
+              <p className="break-words text-sm" role="status">
+                Selected: {files.map((file) => file.name).join(", ")}. Choose
+                Validate and preview next; this will not save dataset drafts.
+              </p>
+            )}
+            <label htmlFor={`${fieldId}-control-4`} className={label}>
+              How to handle matching identifiers
+              <CatalogueSelect
+                id={`${fieldId}-control-4`}
+                value={mode}
+                disabled={busy || Boolean(pending)}
+                onValueChange={(value) =>
+                  setMode(value as CatalogueImportUploadBody["mode"])
+                }
+              >
+                <option value="CREATE_MISSING">
+                  Create missing drafts; preserve matched metadata
+                </option>
+                <option value="UPDATE_EXISTING">
+                  Create missing drafts and preview updates to matched drafts
+                </option>
+              </CatalogueSelect>
+            </label>
+            <p className="text-sm text-muted-foreground">
+              Matching uses your catalogue identifier. Blank cells preserve
+              existing answers. Review exact matches and changes before saving.
+            </p>
+            <DashboardButton
+              type="button"
+              variant={batch ? "outline" : "default"}
+              disabled={busy || Boolean(pending) || !files.length}
+              onClick={() => void preview()}
+            >
+              {busy ? "Working…" : "Validate and preview"}
+            </DashboardButton>
+          </section>
+        )}
+        {batch && (
+          <section className={section} aria-label="Import preview">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">2. Review catalogue</h2>
+                <p className="mt-1 break-all text-xs text-muted-foreground">
+                  Batch {batch.id} ·{" "}
+                  {batch.status.replaceAll("_", " ").toLowerCase()} · revision{" "}
+                  {batch.revision}
+                </p>
+              </div>
+              <DashboardButton
+                type="button"
+                variant="outline"
+                disabled={busy || changed}
                 onClick={() =>
                   void readAction(async () =>
-                    setCandidates(await api.candidates(search))
+                    acceptBatch(await api.get(batch.id))
                   )
                 }
               >
-                Find drafts
-              </button>
-              {candidates && (
-                <div className="flex flex-wrap items-center gap-3 text-xs sm:col-span-2">
-                  <span>
-                    {candidates.total} eligible drafts · page {candidates.page}
-                  </span>
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={busy || candidates.page <= 1}
-                    onClick={() =>
-                      void readAction(async () =>
-                        setCandidates(
-                          await api.candidates(search, candidates.page - 1)
-                        )
-                      )
-                    }
-                  >
-                    Previous drafts
-                  </button>
-                  <button
-                    type="button"
-                    className={button}
-                    disabled={
-                      busy ||
-                      candidates.page * candidates.limit >= candidates.total
-                    }
-                    onClick={() =>
-                      void readAction(async () =>
-                        setCandidates(
-                          await api.candidates(search, candidates.page + 1)
-                        )
-                      )
-                    }
-                  >
-                    More drafts
-                  </button>
-                </div>
-              )}
+                Refresh progress
+              </DashboardButton>
             </div>
-          )}
-          <label htmlFor={`${fieldId}-control-6`} className={label}>
-            Show rows
-            <select
-              id={`${fieldId}-control-6`}
-              className={input}
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="ALL">All collections</option>
-              <option value="ISSUES">Errors and conflicts</option>
-              <option value="WARNINGS">Metadata warnings</option>
-            </select>
-          </label>
-          <div className="space-y-3">
-            {rows.map((row) => {
-              const choice = choices[row.id];
-              return (
-                <article
-                  key={row.id}
-                  className="min-w-0 space-y-3 rounded-lg border p-4"
-                  aria-label={`Collection ${row.catalogueIdentifier || row.rowNumber}`}
+            <dl className="grid grid-cols-2 border-y border-border sm:grid-cols-4">
+              {(
+                [
+                  ["Collections", batch.counts.total],
+                  ["Create", batch.counts.creates],
+                  ["Bind existing", batch.counts.bindings],
+                  ["Update", batch.counts.updates],
+                  ["Unchanged", batch.counts.unchanged],
+                  ["Saved", batch.counts.applied],
+                  [
+                    "Errors / conflicts",
+                    batch.counts.invalid +
+                      batch.counts.conflicts +
+                      batch.counts.failed,
+                  ],
+                  ["Warnings", batch.counts.warnings],
+                ] as const
+              ).map(([name, value]) => (
+                <div
+                  key={name}
+                  className="min-w-0 border-b border-r border-border px-3 py-4"
                 >
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="break-words font-medium">
-                        {row.catalogueIdentifier || "Missing identifier"} ·{" "}
-                        {row.title || "Missing title"}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Row {row.rowNumber} ·{" "}
-                        {row.operation.replaceAll("_", " ").toLowerCase()} ·{" "}
-                        {row.status.toLowerCase()}
-                        {row.draftId ? ` · Draft ${row.draftId}` : ""}
-                      </p>
-                    </div>
-                    {canRevise && canImport && (
-                      <label
-                        htmlFor={`${fieldId}-control-7-${row.id}`}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          id={`${fieldId}-control-7-${row.id}`}
-                          type="checkbox"
-                          checked={choice?.excluded ?? row.excluded}
-                          disabled={
-                            busy || Boolean(pending) || row.status === "APPLIED"
-                          }
-                          onChange={(e) =>
-                            choose(row.id, { excluded: e.target.checked })
-                          }
-                        />
-                        Exclude from this batch
-                      </label>
-                    )}
-                  </div>
-                  {row.errors.length > 0 && (
-                    <ul
-                      className="space-y-1 text-sm text-destructive"
-                      aria-label="Row errors"
-                    >
-                      {row.errors.map((message, i) => (
-                        <li key={i}>{message}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {row.warnings.length > 0 && (
-                    <ul
-                      className="space-y-1 text-sm text-muted-foreground"
-                      aria-label="Metadata warnings"
-                    >
-                      {row.warnings.map((message, i) => (
-                        <li key={i}>{message}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {row.changes.length > 0 && (
-                    <details>
-                      <summary className="cursor-pointer text-sm underline underline-offset-4">
-                        Review {row.changes.length} field changes
-                      </summary>
-                      <dl className="mt-3 space-y-3">
-                        {row.changes.map((change) => (
-                          <div
-                            key={change.field}
-                            className="min-w-0 rounded-md bg-muted/50 p-3 text-sm"
-                          >
-                            <dt className="break-words font-medium">
-                              {change.field}
-                            </dt>
-                            <dd className="mt-1 grid min-w-0 gap-2 sm:grid-cols-2">
-                              <div className="whitespace-pre-wrap break-words">
-                                <span className="text-xs text-muted-foreground">
-                                  Saved:{" "}
-                                </span>
-                                {display(change.before)}
-                              </div>
-                              <div className="whitespace-pre-wrap break-words">
-                                <span className="text-xs text-muted-foreground">
-                                  Import:{" "}
-                                </span>
-                                {display(change.after)}
-                              </div>
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </details>
-                  )}
-                  {canRevise && canImport && row.status !== "APPLIED" && (
-                    <div className="grid gap-3">
-                      <label
-                        htmlFor={`${fieldId}-control-8-${row.id}`}
-                        className={label}
-                      >
-                        Match this identifier to an existing draft
-                        <select
-                          id={`${fieldId}-control-8-${row.id}`}
-                          className={input}
-                          value={choice?.draftId ?? ""}
-                          disabled={busy || Boolean(pending)}
-                          onChange={(e) => {
-                            if (e.target.value)
-                              choose(row.id, { draftId: e.target.value });
-                          }}
-                        >
-                          <option value="">
-                            {row.draftId
-                              ? "Keep current match"
-                              : "Keep current matching result"}
-                          </option>
-                          {candidates?.items.map((candidate) => (
-                            <option key={candidate.id} value={candidate.id}>
-                              {candidate.catalogueIdentifier
-                                ? `${candidate.catalogueIdentifier} · `
-                                : ""}
-                              {candidate.title} · {candidate.id}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {row.changes.some((change) =>
-                        change.field.includes("channels")
-                      ) && (
-                        <label
-                          htmlFor={`${fieldId}-control-9-${row.id}`}
-                          className="flex items-start gap-2 text-sm"
-                        >
-                          <input
-                            id={`${fieldId}-control-9-${row.id}`}
-                            type="checkbox"
-                            className="mt-1"
-                            disabled={busy || Boolean(pending)}
-                            checked={choice?.replaceChannels ?? false}
-                            onChange={(e) =>
-                              choose(row.id, {
-                                replaceChannels: e.target.checked,
-                              })
-                            }
-                          />
-                          Replace the entire declared sensor channel list with
-                          the imported list
-                        </label>
-                      )}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-          {!rows.length && (
-            <p className="text-sm text-muted-foreground">
-              No collections match this view.
-            </p>
-          )}
-          {visibleRows.length > 25 && (
-            <nav
-              className="flex items-center justify-between gap-3"
-              aria-label="Preview pagination"
-            >
-              <button
-                type="button"
-                className={button}
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous rows
-              </button>
-              <span className="text-sm">
-                Page {page} of {Math.ceil(visibleRows.length / 25)}
-              </span>
-              <button
-                type="button"
-                className={button}
-                disabled={page * 25 >= visibleRows.length}
-                onClick={() => setPage(page + 1)}
-              >
-                Next rows
-              </button>
-            </nav>
-          )}
-          <div className="space-y-2 border-t border-border pt-5">
-            <h3 className="text-lg font-semibold">3. Save private drafts</h3>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              Apply any matching or exclusion choices with Update preview,
-              resolve selected errors, then choose Save private drafts. Saved
-              collections appear in{" "}
-              <Link
-                href="/dashboard/datasets"
-                className="font-medium underline underline-offset-4"
-              >
-                My drafts
-              </Link>
-              . Submission for review and publication are separate actions.
-            </p>
-          </div>
-          {batch.counts.creates > 0 &&
-            batch.unmatchedExistingDrafts > 0 &&
-            canImport && (
-              <div className="space-y-3 rounded-lg border border-border p-4">
-                <p className="text-sm">
-                  {batch.unmatchedExistingDrafts} existing private drafts have
-                  not been matched to catalogue identifiers. Use Find drafts and
-                  match the corresponding rows before creating collections that
-                  may already exist.
-                </p>
-                <label
-                  htmlFor={`${fieldId}-control-10`}
-                  className="flex items-start gap-2 text-sm"
-                >
-                  <input
-                    id={`${fieldId}-control-10`}
-                    type="checkbox"
-                    className="mt-1"
-                    checked={acknowledgeUnmatched}
-                    disabled={busy || Boolean(pending) || changed}
-                    onChange={(e) => setAcknowledgeUnmatched(e.target.checked)}
-                  />
-                  I have reviewed the unmatched drafts. The proposed new
-                  collections are separate entries and should be created.
-                </label>
-              </div>
-            )}
-          <div className="flex flex-wrap gap-3">
-            {changed && (
-              <button
-                type="button"
-                className={button}
-                disabled={busy || Boolean(pending)}
-                onClick={() => setChoices({})}
-              >
-                Discard preview choices
-              </button>
-            )}
-            {canImport && canRevise && (
-              <button
-                type="button"
-                className={button}
-                disabled={busy || Boolean(pending) || !changed}
-                onClick={() =>
-                  void perform({
-                    action: "revise",
-                    id: batch.id,
-                    body: {
-                      requestId: uuid(),
-                      expectedRevision: batch.revision,
-                      rows: Object.values(choices),
-                    },
-                  })
-                }
-              >
-                Update preview
-              </button>
-            )}
-            {canImport && (
-              <button
-                type="button"
-                className={primary}
-                disabled={
-                  busy ||
-                  Boolean(pending) ||
-                  changed ||
-                  !["READY", "PAUSED"].includes(batch.status) ||
-                  (batch.counts.creates > 0 &&
-                    batch.unmatchedExistingDrafts > 0 &&
-                    !acknowledgeUnmatched)
-                }
-                onClick={() =>
-                  void perform({
-                    action: "commit",
-                    id: batch.id,
-                    body: {
-                      requestId: uuid(),
-                      expectedRevision: batch.revision,
-                      fingerprint: batch.fingerprint,
-                      ...(acknowledgeUnmatched
-                        ? { acknowledgeUnmatchedDrafts: true }
-                        : {}),
-                    },
-                  })
-                }
-              >
-                {batch.status === "PAUSED"
-                  ? "Resume saving private drafts"
-                  : "Save private drafts"}
-              </button>
-            )}
-            {canImport && !completed && (
-              <button
-                type="button"
-                className={button}
-                disabled={busy || Boolean(pending)}
-                onClick={() =>
-                  void perform({
-                    action: "cancel",
-                    id: batch.id,
-                    body: { requestId: uuid() },
-                  })
-                }
-              >
-                Cancel remaining rows
-              </button>
-            )}
-            <button
-              type="button"
-              className={button}
-              disabled={busy}
-              onClick={() =>
-                void readAction(async () => {
-                  for (const file of (await api.report(batch.id)).files)
-                    downloadCatalogueFile(file);
-                })
-              }
-            >
-              Download row report
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Warnings may remain in private drafts. Unresolved selected errors
-            must be corrected or excluded. Cancellation preserves rows already
-            saved. Draft import does not replace the later submission checks.
-          </p>
-        </section>
-      )}
-      <section className={section} aria-label="Catalogue import history">
-        <div className="flex flex-wrap justify-between gap-3">
-          <h2 className="text-lg font-semibold">Import history</h2>
-          <button
-            type="button"
-            className={button}
-            disabled={busy}
-            onClick={() => void readAction(refreshHistory)}
-          >
-            Refresh history
-          </button>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Open a batch to continue reviewing results or resume interrupted work.
-        </p>
-        {history.length ? (
-          <ul className="divide-y">
-            {history.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
-              >
-                <div>
-                  <p>
-                    {new Date(item.createdAt).toLocaleString()} ·{" "}
-                    {item.counts.total} collections
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.status.replaceAll("_", " ").toLowerCase()} ·{" "}
-                    {item.counts.applied} saved
-                  </p>
+                  <dt className="text-xs text-muted-foreground">{name}</dt>
+                  <dd className="mt-1 text-xl font-semibold">{value}</dd>
                 </div>
-                <button
+              ))}
+            </dl>
+            {canRevise && canImport && (
+              <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto]">
+                <label htmlFor={`${fieldId}-control-5`} className={label}>
+                  Find an existing draft to match
+                  <DashboardInput
+                    id={`${fieldId}-control-5`}
+                    value={search}
+                    placeholder="Search by identifier or title"
+                    disabled={busy || Boolean(pending)}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
+                <DashboardButton
                   type="button"
-                  className={button}
-                  disabled={busy || Boolean(pending) || changed}
+                  variant="outline"
+                  disabled={busy || Boolean(pending)}
                   onClick={() =>
                     void readAction(async () =>
-                      acceptBatch(await api.get(item.id))
+                      setCandidates(await api.candidates(search))
                     )
                   }
                 >
-                  Open batch
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No import batches found.
-          </p>
+                  Find drafts
+                </DashboardButton>
+                {candidates && (
+                  <div className="flex flex-wrap items-center gap-3 text-xs sm:col-span-2">
+                    <span>
+                      {candidates.total} eligible drafts · page{" "}
+                      {candidates.page}
+                    </span>
+                    <DashboardButton
+                      type="button"
+                      variant="outline"
+                      disabled={busy || candidates.page <= 1}
+                      onClick={() =>
+                        void readAction(async () =>
+                          setCandidates(
+                            await api.candidates(search, candidates.page - 1)
+                          )
+                        )
+                      }
+                    >
+                      Previous drafts
+                    </DashboardButton>
+                    <DashboardButton
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        busy ||
+                        candidates.page * candidates.limit >= candidates.total
+                      }
+                      onClick={() =>
+                        void readAction(async () =>
+                          setCandidates(
+                            await api.candidates(search, candidates.page + 1)
+                          )
+                        )
+                      }
+                    >
+                      More drafts
+                    </DashboardButton>
+                  </div>
+                )}
+              </div>
+            )}
+            <label htmlFor={`${fieldId}-control-6`} className={label}>
+              Show rows
+              <CatalogueSelect
+                id={`${fieldId}-control-6`}
+                value={filter}
+                onValueChange={(value) => {
+                  setFilter(value);
+                  setPage(1);
+                }}
+              >
+                <option value="ALL">All collections</option>
+                <option value="ISSUES">Errors and conflicts</option>
+                <option value="WARNINGS">Metadata warnings</option>
+              </CatalogueSelect>
+            </label>
+            <div className="space-y-3">
+              {rows.map((row) => {
+                const choice = choices[row.id];
+                return (
+                  <article
+                    key={row.id}
+                    className="min-w-0 space-y-3 rounded-lg border p-4"
+                    aria-label={`Collection ${row.catalogueIdentifier || row.rowNumber}`}
+                  >
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="break-words font-medium">
+                          {row.catalogueIdentifier || "Missing identifier"} ·{" "}
+                          {row.title || "Missing title"}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Row {row.rowNumber} ·{" "}
+                          {row.operation.replaceAll("_", " ").toLowerCase()} ·{" "}
+                          {row.status.toLowerCase()}
+                          {row.draftId ? ` · Draft ${row.draftId}` : ""}
+                        </p>
+                      </div>
+                      {canRevise && canImport && (
+                        <label
+                          htmlFor={`${fieldId}-control-7-${row.id}`}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <DashboardCheckbox
+                            id={`${fieldId}-control-7-${row.id}`}
+                            checked={choice?.excluded ?? row.excluded}
+                            disabled={
+                              busy ||
+                              Boolean(pending) ||
+                              row.status === "APPLIED"
+                            }
+                            onCheckedChange={(checked) =>
+                              choose(row.id, { excluded: checked === true })
+                            }
+                          />
+                          Exclude from this batch
+                        </label>
+                      )}
+                    </div>
+                    {row.errors.length > 0 && (
+                      <ul
+                        className="space-y-1 text-sm text-destructive"
+                        aria-label="Row errors"
+                      >
+                        {row.errors.map((message, i) => (
+                          <li key={i}>{message}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {row.warnings.length > 0 && (
+                      <ul
+                        className="space-y-1 text-sm text-muted-foreground"
+                        aria-label="Metadata warnings"
+                      >
+                        {row.warnings.map((message, i) => (
+                          <li key={i}>{message}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {row.changes.length > 0 && (
+                      <details>
+                        <summary className="cursor-pointer text-sm underline underline-offset-4">
+                          Review {row.changes.length} field changes
+                        </summary>
+                        <dl className="mt-3 space-y-3">
+                          {row.changes.map((change) => (
+                            <div
+                              key={change.field}
+                              className="min-w-0 rounded-md bg-muted/50 p-3 text-sm"
+                            >
+                              <dt className="break-words font-medium">
+                                {(
+                                  {
+                                    primaryCategoryId: "Category",
+                                    sourceId: "Source",
+                                    title: "Collection name",
+                                    overview: "Summary",
+                                    modalities: "Data types",
+                                    collectionBoundary: "Collection scope",
+                                    dataQuality: "Quality notes",
+                                    collectionMethod: "Collection method",
+                                    "declaredFormats.state": "File formats",
+                                    "declaredFormats.values": "File formats",
+                                  } as Record<string, string>
+                                )[change.field] ??
+                                  change.field
+                                    .replaceAll(".", " · ")
+                                    .replace(/([a-z])([A-Z])/g, "$1 $2")}
+                              </dt>
+                              <dd className="mt-1 grid min-w-0 gap-2 sm:grid-cols-2">
+                                <div className="whitespace-pre-wrap break-words">
+                                  <span className="text-xs text-muted-foreground">
+                                    Saved:{" "}
+                                  </span>
+                                  {display(change.before)}
+                                </div>
+                                <div className="whitespace-pre-wrap break-words">
+                                  <span className="text-xs text-muted-foreground">
+                                    Import:{" "}
+                                  </span>
+                                  {display(change.after)}
+                                </div>
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </details>
+                    )}
+                    {canRevise && canImport && row.status !== "APPLIED" && (
+                      <div className="grid gap-3">
+                        <label
+                          htmlFor={`${fieldId}-control-8-${row.id}`}
+                          className={label}
+                        >
+                          Match this identifier to an existing draft
+                          <CatalogueSelect
+                            id={`${fieldId}-control-8-${row.id}`}
+                            value={choice?.draftId ?? ""}
+                            disabled={busy || Boolean(pending)}
+                            onValueChange={(value) => {
+                              if (value) choose(row.id, { draftId: value });
+                            }}
+                          >
+                            <option value="">
+                              {row.draftId
+                                ? "Keep current match"
+                                : "Keep current matching result"}
+                            </option>
+                            {candidates?.items.map((candidate) => (
+                              <option key={candidate.id} value={candidate.id}>
+                                {candidate.catalogueIdentifier
+                                  ? `${candidate.catalogueIdentifier} · `
+                                  : ""}
+                                {candidate.title} · {candidate.id}
+                              </option>
+                            ))}
+                          </CatalogueSelect>
+                        </label>
+                        {row.changes.some((change) =>
+                          change.field.includes("channels")
+                        ) && (
+                          <label
+                            htmlFor={`${fieldId}-control-9-${row.id}`}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <DashboardCheckbox
+                              id={`${fieldId}-control-9-${row.id}`}
+                              className="mt-1"
+                              disabled={busy || Boolean(pending)}
+                              checked={choice?.replaceChannels ?? false}
+                              onCheckedChange={(checked) =>
+                                choose(row.id, {
+                                  replaceChannels: checked === true,
+                                })
+                              }
+                            />
+                            Replace the entire declared sensor channel list with
+                            the imported list
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+            {!rows.length && (
+              <p className="text-sm text-muted-foreground">
+                No collections match this view.
+              </p>
+            )}
+            {visibleRows.length > 25 && (
+              <nav
+                className="flex items-center justify-between gap-3"
+                aria-label="Preview pagination"
+              >
+                <DashboardButton
+                  type="button"
+                  variant="outline"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Previous rows
+                </DashboardButton>
+                <span className="text-sm">
+                  Page {page} of {Math.ceil(visibleRows.length / 25)}
+                </span>
+                <DashboardButton
+                  type="button"
+                  variant="outline"
+                  disabled={page * 25 >= visibleRows.length}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next rows
+                </DashboardButton>
+              </nav>
+            )}
+            <div className="space-y-2 border-t border-border pt-5">
+              <h3 className="text-lg font-semibold">3. Save private drafts</h3>
+              <p className="max-w-3xl text-sm text-muted-foreground">
+                Apply any matching or exclusion choices with Update preview,
+                resolve selected errors, then choose Save private drafts. Saved
+                collections appear in{" "}
+                <Link
+                  href="/dashboard/datasets"
+                  className="font-medium underline underline-offset-4"
+                >
+                  My drafts
+                </Link>
+                . Submission for review and publication are separate actions.
+              </p>
+            </div>
+            {batch.counts.creates > 0 &&
+              batch.unmatchedExistingDrafts > 0 &&
+              canImport && (
+                <div className="space-y-3 rounded-lg border border-border p-4">
+                  <p className="text-sm">
+                    {batch.unmatchedExistingDrafts} existing private drafts have
+                    not been matched to catalogue identifiers. Use Find drafts
+                    and match the corresponding rows before creating collections
+                    that may already exist.
+                  </p>
+                  <label
+                    htmlFor={`${fieldId}-control-10`}
+                    className="flex items-start gap-2 text-sm"
+                  >
+                    <DashboardCheckbox
+                      id={`${fieldId}-control-10`}
+                      className="mt-1"
+                      checked={acknowledgeUnmatched}
+                      disabled={busy || Boolean(pending) || changed}
+                      onCheckedChange={(checked) =>
+                        setAcknowledgeUnmatched(checked === true)
+                      }
+                    />
+                    I have reviewed the unmatched drafts. The proposed new
+                    collections are separate entries and should be created.
+                  </label>
+                </div>
+              )}
+            <div className="flex flex-wrap gap-3">
+              {changed && (
+                <DashboardButton
+                  type="button"
+                  variant="outline"
+                  disabled={busy || Boolean(pending)}
+                  onClick={() => setChoices({})}
+                >
+                  Discard preview choices
+                </DashboardButton>
+              )}
+              {canImport && canRevise && (
+                <DashboardButton
+                  type="button"
+                  variant="outline"
+                  disabled={busy || Boolean(pending) || !changed}
+                  onClick={() =>
+                    void perform({
+                      action: "revise",
+                      id: batch.id,
+                      body: {
+                        requestId: uuid(),
+                        expectedRevision: batch.revision,
+                        rows: Object.values(choices),
+                      },
+                    })
+                  }
+                >
+                  Update preview
+                </DashboardButton>
+              )}
+              {canImport && (
+                <DashboardButton
+                  type="button"
+                  variant="default"
+                  disabled={
+                    busy ||
+                    Boolean(pending) ||
+                    changed ||
+                    !["READY", "PAUSED"].includes(batch.status) ||
+                    (batch.counts.creates > 0 &&
+                      batch.unmatchedExistingDrafts > 0 &&
+                      !acknowledgeUnmatched)
+                  }
+                  onClick={() =>
+                    void perform({
+                      action: "commit",
+                      id: batch.id,
+                      body: {
+                        requestId: uuid(),
+                        expectedRevision: batch.revision,
+                        fingerprint: batch.fingerprint,
+                        ...(acknowledgeUnmatched
+                          ? { acknowledgeUnmatchedDrafts: true }
+                          : {}),
+                      },
+                    })
+                  }
+                >
+                  {batch.status === "PAUSED"
+                    ? "Resume saving private drafts"
+                    : "Save private drafts"}
+                </DashboardButton>
+              )}
+              {canImport && !completed && (
+                <DashboardButton
+                  type="button"
+                  variant="outline"
+                  disabled={busy || Boolean(pending)}
+                  onClick={() =>
+                    void perform({
+                      action: "cancel",
+                      id: batch.id,
+                      body: { requestId: uuid() },
+                    })
+                  }
+                >
+                  Cancel remaining rows
+                </DashboardButton>
+              )}
+              <DashboardButton
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  void readAction(async () => {
+                    for (const file of (await api.report(batch.id)).files)
+                      downloadCatalogueFile(file);
+                  })
+                }
+              >
+                Download row report
+              </DashboardButton>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Warnings may remain in private drafts. Unresolved selected errors
+              must be corrected or excluded. Cancellation preserves rows already
+              saved. Draft import does not replace the later submission checks.
+            </p>
+          </section>
         )}
-      </section>
-    </div>
+        <section className={section} aria-label="Catalogue import history">
+          <div className="flex flex-wrap justify-between gap-3">
+            <h2 className="text-lg font-semibold">Import history</h2>
+            <DashboardButton
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void readAction(refreshHistory)}
+            >
+              Refresh history
+            </DashboardButton>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Open a batch to continue reviewing results or resume interrupted
+            work.
+          </p>
+          {history.length ? (
+            <ul className="divide-y">
+              {history.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+                >
+                  <div>
+                    <p>
+                      {new Date(item.createdAt).toLocaleString()} ·{" "}
+                      {item.counts.total} collections
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.status.replaceAll("_", " ").toLowerCase()} ·{" "}
+                      {item.counts.applied} saved
+                    </p>
+                  </div>
+                  <DashboardButton
+                    type="button"
+                    variant="outline"
+                    disabled={busy || Boolean(pending) || changed}
+                    onClick={() =>
+                      void readAction(async () =>
+                        acceptBatch(await api.get(item.id))
+                      )
+                    }
+                  >
+                    Open batch
+                  </DashboardButton>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No import batches found.
+            </p>
+          )}
+        </section>
+      </DashboardWorkspace>
+    </DatasetWorkspace>
   );
 }

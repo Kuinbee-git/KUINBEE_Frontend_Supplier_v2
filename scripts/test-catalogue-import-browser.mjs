@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
@@ -12,13 +13,15 @@ import {
   CatalogueEntryPatchBodySchema,
   DatasetPreparationCapacityUpdateBodySchema,
 } from "@kuinbee/dataset-preparation-contracts";
-const administrative = process.cwd().endsWith("/admin");
+const administrative =
+  JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"))
+    .name === "admin";
 const client = administrative
   ? `import{adminCatalogueApi}from'./src/services/catalogue-imports.service';const api=adminCatalogueApi('supplier-test');`
   : `import{supplierCatalogueApi as api}from'./src/lib/api/catalogue-imports';`;
 const fixtureBundle = await build({
   stdin: {
-    contents: `import React from'react';import{createRoot}from'react-dom/client';import{CatalogueImportWorkspace}from'./src/components/catalogue/CatalogueImportWorkspace';import{CatalogueEntryPanel}from'./src/components/catalogue/CatalogueEntryPanel';${client}const root=createRoot(document.getElementById('root'));root.render(location.pathname.endsWith('/entry')?<CatalogueEntryPanel api={api} draftId={'c'+'2'.repeat(24)} generation={7}/>:<CatalogueImportWorkspace api={api} ownerLabel="Synthetic supplier catalogue" storageKey="fixture-catalogue" canManageCapacity={${administrative}}/>);`,
+    contents: `import React from'react';import{createRoot}from'react-dom/client';import{CatalogueImportWorkspace}from'./src/components/catalogue/CatalogueImportWorkspace';import{CatalogueEntryPanel}from'./src/components/catalogue/CatalogueEntryPanel';${client}const root=createRoot(document.getElementById('root'));root.render(location.pathname.endsWith('/entry')?<CatalogueEntryPanel api={api} draftId={'c'+'2'.repeat(24)} generation={7}/>:<CatalogueImportWorkspace api={api} ownerLabel="Synthetic supplier catalogue" storageKey="fixture-catalogue"/>);`,
     loader: "jsx",
     resolveDir: process.cwd(),
   },
@@ -119,7 +122,9 @@ function batch(overrides = {}) {
         draftId: null,
         expectedGeneration: null,
         expectedCatalogueRevision: null,
-        changes: [{ field: "title", before: null, after: "مجموعة عربية" }],
+        changes: [
+          { field: "Collection name", before: null, after: "مجموعة عربية" },
+        ],
         warnings: ["File-format metadata is unconfirmed."],
         errors: [],
       },
@@ -164,6 +169,14 @@ async function scenario(name, fn) {
       if (!path.startsWith(apiBase))
         throw new Error("Wrong owner API path " + path);
       if (path.endsWith("/capacity")) {
+        if (method === "GET" && fixture.capacityFailure)
+          return reply(
+            {
+              code: "SERVICE_UNAVAILABLE",
+              message: "Allowance could not be loaded. Try refreshing.",
+            },
+            503
+          );
         if (method === "PATCH") {
           const body = DatasetPreparationCapacityUpdateBodySchema.parse(
             route.request().postDataJSON()
@@ -220,17 +233,21 @@ async function scenario(name, fn) {
           version: "private-catalogue-v1",
           instructions: [
             "Lists use semicolon separation.",
-            "Allowed values for modalities: TABULAR;AUDIO;IMAGE;VIDEO;TEXT;SENSOR;CAD",
+            "Data types: Audio; Text; Images; Video; Tables; Sensors; CAD",
           ],
           fields: [
             {
-              field: "catalogueIdentifier",
+              field: "Collection ID",
               required: true,
               help: "Your stable collection identifier.",
             },
-            { field: "title", required: true, help: "The collection name." },
             {
-              field: "modalities",
+              field: "Collection name",
+              required: true,
+              help: "The collection name.",
+            },
+            {
+              field: "Data types",
               required: false,
               help: "Optional semicolon-separated data types.",
             },
@@ -386,6 +403,46 @@ async function upload(page) {
 }
 try {
   await scenario(
+    "supplier imports do not display or request administrative quota information",
+    async (page, fixture) => {
+      fixture.capacityFailure = true;
+      const quotaRequests = [];
+      page.on("request", (request) => {
+        if (new URL(request.url()).pathname.endsWith("/capacity"))
+          quotaRequests.push(request.url());
+      });
+      await page.goto(origin + "/import");
+      await page
+        .getByRole("button", { name: "Download CSV template", exact: true })
+        .waitFor();
+      assert.equal(
+        await page
+          .getByRole("heading", {
+            name: "Saved preparation allowance",
+            exact: true,
+          })
+          .count(),
+        0
+      );
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Refresh allowance", exact: true })
+          .count(),
+        0
+      );
+      await upload(page);
+      await page
+        .getByRole("heading", { name: "2. Review catalogue", exact: true })
+        .waitFor();
+      assert.deepEqual(quotaRequests, []);
+      assert.equal(
+        fixture.commands.length,
+        1,
+        "Only the requested preview is created"
+      );
+    }
+  );
+  await scenario(
     "template walkthrough explains the format and field mapping without saving drafts",
     async (page, fixture) => {
       await page.goto(origin + "/import");
@@ -399,26 +456,27 @@ try {
       await page
         .getByRole("heading", { name: "Use the provided Excel or CSV format" })
         .waitFor();
-      await page
-        .getByRole("button", { name: "Get CSV templates", exact: true })
-        .click();
-      await page.getByText("Template ready.", { exact: false }).waitFor();
       const download = page.waitForEvent("download");
       await page
-        .getByRole("button", { name: "Download catalogue.csv", exact: true })
+        .getByRole("button", { name: "Download CSV template", exact: true })
         .click();
+      await page
+        .getByText("Your template is ready.", { exact: false })
+        .waitFor();
       assert.equal((await download).suggestedFilename(), "catalogue.csv");
       await page
-        .getByText("Field dictionary and required columns", { exact: true })
+        .getByText("What to enter in each column", { exact: true })
         .click();
       await page
-        .getByRole("rowheader", { name: "catalogueIdentifier", exact: true })
+        .getByRole("rowheader", { name: "Collection ID", exact: true })
         .waitFor();
-      await page.getByText("Template instructions", { exact: true }).click();
       await page
-        .getByText("Allowed values for modalities:", { exact: false })
-        .waitFor();
-      await page.getByText("Category and source IDs", { exact: true }).click();
+        .getByText("How to fill your catalogue", { exact: true })
+        .click();
+      await page.getByText("Data types:", { exact: false }).waitFor();
+      await page
+        .getByText("Category and source choices", { exact: true })
+        .click();
       await page.getByText("Example subject", { exact: true }).waitFor();
       assert.equal(
         fixture.commands.length,
@@ -504,7 +562,8 @@ try {
         .click();
       await page
         .getByLabel("Match this identifier to an existing draft")
-        .selectOption(draftId);
+        .click();
+      await page.getByRole("option", { name: /^Existing collection/ }).click();
       assert.equal(
         await page
           .getByRole("button", { name: "Save private drafts", exact: true })

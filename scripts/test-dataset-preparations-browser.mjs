@@ -1160,25 +1160,61 @@ try {
     (request) => !["GET", "HEAD", "OPTIONS"].includes(request.method)
   ).length;
   await page.goto(origin + "/dashboard/datasets/guide");
-  const importGuide = page.getByRole("region", {
-    name: "Import a catalogue as private drafts",
-  });
-  await importGuide
-    .getByRole("heading", {
-      name: "Copy your metadata into the template columns",
-      exact: true,
-    })
-    .waitFor();
+  await page.locator('[data-guide-screen="catalogue-import"]').waitFor();
   assert.equal(
-    await importGuide
-      .getByRole("list", { name: "Catalogue import steps" })
-      .locator("li")
-      .count(),
+    await page.locator("[data-guide-screen]").count(),
+    1,
+    "Only one example screen is shown at a time"
+  );
+  assert.equal(
+    await page.locator('nav[aria-label="Guide screens"] button').count(),
     3
   );
-  await importGuide
+  await page
+    .getByRole("button", {
+      name: "Action 2: Fill the template columns",
+      exact: true,
+    })
+    .click();
+  await page
     .getByText("Keep the template column headers", { exact: false })
+    .first()
     .waitFor();
+  await page.locator('[data-guide-cursor="2"]').waitFor();
+  await page
+    .getByRole("button", { name: "Replay this screen", exact: true })
+    .click();
+  await page
+    .locator('[data-guide-story-action="2"]')
+    .waitFor({ timeout: 6000 });
+  await page
+    .getByRole("button", { name: "Pause cursor walkthrough", exact: true })
+    .click();
+  await page.waitForTimeout(3900);
+  assert.equal(
+    await page
+      .locator("[data-guide-story-action]")
+      .getAttribute("data-guide-story-action"),
+    "2",
+    "Pausing keeps the cursor story on the chosen action"
+  );
+  for (const id of ["import-preview", "import-save"]) {
+    await page
+      .getByRole("button", { name: "Next screen", exact: true })
+      .click();
+    await page.locator(`[data-guide-screen="${id}"]`).waitFor();
+    await page.waitForFunction(
+      () => document.activeElement?.id === "guide-screen-title"
+    );
+    assert.equal(await page.locator("[data-guide-screen]").count(), 1);
+  }
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Open Import catalogue", exact: true })
+      .first()
+      .getAttribute("href"),
+    "/dashboard/datasets/import"
+  );
   await page
     .getByRole("navigation", { name: "Supplier dashboard" })
     .getByRole("link", { name: "Import catalogue", exact: true })
@@ -1209,59 +1245,67 @@ try {
   await page
     .getByRole("heading", { name: "Dataset proposal guide", exact: true })
     .waitFor();
-  for (const title of [
-    "1. Basics",
-    "2. Files & contents",
-    "3. Dataset details",
-    "4. Review draft",
-    "What happens after submission?",
-  ])
-    await page.getByRole("heading", { name: title, exact: true }).waitFor();
-  assert.equal(
-    await page.locator("[data-proposal-guide-visual]").count(),
-    4,
-    "The guide illustrates each actual proposal screen"
-  );
-  assert.equal(
-    await page
-      .locator('nav[aria-label="Proposal guide contents"] a[href^="#step-"]')
-      .count(),
-    4,
-    "Suppliers can jump directly to each illustrated screen"
-  );
-  assert.equal(
-    await page.getByRole("button", { name: "Save draft", exact: true }).count(),
-    0,
-    "Illustrated controls are not mistaken for a live draft form"
-  );
-  for (const [step, landmark] of [
-    [1, "What are you uploading?"],
-    [2, "Selected material"],
-    [3, "Three different scopes"],
-    [4, "Ready for admin review?"],
+  await page.getByRole("button", { name: /Create one proposal/ }).click();
+  for (const [step, landmark, fields] of [
+    [
+      1,
+      "What are you uploading?",
+      [
+        "Dataset title",
+        "What are you uploading?",
+        "Data source",
+        "Dataset license",
+      ],
+    ],
+    [
+      2,
+      "Selected material",
+      ["Set up files", "File purpose and relationships"],
+    ],
+    [
+      3,
+      "Three different scopes",
+      ["What collection does this Dataset cover?", "Collection size"],
+    ],
+    [
+      4,
+      "Ready for admin review?",
+      ["Refresh review checks", "Submit for admin review"],
+    ],
   ]) {
+    if (step > 1)
+      await page
+        .getByRole("button", { name: "Next screen", exact: true })
+        .click();
+    await page.locator(`[data-guide-screen="step-${step}"]`).waitFor();
+    assert.equal(await page.locator("[data-proposal-guide-visual]").count(), 1);
     const visual = page.locator(`[data-proposal-guide-visual="${step}"]`);
     await visual.getByText(landmark, { exact: true }).waitFor();
     assert.equal(await visual.locator("figcaption").count(), 1);
+    assert.equal(
+      await page
+        .getByRole("list", { name: "Actions on this screen" })
+        .locator("li")
+        .count(),
+      4
+    );
+    await page
+      .getByText("Field-by-field help for this screen", { exact: true })
+      .click();
+    for (const field of fields)
+      await page.getByRole("heading", { name: field, exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Save draft", exact: true })
+        .count(),
+      0,
+      "Example controls never become a live form"
+    );
   }
-  assert.equal(
-    await page.getByRole("heading", { name: "Follow the callouts" }).count(),
-    4,
-    "Each illustration has visible numbered explanations"
-  );
-  for (const field of [
-    "Dataset title",
-    "What are you uploading?",
-    "Data source",
-    "Dataset license",
-    "Set up files",
-    "File purpose and relationships",
-    "What collection does this Dataset cover?",
-    "Collection size",
-    "Refresh review checks",
-    "Submit for admin review",
-  ])
-    await page.getByRole("heading", { name: field, exact: true }).waitFor();
+  await page.goBack();
+  await page.locator('[data-guide-screen="step-3"]').waitFor();
+  await page.goForward();
+  await page.locator('[data-guide-screen="step-4"]').waitFor();
   const dashboardNavigation = page.getByRole("navigation", {
     name: "Supplier dashboard",
   });
@@ -1281,7 +1325,7 @@ try {
   );
   assert.equal(
     await page
-      .getByRole("link", { name: "Create proposal", exact: true })
+      .getByRole("link", { name: "Create my proposal", exact: true })
       .getAttribute("href"),
     "/dashboard/datasets/create"
   );

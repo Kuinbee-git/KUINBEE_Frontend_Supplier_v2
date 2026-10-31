@@ -7,7 +7,11 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { build } from "esbuild";
 import { chromium, firefox, webkit } from "playwright";
-import { installDatasetReadDiagnostics, recordDatasetNavigation, classifyDatasetBrowserErrors } from "./dataset-browser-lifecycle.mjs";
+import {
+  installDatasetReadDiagnostics,
+  recordDatasetNavigation,
+  classifyDatasetBrowserErrors,
+} from "./dataset-browser-lifecycle.mjs";
 import {
   DatasetPreparationResponseSchema,
   DatasetPreparationPatchBodySchema,
@@ -40,7 +44,10 @@ import {
 // scanner, cloud provider, 2 GB transfer, or hosted deployment.
 const require = createRequire(import.meta.url);
 const reactMode = process.env.DATASET_BROWSER_REACT_MODE ?? "development";
-assert(["development", "production"].includes(reactMode), "Unknown React build mode");
+assert(
+  ["development", "production"].includes(reactMode),
+  "Unknown React build mode"
+);
 const postcss = require(
   require.resolve("postcss", {
     paths: [require.resolve("@tailwindcss/postcss")],
@@ -115,28 +122,50 @@ const requests = [],
   fixtureErrors = [],
   browserErrors = [],
   external = [];
-const unhandledEvents = [], failedRequests = [], readFailures = [], browserErrorDetails = [], transitions = [];
-const recordBrowserError = error => {
+const unhandledEvents = [],
+  failedRequests = [],
+  readFailures = [],
+  browserErrorDetails = [],
+  transitions = [];
+const recordBrowserError = (error) => {
   browserErrors.push(error.message);
   browserErrorDetails.push({ at: Date.now(), stack: error.stack });
-  console.error("BROWSER_EXCEPTION", JSON.stringify({ name: error.name, message: error.message, stack: error.stack }));
+  console.error(
+    "BROWSER_EXCEPTION",
+    JSON.stringify({
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    })
+  );
 };
 async function observeBrowser(page) {
   page.on("pageerror", recordBrowserError);
-  page.on("request", request => {
+  page.on("request", (request) => {
     if (new URL(request.url()).origin !== origin) external.push(request.url());
   });
-  page.on("requestfailed", request => {
-    failedRequests.push({ url: request.url(), error: request.failure()?.errorText });
+  page.on("requestfailed", (request) => {
+    failedRequests.push({
+      url: request.url(),
+      error: request.failure()?.errorText,
+    });
   });
-  page.on("console", message => {
-    if (message.text().startsWith("UNHANDLED_FIXTURE_EVENT ")) unhandledEvents.push(message.text());
-    if (message.text().startsWith("FAILED_FIXTURE_READ ")) readFailures.push(JSON.parse(message.text().slice("FAILED_FIXTURE_READ ".length)));
+  page.on("console", (message) => {
+    if (message.text().startsWith("UNHANDLED_FIXTURE_EVENT "))
+      unhandledEvents.push(message.text());
+    if (message.text().startsWith("FAILED_FIXTURE_READ "))
+      readFailures.push(
+        JSON.parse(message.text().slice("FAILED_FIXTURE_READ ".length))
+      );
   });
   await page.addInitScript(installDatasetReadDiagnostics);
   await page.addInitScript(() => {
-    window.addEventListener("error", event => console.log("UNHANDLED_FIXTURE_EVENT " + String(event.message)));
-    window.addEventListener("unhandledrejection", event => console.log("UNHANDLED_FIXTURE_EVENT " + String(event.reason)));
+    window.addEventListener("error", (event) =>
+      console.log("UNHANDLED_FIXTURE_EVENT " + String(event.message))
+    );
+    window.addEventListener("unhandledrejection", (event) =>
+      console.log("UNHANDLED_FIXTURE_EVENT " + String(event.reason))
+    );
   });
 }
 const flags = {
@@ -293,15 +322,29 @@ function context(draft) {
     serverUploadChoice: draft.metadata.uploadChoice,
     editable: true,
     synchronizationRequired: draft.generation !== draft.sourceGeneration,
-    usage: draft.storageSetupRequired ? {
-      state: "RECONCILING",
-      dataset: { limitBytes: "5000000000", retainedBytes: null, reservedBytes: null, chargedBytes: null, remainingBytes: null },
-      supplier: { limitBytes: "100000000000", retainedBytes: null, reservedBytes: null, chargedBytes: null, remainingBytes: null },
-    } : {
-      state: "ACCOUNTED",
-      dataset: account(draft, "5000000000"),
-      supplier: account(draft, "100000000000"),
-    },
+    usage: draft.storageSetupRequired
+      ? {
+          state: "RECONCILING",
+          dataset: {
+            limitBytes: "5000000000",
+            retainedBytes: null,
+            reservedBytes: null,
+            chargedBytes: null,
+            remainingBytes: null,
+          },
+          supplier: {
+            limitBytes: "100000000000",
+            retainedBytes: null,
+            reservedBytes: null,
+            chargedBytes: null,
+            remainingBytes: null,
+          },
+        }
+      : {
+          state: "ACCOUNTED",
+          dataset: account(draft, "5000000000"),
+          supplier: account(draft, "100000000000"),
+        },
     admission: { enabled: false, reason: "INTAKE_NOT_ENABLED" },
   });
 }
@@ -397,8 +440,11 @@ const server = createServer(async (req, res) => {
     }
     if (!url.pathname.startsWith("/api/")) {
       // Enforce the fixture's network boundary without intercepting requests.
-      res.writeHead(200, { "Content-Type": "text/html",
-        "Content-Security-Policy": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'" });
+      res.writeHead(200, {
+        "Content-Type": "text/html",
+        "Content-Security-Policy":
+          "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; form-action 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'",
+      });
       res.end(
         '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>'
       );
@@ -453,7 +499,13 @@ const server = createServer(async (req, res) => {
     // Owned read probes may be unavailable; workflow writes still fail below.
     if (
       req.method === "GET" &&
-      ["workflow", "readiness", "edit-context", "edit-base"].includes(tail)
+      [
+        "workflow",
+        "readiness",
+        "edit-context",
+        "edit-base",
+        "catalogue-entry",
+      ].includes(tail)
     ) {
       json(res, 404, {
         success: false,
@@ -1286,7 +1338,9 @@ async function open(page, draft) {
   // Actual user reload/interruption scenarios deliberately do not use this.
   await page.evaluate(() => window.unmount?.());
   await page.waitForLoadState("networkidle");
-  await recordDatasetNavigation(page, transitions, () => page.goto(origin + "/dashboard/datasets/drafts/" + draft.id));
+  await recordDatasetNavigation(page, transitions, () =>
+    page.goto(origin + "/dashboard/datasets/drafts/" + draft.id)
+  );
   await page.getByLabel("Dataset title", { exact: true }).waitFor();
   await filesStep(page);
   await page.waitForLoadState("networkidle");
@@ -1298,10 +1352,16 @@ async function reloadWithOptionalPrompt(page) {
   // its unrelated reads before testing persistence of that exact command.
   await page.waitForLoadState("networkidle");
   const pending = [];
-  const confirm = dialog => { pending.push(dialog.accept()); };
+  const confirm = (dialog) => {
+    pending.push(dialog.accept());
+  };
   page.on("dialog", confirm);
-  try { await recordDatasetNavigation(page, transitions, () => page.reload()); await Promise.all(pending); }
-  finally { page.off("dialog", confirm); }
+  try {
+    await recordDatasetNavigation(page, transitions, () => page.reload());
+    await Promise.all(pending);
+  } finally {
+    page.off("dialog", confirm);
+  }
 }
 async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
   await page
@@ -1327,11 +1387,22 @@ async function choose(page, fixtureFile, format = "UTF8_CSV_SYNTAX_V1") {
 }
 const uploadRow = (page, item) =>
   page.locator(`[data-upload-attempt="${item.id}"]`);
-const folderTemporary = await mkdtemp(resolve(tmpdir(), "supplier-folder-browser-"));
+const folderTemporary = await mkdtemp(
+  resolve(tmpdir(), "supplier-folder-browser-")
+);
 try {
   const engine = process.env.DATASET_BROWSER_ENGINE ?? "chromium";
-  assert(["chromium", "firefox", "webkit"].includes(engine), "Unknown browser engine");
-  browser = await ({ chromium, firefox, webkit })[engine].launch({ headless: true });
+  assert(
+    ["chromium", "firefox", "webkit"].includes(engine),
+    "Unknown browser engine"
+  );
+  browser = await { chromium, firefox, webkit }[engine].launch({
+    headless: true,
+    executablePath:
+      engine === "chromium"
+        ? process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined
+        : undefined,
+  });
   const page = await browser.newPage({
     viewport: { width: 1366, height: 1000 },
   });
@@ -1347,40 +1418,91 @@ try {
     await open(page, draft);
     await namedButton(page, "Set up files").waitFor();
     assert.equal(draft.storageSetupRequired, true);
-    assert.equal(requests.slice(before).filter(item => item.method === "POST" && item.path.endsWith("/files-context")).length, 0);
+    assert.equal(
+      requests
+        .slice(before)
+        .filter(
+          (item) =>
+            item.method === "POST" && item.path.endsWith("/files-context")
+        ).length,
+      0
+    );
     await namedButton(page, "Set up files").click();
     await page.getByLabel("Choose folder", { exact: true }).waitFor();
     assert.equal(draft.storageSetupRequired, false);
-    assert.equal(requests.slice(before).filter(item => item.method === "POST" && item.path.endsWith("/files-context")).length, 1);
+    assert.equal(
+      requests
+        .slice(before)
+        .filter(
+          (item) =>
+            item.method === "POST" && item.path.endsWith("/files-context")
+        ).length,
+      1
+    );
   }
-  console.log("PASS first-save synchronized content still offers explicit storage setup across all three choices; reads do not initialize quota");
+  console.log(
+    "PASS first-save synchronized content still offers explicit storage setup across all three choices; reads do not initialize quota"
+  );
 
   // Real browser directory selection preserves nested duplicate basenames.
   flags.autoAccept = true;
   const folderRoot = resolve(folderTemporary, "folder-fixture");
   for (const part of ["a", "b", "日本語", "notes"]) {
     await mkdir(resolve(folderRoot, part), { recursive: true });
-    await writeFile(resolve(folderRoot, part, "data.txt"), `Folder bytes for ${part}`);
+    await writeFile(
+      resolve(folderRoot, part, "data.txt"),
+      `Folder bytes for ${part}`
+    );
   }
   for (const choice of choices) {
     const draft = seed(choice);
     await open(page, draft);
-    await page.getByLabel("Choose folder", { exact: true }).setInputFiles(folderRoot);
-    if (choice === "FULL_AND_SAMPLE") await page.getByLabel("Add these files to", { exact: true }).selectOption("SAMPLE");
+    await page
+      .getByLabel("Choose folder", { exact: true })
+      .setInputFiles(folderRoot);
+    if (choice === "FULL_AND_SAMPLE")
+      await page
+        .getByLabel("Add these files to", { exact: true })
+        .selectOption("SAMPLE");
     await namedButton(page, "Upload 4 files").click();
-    await page.getByText("4 of 4 files added to the draft.", { exact: true }).waitFor();
+    await page
+      .getByText("4 of 4 files added to the draft.", { exact: true })
+      .waitFor();
     assert.equal(draft.members.length, 4);
-    assert(draft.members.every(member => member.relativePath.startsWith("folder-fixture/") && member.relativePath.endsWith("/data.txt")));
-    assert.equal(new Set(draft.members.map(member => member.relativePath)).size, 4);
-    assert(draft.members.every(member => member.component === (choice === "FULL_ONLY" ? "FULL" : "SAMPLE")));
+    assert(
+      draft.members.every(
+        (member) =>
+          member.relativePath.startsWith("folder-fixture/") &&
+          member.relativePath.endsWith("/data.txt")
+      )
+    );
+    assert.equal(
+      new Set(draft.members.map((member) => member.relativePath)).size,
+      4
+    );
+    assert(
+      draft.members.every(
+        (member) =>
+          member.component === (choice === "FULL_ONLY" ? "FULL" : "SAMPLE")
+      )
+    );
     await page.waitForLoadState("networkidle");
-    await recordDatasetNavigation(page, transitions, () => page.reload()); await filesStep(page);
-    await page.getByText("4 of 4 files added to the draft.", { exact: true }).waitFor();
+    await recordDatasetNavigation(page, transitions, () => page.reload());
+    await filesStep(page);
+    await page
+      .getByText("4 of 4 files added to the draft.", { exact: true })
+      .waitFor();
     await namedButton(page, "Clear queue").click();
-    assert.equal(draft.members.length, 4, "Clearing a local queue never deletes selected files");
+    assert.equal(
+      draft.members.length,
+      4,
+      "Clearing a local queue never deletes selected files"
+    );
   }
   flags.autoAccept = false;
-  console.log("PASS actual directory picker uploads four nested same-basename files for all three choices; reload retains queue and paths; clearing preserves draft files");
+  console.log(
+    "PASS actual directory picker uploads four nested same-basename files for all three choices; reload retains queue and paths; clearing preserves draft files"
+  );
 
   // Every creation choice reaches receipt/check/selection through the real UI.
   for (const capability of capabilities)
@@ -1883,7 +2005,12 @@ try {
   }
   for (const choice of choices) {
     const draft = [...drafts.values()].find(
-      (d) => d.metadata.uploadChoice === choice && d.members.some(member => member.component === "FULL") === (choice !== "SAMPLE_ONLY") && d.members.some(member => member.component === "SAMPLE") === (choice !== "FULL_ONLY")
+      (d) =>
+        d.metadata.uploadChoice === choice &&
+        d.members.some((member) => member.component === "FULL") ===
+          (choice !== "SAMPLE_ONLY") &&
+        d.members.some((member) => member.component === "SAMPLE") ===
+          (choice !== "FULL_ONLY")
     );
     organized.push(draft);
     await open(page, draft);
@@ -2274,8 +2401,10 @@ try {
         : choice === "FULL_ONLY"
           ? ["FULL"]
           : ["FULL", "SAMPLE"];
-    await page.waitForFunction(allowed => {
-      const label = [...document.querySelectorAll("label")].find(item => item.textContent === "Organize area");
+    await page.waitForFunction((allowed) => {
+      const label = [...document.querySelectorAll("label")].find(
+        (item) => item.textContent === "Organize area"
+      );
       const select = label && document.getElementById(label.htmlFor);
       return select && !select.disabled && allowed.includes(select.value);
     }, allowedAreas);
@@ -2623,8 +2752,11 @@ try {
       .count(),
     0
   );
-  assert.equal(await namedButton(tableRegion, "Confirm table change").count(), 0,
-    "Changing supplier accounts unmounts the prior editor and hides its pending table action");
+  assert.equal(
+    await namedButton(tableRegion, "Confirm table change").count(),
+    0,
+    "Changing supplier accounts unmounts the prior editor and hides its pending table action"
+  );
   assert.equal(
     requests.filter(
       (item) =>
@@ -2636,7 +2768,10 @@ try {
   await page.evaluate(() => window.fixtureLogin("c000000000000000000999999"));
   await page.getByLabel("Dataset title", { exact: true }).waitFor();
   await filesStep(page);
-  tableRegion = page.getByRole("region", { name: "Tables and columns", exact: true });
+  tableRegion = page.getByRole("region", {
+    name: "Tables and columns",
+    exact: true,
+  });
   await namedButton(tableRegion, "Confirm table change").waitFor();
   flags.lose = false;
   await namedButton(tableRegion, "Confirm table change").click();
@@ -2839,12 +2974,32 @@ try {
   );
   assert.deepEqual(fixtureErrors, []);
   if (process.env.DATASET_BROWSER_DIAGNOSTICS === "1")
-    console.log("BROWSER_DIAGNOSTICS", JSON.stringify({ unhandledEvents, failedRequests, readFailures, browserErrorDetails, transitions }));
+    console.log(
+      "BROWSER_DIAGNOSTICS",
+      JSON.stringify({
+        unhandledEvents,
+        failedRequests,
+        readFailures,
+        browserErrorDetails,
+        transitions,
+      })
+    );
   assert.deepEqual(unhandledEvents, []);
   assert.equal(browserErrors.length, browserErrorDetails.length);
-  const runtime = classifyDatasetBrowserErrors({ engine, origin, errors: browserErrorDetails, readFailures, transitions });
-  console.log("BROWSER_RUNTIME_GUARD", JSON.stringify({ unexpectedErrors: runtime.unexpected.length,
-    expectedCancellationDiagnostics: runtime.expectedCancellations }));
+  const runtime = classifyDatasetBrowserErrors({
+    engine,
+    origin,
+    errors: browserErrorDetails,
+    readFailures,
+    transitions,
+  });
+  console.log(
+    "BROWSER_RUNTIME_GUARD",
+    JSON.stringify({
+      unexpectedErrors: runtime.unexpected.length,
+      expectedCancellationDiagnostics: runtime.expectedCancellations,
+    })
+  );
   assert.deepEqual(runtime.unexpected, []);
   assert.deepEqual(external, []);
   assert(
