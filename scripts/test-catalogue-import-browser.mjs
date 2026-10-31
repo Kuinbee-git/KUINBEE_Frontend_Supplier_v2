@@ -164,6 +164,14 @@ async function scenario(name, fn) {
       if (!path.startsWith(apiBase))
         throw new Error("Wrong owner API path " + path);
       if (path.endsWith("/capacity")) {
+        if (method === "GET" && fixture.capacityFailure)
+          return reply(
+            {
+              code: "SERVICE_UNAVAILABLE",
+              message: "Allowance could not be loaded. Try refreshing.",
+            },
+            503
+          );
         if (method === "PATCH") {
           const body = DatasetPreparationCapacityUpdateBodySchema.parse(
             route.request().postDataJSON()
@@ -386,6 +394,28 @@ async function upload(page) {
 }
 try {
   await scenario(
+    "allowance failures stop loading and recover through the shared refresh control",
+    async (page, fixture) => {
+      fixture.capacityFailure = true;
+      await page.goto(origin + "/import");
+      await page.getByText("Allowance unavailable", { exact: true }).waitFor();
+      assert.equal(
+        await page.getByText("Loading allowance…", { exact: true }).count(),
+        0
+      );
+      fixture.capacityFailure = false;
+      await page
+        .getByRole("button", { name: "Refresh allowance", exact: true })
+        .click();
+      await page.getByText("50", { exact: true }).waitFor();
+      assert.equal(
+        await page.getByText("Allowance unavailable", { exact: true }).count(),
+        0
+      );
+      assert.equal(fixture.commands.length, 0);
+    }
+  );
+  await scenario(
     "template walkthrough explains the format and field mapping without saving drafts",
     async (page, fixture) => {
       await page.goto(origin + "/import");
@@ -504,7 +534,8 @@ try {
         .click();
       await page
         .getByLabel("Match this identifier to an existing draft")
-        .selectOption(draftId);
+        .click();
+      await page.getByRole("option", { name: /^Existing collection/ }).click();
       assert.equal(
         await page
           .getByRole("button", { name: "Save private drafts", exact: true })
