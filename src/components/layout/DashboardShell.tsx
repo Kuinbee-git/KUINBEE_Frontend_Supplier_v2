@@ -15,6 +15,7 @@ import {
   ClipboardPenLine,
   Database,
   FileText,
+  FileUp,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -110,6 +111,12 @@ const navigationGroups: readonly NavigationGroup[] = [
         path: "/dashboard/datasets",
       },
       {
+        id: "catalogue-import",
+        label: "Import catalogue",
+        icon: FileUp,
+        path: "/dashboard/datasets/import",
+      },
+      {
         id: "proposals",
         label: "Submitted proposals",
         icon: FileText,
@@ -183,7 +190,12 @@ function isNavigationItemActive(
   if (item.id === "datasets") {
     return pathname.startsWith("/dashboard/my-datasets") && !delistedView;
   }
-  if (item.id === "drafts" && pathname === PROPOSAL_GUIDE_PATH) return false;
+  if (
+    item.id === "drafts" &&
+    (pathname === PROPOSAL_GUIDE_PATH ||
+      pathname === "/dashboard/datasets/import")
+  )
+    return false;
 
   const itemPathname = item.path.split("?")[0];
   return (
@@ -219,49 +231,58 @@ function DashboardNavigation({
           >
             {group.label}
           </p>
-          {group.items.map((item) => {
-            const Icon = item.icon;
-            const active = isNavigationItemActive(item, pathname, delistedView);
-            const link = (
-              <Link
-                href={item.path}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                aria-label={collapsed ? item.label : undefined}
-                className={cn(
-                  "dashboard-nav-item relative flex h-10 min-w-0 items-center gap-3 rounded-lg border border-transparent py-2 pl-5 pr-3 text-sm font-medium text-muted-foreground outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  "focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]",
-                  "motion-reduce:transition-none",
-                  active &&
-                    "dashboard-nav-active font-semibold text-foreground",
-                  active &&
-                    !collapsed &&
-                    "before:absolute before:left-2 before:h-4 before:w-0.5 before:rounded-full before:bg-[var(--dashboard-action)] before:content-['']",
-                  collapsed && "justify-center px-0"
-                )}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden="true" />
-                {collapsed ? null : (
-                  <span className="truncate">{item.label}</span>
-                )}
-              </Link>
-            );
+          {group.items
+            .filter(
+              (item) =>
+                item.id !== "catalogue-import" || DATASET_PREPARATION_ENABLED
+            )
+            .map((item) => {
+              const Icon = item.icon;
+              const active = isNavigationItemActive(
+                item,
+                pathname,
+                delistedView
+              );
+              const link = (
+                <Link
+                  href={item.path}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  className={cn(
+                    "dashboard-nav-item relative flex h-10 min-w-0 items-center gap-3 rounded-lg border border-transparent py-2 pl-5 pr-3 text-sm font-medium text-muted-foreground outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    "focus-visible:ring-2 focus-visible:ring-[var(--dashboard-focus-ring)]",
+                    "motion-reduce:transition-none",
+                    active &&
+                      "dashboard-nav-active font-semibold text-foreground",
+                    active &&
+                      !collapsed &&
+                      "before:absolute before:left-2 before:h-4 before:w-0.5 before:rounded-full before:bg-[var(--dashboard-action)] before:content-['']",
+                    collapsed && "justify-center px-0"
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  {collapsed ? null : (
+                    <span className="truncate">{item.label}</span>
+                  )}
+                </Link>
+              );
 
-            if (!collapsed)
-              return <React.Fragment key={item.id}>{link}</React.Fragment>;
+              if (!collapsed)
+                return <React.Fragment key={item.id}>{link}</React.Fragment>;
 
-            return (
-              <DashboardTooltip key={item.id}>
-                <DashboardTooltipTrigger asChild>
-                  {link}
-                </DashboardTooltipTrigger>
-                <DashboardTooltipContent side="right">
-                  {item.label}
-                </DashboardTooltipContent>
-              </DashboardTooltip>
-            );
-          })}
+              return (
+                <DashboardTooltip key={item.id}>
+                  <DashboardTooltipTrigger asChild>
+                    {link}
+                  </DashboardTooltipTrigger>
+                  <DashboardTooltipContent side="right">
+                    {item.label}
+                  </DashboardTooltipContent>
+                </DashboardTooltip>
+              );
+            })}
         </div>
       ))}
     </nav>

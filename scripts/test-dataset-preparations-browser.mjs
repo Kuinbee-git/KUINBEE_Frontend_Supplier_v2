@@ -41,6 +41,7 @@ const entry = [
   "import {DashboardShell} from './src/components/layout/DashboardShell';",
   "import CreateDatasetPage from './src/app/dashboard/datasets/create/page';",
   "import ProposalGuidePage from './src/app/dashboard/datasets/guide/page';",
+  "import CatalogueImportPage from './src/app/dashboard/datasets/import/page';",
   "import ProposalsPage from './src/app/dashboard/datasets/page';",
   "import DraftProposalPage from './src/app/dashboard/datasets/drafts/[draftId]/page';",
   "import OldDraftListPage from './src/app/dashboard/datasets/prepare/page';",
@@ -57,7 +58,7 @@ const entry = [
   "const root=createRoot(document.getElementById('root')); let mount=0;",
   "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
   "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",
-  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets/guide')view=ProposalGuidePage();else if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
+  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets/guide')view=ProposalGuidePage();else if(path==='/dashboard/datasets/import')view=<CatalogueImportPage/>;else if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
   "window.showRoute();",
 ].join("\n");
 const mockedNext = {
@@ -95,6 +96,7 @@ async function bundle(environment) {
       "process.env.NODE_ENV": '"development"',
       "process.env.NEXT_PUBLIC_APP_ENV": JSON.stringify(environment),
       "process.env.NEXT_PUBLIC_DATASET_CONTENT_ENABLED": '"false"',
+      "process.env.NEXT_PUBLIC_DATASET_CATALOGUE_IMPORT_ENABLED": '"false"',
     },
   });
   assert(
@@ -349,6 +351,19 @@ const server = createServer(async (req, res) => {
     requests.push(recorded);
     requestDocuments.set(recorded, req.headers.referer ?? "");
     const base = "/api/v2/supplier/dataset-drafts";
+    if (url.pathname === base + "/capacity" && req.method === "GET") {
+      json(res, 200, {
+        success: true,
+        data: {
+          limit: 1000,
+          used: drafts.size,
+          remaining: Math.max(0, 1000 - drafts.size),
+          generation: 0,
+          override: 1000,
+        },
+      });
+      return;
+    }
     const fileRoute = url.pathname.match(
       /^\/api\/v2\/supplier\/dataset-drafts\/([^/]+)\/(files-context|files\/organization|files)$/
     );
@@ -1123,7 +1138,10 @@ async function assertTileLayout(page, first, second, width) {
   );
 }
 try {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  });
   const page = await browser.newPage({
     // Functional actions must not race the error-target smooth scroll. Normal
     // theme animation remains covered by the compiled release/browser checks.
@@ -1142,6 +1160,52 @@ try {
     (request) => !["GET", "HEAD", "OPTIONS"].includes(request.method)
   ).length;
   await page.goto(origin + "/dashboard/datasets/guide");
+  const importGuide = page.getByRole("region", {
+    name: "Import a catalogue as private drafts",
+  });
+  await importGuide
+    .getByRole("heading", {
+      name: "Copy your metadata into the template columns",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await importGuide
+      .getByRole("list", { name: "Catalogue import steps" })
+      .locator("li")
+      .count(),
+    3
+  );
+  await importGuide
+    .getByText("Keep the template column headers", { exact: false })
+    .waitFor();
+  await page
+    .getByRole("navigation", { name: "Supplier dashboard" })
+    .getByRole("link", { name: "Import catalogue", exact: true })
+    .click();
+  await page
+    .getByRole("heading", {
+      name: "Catalogue import is not enabled here yet",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Validate and preview", exact: true })
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByRole("navigation", { name: "Supplier dashboard" })
+      .locator('[aria-current="page"]')
+      .count(),
+    1
+  );
+  await page
+    .getByRole("link", { name: "Read the file import guide", exact: true })
+    .click();
+  assert.equal(new URL(page.url()).hash, "#catalogue-import");
   await page
     .getByRole("heading", { name: "Dataset proposal guide", exact: true })
     .waitFor();
@@ -2858,36 +2922,68 @@ try {
   // Lose CREATE before the browser receives its Dataset ID, reload the actual
   // route, then recover the original UUID instead of creating a second draft.
   await showNew(page);
-  await page.getByLabel("Dataset title", { exact: true }).fill("Recover new draft after reload");
-  const recoveredCreateCount = drafts.size, recoveredCreateStart = requests.length;
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Recover new draft after reload");
+  const recoveredCreateCount = drafts.size,
+    recoveredCreateStart = requests.length;
   flags.acknowledgement = "malformed";
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
   await page.reload();
   await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
-  assert.equal(await page.getByLabel("Dataset title", { exact: true }).inputValue(), "Recover new draft after reload");
+  assert.equal(
+    await page.getByLabel("Dataset title", { exact: true }).inputValue(),
+    "Recover new draft after reload"
+  );
   await page.getByRole("button", { name: "Retry save", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "Draft saved" }).waitFor();
   assert.equal(drafts.size, recoveredCreateCount + 1);
-  const recoveredCreates = requests.slice(recoveredCreateStart).filter(request => request.method === "POST");
-  assert.equal(recoveredCreates.length, 2); assert.deepEqual(recoveredCreates[0].body, recoveredCreates[1].body);
-  const recoveredDraftId = page.url().split("/").at(-1), recoveredPatchStart = requests.length;
-  await page.getByLabel("Dataset title", { exact: true }).fill("Recover local title and keep remote description");
+  const recoveredCreates = requests
+    .slice(recoveredCreateStart)
+    .filter((request) => request.method === "POST");
+  assert.equal(recoveredCreates.length, 2);
+  assert.deepEqual(recoveredCreates[0].body, recoveredCreates[1].body);
+  const recoveredDraftId = page.url().split("/").at(-1),
+    recoveredPatchStart = requests.length;
+  await page
+    .getByLabel("Dataset title", { exact: true })
+    .fill("Recover local title and keep remote description");
   flags.acknowledgement = "malformed";
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
-  mutate(recoveredDraftId, { description: "Remote description committed after the uncertain save" });
+  mutate(recoveredDraftId, {
+    description: "Remote description committed after the uncertain save",
+  });
   await page.reload();
   await page.getByRole("button", { name: "Retry save", exact: true }).waitFor();
   await page.getByRole("button", { name: "Retry save", exact: true }).click();
-  await page.getByRole("heading", { name: "Resolve the changed draft", exact: true }).waitFor();
-  const recoveredPatches = requests.slice(recoveredPatchStart).filter(request => request.method === "PATCH");
-  assert.equal(recoveredPatches.length, 2); assert.deepEqual(recoveredPatches[0].body, recoveredPatches[1].body);
-  await page.getByRole("button", { name: "Reapply my changes to latest draft", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Resolve the changed draft", exact: true })
+    .waitFor();
+  const recoveredPatches = requests
+    .slice(recoveredPatchStart)
+    .filter((request) => request.method === "PATCH");
+  assert.equal(recoveredPatches.length, 2);
+  assert.deepEqual(recoveredPatches[0].body, recoveredPatches[1].body);
+  await page
+    .getByRole("button", {
+      name: "Reapply my changes to latest draft",
+      exact: true,
+    })
+    .click();
   await save(page);
-  assert.equal(drafts.get(recoveredDraftId).metadata.title, "Recover local title and keep remote description");
-  assert.equal(drafts.get(recoveredDraftId).metadata.description, "Remote description committed after the uncertain save");
-  console.log("PASS lost CREATE and PATCH acknowledgements survive actual page reload; exact UUIDs prevent duplicate drafts and preserve another tab's independent edits");
+  assert.equal(
+    drafts.get(recoveredDraftId).metadata.title,
+    "Recover local title and keep remote description"
+  );
+  assert.equal(
+    drafts.get(recoveredDraftId).metadata.description,
+    "Remote description committed after the uncertain save"
+  );
+  console.log(
+    "PASS lost CREATE and PATCH acknowledgements survive actual page reload; exact UUIDs prevent duplicate drafts and preserve another tab's independent edits"
+  );
 
   await showNew(page);
   await page

@@ -798,6 +798,7 @@ const server = createServer(async (req, res) => {
       replyCommand(res, "SAVE", draft, body, dto(draft));
       return;
     }
+    if (tail === "catalogue-entry" && req.method === "GET") { ok(res, null); return; }
     if (tail === "workflow" && req.method === "GET") {
       ok(res, DatasetWorkflowResponseSchema.parse({ state: state(draft) }));
       return;

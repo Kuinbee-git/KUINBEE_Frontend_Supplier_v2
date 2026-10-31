@@ -1,0 +1,13 @@
+# Catalogue import journey
+
+Suppliers enter through **Data catalogue → Import catalogue**, or the **Import catalogue** action in **My drafts**. The portal header's **Guide** links to the existing proposal guide, which now begins with a choice between importing a spreadsheet and creating one proposal. Its import walkthrough is at `/dashboard/datasets/guide#catalogue-import` and is also linked from the import screen, My drafts and Support.
+
+1. **Prepare your file.** Choose **Get Excel template** or **Get CSV templates**, then use the Download links. Follow the supplied column headers and worksheet names. Use `.xlsx` or UTF-8 CSV, with one collection per Catalogue row. `catalogueIdentifier` and `title` are required. CSV files must be named `catalogue.csv`, `measurements.csv` and `sensor_channels.csv`; the latter two are optional. Use values without formulas, macros or external links.
+2. **Preview and match.** Choose the completed file and the matching mode, then **Validate and preview**. Default mode creates missing drafts while preserving matched metadata. Review the row counts, differences and issues. Exact identifiers match automatically; unbound older drafts need an explicit choice through **Find drafts**. Apply changed matches or exclusions with **Update preview**. Preview does not create or change dataset drafts.
+3. **Save private drafts.** Check capacity, resolve selected errors and choose **Save private drafts**. Undocumented file formats remain unconfirmed and may produce warnings without blocking valid drafts. Continue each saved collection in **My drafts**, or reopen the batch through **Import history**. Reports and retry/resume controls explain partial or uncertain results.
+
+The template download panel exposes its authorized field dictionary, required columns, instructions and category/source IDs for both CSV and Excel users. Allowed enum codes are included in the existing template response's instructions, so CSV users do not need to guess codes. Users copy source metadata into template columns; there is no separate column-mapping screen.
+
+When importing is disabled, keep the entry visible wherever the canonical draft workspace is enabled. Show a clear availability explanation, the three steps, guide and support links, and no upload/save controls. Do not enable a disabled backend feature through frontend copy or navigation. The disabled view and guide perform no catalogue mutations.
+
+This flow imports metadata. Dataset files are added later through the individual draft editor. Saving never submits, publishes, grants buyer access, or authorizes samples/downloads. Review, publication and rights requirements remain separate.

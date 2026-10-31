@@ -1,156 +1,177 @@
 {
   "package": "@kuinbee/dataset-preparation-contracts",
-  "version": "0.40.0",
+  "version": "0.43.0",
   "contractVersion": 1,
   "sourceRepository": "Kuinbee-git/KUINBEE",
   "sourcePath": "packages/api-contracts/src/datasets/preparation.schema.ts",
-  "baseCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-  "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-  "sourceSha256": "7dfc0cd6b5a40c9addf0f02cee5cef92d5b44a84819e37e042cae695206b6bc1",
+  "baseCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+  "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+  "sourceSha256": "f68968b505113799c9b416d808fd8bc806ddbcea3142def0e99a0df5370baf67",
   "sources": [
     {
       "sourcePath": "packages/api-contracts/src/datasets/preparation.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "7dfc0cd6b5a40c9addf0f02cee5cef92d5b44a84819e37e042cae695206b6bc1",
-      "javascriptSha256": "cce20e4c126fc30e39edcf955a255558fdb1798a7fe75098fb1eba55bbf03762",
-      "declarationSha256": "92de232a0f13126e139831af9a024401f5acda5cdd2e0888111344937e3e605a"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "f68968b505113799c9b416d808fd8bc806ddbcea3142def0e99a0df5370baf67",
+      "javascriptSha256": "ad06307db3627fc1b44521203b34ead77143ef819832150bf87742b3e5150653",
+      "declarationSha256": "90666aefc011537be0f9580c8f8b8ec36a40a6aa8882c33a22fa924eea7fc6f6"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/content.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "34adb0b32139fe9155cac77ac3af42654112d652d92b84a7be253293c7d6096e",
-      "javascriptSha256": "506dc7a3984d9c5f33856ffc7d04fed67be3a138f878398a15aaa9a6717d695c",
-      "declarationSha256": "eb69b6cb5308af3b9d228af6056e25af9fa4906221a262c702b7b578300f7c85"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "ba0b51ded3dddff72a8ac86ccd79d9b229a1703cc4f6128f9a3426af70860878",
+      "javascriptSha256": "cd72357a23c5a9acef15ce4babab534602f4df798db122c635ae70e196bdc890",
+      "declarationSha256": "7d7fa477ab6b24190129b097cf5b05c4650bd11d04791d6beb87fa17b93348d3"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/files.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "e867c30b8b58d6993880ba300dab80b0f525a3a8caf6dbbd3ad6307082e85ba9",
       "javascriptSha256": "f4d4a7639b45c04e9bbdf7bd87e91addbbbbf48294b679f786625fbb4103b59a",
-      "declarationSha256": "c40260d3f59619947bf3d863348e956affe66766fce42eb7d6c078e9190f791b"
+      "declarationSha256": "7df166fe708ca1bf8a3462cd380dc394e3f3914c0252611ff7c1f802d2a08c58"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/intake.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "3289fe0dc9e4d84dd515a11dc5d83e3d93b34aa81bdf1634b552c5f63971238d",
-      "javascriptSha256": "ebae595fe0b82169c550f99fca4f27ddda2659c04e0bac9b0ed51647608dc11d",
-      "declarationSha256": "b65f6cf89fb44603a79c057957a223aa3f826a75fba8a9f9fe23c80f9c9efe46"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "aa0b035c7eef14e87d478f7087087e1b77990198ca8c17c212e3ce459a7d7735",
+      "javascriptSha256": "a2f4b861edffac884034fae9bd2d7e84e08bda0004ebd0360b001a4f4345d382",
+      "declarationSha256": "800941d5c8b104baef2379e2bab2d0b56d966533818a1032f50b1c5c68a565f0"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/workflow.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "0f7763104638531c1152e613a6c0297f83a64e9688c4f04aa9df31415d51b355",
       "javascriptSha256": "aa445f7bb6f2559c84a1af65686f103893e75e1be02543214a62d82e6bd5e1f0",
-      "declarationSha256": "3125032d51b9ba90e36e8a1bae812b9d5168b9d6d59e3cec4176b5c2370a1d62"
+      "declarationSha256": "a626ec6a1714ee80edb4794475c42b34a447595667e864401978c4e24d156919"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/proposals.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "7a61adc4e672954919a17901df1ec15fdd5f31e21f76749267a318bd750b17b8",
       "javascriptSha256": "13fa93059ca8e3051833344db17b3e7eaa5492a5a8f6770a906e70b1fe10c2c3",
-      "declarationSha256": "119185735a84772f6fe386bb2e303057ccc4928b8f89d67428666f992e6a324c"
+      "declarationSha256": "9cb0a7381270113944765d43919da1a949dcb9e2a969e8449f837e289fc44331"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/publication.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "6dc1450c18ca885b522b96795e6a82d5a8f31d4d6ac17d76bdaef518f54f1a24",
       "javascriptSha256": "e9fa0c71f51d4c3063df6da1dda862fce592c45d9084d2fdb4cf3b277466062d",
-      "declarationSha256": "8ed32f50975c8b0e7c12a7c0c0d82936b4e53f3afeedada4ddf70964ad69324d"
+      "declarationSha256": "c3762269d05e4ac9b4071a774fca8fef3f88777773ea4ced1adb7964534fdcc4"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/access.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "222eb63e2d6ccfc45beb8ca1de0740b88ebd3d99e882ef4d11ea510ce1820b5a",
       "javascriptSha256": "c5a7092a6cc2e68abbad5f84a94c2d0ae46fd1f006148ae48d4b5d3bbbbb3bc2",
-      "declarationSha256": "ea6f80646fd5774ebc0021b9d8f15342f45fe1741dfc90c706fcbc7eb8d2ea10"
+      "declarationSha256": "da62f57d7389c30920cce4787fc4e2836ef4297b4bb6183b5c286183e57bc01b"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/acquisition.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "8d788f52e127d53955ac6bb8ee28ea5c442aaa557673092150c1164f6f039155",
       "javascriptSha256": "c3b45f41980792a9e0ad937fd46667cd58cf708ed58dbab994abcbdc37c1d154",
       "declarationSha256": "d4e91f8e76613db08826d1fec5b273eb22c046c5d0fa88d102e87d73166badea"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/inspectionProfile.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "4c721ffb8e9eb53ef41a066e14e69ca133dda62edd2a87e273bebef4596f6279",
-      "javascriptSha256": "a4af959439659d22e5bafaa22a1c086ac915edab5d9287f2c055ae6dd9a13160",
-      "declarationSha256": "2b04235b0ecc891bc14116a33e72a32bb0699d2e83f13e434397ca33c623ddc9"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "c0336d332ba5e83f974c7bb28647b20aca312e394e2488e4390515fa41100e4b",
+      "javascriptSha256": "7914b869e9a2f43a3c546d1ab101f33338a67196d6bf9bbbd4eea3f2a6f6edbd",
+      "declarationSha256": "b230f4d91f270bc3ef795b5e91895970d892545ff00c15379c70075ee3173ad3"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/reader.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "ac0e718837f7e03af7e2581a6b635e5b3d588a8ee6c9534e79210fbf20caf796",
-      "javascriptSha256": "d0db928b32f3773d95792b2688537d4359e8202689c35dfca0db094ae68754c6",
-      "declarationSha256": "24205efaaf29a4fa2622e9ab6686f9a4a440452231e80fac01e42de3dfff855e"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "14c7e386ea6ce73ed8f666473d227928a170796980e127089e4dda4ce2c74983",
+      "javascriptSha256": "5c27238e509728b0cfdc3ab4f964c7e5340174dad219e9a045ddf5bc8f07e226",
+      "declarationSha256": "f9703fb73a095623c19f6d2a2b75e2e8fd1c87982b7d8fcde4b0be63cee3a1e3"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/catalogue.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "a30f6f918cdc45492cbaa611d4dab69ee863c735c79527aee7d967564d87c011",
-      "javascriptSha256": "c687973bcfcbbb02a3a0b362e48949dd7bdcd95931adb6722d319ef1a768e532",
-      "declarationSha256": "56a2c173ea20d27a6fcd7e505bce805416f0c096306a433e2b5544024d1b4193"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "6aa774577d32fe8da5c7ccb609919ffa09085ff94c6bc8adc656c7e01666db9c",
+      "javascriptSha256": "07b91debbe4aacc6257439d4fb3d9622384ecbfe564919dd5c4dd14394ac652a",
+      "declarationSha256": "f6faa073c830acd20b3c858eaf80334d65cebcb4156e9b5ccce5a1f2a9695542"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/category.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "dd27d0ae5af6dc03189fc382512282ed26dea8c8d6da7b3ba9775da4eac2cbf9",
       "javascriptSha256": "bd28a010e085f7cecb92c3dc13354415ffa7b444e565c751184c4211b8452fe3",
       "declarationSha256": "298428f07ee76bdb4633192a7d0889e416075201bbeebc71e61d24ebe19ce437"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/legacyCatalogue.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
-      "sourceSha256": "40ac7d33155b5ca14fa3611a219ff2aed26c6adac1e6c021caae9902c9b52fb8",
-      "javascriptSha256": "152d7e7a88658f0128fc4457f148d5fe34f2f02016488105da1bfbd4eae65275",
-      "declarationSha256": "f876e9c4eedc84a1755e54c36176e6fc2eff977f8336031930c06d028a409d24"
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "e183a5c726cc43937c1b2ab16f33ad97eb5c297a246101d1083f8b086483eb08",
+      "javascriptSha256": "b63609a5cfb237bd9933c4bdd9c11b5b459b112b844f0d6f48ee9c0b9404b5ed",
+      "declarationSha256": "1d9aa9e6685ad417142b7f9dd5bc1367668abbc1e82414ba20ca54092437cee5"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/legacyCatalogueEndpoints.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "79be8e109c86a83cc4fa58a37cf6785d6cec2769a89406873cc20dfe83fea872",
       "javascriptSha256": "5af5446df68fa37c2eea7797c04cfa4df66599abc63006f71eada2ac94f01a55",
-      "declarationSha256": "ad31f7f1e80260f1ba7380c44034b338dec12cb803e2f460546109ad1b1da744"
+      "declarationSha256": "b0df554f148190435bf72acd3ef3572057fb6e8bdcdd441fbbff8a290fbecb6a"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/tables.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "3fec2d3a1fafe5fc18de5ab0dd45b24cc751958c6f9fb1e85a843a5bb52deedc",
       "javascriptSha256": "54ac95c72dddce27d7604fbeeb24611976408ecb089775f7378c2e1d3e863a5f",
-      "declarationSha256": "8ca8084e8803c7e316b70730c78d90884771d93a429048234b259fc208a5cbdf"
+      "declarationSha256": "86fb8b50cec1a50901b020a00d246a86612151fc47ff7de4508317720793f894"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/tableMetadata.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "9d86d7d9eae1bbe19274b918804d286a5aff7ca7d18a049afab7b8b08225f268",
       "javascriptSha256": "80b2e3cdda2985b69ac5e3c32bea1d546218aabe98b3ffc60ec3ddd8170a6aea",
-      "declarationSha256": "46d9b590423dc0cb02e61a35b3375f163ba0d441edb2e3a1a16af72bf4bf55a6"
+      "declarationSha256": "8f49495804bc95c27d45dcd64adcbec446471a973705682a16ae0ea0a599521c"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/tableReferences.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "3fa96dfbc129664f9f0de5fa769a120e0968539a25596a931cca3e891e39e407",
       "javascriptSha256": "0599aeb1ff50777f33089760c32dcea9f51c1ceca0ff642257b477b1f69cdcb5",
-      "declarationSha256": "6ee3b54d62bcc57ec01fb66c542568b450c562d0f0fdd57a10492a6571a65894"
+      "declarationSha256": "9820cedbcedcc51c82ceda4b2ca4217a19f5d4d7b5184affbc3a90a7c8406ae0"
+    },
+    {
+      "sourcePath": "packages/api-contracts/src/datasets/preparationCapacity.schema.ts",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "839bc9230ac544904357e2704270b2c7f60a1ef03c239008aace94747b5c168e",
+      "javascriptSha256": "3953971871b803cb47f434e29cb23f78290d14facb2adbee3039fd573e80274d",
+      "declarationSha256": "847e6b4c9b11ae37bed3b40cc58e0f191573957063dca8f308f1d426963672a3"
+    },
+    {
+      "sourcePath": "packages/api-contracts/src/datasets/catalogueImport.schema.ts",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "82dc7086640523fb66a6798d43c242bffc8bb3f0a9d37e46da24e210ea6d2047",
+      "javascriptSha256": "79bd74c565c0a3aace5296ab691e05e354c0e6cc5cce05e3fa0b20a59a7cf43a",
+      "declarationSha256": "f270776bd5484696f34d39e20e0fc4e81f09d6511245e16454df6bfceb399ad1"
+    },
+    {
+      "sourcePath": "packages/api-contracts/src/datasets/catalogueImportHttp.schema.ts",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
+      "sourceSha256": "65aa9ee2c2a9c73cae9d2d8e5f636f75c8fcbef5d119485a54a1b55c96f72dfd",
+      "javascriptSha256": "011ee05a244769bfe4d5ab48a814a72eb40906494d12b5bd50a779c6293e29eb",
+      "declarationSha256": "f1c3ea95e6a14907bbdc95d7fb3c9adbcf065253b41825224b1b7c099c436b14"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/edit.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "24cebf3596a1401082e4144c60ec27fa297c68f974168a6b161298e1ef8175d9",
       "javascriptSha256": "35f53ee8e5de3b07a532aab12b7826b5f91fe6255d99fbb9bc84c4dc3c0bfd82",
       "declarationSha256": "10651deead1e81f94d657d6effea58131e66c0a4719343bc63a407fe9daac27e"
     },
     {
       "sourcePath": "packages/api-contracts/src/datasets/cataloguePrimitives.schema.ts",
-      "sourceCommit": "7fafbb2cd6fad9ad36be86e53a6228e94fcda293",
+      "sourceCommit": "6b477462c8f8e28f334edb5d0d88f86ab3f4f2f9",
       "sourceSha256": "5dd2df2ff670c305a09ac421e318654ea7259c3d4632f68c0c758ee6edf793fc",
       "javascriptSha256": "754b02c39e764140331cbc0470af78cb650948dcd4bc8b8fbcbbdb33eefa7703",
       "declarationSha256": "6b8788ee899a224a27bf7d34c91344f261ab12930a30356b1d6e696c03f227ad"
     }
   ],
-  "javascriptSha256": "35a86cc3b3de490a03bd365a16ce557839ca670e4d3e4271972fe86c510a7892",
-  "declarationSha256": "4b65c3065013dc34299d6c85facb09a183aeec2d2f80b82f99afeb174954da7e",
-  "tarball": "kuinbee-dataset-preparation-contracts-0.40.0.tgz",
-  "tarballSha256": "97469ca3a666c42f0241e309aae774c1708f60f556cb7ea951d570ccb3d8bb82"
+  "javascriptSha256": "c5b40df5c55aaf5ad57398d7dd25ff398f16a8815df6a71dea3e0f52428ca9f8",
+  "declarationSha256": "f28831c874706baf4dc486fdbadeef00ddf2124f824ed7b34adc68c7ac76f398",
+  "tarball": "kuinbee-dataset-preparation-contracts-0.43.0.tgz",
+  "tarballSha256": "9dd55d2bf5ef6f4ff7e01be996412061137879e9f6c34a6c457d7172181a7e52"
 }
