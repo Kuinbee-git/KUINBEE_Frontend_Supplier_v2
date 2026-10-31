@@ -41,6 +41,7 @@ const entry = [
   "import {DashboardShell} from './src/components/layout/DashboardShell';",
   "import CreateDatasetPage from './src/app/dashboard/datasets/create/page';",
   "import ProposalGuidePage from './src/app/dashboard/datasets/guide/page';",
+  "import CatalogueImportPage from './src/app/dashboard/datasets/import/page';",
   "import ProposalsPage from './src/app/dashboard/datasets/page';",
   "import DraftProposalPage from './src/app/dashboard/datasets/drafts/[draftId]/page';",
   "import OldDraftListPage from './src/app/dashboard/datasets/prepare/page';",
@@ -57,7 +58,7 @@ const entry = [
   "const root=createRoot(document.getElementById('root')); let mount=0;",
   "function render(view){root.render(<React.StrictMode><QueryProvider><DashboardShell>{view}</DashboardShell></QueryProvider></React.StrictMode>)}",
   "window.showEditor=(id)=>{mount++;window.history.replaceState(window.history.state,'',id?'/dashboard/datasets/drafts/'+id:'/dashboard/datasets/create');render(DATASET_PREPARATION_ENABLED?<DatasetPreparationScreen key={mount} draftId={id}/>:<CreateDatasetPage/>);};",
-  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets/guide')view=ProposalGuidePage();else if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
+  "window.showRoute=async()=>{const path=window.location.pathname;const tail=path.split('/').at(-1);try{let view;if(path==='/dashboard/datasets/guide')view=ProposalGuidePage();else if(path==='/dashboard/datasets/import')view=<CatalogueImportPage/>;else if(path==='/dashboard/datasets')view=<ProposalsPage/>;else if(path==='/dashboard/datasets/create')view=<CreateDatasetPage/>;else if(path==='/dashboard/datasets/prepare')view=OldDraftListPage();else if(path.startsWith('/dashboard/datasets/prepare/'))view=await OldDraftPage({params:Promise.resolve({draftId:tail})});else if(path.startsWith('/dashboard/datasets/drafts/'))view=await DraftProposalPage({params:Promise.resolve({draftId:tail})});else throw {notFound:true};render(view)}catch(error){if(error.redirect)window.location.replace(error.redirect);else if(error.notFound)render(<h1>Not found</h1>);else throw error}};",
   "window.showRoute();",
 ].join("\n");
 const mockedNext = {
@@ -1137,7 +1138,10 @@ async function assertTileLayout(page, first, second, width) {
   );
 }
 try {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  });
   const page = await browser.newPage({
     // Functional actions must not race the error-target smooth scroll. Normal
     // theme animation remains covered by the compiled release/browser checks.
@@ -1156,6 +1160,52 @@ try {
     (request) => !["GET", "HEAD", "OPTIONS"].includes(request.method)
   ).length;
   await page.goto(origin + "/dashboard/datasets/guide");
+  const importGuide = page.getByRole("region", {
+    name: "Import a catalogue as private drafts",
+  });
+  await importGuide
+    .getByRole("heading", {
+      name: "Copy your metadata into the template columns",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await importGuide
+      .getByRole("list", { name: "Catalogue import steps" })
+      .locator("li")
+      .count(),
+    3
+  );
+  await importGuide
+    .getByText("Keep the template column headers", { exact: false })
+    .waitFor();
+  await page
+    .getByRole("navigation", { name: "Supplier dashboard" })
+    .getByRole("link", { name: "Import catalogue", exact: true })
+    .click();
+  await page
+    .getByRole("heading", {
+      name: "Catalogue import is not enabled here yet",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Validate and preview", exact: true })
+      .count(),
+    0
+  );
+  assert.equal(
+    await page
+      .getByRole("navigation", { name: "Supplier dashboard" })
+      .locator('[aria-current="page"]')
+      .count(),
+    1
+  );
+  await page
+    .getByRole("link", { name: "Read the file import guide", exact: true })
+    .click();
+  assert.equal(new URL(page.url()).hash, "#catalogue-import");
   await page
     .getByRole("heading", { name: "Dataset proposal guide", exact: true })
     .waitFor();

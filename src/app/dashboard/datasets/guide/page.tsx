@@ -11,6 +11,8 @@ import {
   DatasetWorkspace,
 } from "@/components/datasets/workspace/DatasetWorkspace";
 import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
+import { CatalogueImportGuide } from "@/components/datasets/guide/CatalogueImportGuide";
+import { CATALOGUE_IMPORT_PATH } from "@/lib/datasets/catalogue-import-guidance";
 import {
   PROPOSAL_DATA_TYPE_GUIDANCE,
   PROPOSAL_REVIEW_GUIDANCE,
@@ -30,9 +32,12 @@ export default function DatasetProposalGuidePage() {
     <DatasetWorkspace className="dataset-proposal-workspace max-w-[80rem]">
       <DatasetPageHeader
         title="Dataset proposal guide"
-        description="See each proposal screen, what to enter, and what happens after submission."
+        description="Import a catalogue as private drafts, or follow each screen to prepare one proposal."
         action={
           <div className="flex flex-wrap gap-3">
+            <DashboardButton asChild variant="outline">
+              <Link href={CATALOGUE_IMPORT_PATH}>Import catalogue</Link>
+            </DashboardButton>
             <DashboardButton asChild variant="outline">
               <Link href="/dashboard/datasets">My drafts</Link>
             </DashboardButton>
@@ -48,6 +53,36 @@ export default function DatasetProposalGuidePage() {
       >
         <article className="divide-y divide-border leading-6">
           <nav aria-label="Proposal guide contents" className={sectionClass}>
+            <div className="grid overflow-hidden rounded-xl border border-border sm:grid-cols-2">
+              <a
+                href="#catalogue-import"
+                className="space-y-2 border-b border-border p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dashboard-focus-ring)] sm:border-b-0 sm:border-r"
+              >
+                <h2 className="text-base font-semibold">
+                  Import multiple collections
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Use an Excel or CSV metadata template, preview matches, then
+                  save private drafts.
+                </p>
+                <span className="block text-sm font-medium underline underline-offset-4">
+                  Follow the file import steps →
+                </span>
+              </a>
+              <a
+                href="#prepare"
+                className="space-y-2 p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--dashboard-focus-ring)]"
+              >
+                <h2 className="text-base font-semibold">Create one proposal</h2>
+                <p className="text-sm text-muted-foreground">
+                  Follow the four editor screens below to describe one
+                  collection and add its files.
+                </p>
+                <span className="block text-sm font-medium underline underline-offset-4">
+                  Start with one draft →
+                </span>
+              </a>
+            </div>
             <h2 className="text-lg font-semibold">
               Choose a screen to explore
             </h2>
@@ -93,6 +128,9 @@ export default function DatasetProposalGuidePage() {
               })}
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <a href="#catalogue-import" className={linkClass}>
+                Excel / CSV file import
+              </a>
               <a href="#prepare" className={linkClass}>
                 Before you start
               </a>
@@ -104,6 +142,7 @@ export default function DatasetProposalGuidePage() {
               </a>
             </div>
           </nav>
+          <CatalogueImportGuide />
           <section
             id="prepare"
             aria-labelledby="prepare-title"

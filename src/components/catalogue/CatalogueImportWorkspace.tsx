@@ -1,5 +1,6 @@
 "use client";
 import { useId, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   CATALOGUE_IMPORT_LIMITS,
   type CatalogueImportUploadBody,
@@ -11,13 +12,14 @@ import {
   type CatalogueBatch,
   type CatalogueCapacity,
   type CatalogueCandidates,
-  type CatalogueFile,
   CatalogueRetainedRequestSchema,
   catalogueError,
   catalogueRequestUncertain,
   downloadCatalogueFile,
   readCatalogueFile,
 } from "@/lib/catalogue-imports";
+import { CatalogueImportSteps } from "./CatalogueImportSteps";
+import { CATALOGUE_IMPORT_GUIDE_PATH } from "@/lib/datasets/catalogue-import-guidance";
 
 const button =
   "inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
@@ -224,8 +226,10 @@ export function CatalogueImportWorkspace({
   const [history, setHistory] = useState<Omit<CatalogueBatch, "rows">[]>([]);
   const [mode, setMode] =
     useState<CatalogueImportUploadBody["mode"]>("CREATE_MISSING");
-  const [files, setFiles] = useState<File[]>([]),
-    [downloads, setDownloads] = useState<CatalogueFile[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [template, setTemplate] = useState<Awaited<
+    ReturnType<CatalogueApi["template"]>
+  > | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -456,7 +460,24 @@ export function CatalogueImportWorkspace({
           Save metadata as private drafts. This does not submit for review,
           publish a listing or grant buyer access.
         </p>
+        <a
+          href={CATALOGUE_IMPORT_GUIDE_PATH}
+          className="inline-flex min-h-10 items-center text-sm font-medium underline underline-offset-4"
+        >
+          How to import an Excel or CSV catalogue
+        </a>
       </header>
+      <CatalogueImportSteps
+        currentStep={
+          batch
+            ? batch.counts.applied > 0 ||
+              batch.status === "RUNNING" ||
+              batch.status === "COMPLETED"
+              ? 3
+              : 2
+            : 1
+        }
+      />
       <CatalogueCapacityPanel api={api} canManage={canManageCapacity} />
       {error && (
         <p
@@ -498,6 +519,19 @@ export function CatalogueImportWorkspace({
             title are required. Leave undocumented metadata unconfirmed. Format
             gaps do not block valid private drafts.
           </p>
+          <div className="space-y-2 border-l-2 border-primary pl-4 text-sm">
+            <h3 className="font-semibold">
+              Use the provided Excel or CSV format
+            </h3>
+            <p className="max-w-3xl text-muted-foreground">
+              Download our template first and copy your metadata into its
+              columns. Keep the column headers and Excel worksheet names
+              unchanged. Use an .xlsx workbook or UTF-8 CSV files. CSV filenames
+              must be catalogue.csv, measurements.csv and sensor_channels.csv;
+              only catalogue.csv is required. Enter values only, without
+              formulas, macros or external workbook links.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-3">
             {(["csv", "xlsx"] as const).map((format) => (
               <button
@@ -507,7 +541,7 @@ export function CatalogueImportWorkspace({
                 disabled={busy}
                 onClick={() =>
                   void readAction(async () =>
-                    setDownloads((await api.template(format)).files)
+                    setTemplate(await api.template(format))
                   )
                 }
               >
@@ -515,20 +549,128 @@ export function CatalogueImportWorkspace({
               </button>
             ))}
           </div>
-          {downloads.length > 0 && (
-            <ul className="space-y-2" aria-label="Template downloads">
-              {downloads.map((file) => (
-                <li key={file.name}>
-                  <button
-                    type="button"
-                    className="text-sm underline underline-offset-4"
-                    onClick={() => downloadCatalogueFile(file)}
-                  >
-                    Download {file.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
+          {template && (
+            <div className="space-y-4">
+              <p role="status" className="text-sm">
+                Template ready. Choose the Download links below, complete your
+                file, then select it under Catalogue file.
+              </p>
+              <ul className="space-y-2" aria-label="Template downloads">
+                {template.files.map((file) => (
+                  <li key={file.name}>
+                    <button
+                      type="button"
+                      className="text-sm underline underline-offset-4"
+                      onClick={() => downloadCatalogueFile(file)}
+                    >
+                      Download {file.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {Boolean(template.fields?.length) && (
+                <details className="rounded-lg border border-border p-4">
+                  <summary className="min-h-8 cursor-pointer text-sm font-semibold">
+                    Field dictionary and required columns
+                  </summary>
+                  <p className="my-3 text-sm text-muted-foreground">
+                    Copy your existing metadata into these template columns.
+                    There is no separate column-mapping screen. Lists use
+                    semicolons. Blank optional cells leave new answers
+                    undeclared and preserve existing answers when matched.
+                  </p>
+                  <div className="max-h-96 overflow-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th scope="col" className="p-2">
+                            Template column
+                          </th>
+                          <th scope="col" className="p-2">
+                            Required
+                          </th>
+                          <th scope="col" className="p-2">
+                            What to enter
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {template.fields?.map((field) => (
+                          <tr
+                            key={field.field}
+                            className="border-b border-border last:border-0"
+                          >
+                            <th
+                              scope="row"
+                              className="max-w-60 break-words p-2 font-mono font-medium [overflow-wrap:anywhere]"
+                            >
+                              {field.field}
+                            </th>
+                            <td className="p-2 align-top">
+                              {field.required ? "Yes" : "Optional"}
+                            </td>
+                            <td className="min-w-48 p-2 align-top text-muted-foreground">
+                              {field.help}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              )}
+              {Boolean(template.instructions?.length) && (
+                <details className="rounded-lg border border-border p-4">
+                  <summary className="min-h-8 cursor-pointer text-sm font-semibold">
+                    Template instructions
+                  </summary>
+                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                    {template.instructions?.map((instruction) => (
+                      <li key={instruction}>{instruction}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {template.lookups && (
+                <details className="rounded-lg border border-border p-4">
+                  <summary className="min-h-8 cursor-pointer text-sm font-semibold">
+                    Category and source IDs
+                  </summary>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Use these IDs in primaryCategoryId and sourceId. Leave
+                    optional values blank when they are not documented.
+                  </p>
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    {(
+                      [
+                        ["Categories", template.lookups.categories],
+                        ["Your sources", template.lookups.sources],
+                      ] as const
+                    ).map(([title, values]) => (
+                      <div key={title} className="min-w-0 text-sm">
+                        <h4 className="font-semibold">{title}</h4>
+                        {values.length ? (
+                          <dl className="mt-2 max-h-64 space-y-3 overflow-auto">
+                            {values.map((value) => (
+                              <div key={value.id}>
+                                <dt>{value.name}</dt>
+                                <dd className="break-all font-mono text-xs text-muted-foreground">
+                                  {value.id}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <p className="mt-2 text-muted-foreground">
+                            None available.
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
           )}
           <label htmlFor={`${fieldId}-control-3`} className={label}>
             Catalogue file
@@ -548,6 +690,12 @@ export function CatalogueImportWorkspace({
             and sensor_channels.csv. Up to 1,000 collections and 32 MB combined.
             Arabic text and text identifiers are supported.
           </p>
+          {files.length > 0 && (
+            <p className="break-words text-sm" role="status">
+              Selected: {files.map((file) => file.name).join(", ")}. Choose
+              Validate and preview next; this will not save dataset drafts.
+            </p>
+          )}
           <label htmlFor={`${fieldId}-control-4`} className={label}>
             How to handle matching identifiers
             <select
@@ -897,6 +1045,21 @@ export function CatalogueImportWorkspace({
               </button>
             </nav>
           )}
+          <div className="space-y-2 border-t border-border pt-5">
+            <h3 className="text-lg font-semibold">3. Save private drafts</h3>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              Apply any matching or exclusion choices with Update preview,
+              resolve selected errors, then choose Save private drafts. Saved
+              collections appear in{" "}
+              <Link
+                href="/dashboard/datasets"
+                className="font-medium underline underline-offset-4"
+              >
+                My drafts
+              </Link>
+              . Submission for review and publication are separate actions.
+            </p>
+          </div>
           {batch.counts.creates > 0 &&
             batch.unmatchedExistingDrafts > 0 &&
             canImport && (

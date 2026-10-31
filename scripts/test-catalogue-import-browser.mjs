@@ -23,6 +23,23 @@ const fixtureBundle = await build({
     resolveDir: process.cwd(),
   },
   bundle: true,
+  plugins: [
+    {
+      name: "catalogue-fixture-link",
+      setup(builder) {
+        builder.onResolve({ filter: /^next\/link$/ }, () => ({
+          path: "next/link",
+          namespace: "fixture",
+        }));
+        builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+          contents:
+            "import React from 'react';export default function Link(props){return <a {...props}/>}",
+          loader: "jsx",
+          resolveDir: process.cwd(),
+        }));
+      },
+    },
+  ],
   write: false,
   format: "iife",
   jsx: "automatic",
@@ -50,7 +67,10 @@ const server = createServer((req, res) => {
 });
 server.listen(0, "127.0.0.1");
 await once(server, "listening");
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+});
 const origin = `http://127.0.0.1:${server.address().port}`;
 const apiBase = administrative
   ? "/api/v2/admin/suppliers/supplier-test"
@@ -198,6 +218,27 @@ async function scenario(name, fn) {
       if (path.endsWith("/template") || path.endsWith("/report"))
         return reply({
           version: "private-catalogue-v1",
+          instructions: [
+            "Lists use semicolon separation.",
+            "Allowed values for modalities: TABULAR;AUDIO;IMAGE;VIDEO;TEXT;SENSOR;CAD",
+          ],
+          fields: [
+            {
+              field: "catalogueIdentifier",
+              required: true,
+              help: "Your stable collection identifier.",
+            },
+            { field: "title", required: true, help: "The collection name." },
+            {
+              field: "modalities",
+              required: false,
+              help: "Optional semicolon-separated data types.",
+            },
+          ],
+          lookups: {
+            categories: [{ id: "category-example", name: "Example subject" }],
+            sources: [],
+          },
           files: [
             {
               name: "catalogue.csv",
@@ -344,6 +385,48 @@ async function upload(page) {
     .click();
 }
 try {
+  await scenario(
+    "template walkthrough explains the format and field mapping without saving drafts",
+    async (page, fixture) => {
+      await page.goto(origin + "/import");
+      assert.equal(
+        await page
+          .getByRole("list", { name: "Catalogue import steps" })
+          .locator("li")
+          .count(),
+        3
+      );
+      await page
+        .getByRole("heading", { name: "Use the provided Excel or CSV format" })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Get CSV templates", exact: true })
+        .click();
+      await page.getByText("Template ready.", { exact: false }).waitFor();
+      const download = page.waitForEvent("download");
+      await page
+        .getByRole("button", { name: "Download catalogue.csv", exact: true })
+        .click();
+      assert.equal((await download).suggestedFilename(), "catalogue.csv");
+      await page
+        .getByText("Field dictionary and required columns", { exact: true })
+        .click();
+      await page
+        .getByRole("rowheader", { name: "catalogueIdentifier", exact: true })
+        .waitFor();
+      await page.getByText("Template instructions", { exact: true }).click();
+      await page
+        .getByText("Allowed values for modalities:", { exact: false })
+        .waitFor();
+      await page.getByText("Category and source IDs", { exact: true }).click();
+      await page.getByText("Example subject", { exact: true }).waitFor();
+      assert.equal(
+        fixture.commands.length,
+        0,
+        "Template help and downloads do not save or submit anything"
+      );
+    }
+  );
   await scenario(
     "active imports poll compact results without downloading metadata previews again",
     async (page, fixture) => {
