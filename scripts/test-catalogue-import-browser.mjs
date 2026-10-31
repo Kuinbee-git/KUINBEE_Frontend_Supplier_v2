@@ -585,6 +585,10 @@ try {
       await page
         .getByText("completed · revision 0", { exact: false })
         .waitFor();
+      // Reload can display the completed batch before the replay response arrives.
+      await page.waitForFunction(
+        () => sessionStorage.getItem("fixture-catalogue") === null
+      );
       const commits = f.commands.filter((c) => c.path.endsWith("/commit"));
       assert.equal(commits.length, 2);
       assert.deepEqual(commits[1].body, original);
