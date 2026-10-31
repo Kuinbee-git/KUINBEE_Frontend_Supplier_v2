@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { CatalogueCapacityPanel } from "@/components/catalogue/CatalogueImportWorkspace";
+import { supplierCatalogueApi } from "@/lib/api/catalogue-imports";
+import { DATASET_CATALOGUE_IMPORT_ENABLED } from "@/lib/catalogue-import-environment";
+import { CATALOGUE_IMPORT_GUIDE_PATH } from "@/lib/datasets/catalogue-import-guidance";
 import { FileText, Plus } from "lucide-react";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 import { listDatasetDraftWorkspace } from "@/lib/api/dataset-draft-workspace";
@@ -151,6 +155,9 @@ export function DatasetDraftWorkspace() {
         description="Continue your proposals step by step and review everything before submission."
         action={
           <div className="flex flex-wrap gap-3">
+            <DashboardButton asChild variant="outline">
+              <Link href="/dashboard/datasets/import">Import catalogue</Link>
+            </DashboardButton>
             <DashboardButton asChild>
               <Link href="/dashboard/datasets/create">
                 <Plus /> Create proposal
@@ -159,6 +166,29 @@ export function DatasetDraftWorkspace() {
           </div>
         }
       />
+      <DashboardCard className="space-y-2 p-4 sm:p-6">
+        <h2 className="text-base font-semibold">
+          Have a catalogue in Excel or CSV?
+        </h2>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          Choose Import catalogue to prepare multiple collections from one
+          spreadsheet. Download a template, preview and match your rows, then
+          save private drafts.
+        </p>
+        {!DATASET_CATALOGUE_IMPORT_ENABLED && (
+          <p className="text-sm text-muted-foreground">
+            Import saving is not enabled here yet. The import page and guide
+            explain the process and how to request access.
+          </p>
+        )}
+        <Link
+          href={CATALOGUE_IMPORT_GUIDE_PATH}
+          className="inline-flex min-h-10 items-center text-sm font-medium underline underline-offset-4"
+        >
+          Follow the file import guide
+        </Link>
+      </DashboardCard>
+      <CatalogueCapacityPanel api={supplierCatalogueApi} />
       <DashboardCard
         className="overflow-hidden p-4 sm:p-6"
         data-draft-workspace="true"

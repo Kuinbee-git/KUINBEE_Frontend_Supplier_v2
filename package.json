@@ -15,9 +15,9 @@
     "check:environment": "node scripts/deployment-environment.mjs",
     "test:environment": "node --test scripts/deployment-environment.test.mjs",
     "prebuild": "npm run check:environment && node scripts/check-github-release.mjs",
-    "test:release": "node scripts/check-release.mjs && npm run test:service-samples:browser",
+    "test:release": "node scripts/check-release.mjs",
     "test:errors": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-error-details.mjs scripts/test-api-errors.mjs",
-    "test:components": "node scripts/test-supplier-session-browser.mjs && node scripts/test-components-browser.mjs && node scripts/test-state-lifecycle-browser.mjs && node scripts/test-dataset-preparations-browser.mjs && npm run test:creation-routing && npm run test:uploads && npm run test:workflow && npm run test:details",
+    "test:components": "node scripts/test-supplier-session-browser.mjs && node scripts/test-components-browser.mjs && node scripts/test-state-lifecycle-browser.mjs && node scripts/test-dataset-preparations-browser.mjs && npm run test:creation-routing && npm run test:uploads && npm run test:workflow && npm run test:details && npm run test:catalogue && npm run test:service-samples:browser",
     "test:contracts": "npm run test:dataset-production && npm run test:release-gate && npm run test:environment && npm run test:errors && node scripts/check-dataset-preparation-contracts.mjs && node scripts/check-supplier-onboarding-contract.mjs",
     "test:preparations": "node --test scripts/test-dataset-save-recovery.mjs && node scripts/test-dataset-preparations-browser.mjs",
     "test:uploads": "node --test scripts/test-dataset-browser-lifecycle.mjs scripts/test-dataset-folders.mjs scripts/test-dataset-save-recovery.mjs scripts/test-dataset-upload-transfer.mjs scripts/test-dataset-tables.mjs scripts/test-dataset-table-page.mjs && node scripts/test-dataset-uploader-browser.mjs",
@@ -29,11 +29,12 @@
     "test:creation-routing": "node scripts/test-dataset-creation-routing-browser.mjs",
     "test:onboarding:browser": "node scripts/test-onboarding-browser.mjs",
     "test:onboarding:ui": "node scripts/test-onboarding-ui-browser.mjs",
+    "test:catalogue": "node scripts/test-catalogue-import-browser.mjs",
     "test:service-samples:browser": "node scripts/test-service-samples-browser.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@kuinbee/dataset-preparation-contracts": "file:vendor/kuinbee-dataset-preparation-contracts-0.40.0.tgz",
+    "@kuinbee/dataset-preparation-contracts": "file:vendor/kuinbee-dataset-preparation-contracts-0.43.0.tgz",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-collapsible": "^1.1.12",
@@ -65,7 +66,7 @@
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "zod": "4.6.6",
+    "zod": "^4.6.6",
     "zustand": "^5.0.9"
   },
   "devDependencies": {

@@ -554,6 +554,37 @@ const profileOptions = {
 } as const;
 const definitions: Record<ProfileKey, { title: string; fields: Definition[] }> =
   {
+    cad: {
+      title: "CAD and engineering models",
+      fields: [
+        { key: "modelScope", label: "Components and assemblies represented" },
+        {
+          key: "formatNotes",
+          label: "Documented formats and unknown coverage",
+        },
+        {
+          key: "assemblyStructure",
+          label: "Assembly relationships and limitations",
+        },
+        { key: "unitNotes", label: "Units and coordinate conventions" },
+        {
+          key: "nativeSourceAvailability",
+          label: "Native source availability",
+          kind: "availability",
+        },
+        {
+          key: "parametricHistoryAvailability",
+          label: "Parametric history availability",
+          kind: "availability",
+        },
+        {
+          key: "annotationAvailability",
+          label: "Annotation availability",
+          kind: "availability",
+        },
+        { key: "annotationMeaning", label: "Meaning of annotations" },
+      ],
+    },
     tabular: {
       title: "Tables and spreadsheets",
       fields: [
@@ -826,6 +857,7 @@ export function getPreparationProfileSummary(
     VIDEO: "video",
     TEXT: "text",
     SENSOR: "sensors",
+    CAD: "cad",
   };
   const active = (metadata.modalities ?? [])
     .map((modality) => names[modality])
@@ -902,6 +934,7 @@ export function PreparationProfileFields({
     VIDEO: "video",
     TEXT: "text",
     SENSOR: "sensors",
+    CAD: "cad",
   };
   for (const modality of metadata.modalities ?? []) {
     const name = names[modality];

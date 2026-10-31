@@ -28,7 +28,7 @@ const base = "/api/v2/supplier/dataset-drafts";
 async function request<T>(
   path: string,
   schema: { parse(value: unknown): T },
-  options: RequestInit = {}
+  options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<T> {
   if (!DATASET_PREPARATION_ENABLED)
     throw new PreparationApiError(
@@ -43,12 +43,14 @@ async function request<T>(
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, 30_000);
+  }, options.timeoutMs ?? 30_000);
   options.signal?.addEventListener("abort", abort, { once: true });
   if (options.signal?.aborted) abort();
   try {
+    const fetchOptions = { ...options };
+    delete fetchOptions.timeoutMs;
     response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       signal: controller.signal,
       credentials: "include",
       headers: {

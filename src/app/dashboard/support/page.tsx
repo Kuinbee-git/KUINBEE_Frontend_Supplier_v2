@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { DATASET_PREPARATION_ENABLED } from "@/lib/dataset-preparation-environment";
 import { PROPOSAL_GUIDE_PATH } from "@/lib/datasets/proposal-guidance";
+import { CATALOGUE_IMPORT_GUIDE_PATH } from "@/lib/datasets/catalogue-import-guidance";
 import {
   ArrowRight,
   BadgePercent,
   Database,
+  FileUp,
   Mail,
   Phone,
   ShieldCheck,
@@ -46,6 +48,13 @@ const workspaceGuides = [
       ? "Learn what to prepare, how to save and upload, and what happens during review and publication."
       : "Start a structured proposal and prepare dataset details for marketplace review.",
     icon: Database,
+  },
+  {
+    href: CATALOGUE_IMPORT_GUIDE_PATH,
+    title: "Excel and CSV import guide",
+    description:
+      "Follow the template, match existing collections, preview changes and save private drafts.",
+    icon: FileUp,
   },
   {
     href: "/dashboard/account",

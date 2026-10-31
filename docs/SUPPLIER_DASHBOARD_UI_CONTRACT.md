@@ -44,7 +44,7 @@ excluded screens: `src/components/ui/**`, `src/components/shared/**`,
 
 Run `npm run check:dashboard-scope` at every gate. It fails if a protected file
 changes, authenticated selectors appear in excluded surfaces, or the recorded
-27-route inventory drifts without an intentional contract update.
+28-route inventory drifts without an intentional contract update.
 
 ## Visual direction
 
@@ -181,14 +181,14 @@ a genuine zero or successful empty result.
 
 ## Authenticated route inventory
 
-The refresh covers 27 routes:
+The refresh covers 28 routes:
 
 - Overview: `/dashboard`
 - Analytics: `/dashboard/stats`, `/dashboard/stats/buyers`,
   `/dashboard/stats/datasets`, `/dashboard/stats/datasets/[id]`
 - Draft datasets: `/dashboard/datasets`, `/dashboard/datasets/create`,
   `/dashboard/datasets/[id]`, `/dashboard/datasets/drafts/[draftId]`,
-  `/dashboard/datasets/guide`,
+  `/dashboard/datasets/guide`, `/dashboard/datasets/import`,
   `/dashboard/datasets/prepare`, `/dashboard/datasets/prepare/[draftId]`
 - Supplier datasets: `/dashboard/my-datasets`, `/dashboard/my-datasets/[id]`,
   `/dashboard/my-datasets/[id]/edit`
