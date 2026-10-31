@@ -29,6 +29,8 @@ const formats: Record<ProfileId, string> = {
   MPEG_AUDIO_UPLOAD_V1: "MP3 audio",
   ISO_BMFF_VIDEO_UPLOAD_V1: "MP4 video container",
   UTF8_TEXT_UPLOAD_V1: "Text and sidecar files · UTF-8",
+  CAD_STEP_UPLOAD_V1: "STEP engineering model",
+  CAD_IGES_UPLOAD_V1: "IGES engineering model",
 };
 const stateLabels: Record<DatasetUploadAttemptStatusResponse["state"], string> =
   {

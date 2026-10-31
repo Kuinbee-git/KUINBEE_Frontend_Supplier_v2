@@ -8,6 +8,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
+import { CatalogueEntryPanel } from "@/components/catalogue/CatalogueEntryPanel";
+import { supplierCatalogueApi } from "@/lib/api/catalogue-imports";
 import {
   DATASET_UPLOAD_CHOICES,
   DATASET_MODALITIES,
@@ -850,6 +852,19 @@ function PreparationEditor({
               }}
             />
           </div>
+        )}
+        {activeStep === 0 && saved && !workflow.managed && (
+          <CatalogueEntryPanel
+            api={supplierCatalogueApi}
+            draftId={saved.id}
+            generation={saved.generation}
+            disabled={fieldsLocked || dirty}
+            onSaved={async () => {
+              const current = await preparationApi.get(saved.id);
+              onWorkflowSaved(current);
+              await workflow.refresh(current);
+            }}
+          />
         )}
         <fieldset
           disabled={fieldsLocked}

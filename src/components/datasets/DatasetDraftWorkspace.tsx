@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { CatalogueCapacityPanel } from "@/components/catalogue/CatalogueImportWorkspace";
+import { supplierCatalogueApi } from "@/lib/api/catalogue-imports";
+import { DATASET_CATALOGUE_IMPORT_ENABLED } from "@/lib/catalogue-import-environment";
 import { FileText, Plus } from "lucide-react";
 import { useComponentRequest } from "@/hooks/useComponentRequest";
 import { listDatasetDraftWorkspace } from "@/lib/api/dataset-draft-workspace";
@@ -151,6 +154,11 @@ export function DatasetDraftWorkspace() {
         description="Continue your proposals step by step and review everything before submission."
         action={
           <div className="flex flex-wrap gap-3">
+            {DATASET_CATALOGUE_IMPORT_ENABLED && (
+              <DashboardButton asChild variant="outline">
+                <Link href="/dashboard/datasets/import">Import catalogue</Link>
+              </DashboardButton>
+            )}
             <DashboardButton asChild>
               <Link href="/dashboard/datasets/create">
                 <Plus /> Create proposal
@@ -159,6 +167,7 @@ export function DatasetDraftWorkspace() {
           </div>
         }
       />
+      <CatalogueCapacityPanel api={supplierCatalogueApi} />
       <DashboardCard
         className="overflow-hidden p-4 sm:p-6"
         data-draft-workspace="true"

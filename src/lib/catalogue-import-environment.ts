@@ -1,0 +1,4 @@
+import { DATASET_PREPARATION_ENABLED } from "./dataset-preparation-environment";
+export const DATASET_CATALOGUE_IMPORT_ENABLED =
+  DATASET_PREPARATION_ENABLED &&
+  process.env.NEXT_PUBLIC_DATASET_CATALOGUE_IMPORT_ENABLED === "true";
