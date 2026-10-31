@@ -433,7 +433,7 @@ export function DatasetGuideTour({ children }: { children: ReactNode }) {
         <div
           role="group"
           aria-label="Choose a walkthrough"
-          className="grid gap-3 sm:grid-cols-2"
+          className="grid grid-cols-2 gap-3"
         >
           {(
             [
@@ -467,7 +467,7 @@ export function DatasetGuideTour({ children }: { children: ReactNode }) {
                 <span className="block text-sm font-semibold">
                   {item.title}
                 </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
+                <span className="mt-1 hidden text-xs text-muted-foreground sm:block">
                   {item.subtitle}
                 </span>
               </span>
