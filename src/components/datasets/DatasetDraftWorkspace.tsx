@@ -12,7 +12,8 @@ import { listDatasetDraftWorkspace } from "@/lib/api/dataset-draft-workspace";
 import { DATASET_UPLOAD_CHOICES } from "@kuinbee/dataset-preparation-contracts";
 import {
   DashboardButton,
-  DashboardCard,
+  DashboardWorkspace,
+  DashboardRegion,
   DashboardPagination,
   DashboardSearchField,
   DashboardStatusBadge,
@@ -166,172 +167,171 @@ export function DatasetDraftWorkspace() {
           </div>
         }
       />
-      <DashboardCard className="space-y-2 p-4 sm:p-6">
-        <h2 className="text-base font-semibold">
-          Have a catalogue in Excel or CSV?
-        </h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Choose Import catalogue to prepare multiple collections from one
-          spreadsheet. Download a template, preview and match your rows, then
-          save private drafts.
-        </p>
-        {!DATASET_CATALOGUE_IMPORT_ENABLED && (
-          <p className="text-sm text-muted-foreground">
-            Import saving is not enabled here yet. The import page and guide
-            explain the process and how to request access.
+      <DashboardWorkspace data-draft-workspace="true">
+        <DashboardRegion className="space-y-2">
+          <h2 className="text-base font-semibold">
+            Have a catalogue in Excel or CSV?
+          </h2>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            Choose Import catalogue to prepare multiple collections from one
+            spreadsheet. Download a template, preview and match your rows, then
+            save private drafts.
           </p>
-        )}
-        <Link
-          href={CATALOGUE_IMPORT_GUIDE_PATH}
-          className="inline-flex min-h-10 items-center text-sm font-medium underline underline-offset-4"
-        >
-          Follow the file import guide
-        </Link>
-      </DashboardCard>
-      <CatalogueCapacityPanel api={supplierCatalogueApi} />
-      <DashboardCard
-        className="overflow-hidden p-4 sm:p-6"
-        data-draft-workspace="true"
-      >
-        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12">
-          {(loading || result) && (
-            <section
-              aria-label="Draft overview"
-              className="col-span-full border-b border-border pb-5"
-            >
-              <dl className="grid grid-cols-3 divide-x divide-border">
-                {metrics.map((metric) => (
-                  <div
-                    key={metric.label}
-                    className="min-w-0 px-3 first:pl-0 sm:px-6"
-                  >
-                    <dt className="text-sm font-medium text-muted-foreground">
-                      {metric.label}
-                    </dt>
-                    <dd className="mt-2 text-2xl font-semibold text-foreground">
-                      {loading ? (
-                        <DashboardSkeleton className="h-8 w-12" />
-                      ) : (
-                        metric.value
-                      )}
-                    </dd>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {metric.supportingText}
-                    </p>
-                  </div>
-                ))}
-              </dl>
-            </section>
+          {!DATASET_CATALOGUE_IMPORT_ENABLED && (
+            <p className="text-sm text-muted-foreground">
+              Import saving is not enabled here yet. The import page and guide
+              explain the process and how to request access.
+            </p>
           )}
-          <div
-            role="search"
-            aria-label="Draft search"
-            className="flex min-w-0 items-start lg:col-span-8"
+          <Link
+            href={CATALOGUE_IMPORT_GUIDE_PATH}
+            className="inline-flex min-h-10 items-center text-sm font-medium underline underline-offset-4"
           >
-            <DashboardSearchField
-              value={search}
-              onValueChange={setSearch}
-              label="Search draft proposals"
-              placeholder="Search draft title or ID"
-              maxLength={200}
-              clearLabel="Clear draft search"
-              onClear={() => setSearch("")}
-            />
-          </div>
-          <p className="min-w-0 text-sm text-muted-foreground lg:col-span-4">
-            Open a draft to continue its information and files. Saving stays
-            separate from submitting it for admin review.
-          </p>
-          {error && (
-            <div className="col-span-full">
-              <DatasetErrorBanner
-                title="We could not load your drafts"
-                message={error}
-                onRetry={load}
+            Follow the file import guide
+          </Link>
+        </DashboardRegion>
+        <CatalogueCapacityPanel api={supplierCatalogueApi} embedded />
+        <DashboardRegion>
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12">
+            {(loading || result) && (
+              <section
+                aria-label="Draft overview"
+                className="col-span-full border-b border-border pb-5"
+              >
+                <dl className="grid grid-cols-3 divide-x divide-border">
+                  {metrics.map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="min-w-0 px-3 first:pl-0 sm:px-6"
+                    >
+                      <dt className="text-sm font-medium text-muted-foreground">
+                        {metric.label}
+                      </dt>
+                      <dd className="mt-2 text-2xl font-semibold text-foreground">
+                        {loading ? (
+                          <DashboardSkeleton className="h-8 w-12" />
+                        ) : (
+                          metric.value
+                        )}
+                      </dd>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {metric.supportingText}
+                      </p>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+            <div
+              role="search"
+              aria-label="Draft search"
+              className="flex min-w-0 items-start lg:col-span-8"
+            >
+              <DashboardSearchField
+                value={search}
+                onValueChange={setSearch}
+                label="Search draft proposals"
+                placeholder="Search draft title or ID"
+                maxLength={200}
+                clearLabel="Clear draft search"
+                onClear={() => setSearch("")}
               />
             </div>
-          )}
-          <section
-            aria-labelledby="draft-inventory-title"
-            className="col-span-full min-w-0 border-t border-border pt-5"
-            data-proposal-tile="true"
-          >
-            {error && !result ? (
-              <h2
-                id="draft-inventory-title"
-                className="text-base font-semibold"
-              >
-                Draft inventory
-              </h2>
-            ) : (
-              <DatasetInventoryHeader
-                id="draft-inventory-title"
-                title="Draft inventory"
-                loading={loading}
-                total={result?.total ?? 0}
-                singularLabel="draft"
-                pluralLabel="drafts"
-              />
+            <p className="min-w-0 text-sm text-muted-foreground lg:col-span-4">
+              Open a draft to continue its information and files. Saving stays
+              separate from submitting it for admin review.
+            </p>
+            {error && (
+              <div className="col-span-full">
+                <DatasetErrorBanner
+                  title="We could not load your drafts"
+                  message={error}
+                  onRetry={load}
+                />
+              </div>
             )}
-            {loading ? (
-              <DatasetListSkeleton />
-            ) : result?.items.length === 0 ? (
-              <DatasetEmptyState
-                filtered={Boolean(query)}
-                onClear={() => setSearch("")}
-                title="No draft proposals yet"
-                description="Use Create proposal to start with a title and save the rest step by step."
-                filteredTitle="No draft proposals match this search"
-                filteredDescription="Try another title or ID."
-              />
-            ) : result && result.items.length > 0 ? (
-              <DatasetRecordList
-                items={result.items}
-                columns={columns}
-                busy={false}
-                framed={false}
-                mobileBreakpoint="xl"
-                fixedLayout
-                getKey={(row) => row.id}
-                caption="Draft dataset proposals"
-                renderMobile={(row) => (
-                  <DatasetMobileRecordCard
-                    framed={false}
-                    href={resumeUrl(row)}
-                    title={row.title}
-                    identifier={row.datasetUniqueId ?? row.id}
-                    icon={FileText}
-                    badges={
-                      <>
-                        <DashboardStatusBadge tone="neutral">
-                          Draft
-                        </DashboardStatusBadge>
-                        <DraftFileState
-                          attached={Boolean(row.currentUploadId)}
-                        />
-                      </>
-                    }
-                    supportingText={`${uploadLabel(row)} · Updated ${formatDatasetDate(row.updatedAt)}`}
-                    actionLabel="Continue"
-                  />
-                )}
-              />
-            ) : null}
-            {result && (
-              <DashboardPagination
-                ariaLabel="Draft proposal pages"
-                page={result.page}
-                pageSize={result.limit}
-                totalItems={result.total}
-                itemLabel="drafts"
-                onPageChange={setPage}
-                disabled={loading}
-                className="border-t border-border pt-4"
-              />
-            )}
-          </section>
-        </div>
-      </DashboardCard>
+            <section
+              aria-labelledby="draft-inventory-title"
+              className="col-span-full min-w-0 border-t border-border pt-5"
+              data-proposal-tile="true"
+            >
+              {error && !result ? (
+                <h2
+                  id="draft-inventory-title"
+                  className="text-base font-semibold"
+                >
+                  Draft inventory
+                </h2>
+              ) : (
+                <DatasetInventoryHeader
+                  id="draft-inventory-title"
+                  title="Draft inventory"
+                  loading={loading}
+                  total={result?.total ?? 0}
+                  singularLabel="draft"
+                  pluralLabel="drafts"
+                />
+              )}
+              {loading ? (
+                <DatasetListSkeleton />
+              ) : result?.items.length === 0 ? (
+                <DatasetEmptyState
+                  filtered={Boolean(query)}
+                  onClear={() => setSearch("")}
+                  title="No draft proposals yet"
+                  description="Use Create proposal to start with a title and save the rest step by step."
+                  filteredTitle="No draft proposals match this search"
+                  filteredDescription="Try another title or ID."
+                />
+              ) : result && result.items.length > 0 ? (
+                <DatasetRecordList
+                  items={result.items}
+                  columns={columns}
+                  busy={false}
+                  framed={false}
+                  mobileBreakpoint="xl"
+                  fixedLayout
+                  getKey={(row) => row.id}
+                  caption="Draft dataset proposals"
+                  renderMobile={(row) => (
+                    <DatasetMobileRecordCard
+                      framed={false}
+                      href={resumeUrl(row)}
+                      title={row.title}
+                      identifier={row.datasetUniqueId ?? row.id}
+                      icon={FileText}
+                      badges={
+                        <>
+                          <DashboardStatusBadge tone="neutral">
+                            Draft
+                          </DashboardStatusBadge>
+                          <DraftFileState
+                            attached={Boolean(row.currentUploadId)}
+                          />
+                        </>
+                      }
+                      supportingText={`${uploadLabel(row)} · Updated ${formatDatasetDate(row.updatedAt)}`}
+                      actionLabel="Continue"
+                    />
+                  )}
+                />
+              ) : null}
+              {result && (
+                <DashboardPagination
+                  ariaLabel="Draft proposal pages"
+                  page={result.page}
+                  pageSize={result.limit}
+                  totalItems={result.total}
+                  itemLabel="drafts"
+                  onPageChange={setPage}
+                  disabled={loading}
+                  className="border-t border-border pt-4"
+                />
+              )}
+            </section>
+          </div>
+        </DashboardRegion>
+      </DashboardWorkspace>
     </DatasetWorkspace>
   );
 }
