@@ -168,6 +168,7 @@ try {
   }
   browser = await chromium.launch({
     headless: true,
+    executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
     args: [
       "--host-resolver-rules=MAP supplier.fixture.test 127.0.0.1",
       "--no-proxy-server",
@@ -176,11 +177,17 @@ try {
   page = await browser.newPage();
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("requestfailed", (request) => {
-    failedRequests.push({ url: request.url(), error: request.failure()?.errorText });
+    failedRequests.push({
+      url: request.url(),
+      error: request.failure()?.errorText,
+    });
   });
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
-    if (url.pathname.startsWith("/_next/") && route.request().resourceType() === "script") {
+    if (
+      url.pathname.startsWith("/_next/") &&
+      route.request().resourceType() === "script"
+    ) {
       await clientScripts;
     }
     if (url.origin === apiOrigin)
@@ -199,7 +206,11 @@ try {
   await page.locator('input[type="email"]').waitFor({ state: "visible" });
   assert(await page.locator('input[type="email"]').isDisabled());
   assert(await page.locator('input[type="password"]').isDisabled());
-  assert(await page.getByRole("button", { name: "Sign in", exact: true }).isDisabled());
+  assert(
+    await page
+      .getByRole("button", { name: "Sign in", exact: true })
+      .isDisabled()
+  );
   releaseClientScripts();
   if (app === "buyer")
     await page
@@ -229,8 +240,14 @@ try {
     apiCalls.some((r) => r.method === "POST" && r.path.includes("/auth/")),
     "Compiled frontend must send login to the configured API"
   );
-  const submitted = requests.filter((r) => r.method === "POST" && r.path.includes("/auth/"));
-  assert.equal(submitted.length, 1, "Login submits exactly once after hydration");
+  const submitted = requests.filter(
+    (r) => r.method === "POST" && r.path.includes("/auth/")
+  );
+  assert.equal(
+    submitted.length,
+    1,
+    "Login submits exactly once after hydration"
+  );
   assert.deepEqual(submitted[0].body, {
     email: "fixture@example.test",
     password: "Fixture-password-123",
@@ -256,16 +273,22 @@ try {
     await run("scripts/test-claru-csp-browser.mjs");
   }
 } catch (error) {
-  console.error("Release browser diagnostics", JSON.stringify({
-    message: error.message,
-    page: page?.url(),
-    visibleText: await page?.locator("body").innerText().catch(() => "unavailable"),
-    errors,
-    wrongApi,
-    apiCalls,
-    failedRequests,
-    fixtureRequests: requests.map(({ method, path }) => ({ method, path })),
-  }));
+  console.error(
+    "Release browser diagnostics",
+    JSON.stringify({
+      message: error.message,
+      page: page?.url(),
+      visibleText: await page
+        ?.locator("body")
+        .innerText()
+        .catch(() => "unavailable"),
+      errors,
+      wrongApi,
+      apiCalls,
+      failedRequests,
+      fixtureRequests: requests.map(({ method, path }) => ({ method, path })),
+    })
+  );
   throw error;
 } finally {
   releaseClientScripts();
