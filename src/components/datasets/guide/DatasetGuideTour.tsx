@@ -531,8 +531,13 @@ export function DatasetGuideTour({ children }: { children: ReactNode }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: reduced ? 0 : -12 * direction }}
                 transition={{ duration: reduced ? 0 : 0.2 }}
-                onAnimationComplete={() => {
-                  if (focusRequested.current) {
+                onAnimationComplete={(definition) => {
+                  if (
+                    typeof definition === "object" &&
+                    "opacity" in definition &&
+                    definition.opacity === 1 &&
+                    focusRequested.current
+                  ) {
                     heading.current?.focus({ preventScroll: true });
                     heading.current
                       ?.closest("[data-guide-deck]")
