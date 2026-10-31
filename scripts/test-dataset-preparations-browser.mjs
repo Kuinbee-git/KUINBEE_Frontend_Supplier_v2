@@ -1181,11 +1181,31 @@ try {
     .first()
     .waitFor();
   await page.locator('[data-guide-cursor="2"]').waitFor();
+  await page
+    .getByRole("button", { name: "Replay this screen", exact: true })
+    .click();
+  await page
+    .locator('[data-guide-story-action="2"]')
+    .waitFor({ timeout: 6000 });
+  await page
+    .getByRole("button", { name: "Pause cursor walkthrough", exact: true })
+    .click();
+  await page.waitForTimeout(3900);
+  assert.equal(
+    await page
+      .locator("[data-guide-story-action]")
+      .getAttribute("data-guide-story-action"),
+    "2",
+    "Pausing keeps the cursor story on the chosen action"
+  );
   for (const id of ["import-preview", "import-save"]) {
     await page
       .getByRole("button", { name: "Next screen", exact: true })
       .click();
     await page.locator(`[data-guide-screen="${id}"]`).waitFor();
+    await page.waitForFunction(
+      () => document.activeElement?.id === "guide-screen-title"
+    );
     assert.equal(await page.locator("[data-guide-screen]").count(), 1);
   }
   assert.equal(
