@@ -33,7 +33,7 @@ const steps = [
   {
     title: "Save the reviewed rows as private drafts",
     detail:
-      "Check your saved preparation allowance, then click Save private drafts. Resolve selected errors and conflicts first. Unconfirmed file-format warnings can remain. Match older drafts before creating entries that may already exist; confirm unmatched drafts are separate only when that is true. If capacity runs out, contact supplier support for an increase and resume the existing batch. Saving does not submit for review, publish, grant buyer access or authorize downloads or sample sharing.",
+      "Click Save private drafts. Resolve selected errors and conflicts first. Unconfirmed file-format warnings can remain. Match older drafts before creating entries that may already exist; confirm unmatched drafts are separate only when that is true. Saving does not submit for review, publish, grant buyer access or authorize downloads or sample sharing.",
   },
   {
     title: "Continue in My drafts or resume from Import history",
@@ -144,7 +144,7 @@ export function CatalogueImportGuide() {
         <p className="max-w-3xl text-muted-foreground">
           The import page explains when saving imports is not enabled. You can
           still read this guide and continue individual drafts. Ask supplier
-          support for import access or a larger saved preparation allowance.
+          support for import access.
         </p>
         {!DATASET_CATALOGUE_IMPORT_ENABLED && (
           <p className="font-medium">

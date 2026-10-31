@@ -21,7 +21,7 @@ const client = administrative
   : `import{supplierCatalogueApi as api}from'./src/lib/api/catalogue-imports';`;
 const fixtureBundle = await build({
   stdin: {
-    contents: `import React from'react';import{createRoot}from'react-dom/client';import{CatalogueImportWorkspace}from'./src/components/catalogue/CatalogueImportWorkspace';import{CatalogueEntryPanel}from'./src/components/catalogue/CatalogueEntryPanel';${client}const root=createRoot(document.getElementById('root'));root.render(location.pathname.endsWith('/entry')?<CatalogueEntryPanel api={api} draftId={'c'+'2'.repeat(24)} generation={7}/>:<CatalogueImportWorkspace api={api} ownerLabel="Synthetic supplier catalogue" storageKey="fixture-catalogue" canManageCapacity={${administrative}}/>);`,
+    contents: `import React from'react';import{createRoot}from'react-dom/client';import{CatalogueImportWorkspace}from'./src/components/catalogue/CatalogueImportWorkspace';import{CatalogueEntryPanel}from'./src/components/catalogue/CatalogueEntryPanel';${client}const root=createRoot(document.getElementById('root'));root.render(location.pathname.endsWith('/entry')?<CatalogueEntryPanel api={api} draftId={'c'+'2'.repeat(24)} generation={7}/>:<CatalogueImportWorkspace api={api} ownerLabel="Synthetic supplier catalogue" storageKey="fixture-catalogue"/>);`,
     loader: "jsx",
     resolveDir: process.cwd(),
   },
@@ -397,25 +397,43 @@ async function upload(page) {
 }
 try {
   await scenario(
-    "allowance failures stop loading and recover through the shared refresh control",
+    "supplier imports do not display or request administrative quota information",
     async (page, fixture) => {
       fixture.capacityFailure = true;
+      const quotaRequests = [];
+      page.on("request", (request) => {
+        if (new URL(request.url()).pathname.endsWith("/capacity"))
+          quotaRequests.push(request.url());
+      });
       await page.goto(origin + "/import");
-      await page.getByText("Allowance unavailable", { exact: true }).waitFor();
-      assert.equal(
-        await page.getByText("Loading allowance…", { exact: true }).count(),
-        0
-      );
-      fixture.capacityFailure = false;
       await page
-        .getByRole("button", { name: "Refresh allowance", exact: true })
-        .click();
-      await page.getByText("50", { exact: true }).waitFor();
+        .getByRole("button", { name: "Get CSV templates", exact: true })
+        .waitFor();
       assert.equal(
-        await page.getByText("Allowance unavailable", { exact: true }).count(),
+        await page
+          .getByRole("heading", {
+            name: "Saved preparation allowance",
+            exact: true,
+          })
+          .count(),
         0
       );
-      assert.equal(fixture.commands.length, 0);
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Refresh allowance", exact: true })
+          .count(),
+        0
+      );
+      await upload(page);
+      await page
+        .getByRole("heading", { name: "2. Review catalogue", exact: true })
+        .waitFor();
+      assert.deepEqual(quotaRequests, []);
+      assert.equal(
+        fixture.commands.length,
+        1,
+        "Only the requested preview is created"
+      );
     }
   );
   await scenario(

@@ -19,7 +19,6 @@ import {
 import {
   type CatalogueApi,
   type CatalogueBatch,
-  type CatalogueCapacity,
   type CatalogueCandidates,
   CatalogueRetainedRequestSchema,
   catalogueError,
@@ -30,7 +29,6 @@ import {
 import { CatalogueImportSteps } from "./CatalogueImportSteps";
 import {
   DashboardButton,
-  DashboardCard,
   DashboardInput,
   DashboardCheckbox,
   DashboardInlineAlert,
@@ -109,184 +107,16 @@ type Pending =
   | { action: "commit"; id: string; body: CatalogueImportCommitBody }
   | { action: "cancel"; id: string; body: { requestId: string } };
 
-export function CatalogueCapacityPanel({
-  api,
-  canManage = false,
-  embedded = false,
-  onChanged,
-}: {
-  api: CatalogueApi;
-  canManage?: boolean;
-  embedded?: boolean;
-  onChanged?: () => void;
-}) {
-  const fieldId = useId();
-  const [capacity, setCapacity] = useState<CatalogueCapacity | null>(null);
-  const [limit, setLimit] = useState(""),
-    [reason, setReason] = useState("");
-  const [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false);
-  const [retained, setRetained] = useState<
-    Parameters<CatalogueApi["updateCapacity"]>[0] | null
-  >(null);
-  const refresh = useCallback(async () => {
-    setBusy(true);
-    setError("");
-    try {
-      const result = await api.capacity();
-      setCapacity(result);
-      setLimit(result.override === null ? "" : String(result.override));
-      setError("");
-    } catch (e) {
-      setError(catalogueError(e));
-    } finally {
-      setBusy(false);
-    }
-  }, [api]);
-  useEffect(() => {
-    const controller = new AbortController();
-    void api
-      .capacity(controller.signal)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setCapacity(result);
-        setLimit(result.override === null ? "" : String(result.override));
-        setError("");
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setError(catalogueError(error));
-      });
-    return () => controller.abort();
-  }, [api]);
-  async function save() {
-    if (!capacity) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    const body = retained ?? {
-      requestId: uuid(),
-      expectedGeneration: capacity.generation,
-      limitOverride: limit.trim() ? Number(limit) : null,
-      reason,
-    };
-    setRetained(body);
-    try {
-      const result = await api.updateCapacity(body);
-      setCapacity(result);
-      setRetained(null);
-      setNotice("Saved preparation allowance updated.");
-      setReason("");
-      onChanged?.();
-    } catch (e) {
-      setError(catalogueError(e));
-      if (!catalogueRequestUncertain(e)) setRetained(null);
-    } finally {
-      setBusy(false);
-    }
-  }
-  const content = (
-    <section className={section} aria-label="Saved preparation capacity">
-      <h2 className="text-base font-semibold">Saved preparation allowance</h2>
-      {capacity ? (
-        <p>
-          <strong>{capacity.used.toLocaleString()}</strong> of{" "}
-          <strong>{capacity.limit.toLocaleString()}</strong> saved preparations
-          · {capacity.remaining.toLocaleString()} available
-        </p>
-      ) : !error ? (
-        <p role="status">Loading allowance…</p>
-      ) : null}
-      <p className="text-sm text-muted-foreground">
-        This counts all retained preparations, including those later submitted
-        or published. File storage has its own allowance.
-      </p>
-      {error && (
-        <DashboardInlineAlert
-          tone="danger"
-          title="Allowance unavailable"
-          message={error}
-        />
-      )}
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
-        </p>
-      )}
-      {canManage && capacity && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save();
-          }}
-          className="grid items-end gap-3 sm:grid-cols-2"
-        >
-          <label htmlFor={`${fieldId}-control-1`} className={label}>
-            Supplier allowance override
-            <DashboardInput
-              id={`${fieldId}-control-1`}
-              type="number"
-              min={1}
-              max={100000}
-              value={limit}
-              disabled={busy || Boolean(retained)}
-              placeholder="Use platform default"
-              onChange={(e) => setLimit(e.target.value)}
-            />
-          </label>
-          <label htmlFor={`${fieldId}-control-2`} className={label}>
-            Reason for allowance change
-            <DashboardInput
-              id={`${fieldId}-control-2`}
-              value={reason}
-              maxLength={1000}
-              required
-              disabled={busy || Boolean(retained)}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-          <p className="text-xs text-muted-foreground">
-            Leave the override blank to restore the platform default. Existing
-            preparations are preserved.
-          </p>
-          <DashboardButton
-            variant="outline"
-            type="submit"
-            disabled={busy || (!reason.trim() && !retained)}
-          >
-            {busy
-              ? "Saving allowance…"
-              : retained
-                ? "Retry allowance request"
-                : "Save allowance"}
-          </DashboardButton>
-        </form>
-      )}
-      <DashboardButton
-        variant="outline"
-        type="button"
-        disabled={busy || Boolean(retained)}
-        onClick={() => void refresh()}
-      >
-        Refresh allowance
-      </DashboardButton>
-    </section>
-  );
-  return embedded ? content : <DashboardCard>{content}</DashboardCard>;
-}
-
 export function CatalogueImportWorkspace({
   api,
   ownerLabel,
   storageKey,
   canImport = true,
-  canManageCapacity = false,
 }: {
   api: CatalogueApi;
   ownerLabel: string;
   storageKey: string;
   canImport?: boolean;
-  canManageCapacity?: boolean;
 }) {
   const fieldId = useId();
   const [batch, setBatch] = useState<CatalogueBatch | null>(null);
@@ -546,11 +376,6 @@ export function CatalogueImportWorkspace({
             and buyer access require separate actions.
           </p>
         </DashboardRegion>
-        <CatalogueCapacityPanel
-          api={api}
-          canManage={canManageCapacity}
-          embedded
-        />
         {error && (
           <DashboardRegion>
             <DashboardInlineAlert

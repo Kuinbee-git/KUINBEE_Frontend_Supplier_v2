@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CatalogueCapacityPanel } from "@/components/catalogue/CatalogueImportWorkspace";
-import { supplierCatalogueApi } from "@/lib/api/catalogue-imports";
 import { DATASET_CATALOGUE_IMPORT_ENABLED } from "@/lib/catalogue-import-environment";
 import { CATALOGUE_IMPORT_GUIDE_PATH } from "@/lib/datasets/catalogue-import-guidance";
 import { FileText, Plus } from "lucide-react";
@@ -190,7 +188,6 @@ export function DatasetDraftWorkspace() {
             Follow the file import guide
           </Link>
         </DashboardRegion>
-        <CatalogueCapacityPanel api={supplierCatalogueApi} embedded />
         <DashboardRegion>
           <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12">
             {(loading || result) && (

@@ -43,8 +43,7 @@ export default function CatalogueImportPage() {
           </h2>
           <p className="max-w-3xl text-sm text-muted-foreground">
             You can read the walkthrough and continue individual drafts. Contact
-            supplier support to ask for catalogue import access or a larger
-            saved preparation allowance.
+            supplier support to ask for catalogue import access.
           </p>
           <div className="flex flex-wrap gap-3">
             <DashboardButton asChild>
