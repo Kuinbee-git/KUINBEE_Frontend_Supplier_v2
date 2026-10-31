@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 const inset =
   "rounded-lg border border-border bg-[var(--dashboard-control-background)]";
-const tinyLabel = "text-[11px] font-medium text-muted-foreground";
+const tinyLabel = "text-xs font-medium text-muted-foreground";
 
 function Marker({ number }: { number: number }) {
   return (
@@ -20,9 +20,9 @@ function PreviewHeading({
   children: ReactNode;
 }) {
   return (
-    <div className="mb-2 flex items-center gap-2">
+    <div data-guide-target={number} className="mb-2 flex items-center gap-2">
       <Marker number={number} />
-      <span className="text-xs font-semibold text-foreground">{children}</span>
+      <span className="text-sm font-semibold text-foreground">{children}</span>
     </div>
   );
 }
@@ -49,11 +49,11 @@ function PreviewFrame({
     <div className="overflow-hidden rounded-xl border border-border bg-[var(--dashboard-glass-background-soft)]">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <span className="text-xs font-semibold">Create proposal</span>
-        <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+        <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
           Draft example
         </span>
       </div>
-      <div className="grid grid-cols-4 border-b border-border text-center text-[11px] font-medium sm:text-xs">
+      <div className="grid grid-cols-4 border-b border-border text-center text-xs font-medium sm:text-xs">
         {[
           ["Basics", "Basics"],
           ["Files", "Files & contents"],
@@ -117,7 +117,7 @@ function BasicsPreview() {
                 □ Images
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Additional context: neither selected
             </p>
           </div>
@@ -139,7 +139,7 @@ function BasicsPreview() {
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-[11px] text-muted-foreground sm:px-5">
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
         <span>Save partial answers and return later</span>
         <span className="shrink-0 rounded-md border border-border px-3 py-1.5 font-semibold text-foreground">
           Save draft
@@ -157,7 +157,7 @@ function FilesPreview() {
           <PreviewHeading number={1}>Set up files and upload</PreviewHeading>
           <div className="rounded-lg border border-dashed border-border px-4 py-5 text-center">
             <div className="text-xs font-semibold">Upload prepared files</div>
-            <div className="mt-1 text-[11px] text-muted-foreground">
+            <div className="mt-1 text-xs text-muted-foreground">
               Wait for a confirmed result before organizing them
             </div>
           </div>
@@ -170,7 +170,7 @@ function FilesPreview() {
               <div className="mt-2 truncate border-t border-border pt-2 text-xs">
                 support-calls.zip
               </div>
-              <div className="mt-1 text-[11px] text-muted-foreground">
+              <div className="mt-1 text-xs text-muted-foreground">
                 Private full material
               </div>
             </div>
@@ -179,7 +179,7 @@ function FilesPreview() {
               <div className="mt-2 truncate border-t border-border pt-2 text-xs">
                 sample-calls.wav
               </div>
-              <div className="mt-1 text-[11px] text-muted-foreground">
+              <div className="mt-1 text-xs text-muted-foreground">
                 Prepared buyer sample
               </div>
             </div>
@@ -231,7 +231,7 @@ function DetailsPreview() {
               <div key={label} className={`${inset} p-3`}>
                 <div className={tinyLabel}>{label}</div>
                 <div className="mt-2 text-base font-semibold">{value}</div>
-                <div className="text-[11px] text-muted-foreground">{scope}</div>
+                <div className="text-xs text-muted-foreground">{scope}</div>
               </div>
             ))}
           </div>
@@ -310,7 +310,7 @@ function ReviewPreview() {
             <div className="rounded-md bg-[var(--dashboard-action)] px-3 py-2 text-center text-xs font-semibold text-[var(--dashboard-action-foreground)]">
               Submit proposal for admin review
             </div>
-            <div className="mt-2 text-[11px] text-muted-foreground">
+            <div className="mt-2 text-xs text-muted-foreground">
               Admin review → approval → supplier publication
             </div>
           </div>
@@ -372,7 +372,7 @@ export function ProposalMaterialChoicesVisual() {
           className="min-w-0 border-b border-border p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"
         >
           <div className="text-sm font-semibold">{choice.label}</div>
-          <div className="mt-3 flex gap-2 text-[11px] font-medium">
+          <div className="mt-3 flex gap-2 text-xs font-medium">
             <span
               className={`rounded-md border px-2 py-1 ${choice.full ? "border-[var(--dashboard-action)] text-foreground" : "border-border text-muted-foreground opacity-50"}`}
             >

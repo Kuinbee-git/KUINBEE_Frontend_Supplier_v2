@@ -42,10 +42,14 @@ const steps = [
   },
 ] as const;
 
-export function CatalogueImportGuide() {
+export function CatalogueImportGuide({
+  id = "catalogue-import",
+}: {
+  id?: string;
+}) {
   return (
     <section
-      id="catalogue-import"
+      id={id}
       aria-labelledby="catalogue-import-title"
       className="min-w-0 scroll-mt-24 space-y-6 px-5 py-6 sm:px-8 sm:py-8"
     >
