@@ -72,15 +72,15 @@ export function CatalogueGuideScreen({
             <>
               <Group number={1} title="Prepare your metadata file">
                 <div className="flex flex-wrap gap-2">
-                  <span className={secondary}>Get Excel template</span>
-                  <span className={secondary}>Get CSV templates</span>
+                  <span className={secondary}>Download Excel template</span>
+                  <span className={secondary}>Download CSV template</span>
                 </div>
               </Group>
               <Group number={2} title="Keep the template columns">
                 <div className={`${control} overflow-hidden text-xs`}>
                   <div className="grid grid-cols-[1fr_1.25fr] gap-3 border-b border-border px-3 py-2 font-medium">
-                    <span className="break-words">catalogueIdentifier</span>
-                    <span>title</span>
+                    <span className="break-words">Collection ID</span>
+                    <span>Collection name</span>
                   </div>
                   <div className="grid grid-cols-[1fr_1.25fr] gap-3 px-3 py-3">
                     <span>COLL-001</span>

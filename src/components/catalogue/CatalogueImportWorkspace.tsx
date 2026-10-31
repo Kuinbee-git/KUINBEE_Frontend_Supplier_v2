@@ -155,6 +155,12 @@ export function CatalogueImportWorkspace({
   }, []);
   useEffect(() => {
     let cancelled = false;
+    void api
+      .template("csv")
+      .then((result) => {
+        if (!cancelled) setTemplate(result);
+      })
+      .catch(() => {});
     void (async () => {
       try {
         try {
@@ -281,17 +287,15 @@ export function CatalogueImportWorkspace({
   async function preview() {
     setError("");
     if (!files.length) {
-      setError("Choose a catalogue CSV or Excel workbook first.");
+      setError("Choose your catalogue CSV or Excel workbook first.");
       return;
     }
     if (
-      files.length > 3 ||
+      files.length !== 1 ||
       files.reduce((total, file) => total + file.size, 0) >
         CATALOGUE_IMPORT_LIMITS.uploadBytes
     ) {
-      setError(
-        "Choose at most three files, with a combined size of 32 MB or less."
-      );
+      setError("Choose one Excel or CSV file, up to 32 MB.");
       return;
     }
     setBusy(true);
@@ -413,22 +417,20 @@ export function CatalogueImportWorkspace({
               1. Prepare your metadata file
             </h2>
             <p className="text-sm text-muted-foreground">
-              Use our template and its field dictionary. Catalogue identifier
-              and title are required. Leave undocumented metadata unconfirmed.
-              Format gaps do not block valid private drafts.
+              Download one template and enter one collection per row. Only your
+              Collection ID and Collection name are required. Fill the details
+              you know and leave the rest blank.
             </p>
             <div className="space-y-2 border-l-2 border-primary pl-4 text-sm">
               <h3 className="font-semibold">
                 Use the provided Excel or CSV format
               </h3>
               <p className="max-w-3xl text-muted-foreground">
-                Download our template first and copy your metadata into its
-                columns. Keep the column headers and Excel worksheet names
-                unchanged. Use an .xlsx workbook or UTF-8 CSV files. CSV
-                filenames must be catalogue.csv, measurements.csv and
-                sensor_channels.csv; only catalogue.csv is required. Enter
-                values only, without formulas, macros or external workbook
-                links.
+                Use one Excel workbook or one CSV file. All collection details,
+                quantities and dates go on the same row. Excel includes category
+                dropdowns and a short How to use sheet. For CSV, use the
+                category names shown below. Keep the column headings and leave
+                unknown answers blank. Enter text and numbers, without formulas.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -439,45 +441,36 @@ export function CatalogueImportWorkspace({
                   variant="outline"
                   disabled={busy}
                   onClick={() =>
-                    void readAction(async () =>
-                      setTemplate(await api.template(format))
-                    )
+                    void readAction(async () => {
+                      const result = await api.template(format);
+                      setTemplate(result);
+                      if (result.files[0])
+                        downloadCatalogueFile(result.files[0]);
+                    })
                   }
                 >
-                  Get {format === "csv" ? "CSV templates" : "Excel template"}
+                  Download{" "}
+                  {format === "csv" ? "CSV template" : "Excel template"}
                 </DashboardButton>
               ))}
             </div>
             {template && (
               <div className="space-y-4">
                 <p role="status" className="text-sm">
-                  Template ready. Choose the Download links below, complete your
-                  file, then select it under Catalogue file.
+                  Your template is ready. Fill in the Catalogue rows and choose
+                  your completed file below. You only need one file.
                 </p>
-                <ul className="space-y-2" aria-label="Template downloads">
-                  {template.files.map((file) => (
-                    <li key={file.name}>
-                      <DashboardButton
-                        type="button"
-                        variant="link"
-                        className="h-auto whitespace-normal px-0"
-                        onClick={() => downloadCatalogueFile(file)}
-                      >
-                        Download {file.name}
-                      </DashboardButton>
-                    </li>
-                  ))}
-                </ul>
                 {Boolean(template.fields?.length) && (
                   <details className="rounded-lg border border-border p-4">
                     <summary className="min-h-8 cursor-pointer text-sm font-semibold">
-                      Field dictionary and required columns
+                      What to enter in each column
                     </summary>
                     <p className="my-3 text-sm text-muted-foreground">
-                      Copy your existing metadata into these template columns.
-                      There is no separate column-mapping screen. Lists use
-                      semicolons. Blank optional cells leave new answers
-                      undeclared and preserve existing answers when matched.
+                      Only Collection ID and Collection name are required. Your
+                      Collection ID is your own reference, not a Kuinbee ID. Use
+                      semicolons between multiple data types, formats or tags.
+                      Leave unknown values blank; blank cells preserve saved
+                      answers.
                     </p>
                     <div className="max-h-96 overflow-auto">
                       <table className="w-full text-left text-sm">
@@ -522,7 +515,7 @@ export function CatalogueImportWorkspace({
                 {Boolean(template.instructions?.length) && (
                   <details className="rounded-lg border border-border p-4">
                     <summary className="min-h-8 cursor-pointer text-sm font-semibold">
-                      Template instructions
+                      How to fill your catalogue
                     </summary>
                     <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground [overflow-wrap:anywhere]">
                       {template.instructions?.map((instruction) => (
@@ -534,11 +527,14 @@ export function CatalogueImportWorkspace({
                 {template.lookups && (
                   <details className="rounded-lg border border-border p-4">
                     <summary className="min-h-8 cursor-pointer text-sm font-semibold">
-                      Category and source IDs
+                      Category and source choices
                     </summary>
                     <p className="mt-3 text-sm text-muted-foreground">
-                      Use these IDs in primaryCategoryId and sourceId. Leave
-                      optional values blank when they are not documented.
+                      Enter one of these names in Category or Source. Kuinbee
+                      matches it automatically; you never need an internal ID.
+                      Unmatched or ambiguous names are flagged in the preview
+                      and left unset. Leave Source blank if you have not added
+                      it yet.
                     </p>
                     <div className="mt-3 grid gap-4 sm:grid-cols-2">
                       {(
@@ -554,9 +550,6 @@ export function CatalogueImportWorkspace({
                               {values.map((value) => (
                                 <div key={value.id}>
                                   <dt>{value.name}</dt>
-                                  <dd className="break-all font-mono text-xs text-muted-foreground">
-                                    {value.id}
-                                  </dd>
                                 </div>
                               ))}
                             </dl>
@@ -579,16 +572,14 @@ export function CatalogueImportWorkspace({
                 ref={fileInput}
                 type="file"
                 accept=".csv,.xlsx"
-                multiple
                 disabled={busy || Boolean(pending)}
                 onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               />
             </label>
             <p className="text-xs text-muted-foreground">
-              One Excel workbook, or catalogue.csv with optional
-              measurements.csv and sensor_channels.csv. Up to 1,000 collections
-              and 32 MB combined. Arabic text and text identifiers are
-              supported.
+              One Excel workbook or catalogue.csv, up to 1,000 collections and
+              32 MB. Arabic text is supported. Keep your collection references
+              as text to preserve leading zeroes.
             </p>
             {files.length > 0 && (
               <p className="break-words text-sm" role="status">
@@ -834,7 +825,23 @@ export function CatalogueImportWorkspace({
                               className="min-w-0 rounded-md bg-muted/50 p-3 text-sm"
                             >
                               <dt className="break-words font-medium">
-                                {change.field}
+                                {(
+                                  {
+                                    primaryCategoryId: "Category",
+                                    sourceId: "Source",
+                                    title: "Collection name",
+                                    overview: "Summary",
+                                    modalities: "Data types",
+                                    collectionBoundary: "Collection scope",
+                                    dataQuality: "Quality notes",
+                                    collectionMethod: "Collection method",
+                                    "declaredFormats.state": "File formats",
+                                    "declaredFormats.values": "File formats",
+                                  } as Record<string, string>
+                                )[change.field] ??
+                                  change.field
+                                    .replaceAll(".", " · ")
+                                    .replace(/([a-z])([A-Z])/g, "$1 $2")}
                               </dt>
                               <dd className="mt-1 grid min-w-0 gap-2 sm:grid-cols-2">
                                 <div className="whitespace-pre-wrap break-words">

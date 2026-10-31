@@ -25,15 +25,15 @@ export const IMPORT_GUIDE_SCENES: readonly GuideScene[] = [
     actions: [
       [
         "Download the template",
-        "Choose Get Excel template or Get CSV templates, then download the file. Read Instructions, FieldDictionary and Lookups before filling it in.",
+        "Choose Download Excel template or Download CSV template, and fill one file. Excel includes category dropdowns, Choices and How to use; the CSV uses the same category names shown on the import page.",
       ],
       [
         "Fill the template columns",
-        "Keep the template column headers and Excel worksheet names unchanged. catalogueIdentifier and title are required. Keep IDs as text; leave undocumented answers blank or unconfirmed.",
+        "Keep the template column headers and Excel worksheet names unchanged. Collection ID and Collection name are required. Collection ID is your own catalogue reference; Kuinbee handles its internal IDs. Keep references as text; leave undocumented answers blank or unconfirmed.",
       ],
       [
         "Choose your completed file",
-        "Select one .xlsx workbook, or UTF-8 catalogue.csv with optional measurements.csv and sensor_channels.csv. Use values only, without formulas, macros or external links. Lists use semicolons.",
+        "Select one .xlsx workbook or one UTF-8 catalogue.csv. All details and quantities go on the same row. Use values only, without formulas, macros or external links. Lists use semicolons.",
       ],
       [
         "Validate and preview",
@@ -55,11 +55,11 @@ export const IMPORT_GUIDE_SCENES: readonly GuideScene[] = [
       ],
       [
         "Match existing drafts",
-        "Exact catalogue identifiers match automatically; case and punctuation matter. Use Find drafts for older entries without identifiers. Match them explicitly so they are preserved instead of duplicated.",
+        "Your own Collection IDs match existing drafts automatically; case and punctuation matter. Category and Source names are resolved by Kuinbee; unmatched names are flagged, never guessed. Use Find drafts for older entries without identifiers. Match them explicitly so they are preserved instead of duplicated.",
       ],
       [
         "Resolve errors; retain honest unknowns",
-        "Correct duplicate identifiers and other selected errors, or exclude those rows. Undocumented file formats can stay UNCONFIRMED. The 20 format warnings in this example do not block otherwise valid drafts.",
+        "Correct duplicate identifiers and other selected errors, or exclude those rows. Leave undocumented file formats blank or enter Unknown. The 20 format warnings in this example do not block otherwise valid drafts.",
       ],
       [
         "Apply your preview choices",

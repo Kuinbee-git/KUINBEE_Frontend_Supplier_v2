@@ -13,17 +13,17 @@ const steps = [
   {
     title: "Download the template and read its fields",
     detail:
-      "Choose Get Excel template or Get CSV templates, then click the Download links that appear. Excel includes Catalogue, optional Measurements and SensorChannels sheets, plus Instructions, FieldDictionary and Lookups. For CSV, download catalogue.csv; use measurements.csv and sensor_channels.csv only when needed. The page shows the same field dictionary, instructions and allowed values for either format.",
+      "Choose Download Excel template or Download CSV template. You only need one file. Fill the Catalogue sheet in Excel; Choices and How to use are reference pages in that same workbook. For CSV, the same choices and column help appear on the import page.",
   },
   {
     title: "Copy your metadata into the template columns",
     detail:
-      "Enter one collection per Catalogue row. Only catalogueIdentifier and title are required. Keep the template column headers and Excel worksheet names unchanged; there is no separate column-mapping screen. Keep identifiers as text so leading zeroes survive. Add only documented answers and leave other cells blank. Lists use semicolons. Use category/source IDs and allowed codes from the template instructions and Excel Lookups sheet. Optional sheets join to the main row using catalogueIdentifier. Enter values only; formulas, macros and external workbook links are not supported.",
+      "Enter one collection per row. Only Collection ID and Collection name are required. Your Collection ID is your own stable reference; Kuinbee generates its internal IDs. Keep the template column headers unchanged and references as text. Category and Source use readable names, not IDs. Choose categories from the Excel dropdown or the import page list. Data types use names such as Audio;Text. Add documented descriptions, languages, quantities and dates in the columns provided. Leave unknown answers blank.",
   },
   {
     title: "Choose your completed file and matching option",
     detail:
-      "Under Catalogue file, select one .xlsx workbook, or catalogue.csv with any optional companion CSVs together. CSV must use UTF-8. The limit is 1,000 collections and 32 MB combined. Choose Create missing drafts; preserve matched metadata for the usual first import. Choose the update option only when you intend to review changes to existing metadata. Import the metadata spreadsheet here; original dataset files can be added later in each draft.",
+      "Under Catalogue file, select one .xlsx workbook or one UTF-8 catalogue.csv. There are no separate measurement or sensor files to fill. Up to 1,000 collections and 32 MB. Use Create missing drafts; preserve matched metadata for a first import. Dataset files can be added later in each draft.",
   },
   {
     title: "Validate and preview before saving",
@@ -98,34 +98,36 @@ export function CatalogueImportGuide({
           <tbody className="divide-y divide-border">
             <tr>
               <th scope="row" className="p-3 font-mono font-medium">
-                catalogueIdentifier
+                Collection ID
               </th>
               <td className="p-3">
-                Your stable collection ID, for example ARK-C06-025. Required.
+                Your own catalogue reference, for example COLL-001. Required;
+                reuse it on later imports.
               </td>
             </tr>
             <tr>
               <th scope="row" className="p-3 font-mono font-medium">
-                title
+                Collection name
               </th>
               <td className="p-3">The collection name. Required.</td>
             </tr>
             <tr>
               <th scope="row" className="p-3 font-mono font-medium">
-                declaredFormats.state
+                Category
               </th>
               <td className="p-3">
-                Leave blank or use UNCONFIRMED when formats are undocumented.
-                Use DECLARED only for documented formats.
+                Choose a category name from the Excel dropdown or import page.
+                Kuinbee matches the name to its category record. Leave blank if
+                unsure.
               </td>
             </tr>
             <tr>
               <th scope="row" className="p-3 font-mono font-medium">
-                declaredFormats.values
+                File formats
               </th>
               <td className="p-3">
-                Leave blank for UNCONFIRMED. For DECLARED, enter documented
-                labels separated by semicolons.
+                Enter known formats such as WAV;CSV. Leave blank or enter
+                Unknown when formats are undocumented.
               </td>
             </tr>
           </tbody>
