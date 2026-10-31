@@ -699,7 +699,7 @@ export function CatalogueImportWorkspace({
                     <summary className="min-h-8 cursor-pointer text-sm font-semibold">
                       Template instructions
                     </summary>
-                    <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                    <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground [overflow-wrap:anywhere]">
                       {template.instructions?.map((instruction) => (
                         <li key={instruction}>{instruction}</li>
                       ))}
