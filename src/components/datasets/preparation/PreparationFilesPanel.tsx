@@ -272,7 +272,9 @@ export function PreparationFilesPanel({
   // The first metadata Save can create content before its empty storage ledger.
   // Keep an explicit setup action available even when metadata is synchronized.
   const storageSetupRequired =
-    current && context?.usage.state === "RECONCILING";
+    current &&
+    (context?.usage.state === "UNAVAILABLE" ||
+      context?.usage.state === "RECONCILING");
   const hasFull = choice === "FULL_ONLY" || choice === "FULL_AND_SAMPLE";
   const hasSample = choice === "SAMPLE_ONLY" || choice === "FULL_AND_SAMPLE";
   const usableInventory =
@@ -442,7 +444,8 @@ export function PreparationFilesPanel({
                   disabled={mutationDisabled}
                   onClick={() => void synchronize()}
                 >
-                  {context?.contentId && !storageSetupRequired
+                  {context?.contentId &&
+                  (!storageSetupRequired || context.synchronizationRequired)
                     ? "Update files"
                     : "Set up files"}
                 </DashboardButton>
