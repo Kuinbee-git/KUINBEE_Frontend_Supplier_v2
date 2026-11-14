@@ -3,7 +3,7 @@ import { QueryProvider } from "../../src/components/QueryProvider";
 import { DatasetDetail } from "../../src/components/datasets/DatasetDetail";
 import { MyDatasetDetail } from "../../src/components/datasets/MyDatasetDetail";
 import { DelistedDatasetEdit } from "../../src/components/datasets/DelistedDatasetEdit";
-import { CreateDataset } from "../../src/components/datasets/CreateDataset";
+import { DatasetPreparationScreen } from "../../src/components/datasets/preparation/DatasetPreparationScreen";
 import { MyDatasets } from "../../src/components/datasets/MyDatasets";
 import { SubmittedProposals } from "../../src/components/datasets/SubmittedProposals";
 import { CustomCollectionCreateView } from "../../src/components/custom-collection/CustomCollectionCreateView";
@@ -420,7 +420,7 @@ export function SupplierDetailsFixture({
     );
   else if (["edit", "edit-correction", "edit-locked"].includes(view))
     content = <DelistedDatasetEdit datasetId={fixtureId} />;
-  else if (view === "create") content = <CreateDataset isDark={dark} />;
+  else if (view === "create") content = <DatasetPreparationScreen />;
   else if (["inventory", "inventory-delisted"].includes(view))
     content = <MyDatasets isDark={dark} />;
   else if (view === "inventory-proposals")

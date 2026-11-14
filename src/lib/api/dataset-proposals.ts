@@ -6,8 +6,6 @@ import { reloadAt } from "@/lib/utils/reload-navigation";
 
 import { DATASET_PROPOSAL_API, API_BASE_URL } from "@/constants/api.constants";
 import type {
-  CreateProposalRequest,
-  CreateProposalResponse,
   ListProposalsQuery,
   ListProposalsResponse,
   ProposalDetailsResponse,
@@ -122,24 +120,6 @@ async function apiFetch<T>(
     error.code = "NETWORK_ERROR";
     throw error;
   }
-}
-
-// ===== Create Draft Proposal =====
-
-/**
- * Create a new dataset proposal in Draft state (verification.status = PENDING)
- */
-export async function createDatasetProposal(
-  data: CreateProposalRequest
-): Promise<CreateProposalResponse> {
-  const response = await apiFetch<{
-    success: boolean;
-    data: CreateProposalResponse;
-  }>(DATASET_PROPOSAL_API.CREATE, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-  return response.data;
 }
 
 // ===== List My Proposals =====
