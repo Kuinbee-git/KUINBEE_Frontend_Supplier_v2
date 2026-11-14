@@ -444,7 +444,8 @@ export function PreparationFilesPanel({
                   disabled={mutationDisabled}
                   onClick={() => void synchronize()}
                 >
-                  {context?.contentId && !storageSetupRequired
+                  {context?.contentId &&
+                  (!storageSetupRequired || context.synchronizationRequired)
                     ? "Update files"
                     : "Set up files"}
                 </DashboardButton>
