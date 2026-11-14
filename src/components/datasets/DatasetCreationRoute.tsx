@@ -8,13 +8,10 @@ import {
   DashboardLoadingState,
 } from "@/components/dashboard";
 import { DatasetWorkspace } from "./workspace";
-import { CreateDataset } from "./CreateDataset";
 import { DatasetPreparationScreen } from "./preparation/DatasetPreparationScreen";
 
-// Production adoption is per supplier. Keep the existing single creation route
-// and use the backend's permanent writer authority to choose its editor. Neither
-// a timeout nor a malformed/failed read authorizes a legacy fallback.
-export function DatasetCreationRoute({ isDark }: { isDark: boolean }) {
+// The backend confirms current approval; no response can reopen the old creator.
+export function DatasetCreationRoute() {
   const [context, setContext] = useState<DatasetCreationContextResponse | null>(
     null
   );
@@ -40,13 +37,17 @@ export function DatasetCreationRoute({ isDark }: { isDark: boolean }) {
   }, [attempt]);
 
   if (context?.workflow === "CONTENT") return <DatasetPreparationScreen />;
-  if (context?.workflow === "LEGACY") return <CreateDataset isDark={isDark} />;
+  const message =
+    error ||
+    (context?.workflow === "LEGACY"
+      ? "The dataset creator has been updated. Reload the page and try again."
+      : "");
   return (
     <DatasetWorkspace>
-      {error ? (
+      {message ? (
         <DashboardErrorState
           title="Proposal creation could not be loaded"
-          message={error}
+          message={message}
           onRetry={() => {
             setContext(null);
             setError("");

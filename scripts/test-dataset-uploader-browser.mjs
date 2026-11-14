@@ -324,7 +324,7 @@ function context(draft) {
     synchronizationRequired: draft.generation !== draft.sourceGeneration,
     usage: draft.storageSetupRequired
       ? {
-          state: "RECONCILING",
+          state: draft.storageSetupState ?? "RECONCILING",
           dataset: {
             limitBytes: "5000000000",
             retainedBytes: null,
@@ -1411,9 +1411,12 @@ try {
 
   // A real first Save already has content, but no storage ledger yet. Reading
   // must not initialize it or strand the supplier without a setup action.
-  for (const choice of choices) {
+  for (const [choice, storageState] of choices.flatMap((choice) =>
+    ["UNAVAILABLE", "RECONCILING"].map((state) => [choice, state])
+  )) {
     const draft = seed(choice);
     draft.storageSetupRequired = true;
+    draft.storageSetupState = storageState;
     const before = requests.length;
     await open(page, draft);
     await namedButton(page, "Set up files").waitFor();
@@ -1441,7 +1444,7 @@ try {
     );
   }
   console.log(
-    "PASS first-save synchronized content still offers explicit storage setup across all three choices; reads do not initialize quota"
+    "PASS first-save content offers explicit storage setup for new and existing suppliers across all three choices; reads do not initialize quota"
   );
 
   // Real browser directory selection preserves nested duplicate basenames.
