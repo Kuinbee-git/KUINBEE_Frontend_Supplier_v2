@@ -3495,7 +3495,10 @@ try {
     origin + "/dashboard/datasets/create?environment=production"
   );
   await productionPage
-    .getByRole("heading", { name: "Create a dataset proposal", exact: true })
+    .getByRole("heading", {
+      name: "Dataset creation is unavailable",
+      exact: true,
+    })
     .waitFor();
   assert.equal(
     await productionPage.locator('[data-environment="staging"]').count(),

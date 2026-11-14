@@ -12,7 +12,7 @@ const result = await build({
     contents: `import React from 'react';import{createRoot}from'react-dom/client';
       import{DatasetCreationRoute}from'./src/components/datasets/DatasetCreationRoute';
       const root=createRoot(document.getElementById('root'));window.unmount=()=>root.unmount();
-      root.render(<DatasetCreationRoute isDark={false}/>);`,
+      root.render(<DatasetCreationRoute/>);`,
     loader: "jsx",
     resolveDir: process.cwd(),
   },
@@ -99,10 +99,7 @@ const respond = (route, workflow) =>
     body: JSON.stringify({ success: true, data: { workflow } }),
   });
 try {
-  for (const [workflow, heading] of [
-    ["CONTENT", "Content proposal editor"],
-    ["LEGACY", "Legacy proposal editor"],
-  ]) {
+  for (const [workflow, heading] of [["CONTENT", "Content proposal editor"]]) {
     await scenario("backend chooses " + workflow, async (page) => {
       await page.route(
         "**/api/v2/supplier/dataset-drafts/creation-context",
@@ -150,6 +147,7 @@ try {
     }
   );
   for (const failure of [
+    "legacy-workflow",
     "http-error",
     "network",
     "unknown-workflow",
@@ -164,6 +162,7 @@ try {
           async (route) => {
             if (++requests > 1) return respond(route, "CONTENT");
             if (failure === "network") return route.abort("failed");
+            if (failure === "legacy-workflow") return respond(route, "LEGACY");
             if (failure === "http-error")
               return route.fulfill({
                 status: 503,
